@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+dist/
+.env
+config.json
+
+# Local data
+temp/
+output/
+backend/temp/
+backend/output/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific
+.system_generated/
+brain/
+*.log

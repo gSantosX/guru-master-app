@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark text-gray-200 antialiased h-screen overflow-hidden;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-2xl shadow-lg;
+  }
+  
+  .glass-panel {
+    @apply bg-dark-lighter/80 backdrop-blur-xl border-r border-white/10;
+  }
+
+  .text-glow-cyan {
+    text-shadow: 0 0 10px rgba(0, 243, 255, 0.7);
+  }
+  .text-glow-pink {
+    text-shadow: 0 0 10px rgba(255, 0, 234, 0.7);
+  }
+}
+
+/* Minimal Theme Overrides */
+.theme-minimal .text-neon-cyan,
+.theme-minimal .text-neon-pink,
+.theme-minimal .text-neon-purple {
+  @apply text-gray-300 border-gray-400 !important;
+}
+
+.theme-minimal .bg-neon-cyan\/20,
+.theme-minimal .bg-neon-pink\/20,
+.theme-minimal .bg-neon-purple\/20,
+.theme-minimal .bg-neon-cyan\/10,
+.theme-minimal .bg-neon-pink\/10,
+.theme-minimal .bg-neon-purple\/10 {
+  @apply bg-white/5 !important;
+}
+
+.theme-minimal .bg-neon-cyan,
+.theme-minimal .bg-neon-pink,
+.theme-minimal .bg-neon-purple {
+  @apply bg-gray-500 !important;
+}
+
+.theme-minimal .border-neon-cyan,
+.theme-minimal .border-neon-pink,
+.theme-minimal .border-neon-purple,
+.theme-minimal .border-neon-cyan\/50,
+.theme-minimal .border-neon-pink\/50,
+.theme-minimal .border-neon-purple\/50 {
+  @apply border-white/20 !important;
+}
+
+.theme-minimal .text-glow-cyan,
+.theme-minimal .text-glow-pink,
+.theme-minimal .text-glow-purple,
+.theme-minimal [class*="shadow-[0_0_"],
+.theme-minimal [class*="shadow-neon"] {
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.theme-minimal [class*="from-neon"], 
+.theme-minimal [class*="to-neon"] {
+  background-image: none !important;
+  @apply bg-dark-lighter !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-dark;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-neon-purple/50 rounded-full;
+}
+.theme-minimal ::-webkit-scrollbar-thumb {
+  @apply bg-gray-600;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-neon-purple/80;
+}
+.theme-minimal ::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
+
+/* Theme: Light */
+.theme-light.bg-dark, .theme-light .bg-dark { background-color: #f8fafc !important; }
+.theme-light .bg-dark-lighter, .theme-light .glass-panel { background-color: #ffffff !important; border-color: #e2e8f0 !important; }
+.theme-light .bg-dark-card\/80, .theme-light .glass-card { background-color: rgba(255, 255, 255, 0.95) !important; border-color: #cbd5e1 !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important; color: #0f172a !important; }
+.theme-light .text-white { color: #0f172a !important; }
+.theme-light .text-gray-400, .theme-light .text-gray-300, .theme-light .text-gray-200, .theme-light .text-gray-500 { color: #475569 !important; }
+.theme-light .border-white\/10, .theme-light .border-white\/5 { border-color: #e2e8f0 !important; }
+.theme-light .bg-white\/5, .theme-light .bg-white\/10 { background-color: #f1f5f9 !important; color: #334155 !important; border-color: #cbd5e1 !important; }
+.theme-light .bg-dark\/50, .theme-light .bg-dark\/60, .theme-light .bg-dark\/40, .theme-light .bg-dark\/30 { background-color: #f8fafc !important; border-color: #e2e8f0 !important; }
+.theme-light input, .theme-light select, .theme-light textarea { background-color: #ffffff !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
+.theme-light ::-webkit-scrollbar-track { background-color: #f1f5f9 !important; }
+.theme-light ::-webkit-scrollbar-thumb { background-color: #cbd5e1 !important; }
+
+/* Light Theme Colors overrides */
+.theme-light .text-neon-cyan { color: #0284c7 !important; }
+.theme-light .text-neon-pink { color: #e11d48 !important; }
+.theme-light .text-neon-purple { color: #7e22ce !important; }
+.theme-light .text-blue-400 { color: #2563eb !important; }
+.theme-light .bg-neon-cyan\/20, .theme-light .bg-neon-pink\/20, .theme-light .bg-neon-purple\/20 { background-color: #f1f5f9 !important; border: 1px solid #cbd5e1 !important; }
+
+/* Remove glows in Light Theme */
+.theme-light [class*="shadow-[0_0_"], .theme-light [class*="shadow-neon"], 
+.theme-light .text-glow-cyan, .theme-light .text-glow-pink, .theme-light .text-glow-purple { box-shadow: none !important; text-shadow: none !important; }
+
+/* Theme: Soft (Pastel Dark) */
+.theme-soft.bg-dark, .theme-soft .bg-dark { background-color: #2a2a35 !important; }
+.theme-soft .bg-dark-lighter, .theme-soft .glass-panel { background-color: #363644 !important; border-color: #4a4a5a !important; }
+.theme-soft .bg-dark-card\/80, .theme-soft .glass-card { background-color: rgba(54, 54, 68, 0.85) !important; border-color: rgba(255,255,255,0.08) !important; }
+.theme-soft .bg-dark\/50, .theme-soft .bg-dark\/60, .theme-soft .bg-dark\/40, .theme-soft .bg-dark\/30 { background-color: #2a2a35 !important; border-color: rgba(255,255,255,0.05) !important; }
+.theme-soft .bg-white\/5, .theme-soft .bg-white\/10 { background-color: #363644 !important; border-color: rgba(255,255,255,0.1) !important; }
+
+/* Soft Theme Colors overrides (Pastel variations of the neons) */
+.theme-soft .text-neon-cyan { color: #a1dffb !important; }
+.theme-soft .text-neon-pink { color: #fbb6ce !important; }
+.theme-soft .text-neon-purple { color: #d6bcfa !important; }
+.theme-soft .bg-neon-cyan\/20 { background-color: rgba(161, 223, 251, 0.15) !important; }
+.theme-soft .bg-neon-pink\/20 { background-color: rgba(251, 182, 206, 0.15) !important; }
+.theme-soft .bg-neon-purple\/20 { background-color: rgba(214, 188, 250, 0.15) !important; }
+.theme-soft .border-neon-cyan\/50 { border-color: rgba(161, 223, 251, 0.3) !important; }
+.theme-soft .border-neon-pink\/50 { border-color: rgba(251, 182, 206, 0.3) !important; }
+.theme-soft .border-neon-purple\/50 { border-color: rgba(214, 188, 250, 0.3) !important; }
+
+/* Remove harsh glows in Soft Theme */
+.theme-soft [class*="shadow-[0_0_"], .theme-soft [class*="shadow-neon"], 
+.theme-soft .text-glow-cyan, .theme-soft .text-glow-pink, .theme-soft .text-glow-purple { box-shadow: none !important; text-shadow: none !important; }
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
