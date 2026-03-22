@@ -19,6 +19,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 FFMPEG_CMD = 'ffmpeg'
+FFPROBE_CMD = 'ffprobe'
 
 CONFIG_FILE = os.path.join(BASE_DIR, 'config.json')
 
@@ -52,7 +53,7 @@ jobs = {}
 
 def get_audio_duration(file_path):
     try:
-        cmd = ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', file_path]
+        cmd = [FFPROBE_CMD, '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', file_path]
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         return float(result.stdout.strip())
     except Exception as e:
@@ -282,19 +283,25 @@ def process_video(job_id, images, audio_path, music_path, subtitle_path, setting
         time_pattern     = re.compile(r'time=(\d{2}):(\d{2}):(\d{2}\.\d{2})')
         out_total_duration = float(total_duration) if total_duration else 0.0
 
+        last_lines = []
         for line in process.stdout:
+            line_str = line.strip()
             if not out_total_duration:
-                dur_match = duration_pattern.search(line)
+                dur_match = duration_pattern.search(line_str)
                 if dur_match:
                     h, m, s = dur_match.groups()
                     out_total_duration = int(h) * 3600 + int(m) * 60 + float(s)
 
-            time_match = time_pattern.search(line)
+            time_match = time_pattern.search(line_str)
             if time_match and out_total_duration > 0:
                 h, m, s = time_match.groups()
                 current_time = int(h) * 3600 + int(m) * 60 + float(s)
                 calc_progress = 20 + int((current_time / out_total_duration) * 75)
                 jobs[job_id]['progress'] = min(calc_progress, 95)
+            
+            # Keep a buffer of last lines for error reporting
+            last_lines.append(line_str)
+            if len(last_lines) > 20: last_lines.pop(0)
 
         process.wait()
 
@@ -303,8 +310,14 @@ def process_video(job_id, images, audio_path, music_path, subtitle_path, setting
             jobs[job_id]['status'] = 'Concluído'
             jobs[job_id]['result_file'] = output_path
         else:
+            # Capture last few lines of log to help user debug
+            error_msg = "Erro desconhecido"
+            if last_lines:
+                error_msg = " | ".join(last_lines[-3:])
+            
             jobs[job_id]['progress'] = 0
-            jobs[job_id]['status'] = 'Erro no FFmpeg'
+            jobs[job_id]['status'] = f'Erro FFmpeg: {error_msg}'
+            print(f"FFmpeg failed with code {process.returncode}. Last output: {error_msg}")
 
     except Exception as e:
         print(f"Error processing job {job_id}: {e}")
@@ -371,7 +384,7 @@ def start_render():
     }
 
     # Start Background Thread
-    thread = threading.Thread(target=process_video, args=(job_id, images, audio_path, music_path, settings))
+    thread = threading.Thread(target=process_video, args=(job_id, images, audio_path, music_path, subtitle_path, settings))
     thread.daemon = True
     thread.start()
 
@@ -387,7 +400,7 @@ def get_status(job_id):
 def check_system():
     try:
         # Check FFmpeg
-        ffmpeg_res = subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True)
+        ffmpeg_res = subprocess.run([FFMPEG_CMD, '-version'], capture_output=True, text=True)
         ffmpeg_info = ffmpeg_res.stdout.splitlines()[0] if ffmpeg_res.returncode == 0 else "Not found"
         
         return jsonify({
