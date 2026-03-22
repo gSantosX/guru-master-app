@@ -18,6 +18,8 @@ OUTPUT_FOLDER = os.path.join(BASE_DIR, 'output')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
+FFMPEG_CMD = 'ffmpeg'
+
 CONFIG_FILE = os.path.join(BASE_DIR, 'config.json')
 
 def load_config():
