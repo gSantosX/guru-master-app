@@ -16,12 +16,26 @@ const navItems = [
 export const Sidebar = ({ activeTab, setActiveTab }) => {
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     setIsUpdating(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/system/update', { method: 'POST' });
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert(data.message);
+        if (data.status === 'updated') {
+           // Opcional: Recarregar a página se necessário, mas o aviso de reiniciar é melhor
+        }
+      } else {
+        alert("Erro na atualização: " + (data.message || "Falha desconhecida"));
+      }
+    } catch (error) {
+       console.error("Update error:", error);
+       alert("Erro ao conectar com o serviço de atualização. Verifique se o backend está rodando.");
+    } finally {
       setIsUpdating(false);
-      alert('🌟 O Guru Master já está na versão mais recente (1.0.0). Nenhuma atualização encontrada!');
-    }, 2500);
+    }
   };
 
   return (

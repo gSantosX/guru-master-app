@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { stackPush } from '../utils/stackUtils';
 import { Wand2, Type, Layout, Target, FileText, Download, FileJson, File as FilePdf, Settings, BookOpen, Copy, Check } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -263,8 +264,8 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
           content: scriptContent
         };
 
-        const existing = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
-        localStorage.setItem('guru_scripts', JSON.stringify([newProject, ...existing]));
+        // LIFO stack: newest first, max 6 — 7th oldest auto-ejected
+        stackPush('guru_scripts', newProject);
         
         setGeneratedScript(newProject);
         setTitulo(''); // Limpar o campo de titulo para nova geração

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, XCircle, Loader2 } from 'lucide-react';
+import { stackPush, stackWrite } from '../utils/stackUtils';
 
 export const ProgressTab = () => {
   const [projects, setProjects] = useState([]);
@@ -53,17 +54,18 @@ export const ProgressTab = () => {
            const newlyCompleted = updated.filter(p => p.progress >= 100);
            
            if (newlyCompleted.length > 0) {
-              const completedDb = JSON.parse(localStorage.getItem('guru_completed_renders') || '[]');
-              const newCompleted = [...newlyCompleted.map(p => ({
-                 id: p.id,
-                 name: p.name,
-                 date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
-              })), ...completedDb].slice(0, 6);
-              localStorage.setItem('guru_completed_renders', JSON.stringify(newCompleted));
-              window.dispatchEvent(new Event('guru_completed_updated'));
-           }
+               // LIFO push each newly completed project — auto-ejects oldest if > 6
+               newlyCompleted.forEach(p => {
+                 stackPush('guru_completed_renders', {
+                   id: p.id,
+                   name: p.name,
+                   date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+                 });
+               });
+               window.dispatchEvent(new Event('guru_completed_updated'));
+            }
            
-           localStorage.setItem('guru_active_renders', JSON.stringify(stillActive));
+           stackWrite('guru_active_renders', stillActive);
            return stillActive;
          });
       }

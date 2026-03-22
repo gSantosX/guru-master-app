@@ -24,3 +24,7 @@ Thumbs.db
 .system_generated/
 brain/
 *.log
+
+# Environment and Scripts
+backend/venv/
+backend/test_gemini.*

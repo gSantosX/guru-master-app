@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Video, Settings2, Play, Music, Mic, Layers, Image as ImageIcon, CheckCircle } from 'lucide-react';
+import { Video, Settings2, Play, Music, Mic, Layers, Image as ImageIcon, CheckCircle, Captions } from 'lucide-react';
+import { stackPush, stackRead, MAX_STACK } from '../utils/stackUtils';
 
 export const VideoTab = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -9,6 +10,7 @@ export const VideoTab = () => {
   const [musicFile, setMusicFile] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
   const [imageFiles, setImageFiles] = useState([]);
+  const [subtitleFile, setSubtitleFile] = useState(null);
   const [formKey, setFormKey] = useState(Date.now()); // Para forçar limpeza do buffer do input de arquivos
 
   // Configs FFMPEG
@@ -25,9 +27,9 @@ export const VideoTab = () => {
       return;
     }
     
-    const activeRenders = JSON.parse(localStorage.getItem('guru_active_renders') || '[]');
-    if (activeRenders.length >= 6) {
-        alert('Limite de 6 projetos ativos atingido. Cancele algum na aba de Progresso ou espere finalizar.');
+    const activeRenders = stackRead('guru_active_renders');
+    if (activeRenders.length >= MAX_STACK) {
+        alert(`Limite de ${MAX_STACK} projetos ativos atingido. Cancele algum na aba de Progresso ou espere finalizar.`);
         return;
     }
     
@@ -54,6 +56,7 @@ export const VideoTab = () => {
       
       if (audioFile) formData.append('audio', audioFile);
       if (musicFile) formData.append('music', musicFile);
+      if (subtitleFile) formData.append('subtitle', subtitleFile);
       
       imageFiles.forEach((file, index) => {
          formData.append(`image_${index}`, file);
@@ -77,8 +80,8 @@ export const VideoTab = () => {
          color: 'neon-purple' 
       };
       
-      activeRenders.unshift(newProj);
-      localStorage.setItem('guru_active_renders', JSON.stringify(activeRenders));
+      // LIFO stack push — newest first, max 6
+      stackPush('guru_active_renders', newProj);
       window.dispatchEvent(new Event('guru_active_updated'));
       
       setIsGenerating(false);
@@ -95,6 +98,7 @@ export const VideoTab = () => {
      setMusicFile(null);
      setAudioFile(null);
      setImageFiles([]);
+     setSubtitleFile(null);
      setRenderSuccess(false);
      setFormKey(Date.now());
   }
@@ -174,6 +178,45 @@ export const VideoTab = () => {
                   <input key={formKey + 'mus'} type="file" accept="audio/*" className="hidden" onChange={e => setMusicFile(e.target.files[0])} />
                   {musicFile ? 'Trocar' : 'Selecionar'}
                 </label>
+              </div>
+
+              {/* Legenda (Opcional) */}
+              <div className={`p-3 border rounded-xl flex items-center justify-between group transition-colors ${
+                subtitleFile
+                  ? 'bg-yellow-500/10 border-yellow-500/40 hover:border-yellow-500/70'
+                  : 'bg-dark/50 border-white/5 hover:border-white/20'
+              }`}>
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center ${
+                    subtitleFile ? 'bg-yellow-500/20' : 'bg-yellow-500/10'
+                  }`}>
+                    <Captions className={`w-5 h-5 ${subtitleFile ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-white font-medium text-sm flex gap-2 items-center">
+                      Legenda (Subtitle)
+                      <span className="text-[9px] bg-dark-lighter px-1.5 py-0.5 rounded border border-white/10 text-gray-400 uppercase tracking-widest">Opcional</span>
+                    </h4>
+                    <p className="text-xs truncate">
+                      {subtitleFile
+                        ? <span className="text-yellow-400 font-medium">{subtitleFile.name} — será renderizada no vídeo</span>
+                        : <span className="text-gray-500">.srt ou .ass — queimada no vídeo pelo FFmpeg</span>}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0 ml-2">
+                  <label className="text-xs px-3 py-1.5 bg-white/10 hover:bg-yellow-500/20 hover:border-yellow-500/40 rounded-md text-white transition-colors cursor-pointer shadow-inner border border-white/5">
+                    <input key={formKey + 'sub'} type="file" accept=".srt,.ass,.vtt" className="hidden" onChange={e => setSubtitleFile(e.target.files[0])} />
+                    {subtitleFile ? 'Trocar' : 'Selecionar'}
+                  </label>
+                  {subtitleFile && (
+                    <button
+                      onClick={() => setSubtitleFile(null)}
+                      className="text-xs px-2 py-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-md text-red-400 border border-red-500/20 transition-colors"
+                      title="Remover legenda"
+                    >✕</button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
