@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 const navItems = [
   { id: 'create-script', label: 'Criar Roteiro', icon: PenTool, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
   { id: 'ready-scripts', label: 'Roteiros Prontos', icon: FileText, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
+  { id: 'capa-video', label: 'Capa de Vídeo', icon: ImageIcon, color: 'text-neon-purple', shadow: 'shadow-neon-purple' },
   { id: 'image-prompts', label: 'Prompts de Imagem', icon: ImageIcon, color: 'text-neon-pink', shadow: 'shadow-neon-pink' },
   { id: 'generate-video', label: 'Gerar Vídeo', icon: Video, color: 'text-neon-purple', shadow: 'shadow-neon-purple' },
   { id: 'progress', label: 'Em Progresso', icon: Activity, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },

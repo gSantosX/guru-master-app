@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Trash2, AlertTriangle, ChevronRight, ArrowLeft, Download, FileJson, File as FilePdf } from 'lucide-react';
+import { FileText, Trash2, AlertTriangle, ChevronRight, ArrowLeft, Download, FileJson, File as FilePdf, Copy, Check } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 export const ReadyScriptsTab = () => {
   const [scripts, setScripts] = useState([]);
   const [activeScript, setActiveScript] = useState(null);
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     setScripts(saved);
   }, []);
 
@@ -68,6 +70,17 @@ export const ReadyScriptsTab = () => {
     doc.save(`${activeScript.title.replace(/ /g, '_')}.pdf`);
   };
 
+  const handleCopy = async () => {
+    if (!activeScript) return;
+    try {
+      await navigator.clipboard.writeText(activeScript.content);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
   // VIEWER MODE
   if (activeScript) {
     return (
@@ -111,6 +124,24 @@ export const ReadyScriptsTab = () => {
             </button>
             <button onClick={handleExportPdf} className="flex-1 py-3 md:py-4 rounded-xl bg-dark-lighter border border-white/10 hover:border-white/30 text-white font-bold flex items-center justify-center gap-2 transition-all hover:bg-white/5 hover:scale-[1.01] shadow-lg text-sm md:text-base">
               <FilePdf className="w-5 h-5 text-neon-purple" /> Exportar PDF
+            </button>
+            <button 
+              onClick={handleCopy}
+              className={`flex-1 py-3 md:py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all group overflow-hidden relative shadow-lg text-sm md:text-base ${
+                isCopied 
+                ? 'bg-green-500/20 border border-green-500 text-green-400' 
+                : 'bg-white text-dark hover:bg-gray-100'
+              }`}
+            >
+              {isCopied ? (
+                <>
+                  <Check className="w-5 h-5 animate-bounce" /> Copiado!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" /> Copiar Texto
+                </>
+              )}
             </button>
           </div>
         </div>

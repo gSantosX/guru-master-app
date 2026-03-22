@@ -70,7 +70,7 @@ export const ProgressTab = () => {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [projects.length]);
+  }, [projects]);
 
   const handleCancel = (id) => {
     const updated = projects.filter(p => p.id !== id);

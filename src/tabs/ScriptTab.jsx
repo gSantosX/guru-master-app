@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Wand2, Type, Layout, Target, FileText, Download, FileJson, File as FilePdf, Settings, BookOpen } from 'lucide-react';
+import { useState } from 'react';
+import { Wand2, Type, Layout, Target, FileText, Download, FileJson, File as FilePdf, Settings, BookOpen, Copy, Check } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -43,7 +42,7 @@ const FORMATO_OPTIONS = ["Por Partes", "Texto Corrido", "Lista"];
 
 const NATUREZA_OPTIONS = ["Dados Reais (usar pesquisa web)", "Ficção (criatividade pura)"];
 
-export const ScriptTab = () => {
+export const ScriptTab = ({ setActiveTab }) => {
   const { configs } = useSystemStatus();
   const [titulo, setTitulo] = useState('');
   // ... (other state stays the same)
@@ -58,6 +57,18 @@ export const ScriptTab = () => {
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedScript, setGeneratedScript] = useState(null);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!generatedScript) return;
+    try {
+      await navigator.clipboard.writeText(generatedScript.content);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -247,7 +258,7 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
           id: Date.now().toString(),
           title: titulo || 'Roteiro Gerado pela IA',
           niche: nicho,
-          date: new Date().toLocaleDateString(),
+          date: new Date().toLocaleString(),
           length: scriptContent.length,
           content: scriptContent
         };
@@ -257,6 +268,11 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
         
         setGeneratedScript(newProject);
         setTitulo(''); // Limpar o campo de titulo para nova geração
+        
+        // Redirecionar para a aba de roteiros prontos após um pequeno delay para o usuário ver o sucesso
+        setTimeout(() => {
+          setActiveTab('ready-scripts');
+        }, 1500);
       } catch (error) {
         console.error("Erro na API geradora:", error);
         alert(`Não foi possível conectar com a IA.\n\nDetalhe do Erro: ${error.message || error}\n\n1. Verifique se colou a chave inteira nas configurações.`);
@@ -538,6 +554,26 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
                   <FilePdf className="w-4 h-4" /> PDF
                 </button>
               </div>
+              {generatedScript && (
+                <button 
+                  onClick={handleCopy}
+                  className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all group overflow-hidden relative ${
+                    isCopied 
+                    ? 'bg-green-500/20 border border-green-500 text-green-400' 
+                    : 'bg-white text-dark hover:bg-gray-100 shadow-[0_0_20px_rgba(255,255,255,0.2)]'
+                  }`}
+                >
+                  {isCopied ? (
+                    <>
+                      <Check className="w-5 h-5 animate-bounce" /> Copiado com Sucesso!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" /> Copiar Roteiro Completo
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
       </div>

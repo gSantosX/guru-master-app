@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { ScriptTab } from './tabs/ScriptTab';
 import { ReadyScriptsTab } from './tabs/ReadyScriptsTab';
 import { ImagePromptsTab } from './tabs/ImagePromptsTab';
+import { VideoCoverTab } from './tabs/VideoCoverTab';
 import { VideoTab } from './tabs/VideoTab';
 import { ProgressTab } from './tabs/ProgressTab';
 import { CompletedTab } from './tabs/CompletedTab';
@@ -14,6 +15,7 @@ import { Cpu, Zap, Shield, Wand2 } from 'lucide-react';
 const tabComponents = {
   'create-script': ScriptTab,
   'ready-scripts': ReadyScriptsTab,
+  'capa-video': VideoCoverTab,
   'image-prompts': ImagePromptsTab,
   'generate-video': VideoTab,
   'progress': ProgressTab,
@@ -101,7 +103,7 @@ function App() {
                 transition={{ duration: 0.3, ease: "easeInOut" }}
                 className={`absolute inset-0 overflow-y-auto custom-scrollbar ${isActive ? 'pointer-events-auto' : 'pointer-events-none'}`}
               >
-                <Component />
+                <Component setActiveTab={setActiveTab} isActive={isActive} />
               </motion.div>
             );
           })}
