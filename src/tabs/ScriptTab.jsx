@@ -270,10 +270,8 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
         setGeneratedScript(newProject);
         setTitulo(''); // Limpar o campo de titulo para nova geração
         
-        // Redirecionar para a aba de roteiros prontos após um pequeno delay para o usuário ver o sucesso
-        setTimeout(() => {
-          setActiveTab('ready-scripts');
-        }, 1500);
+        // Redirecionar para a aba de roteiros prontos imediatamente
+        setActiveTab('ready-scripts');
       } catch (error) {
         console.error("Erro na API geradora:", error);
         alert(`Não foi possível conectar com a IA.\n\nDetalhe do Erro: ${error.message || error}\n\n1. Verifique se colou a chave inteira nas configurações.`);

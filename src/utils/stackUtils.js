@@ -15,7 +15,9 @@ export const MAX_STACK = 6;
  */
 export function stackPush(key, item) {
   const current = JSON.parse(localStorage.getItem(key) || '[]');
-  const next = [item, ...current].slice(0, MAX_STACK);
+  // Avoid duplicates: remove existing item with same ID if it exists
+  const filtered = current.filter(existing => existing.id !== item.id);
+  const next = [item, ...filtered].slice(0, MAX_STACK);
   localStorage.setItem(key, JSON.stringify(next));
   return next;
 }

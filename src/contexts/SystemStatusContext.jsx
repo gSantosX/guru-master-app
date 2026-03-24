@@ -18,22 +18,32 @@ export const SystemStatusProvider = ({ children }) => {
   });
 
   const checkConnectivity = useCallback(async () => {
-    // 1. Check Backend & FFmpeg
-    try {
-      const res = await fetch('/api/system/check');
-      if (res.ok) {
-        const data = await res.json();
-        setStatus(prev => ({
-          ...prev,
-          rendering: 'online',
-          ffmpeg: data.ffmpeg !== 'Not found' ? 'online' : 'offline',
-          details: { ...prev.details, ffmpeg: data.ffmpeg, error: data.error || '' }
-        }));
-      } else {
-        setStatus(prev => ({ ...prev, rendering: 'offline', ffmpeg: 'offline', details: { ...prev.details, error: 'Servidor Offline' } }));
-      }
-    } catch (err) {
-      setStatus(prev => ({ ...prev, rendering: 'offline', ffmpeg: 'offline', details: { ...prev.details, error: 'Falha na conexão com o motor' } }));
+    let attempts = 0;
+    const maxAttempts = 10;
+    let isConnected = false;
+
+    while (attempts < maxAttempts && !isConnected) {
+        attempts++;
+        try {
+            const res = await fetch('/api/system/check');
+            if (res.ok) {
+                const data = await res.json();
+                setStatus(prev => ({
+                    ...prev,
+                    rendering: 'online',
+                    ffmpeg: data.ffmpeg !== 'Not found' ? 'online' : 'offline',
+                    details: { ...prev.details, ffmpeg: data.ffmpeg, error: data.error || '' }
+                }));
+                isConnected = true;
+            }
+        } catch (err) {
+            console.warn(`Tentativa de conexão ${attempts}/${maxAttempts} falhou. Aguardando...`);
+            await new Promise(r => setTimeout(r, 1000));
+        }
+    }
+
+    if (!isConnected) {
+        setStatus(prev => ({ ...prev, rendering: 'offline', ffmpeg: 'offline', details: { ...prev.details, error: 'Servidor desafinado ou demorando muito' } }));
     }
 
     // 2. Load Configs from Backend
@@ -85,8 +95,23 @@ export const SystemStatusProvider = ({ children }) => {
 
   useEffect(() => {
     checkConnectivity();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Iniciar pollock periódico para manter o status atualizado
+    const interval = setInterval(async () => {
+        try {
+            const res = await fetch('/api/system/check');
+            if (res.ok) {
+                const data = await res.json();
+                setStatus(prev => ({
+                    ...prev,
+                    rendering: 'online',
+                    ffmpeg: data.ffmpeg !== 'Not found' ? 'online' : 'offline'
+                }));
+            }
+        } catch (e) {}
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [checkConnectivity]);
 
   const updateConfig = async (newConfig) => {
     try {

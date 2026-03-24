@@ -2,6 +2,7 @@ import os
 import uuid
 import threading
 import json
+from datetime import datetime
 import subprocess
 import re
 from flask import Flask, request, jsonify, send_file
@@ -24,20 +25,28 @@ FFPROBE_CMD = 'ffprobe'
 CONFIG_FILE = os.path.join(BASE_DIR, 'config.json')
 
 def load_config():
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Error loading config: {e}")
-    return {
+    global FFMPEG_CMD, FFPROBE_CMD
+    config = {
         "gemini_key": "",
         "grok_key": "",
         "gpt_key": "",
+        "ffmpeg_path": "ffmpeg",
+        "ffprobe_path": "ffprobe",
         "active_ai": "Gemini",
         "theme": "neon",
         "reduce_motion": False
     }
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                loaded = json.load(f)
+                config.update(loaded)
+        except Exception as e:
+            print(f"Error loading config: {e}")
+    
+    FFMPEG_CMD = config.get("ffmpeg_path", "ffmpeg")
+    FFPROBE_CMD = config.get("ffprobe_path", "ffprobe")
+    return config
 
 def save_config(config):
     try:
@@ -423,6 +432,10 @@ def update_config():
     config = load_config()
     config.update(new_data)
     if save_config(config):
+        # Reload global commands
+        global FFMPEG_CMD, FFPROBE_CMD
+        FFMPEG_CMD = config.get("ffmpeg_path", "ffmpeg")
+        FFPROBE_CMD = config.get("ffprobe_path", "ffprobe")
         return jsonify({"status": "success", "message": "Configuração salva"})
     return jsonify({"status": "error", "message": "Falha ao salvar configuração"}), 500
 
@@ -486,10 +499,33 @@ def update_application():
 
 @app.route('/api/download/<job_id>', methods=['GET'])
 def download(job_id):
-    if job_id not in jobs or 'result_file' not in jobs[job_id]:
-        return jsonify({'error': 'File not found'}), 404
+    job_id = str(job_id).strip()
+    file_path = None
     
-    return send_file(jobs[job_id]['result_file'], as_attachment=True)
+    # Check in-memory jobs first
+    if job_id in jobs and 'result_file' in jobs[job_id]:
+        file_path = jobs[job_id]['result_file']
+
+    # Fallback: scan output folder for the file (e.g. after server restart)
+    if not file_path or not os.path.exists(file_path):
+        if os.path.exists(OUTPUT_FOLDER):
+            for filename in os.listdir(OUTPUT_FOLDER):
+                if filename.startswith(job_id):
+                    file_path = os.path.join(OUTPUT_FOLDER, filename)
+                    break
+
+    if not file_path or not os.path.exists(file_path):
+        return jsonify({'error': 'Arquivo não encontrado no servidor.'}), 404
+    
+    # Custom filename: video_pronto_DD_MM_YYYY_HHMMSS.mp4
+    timestamp = datetime.now().strftime("%d_%m_%Y_%H%M%S")
+    download_name = f"video_pronto_{timestamp}.mp4"
+    
+    try:
+        return send_file(file_path, as_attachment=True, download_name=download_name)
+    except TypeError:
+        # Fallback for older Flask versions
+        return send_file(file_path, as_attachment=True, attachment_filename=download_name)
 
 if __name__ == '__main__':
     # Usando porta 5000, e acessível por todos pra n dar erro cors

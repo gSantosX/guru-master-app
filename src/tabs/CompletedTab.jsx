@@ -25,9 +25,43 @@ export const CompletedTab = () => {
     saveProjects(projects.filter(p => p.id !== id));
   };
 
-  const handleDownload = (id) => {
-    // Abrir o endpoint de download do nosso servidor Flask
-    window.open(`http://localhost:5000/api/download/${id}`, '_blank');
+  const handleDownload = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/download/${id}`);
+      if (!response.ok) {
+        let errorMsg = 'Arquivo não encontrado no servidor.';
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorMsg;
+          if (errorData.requested_id) {
+            console.error("DEBUG Download:", errorData);
+          }
+        } catch (e) {}
+        alert(`Erro ao baixar: ${errorMsg}`);
+        return;
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Tentar pegar o nome do arquivo do cabeçalho ou usar um padrão
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let fileName = `video_pronto_${new Date().getTime()}.mp4`;
+      if (contentDisposition && contentDisposition.includes('filename=')) {
+        fileName = contentDisposition.split('filename=')[1].split(';')[0].replace(/"/g, '');
+      }
+      
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Erro no download:", err);
+      alert("Erro de conexão com o servidor de download.");
+    }
   };
 
   return (

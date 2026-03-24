@@ -10,6 +10,7 @@ export const SettingsTab = () => {
   const [grokKey, setGrokKey] = useState(configs.grok_key);
   const [gptKey, setGptKey] = useState(configs.gpt_key);
   const [activeAi, setActiveAi] = useState(configs.active_ai);
+  const [ffmpegPath, setFfmpegPath] = useState(configs.ffmpeg_path || 'ffmpeg');
   
   const [isSaved, setIsSaved] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('guru_theme') || 'neon');
@@ -21,6 +22,7 @@ export const SettingsTab = () => {
     setGrokKey(configs.grok_key);
     setGptKey(configs.gpt_key);
     setActiveAi(configs.active_ai);
+    setFfmpegPath(configs.ffmpeg_path || 'ffmpeg');
   }, [configs]);
 
   const handleSaveKeys = async () => {
@@ -28,7 +30,8 @@ export const SettingsTab = () => {
       gemini_key: geminiKey,
       grok_key: grokKey,
       gpt_key: gptKey,
-      active_ai: activeAi
+      active_ai: activeAi,
+      ffmpeg_path: ffmpegPath
     });
     
     if (success) {

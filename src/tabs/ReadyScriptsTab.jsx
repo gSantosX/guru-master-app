@@ -10,9 +10,12 @@ export const ReadyScriptsTab = () => {
 
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     setScripts(saved);
-  }, []);
+    // Auto-select latest script if none is active
+    if (saved.length > 0 && !activeScript) {
+      setActiveScript(saved[0]);
+    }
+  }, [activeScript]);
 
   const saveScripts = (newScripts) => {
     setScripts(newScripts);
@@ -32,20 +35,22 @@ export const ReadyScriptsTab = () => {
     }
   };
 
-  const handleDownloadTxt = () => {
-    if (!activeScript) return;
-    const blob = new Blob([activeScript.content], { type: 'text/plain' });
+  const handleDownloadTxt = (scriptToDownload) => {
+    const target = scriptToDownload || activeScript;
+    if (!target) return;
+    const blob = new Blob([target.content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${activeScript.title.replace(/ /g, '_')}.txt`;
+    a.download = `${target.title.replace(/ /g, '_')}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadSrt = () => {
-    if (!activeScript) return;
-    const lines = activeScript.content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
+  const handleDownloadSrt = (scriptToDownload) => {
+    const target = scriptToDownload || activeScript;
+    if (!target) return;
+    const lines = target.content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
     let srtData = "";
     lines.forEach((line, idx) => {
       srtData += `${idx + 1}\n`;
@@ -56,7 +61,7 @@ export const ReadyScriptsTab = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${activeScript.title.replace(/ /g, '_')}.srt`;
+    a.download = `${target.title.replace(/ /g, '_')}.srt`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -70,10 +75,11 @@ export const ReadyScriptsTab = () => {
     doc.save(`${activeScript.title.replace(/ /g, '_')}.pdf`);
   };
 
-  const handleCopy = async () => {
-    if (!activeScript) return;
+  const handleCopy = async (scriptToCopy) => {
+    const target = scriptToCopy || activeScript;
+    if (!target) return;
     try {
-      await navigator.clipboard.writeText(activeScript.content);
+      await navigator.clipboard.writeText(target.content);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     } catch (err) {
@@ -151,14 +157,14 @@ export const ReadyScriptsTab = () => {
 
   // GRID MODE
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto md:overflow-hidden">
-      <header className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 shrink-0">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto custom-scrollbar">
+      <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 shrink-0">
         <div>
           <h2 className="text-2xl md:text-4xl font-black text-glow-cyan text-white flex items-center gap-2 md:gap-3 tracking-tight">
             <FileText className="text-neon-cyan w-8 h-8 md:w-10 md:h-10 shrink-0" />
-            Meus Projetos
+            Roteiros Prontos
           </h2>
-          <p className="text-neon-cyan/80 mt-2 font-medium text-sm md:text-lg">Gerencie e acesse todos os seus roteiros criados pela IA</p>
+          <p className="text-neon-cyan/80 mt-2 font-medium text-sm md:text-lg">Seus últimos 6 roteiros gerados pela IA</p>
         </div>
         
         {scripts.length > 0 && (
@@ -166,7 +172,7 @@ export const ReadyScriptsTab = () => {
             onClick={handleDeleteAll}
             className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 rounded-xl border-2 border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500 transition-all font-bold shadow-lg"
           >
-            <Trash2 className="w-5 h-5" /> Excluir Todos
+            <Trash2 className="w-5 h-5" /> Limpar Histórico
           </button>
         )}
       </header>
@@ -174,57 +180,94 @@ export const ReadyScriptsTab = () => {
       {scripts.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-gray-400 glass-card p-12 border border-white/5 shadow-inner">
           <AlertTriangle className="w-20 h-20 text-gray-600 mb-6" />
-          <h3 className="text-2xl font-bold text-white mb-2">Nenhum Roteiro Encontrado</h3>
-          <p className="text-lg text-gray-500 text-center max-w-md">Sua biblioteca de projetos está vazia. Vá para "Criar Roteiro" para começar sua jornada narrativa.</p>
+          <h3 className="text-2xl font-bold text-white mb-2">Histórico Vazio</h3>
+          <p className="text-lg text-gray-500 text-center max-w-md">Crie seu primeiro roteiro para vê-lo aqui.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr pb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
           <AnimatePresence>
-            {scripts.map((script) => (
-              <motion.div
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                transition={{ duration: 0.2 }}
-                key={script.id}
-                onClick={() => setActiveScript(script)}
-                className="glass-card flex flex-col group relative overflow-hidden h-72 hover:-translate-y-2 transition-transform cursor-pointer border border-white/5 hover:border-neon-cyan/30 shadow-lg hover:shadow-neon-cyan/10"
-              >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-cyan to-neon-purple opacity-0 group-hover:opacity-100 transition-opacity" />
-                
-                <div className="p-6 flex flex-col h-full">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="pr-4">
-                      <h3 className="text-xl font-black text-white group-hover:text-neon-cyan transition-colors line-clamp-2 leading-tight">{script.title}</h3>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <span className="text-xs font-bold text-neon-purple bg-neon-purple/10 px-2 py-0.5 rounded">{script.niche}</span>
-                        <span className="text-xs font-medium text-gray-500 px-1">{script.date}</span>
-                      </div>
+            {[...scripts, ...Array(Math.max(0, 6 - scripts.length)).fill(null)].map((script, idx) => (
+              script ? (
+                <motion.div
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  key={script.id}
+                  className="glass-card flex flex-col group relative overflow-hidden border border-white/5 hover:border-neon-cyan/30 shadow-lg transition-all h-[320px]"
+                >
+                  {/* Header with Title & Date */}
+                  <div className="p-4 border-b border-white/5 bg-white/5">
+                    <div className="flex justify-between items-start gap-2 mb-1">
+                      <h3 className="text-base font-black text-white group-hover:text-neon-cyan transition-colors line-clamp-2 leading-tight uppercase flex-1">
+                        {script.title}
+                      </h3>
+                      <button 
+                        onClick={(e) => handleDelete(script.id, e)}
+                        className="p-1 text-gray-600 hover:text-red-400 transition-colors shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <button 
-                      onClick={(e) => handleDelete(script.id, e)}
-                      className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors z-10 flex-shrink-0"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                  
-                  <div className="flex-1 bg-dark/40 rounded-xl p-4 text-sm font-mono text-gray-400 overflow-hidden relative shadow-inner">
-                    <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-t from-dark to-transparent z-10" />
-                    <p className="whitespace-pre-wrap leading-relaxed opacity-70 group-hover:opacity-100 transition-opacity">
-                      {script.content?.substring(0, 200)}...
-                    </p>
+                    <div className="flex items-center gap-2 text-[9px] font-mono text-gray-400">
+                      <span className="bg-dark px-2 py-0.5 rounded border border-white/5">{script.date}</span>
+                      <span className="text-neon-pink font-bold">{script.length} chars</span>
+                    </div>
                   </div>
 
-                  <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-white/50 group-hover:text-white transition-colors">
-                    <span className="text-xs font-medium">{script.length} chars</span>
-                    <span className="flex items-center gap-1 text-sm font-bold text-neon-cyan">
-                      Abrir no Editor <ChevronRight className="w-4 h-4" />
-                    </span>
+                  {/* Content Preview */}
+                  <div 
+                    onClick={() => setActiveScript(script)}
+                    className="flex-1 p-4 text-[11px] font-mono text-gray-500 overflow-hidden relative cursor-pointer group-hover:bg-white/5 transition-colors"
+                  >
+                    <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-dark to-transparent z-10" />
+                    <p className="whitespace-pre-wrap leading-relaxed italic line-clamp-5">
+                      {script.content}
+                    </p>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-dark/40 backdrop-blur-[1px]">
+                      <span className="bg-neon-cyan/20 text-neon-cyan px-3 py-1.5 rounded-lg border border-neon-cyan font-bold text-[10px]">VER ROTEIRO</span>
+                    </div>
                   </div>
+
+                  {/* Quick Actions Footer */}
+                  <div className="p-2.5 bg-dark/60 border-t border-white/5 flex gap-2">
+                    <button 
+                      onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopy(script);
+                      }}
+                      className="flex-1 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-neon-cyan hover:text-neon-cyan text-gray-400 text-[9px] font-bold transition-all flex flex-col items-center gap-1"
+                    >
+                      <Copy className="w-3.5 h-3.5" /> COPIAR
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadTxt(script);
+                      }}
+                      className="flex-1 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-neon-cyan hover:text-neon-cyan text-gray-400 text-[9px] font-bold transition-all flex flex-col items-center gap-1"
+                    >
+                      <Download className="w-3.5 h-3.5" /> .TXT
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadSrt(script);
+                      }}
+                      className="flex-1 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-neon-pink hover:text-neon-pink text-gray-400 text-[9px] font-bold transition-all flex flex-col items-center gap-1"
+                    >
+                      <FileJson className="w-3.5 h-3.5" /> .SRT
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <div key={`empty-${idx}`} className="glass-card border border-dashed border-white/10 h-[320px] flex flex-col items-center justify-center text-gray-700">
+                   <div className="w-10 h-10 border-2 border-dashed border-gray-800 rounded-full flex items-center justify-center mb-2">
+                     <span className="text-xl font-bold">?</span>
+                   </div>
+                   <span className="text-[10px] font-bold uppercase tracking-widest">Espaço Vazio</span>
                 </div>
-              </motion.div>
+              )
             ))}
           </AnimatePresence>
         </div>
