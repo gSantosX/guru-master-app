@@ -48,7 +48,8 @@ function startBackend() {
   // Use shell: false to get the real PID of the python process
   const cmd = spawn(venvPath, [apiPath], {
     cwd: path.join(__dirname, '../backend'),
-    shell: false
+    shell: false,
+    windowsHide: true
   });
 
   cmd.stdout.on('data', (data) => {

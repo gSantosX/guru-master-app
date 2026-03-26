@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, Download, Play, Trash2, Archive } from 'lucide-react';
+import { resolveApiUrl } from '../utils/apiUtils';
 
 export const CompletedTab = () => {
   const [projects, setProjects] = useState([]);
@@ -27,7 +28,7 @@ export const CompletedTab = () => {
 
   const handleDownload = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/download/${id}`);
+      const response = await fetch(resolveApiUrl(`/api/download/${id}`));
       if (!response.ok) {
         let errorMsg = 'Arquivo não encontrado no servidor.';
         try {
@@ -65,7 +66,7 @@ export const CompletedTab = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto md:overflow-hidden">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto md:overflow-hidden custom-scrollbar">
       <header className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2 md:gap-0 shrink-0">
         <div>
           <h2 className="text-2xl md:text-4xl font-bold text-glow-pink text-white flex items-center gap-2 md:gap-3">

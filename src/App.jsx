@@ -8,9 +8,14 @@ import { VideoTab } from './tabs/VideoTab';
 import { ProgressTab } from './tabs/ProgressTab';
 import { CompletedTab } from './tabs/CompletedTab';
 import { SettingsTab } from './tabs/SettingsTab';
+import { ProfileTab } from './tabs/ProfileTab';
+import { WhiskTab } from './tabs/WhiskTab';
+import { ChannelMonitoringTab } from './tabs/ChannelMonitoringTab';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
-import { useSystemStatus } from './contexts/SystemStatusContext';
+import { SystemStatusProvider, useSystemStatus } from './contexts/SystemStatusContext';
 import { Cpu, Zap, Shield, Wand2 } from 'lucide-react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { Login } from './components/Login';
 
 const tabComponents = {
   'create-script': ScriptTab,
@@ -20,31 +25,74 @@ const tabComponents = {
   'generate-video': VideoTab,
   'progress': ProgressTab,
   'completed': CompletedTab,
+  'profile': ProfileTab,
+  'whisk': WhiskTab,
+  'channel-monitoring': ChannelMonitoringTab,
   'settings': SettingsTab
 };
 
-function App() {
-  const { isInitialized, status } = useSystemStatus();
+function AppContent() {
+  const { isInitialized } = useSystemStatus();
+  const { isAuthenticated, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('create-script');
   const [theme, setTheme] = useState(localStorage.getItem('guru_theme') || 'neon');
   const [reduceMotion, setReduceMotion] = useState(localStorage.getItem('guru_reduce_motion') === 'true');
+  const [zoom, setZoom] = useState(Number(localStorage.getItem('guru_app_zoom')) || 1);
+  const [fontSize, setFontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);
+  const [language, setLanguage] = useState(localStorage.getItem('guru_app_lang') || 'Português (BR)');
 
   useEffect(() => {
-    const handleTheme = () => setTheme(localStorage.getItem('guru_theme') || 'neon');
+    document.documentElement.style.fontSize = `${fontSize}px`;
+  }, [fontSize]);
+
+  useEffect(() => {
+    const applyThemeToRoot = () => {
+      const currentTheme = localStorage.getItem('guru_theme') || 'neon';
+      document.documentElement.className = `theme-${currentTheme}`;
+    };
+
+    applyThemeToRoot();
+
+    const handleTheme = () => {
+      setTheme(localStorage.getItem('guru_theme') || 'neon');
+      applyThemeToRoot();
+    };
     const handleMotion = () => setReduceMotion(localStorage.getItem('guru_reduce_motion') === 'true');
+    const handleZoom = () => setZoom(Number(localStorage.getItem('guru_app_zoom')) || 1);
+    const handleFontSize = () => setFontSize(Number(localStorage.getItem('guru_app_font_size')) || 16);
+    const handleLanguage = () => setLanguage(localStorage.getItem('guru_app_lang') || 'Português (BR)');
+
     window.addEventListener('guru_theme_change', handleTheme);
     window.addEventListener('guru_motion_change', handleMotion);
+    window.addEventListener('guru_zoom_change', handleZoom);
+    window.addEventListener('guru_font_size_change', handleFontSize);
+    window.addEventListener('guru_language_change', handleLanguage);
+
     return () => {
       window.removeEventListener('guru_theme_change', handleTheme);
       window.removeEventListener('guru_motion_change', handleMotion);
+      window.removeEventListener('guru_zoom_change', handleZoom);
+      window.removeEventListener('guru_font_size_change', handleFontSize);
+      window.removeEventListener('guru_language_change', handleLanguage);
     };
   }, []);
 
-  const ActiveComponent = tabComponents[activeTab];
+  if (loading) return null;
 
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
-      <div className={`flex flex-col md:flex-row h-screen w-full bg-dark overflow-hidden font-sans theme-${theme}`}>
+      <div 
+        className={`flex flex-col md:flex-row h-screen w-full bg-dark overflow-hidden font-sans theme-${theme} ${reduceMotion ? 'reduce-motion' : ''}`}
+        style={{
+          transform: `scale(${zoom})`,
+          transformOrigin: 'top left',
+          width: `${100 / zoom}%`,
+          height: `${100 / zoom}vh`,
+          position: 'absolute',
+          top: 0,
+          left: 0
+        }}
+      >
         
         <AnimatePresence>
           {!isInitialized && (
@@ -55,15 +103,11 @@ function App() {
               className="fixed inset-0 z-[100] bg-dark flex flex-col items-center justify-center"
             >
               <div className="relative mb-8">
-                <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                  className="w-32 h-32 border-2 border-neon-cyan/20 border-t-neon-cyan rounded-full"
-                />
-                <Wand2 className="w-12 h-12 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-neon-cyan drop-shadow-[0_0_15px_rgba(0,243,255,1)]" />
+                <div className="w-32 h-32 rounded-full p-1 bg-gradient-to-br from-neon-purple via-neon-cyan to-blue-600 shadow-[0_0_40px_rgba(0,243,255,0.3)] flex items-center justify-center overflow-hidden border-2 border-white/20">
+                  <img src="/logo.jpg" alt="Guru Master Logo" className="w-full h-full object-cover rounded-full" />
+                </div>
               </div>
-              <h1 className="text-3xl font-black text-white tracking-widest mb-4">GURU MASTER <span className="text-neon-cyan">AI</span></h1>
-              <div className="flex gap-6 text-xs font-mono text-gray-500 uppercase tracking-widest">
+              <div className="flex gap-6 text-[10px] font-mono text-gray-500 uppercase tracking-[0.3em] font-black">
                 <span className="flex items-center gap-2"><Zap className="w-3 h-3 text-neon-cyan" /> Engine</span>
                 <span className="flex items-center gap-2"><Cpu className="w-3 h-3 text-neon-purple" /> Render</span>
                 <span className="flex items-center gap-2"><Shield className="w-3 h-3 text-neon-pink" /> Security</span>
@@ -77,6 +121,10 @@ function App() {
               </motion.p>
             </motion.div>
           )}
+
+          {!isAuthenticated && isInitialized && (
+            <Login />
+          )}
         </AnimatePresence>
 
         {/* Dynamic Animated Background */}
@@ -85,31 +133,45 @@ function App() {
           <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-neon-purple/5 rounded-full blur-[150px]" />
         </div>
 
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-        
-        <main className="flex-1 relative z-10 overflow-hidden bg-transparent">
-          {Object.entries(tabComponents).map(([key, Component]) => {
-            const isActive = activeTab === key;
-            return (
-              <motion.div
-                key={key}
-                initial={false}
-                animate={{
-                  opacity: isActive ? 1 : 0,
-                  scale: isActive ? 1 : 0.98,
-                  filter: isActive ? "blur(0px)" : "blur(4px)",
-                  zIndex: isActive ? 10 : 0
-                }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                className={`absolute inset-0 overflow-y-auto custom-scrollbar ${isActive ? 'pointer-events-auto' : 'pointer-events-none'}`}
-              >
-                <Component setActiveTab={setActiveTab} isActive={isActive} />
-              </motion.div>
-            );
-          })}
-        </main>
+        {isAuthenticated && (
+          <>
+            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+            
+            <main className="flex-1 relative z-10 overflow-hidden bg-transparent">
+              {Object.entries(tabComponents).map(([key, Component]) => {
+                const isActive = activeTab === key;
+                return (
+                  <motion.div
+                    key={key}
+                    initial={false}
+                    animate={{
+                      opacity: isActive ? 1 : 0,
+                      scale: isActive ? 1 : 0.98,
+                      filter: isActive ? "blur(0px)" : "blur(4px)",
+                      zIndex: isActive ? 10 : 0
+                    }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className={`absolute inset-0 p-6 md:p-10 lg:p-12 overflow-y-auto custom-scrollbar ${isActive ? 'pointer-events-auto' : 'pointer-events-none'}`}
+                  >
+                    <Component setActiveTab={setActiveTab} isActive={isActive} />
+                  </motion.div>
+                );
+              })}
+            </main>
+          </>
+        )}
       </div>
     </MotionConfig>
+  );
+}
+
+function App() {
+  return (
+    <SystemStatusProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </SystemStatusProvider>
   );
 }
 

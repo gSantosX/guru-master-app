@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { resolveApiUrl } from '../utils/apiUtils';
 
 const SystemStatusContext = createContext();
 
@@ -7,13 +8,17 @@ export const SystemStatusProvider = ({ children }) => {
   const [status, setStatus] = useState({
     rendering: 'checking...',
     ffmpeg: 'checking...',
-    api: 'checking...',
-    details: { ffmpeg: '', error: '' }
+    gemini: 'checking...',
+    openai: 'checking...',
+    grok: 'checking...',
+    details: { ffmpeg: '', error: '', youtube_error: '' }
   });
   const [configs, setConfigs] = useState({
     gemini_key: '',
     grok_key: '',
     gpt_key: '',
+    youtube_key: '',
+    google_client_id: '',
     active_ai: 'Gemini'
   });
 
@@ -25,14 +30,23 @@ export const SystemStatusProvider = ({ children }) => {
     while (attempts < maxAttempts && !isConnected) {
         attempts++;
         try {
-            const res = await fetch('/api/system/check');
+            const res = await fetch(resolveApiUrl('/api/check'));
             if (res.ok) {
                 const data = await res.json();
                 setStatus(prev => ({
                     ...prev,
                     rendering: 'online',
                     ffmpeg: data.ffmpeg !== 'Not found' ? 'online' : 'offline',
-                    details: { ...prev.details, ffmpeg: data.ffmpeg, error: data.error || '' }
+                    gemini: data.ai?.gemini ? 'online' : 'offline',
+                    openai: data.ai?.gpt ? 'online' : 'offline',
+                    grok: data.ai?.grok ? 'online' : 'offline',
+                    youtube: data.ai?.youtube ? 'online' : 'offline',
+                    details: { 
+                      ...prev.details, 
+                      ffmpeg: data.ffmpeg, 
+                      error: data.error || '',
+                      youtube_error: data.ai?.youtube_error
+                    }
                 }));
                 isConnected = true;
             }
@@ -47,14 +61,16 @@ export const SystemStatusProvider = ({ children }) => {
     }
 
     // 2. Load Configs from Backend
-    let currentConfigs = configs;
+    let currentConfigs = null;
     try {
-      const res = await fetch('/api/system/config');
+      const res = await fetch(resolveApiUrl('/api/config'));
       if (res.ok) {
         const configData = await res.json();
         setConfigs(configData);
         currentConfigs = configData;
         // Sync to localStorage
+        if (configData.google_client_id) localStorage.setItem('guru_google_client_id', configData.google_client_id);
+        if (configData.youtube_key) localStorage.setItem('guru_youtube_key', configData.youtube_key);
         if (configData.gemini_key) localStorage.setItem('guru_gemini_key', configData.gemini_key);
         if (configData.grok_key) localStorage.setItem('guru_grok_key', configData.grok_key);
         if (configData.gpt_key) localStorage.setItem('guru_gpt_key', configData.gpt_key);
@@ -66,39 +82,48 @@ export const SystemStatusProvider = ({ children }) => {
          gemini_key: localStorage.getItem('guru_gemini_key') || '',
          grok_key: localStorage.getItem('guru_grok_key') || '',
          gpt_key: localStorage.getItem('guru_gpt_key') || '',
+         youtube_key: localStorage.getItem('guru_youtube_key') || '',
+         google_client_id: localStorage.getItem('guru_google_client_id') || '',
          active_ai: localStorage.getItem('guru_active_ai') || 'Gemini'
        };
        setConfigs(currentConfigs);
     }
 
-    // 3. Check AI API Connection (Simple check for the active one)
-    const activeAi = currentConfigs.active_ai;
-    const key = currentConfigs[`${activeAi.toLowerCase()}_key`];
-    
-    if (!key || key.includes('YOUR_') || key === "") {
-      setStatus(prev => ({ ...prev, api: 'offline' }));
-    } else {
-      try {
-        if (activeAi === 'Gemini') {
-          // Use the proxy
-          const testRes = await fetch(`/api/gemini/v1beta/models?key=${key}`);
-          setStatus(prev => ({ ...prev, api: testRes.ok ? 'online' : 'offline' }));
-        } else {
-          setStatus(prev => ({ ...prev, api: 'online' }));
-        }
-      } catch (e) {
-        setStatus(prev => ({ ...prev, api: 'offline' }));
-      }
+    // 3. Check AI APIs Independently
+    if (currentConfigs) {
+        const checkApi = async (name, key, url, headers = {}) => {
+            if (!key || key.includes('YOUR_') || key === "" || key.length < 5) return 'offline';
+            try {
+                const res = await fetch(resolveApiUrl(url), { headers });
+                return res.ok ? 'online' : 'offline';
+            } catch (e) {
+                return 'offline';
+            }
+        };
+
+        const [geminiStatus, openaiStatus, grokStatus] = await Promise.all([
+            checkApi('Gemini', currentConfigs.gemini_key, `/api/gemini/v1beta/models?key=${currentConfigs.gemini_key}`),
+            checkApi('GPT', currentConfigs.gpt_key, "/api/openai/v1/models", { "Authorization": `Bearer ${currentConfigs.gpt_key}` }),
+            checkApi('Grok', currentConfigs.grok_key, "/api/grok/v1/models", { "Authorization": `Bearer ${currentConfigs.grok_key}` })
+        ]);
+
+        setStatus(prev => ({
+            ...prev,
+            gemini: geminiStatus,
+            openai: openaiStatus,
+            grok: grokStatus
+        }));
     }
+
     setIsInitialized(true);
-  }, [configs]);
+  }, []);
 
   useEffect(() => {
     checkConnectivity();
     // Iniciar pollock periódico para manter o status atualizado
     const interval = setInterval(async () => {
         try {
-            const res = await fetch('/api/system/check');
+            const res = await fetch(resolveApiUrl('/api/check'));
             if (res.ok) {
                 const data = await res.json();
                 setStatus(prev => ({
@@ -115,7 +140,7 @@ export const SystemStatusProvider = ({ children }) => {
 
   const updateConfig = async (newConfig) => {
     try {
-      const res = await fetch('/api/system/config', {
+      const res = await fetch(resolveApiUrl('/api/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConfig)

@@ -3,19 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Trash2, AlertTriangle, ChevronRight, ArrowLeft, Download, FileJson, File as FilePdf, Copy, Check } from 'lucide-react';
 import jsPDF from 'jspdf';
 
-export const ReadyScriptsTab = () => {
+export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
   const [scripts, setScripts] = useState([]);
   const [activeScript, setActiveScript] = useState(null);
-  const [isCopied, setIsCopied] = useState(false);
+  const [copyingId, setCopyingId] = useState(null);
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
-    setScripts(saved);
-    // Auto-select latest script if none is active
-    if (saved.length > 0 && !activeScript) {
-      setActiveScript(saved[0]);
+    try {
+      const saved = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+      setScripts(Array.isArray(saved) ? saved : []);
+    } catch (e) {
+      console.error("Error loading scripts:", e);
+      setScripts([]);
     }
-  }, [activeScript]);
+  }, [isActive]);
 
   const saveScripts = (newScripts) => {
     setScripts(newScripts);
@@ -80,8 +81,8 @@ export const ReadyScriptsTab = () => {
     if (!target) return;
     try {
       await navigator.clipboard.writeText(target.content);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
+      setCopyingId(target.id);
+      setTimeout(() => setCopyingId(null), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
     }
@@ -90,7 +91,7 @@ export const ReadyScriptsTab = () => {
   // VIEWER MODE
   if (activeScript) {
     return (
-      <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-full md:h-full flex flex-col pt-4 overflow-y-auto md:overflow-hidden">
+      <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-full md:h-full flex flex-col pt-4 overflow-y-auto md:overflow-hidden custom-scrollbar">
         <button 
           onClick={() => setActiveScript(null)}
           className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors w-max"
@@ -102,10 +103,16 @@ export const ReadyScriptsTab = () => {
           <div className="p-4 md:p-6 border-b border-white/10 bg-dark/40 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-0 z-10">
             <div>
               <h2 className="text-xl md:text-3xl font-black text-white mb-2">{activeScript.title}</h2>
-              <div className="flex flex-wrap gap-2 md:gap-3 text-xs md:text-sm text-gray-400 font-medium">
-                <span className="bg-neon-cyan/10 text-neon-cyan px-2 py-1 rounded">{activeScript.niche}</span>
-                <span className="bg-white/5 px-2 py-1 rounded flex items-center">{activeScript.date}</span>
-                <span className="bg-white/5 px-2 py-1 rounded flex items-center">{activeScript.length} chars</span>
+              <div className="flex flex-wrap gap-2 md:gap-3 text-xs font-medium">
+                <span className="bg-neon-cyan/10 text-neon-cyan px-2.5 py-1.5 rounded-lg border border-neon-cyan/20 flex items-center">{activeScript.niche}</span>
+                <div className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg flex flex-col justify-center leading-tight">
+                  <span className="text-[9px] text-gray-500 uppercase tracking-wider mb-0.5">{activeScript.date ? activeScript.date.split(',')[0] : ''}</span>
+                  <span className="text-white font-bold text-xs">{activeScript.date && activeScript.date.includes(',') ? activeScript.date.split(',')[1].trim() : ''}</span>
+                </div>
+                <div className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg flex flex-col justify-center items-center leading-tight min-w-[60px]">
+                  <span className="text-white font-black text-sm">{activeScript.length}</span>
+                  <span className="text-[9px] text-gray-500 uppercase tracking-wider">CHARS</span>
+                </div>
               </div>
             </div>
             <button 
@@ -133,13 +140,13 @@ export const ReadyScriptsTab = () => {
             </button>
             <button 
               onClick={handleCopy}
-              className={`flex-1 py-3 md:py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all group overflow-hidden relative shadow-lg text-sm md:text-base ${
-                isCopied 
+              className={`flex-1 py-3 md:py-4 rounded-lg font-bold flex items-center justify-center gap-2 transition-all group overflow-hidden relative shadow-lg text-sm md:text-base ${
+                copyingId === activeScript.id 
                 ? 'bg-green-500/20 border border-green-500 text-green-400' 
                 : 'bg-white text-dark hover:bg-gray-100'
               }`}
             >
-              {isCopied ? (
+              {copyingId === activeScript.id ? (
                 <>
                   <Check className="w-5 h-5 animate-bounce" /> Copiado!
                 </>
@@ -184,88 +191,119 @@ export const ReadyScriptsTab = () => {
           <p className="text-lg text-gray-500 text-center max-w-md">Crie seu primeiro roteiro para vê-lo aqui.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-20">
           <AnimatePresence>
-            {[...scripts, ...Array(Math.max(0, 6 - scripts.length)).fill(null)].map((script, idx) => (
+            {(Array.isArray(scripts) ? [...scripts, ...Array(Math.max(0, 6 - scripts.length)).fill(null)] : Array(6).fill(null)).map((script, idx) => (
               script ? (
                 <motion.div
                   layout
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
+                  whileHover={{ scale: 1.02 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   key={script.id}
-                  className="glass-card flex flex-col group relative overflow-hidden border border-white/5 hover:border-neon-cyan/30 shadow-lg transition-all h-[320px]"
+                  className="glass-card flex flex-col group relative overflow-hidden border border-white/5 hover:border-neon-cyan/50 shadow-2xl transition-all h-[340px] bg-dark-lighter/40 backdrop-blur-xl"
                 >
-                  {/* Header with Title & Date */}
-                  <div className="p-4 border-b border-white/5 bg-white/5">
-                    <div className="flex justify-between items-start gap-2 mb-1">
-                      <h3 className="text-base font-black text-white group-hover:text-neon-cyan transition-colors line-clamp-2 leading-tight uppercase flex-1">
-                        {script.title}
-                      </h3>
-                      <button 
+                  {/* Premium Header with Title & Char Count ABOVE */}
+                  <div className="p-5 border-b border-white/10 bg-gradient-to-br from-white/10 to-transparent">
+                    <div className="flex justify-between items-start gap-3 mb-2">
+                       <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-black text-white group-hover:text-neon-cyan transition-colors truncate uppercase tracking-tight">
+                            {script.title}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-bold text-neon-cyan/60 uppercase tracking-widest">{script.niche}</span>
+                          </div>
+                       </div>
+                       <button 
                         onClick={(e) => handleDelete(script.id, e)}
-                        className="p-1 text-gray-600 hover:text-red-400 transition-colors shrink-0"
+                        className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all shrink-0"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="flex items-center gap-2 text-[9px] font-mono text-gray-400">
-                      <span className="bg-dark px-2 py-0.5 rounded border border-white/5">{script.date}</span>
-                      <span className="text-neon-pink font-bold">{script.length} chars</span>
+                    
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex flex-col justify-center leading-tight bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg">
+                        <span className="text-[8px] text-gray-500 uppercase tracking-wider mb-0.5">{script.date ? script.date.split(',')[0] : ''}</span>
+                        <span className="text-white font-bold text-[10px]">{script.date && script.date.includes(',') ? script.date.split(',')[1].trim() : ''}</span>
+                      </div>
+                      
+                      <div className="flex flex-col justify-center items-end leading-tight bg-neon-cyan/5 border border-neon-cyan/20 px-3 py-1 rounded-lg">
+                         <div className="flex items-center gap-1">
+                            <span className="text-neon-cyan font-black text-xs">{script.length || script.content?.length || 0}</span>
+                            <span className="text-[7px] text-neon-cyan/60 font-black uppercase tracking-tighter">CHARS</span>
+                         </div>
+                         <span className="text-[7px] text-gray-600 font-bold uppercase tracking-widest mt-0.5">Tamanho Total</span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Content Preview */}
                   <div 
                     onClick={() => setActiveScript(script)}
-                    className="flex-1 p-4 text-[11px] font-mono text-gray-500 overflow-hidden relative cursor-pointer group-hover:bg-white/5 transition-colors"
+                    className="flex-1 p-5 text-[12px] font-mono text-gray-400 overflow-hidden relative cursor-pointer group-hover:bg-white/5 transition-all"
                   >
-                    <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-dark to-transparent z-10" />
-                    <p className="whitespace-pre-wrap leading-relaxed italic line-clamp-5">
+                    <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-dark-lighter to-transparent z-10" />
+                    <p className="whitespace-pre-wrap leading-relaxed italic line-clamp-4 text-gray-500 group-hover:text-gray-300 transition-colors">
                       {script.content}
                     </p>
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-dark/40 backdrop-blur-[1px]">
-                      <span className="bg-neon-cyan/20 text-neon-cyan px-3 py-1.5 rounded-lg border border-neon-cyan font-bold text-[10px]">VER ROTEIRO</span>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 bg-dark/60 backdrop-blur-[2px]">
+                      <div className="bg-neon-cyan text-dark px-4 py-2 rounded-xl font-black text-xs shadow-[0_0_20px_rgba(0,255,255,0.4)] flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-transform">
+                        <ChevronRight className="w-4 h-4" /> VISUALIZAR
+                      </div>
                     </div>
                   </div>
 
-                  {/* Quick Actions Footer */}
-                  <div className="p-2.5 bg-dark/60 border-t border-white/5 flex gap-2">
+                  {/* Actions Footer */}
+                  <div className="p-3 bg-dark/80 border-t border-white/10 flex gap-2">
                     <button 
                       onClick={(e) => {
                           e.stopPropagation();
                           handleCopy(script);
                       }}
-                      className="flex-1 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-neon-cyan hover:text-neon-cyan text-gray-400 text-[9px] font-bold transition-all flex flex-col items-center gap-1"
+                      className={`flex-1 py-2.5 rounded-xl border font-black text-[10px] transition-all flex flex-col items-center gap-1 shadow-lg ${
+                        copyingId === script.id
+                        ? 'bg-green-500/20 border-green-500 text-green-400'
+                        : 'bg-white/5 border-white/10 hover:border-neon-cyan hover:text-neon-cyan text-gray-400 hover:scale-[1.02]'
+                      }`}
                     >
-                      <Copy className="w-3.5 h-3.5" /> COPIAR
+                      {copyingId === script.id ? (
+                        <>
+                          <Check className="w-4 h-4 animate-bounce" /> COPIADO
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" /> COPIAR
+                        </>
+                      )}
                     </button>
                     <button 
                       onClick={(e) => {
                           e.stopPropagation();
                           handleDownloadTxt(script);
                       }}
-                      className="flex-1 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-neon-cyan hover:text-neon-cyan text-gray-400 text-[9px] font-bold transition-all flex flex-col items-center gap-1"
+                      className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10 text-gray-400 hover:text-white text-[10px] font-black transition-all flex flex-col items-center gap-1 hover:scale-[1.02] shadow-lg"
                     >
-                      <Download className="w-3.5 h-3.5" /> .TXT
+                      <Download className="w-4 h-4 text-neon-cyan" /> .TXT
                     </button>
                     <button 
                       onClick={(e) => {
                           e.stopPropagation();
                           handleDownloadSrt(script);
                       }}
-                      className="flex-1 py-1.5 rounded-lg bg-white/5 border border-white/10 hover:border-neon-pink hover:text-neon-pink text-gray-400 text-[9px] font-bold transition-all flex flex-col items-center gap-1"
+                      className="flex-1 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-white/30 hover:bg-white/10 text-gray-400 hover:text-white text-[10px] font-black transition-all flex flex-col items-center gap-1 hover:scale-[1.02] shadow-lg"
                     >
-                      <FileJson className="w-3.5 h-3.5" /> .SRT
+                      <FileJson className="w-4 h-4 text-neon-pink" /> .SRT
                     </button>
                   </div>
                 </motion.div>
               ) : (
-                <div key={`empty-${idx}`} className="glass-card border border-dashed border-white/10 h-[320px] flex flex-col items-center justify-center text-gray-700">
-                   <div className="w-10 h-10 border-2 border-dashed border-gray-800 rounded-full flex items-center justify-center mb-2">
-                     <span className="text-xl font-bold">?</span>
+                <div key={`empty-${idx}`} className="glass-card border border-dashed border-white/5 h-[340px] flex flex-col items-center justify-center text-gray-800 bg-white/2 opacity-30">
+                   <div className="w-12 h-12 border-2 border-dashed border-gray-800 rounded-2xl flex items-center justify-center mb-3">
+                     <FileText className="w-6 h-6 text-gray-800" />
                    </div>
-                   <span className="text-[10px] font-bold uppercase tracking-widest">Espaço Vazio</span>
+                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-700">Slot Disponível</span>
                 </div>
               )
             ))}

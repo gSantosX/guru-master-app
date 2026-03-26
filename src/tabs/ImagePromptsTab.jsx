@@ -1,5 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, File, Wand2, Copy, Download, Image as ImageIcon, CheckCircle, RefreshCw } from 'lucide-react';
+import { UploadCloud, File, Wand2, Copy, Download, Image as ImageIcon, CheckCircle, RefreshCw, Zap, Sparkles } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { resolveApiUrl } from '../utils/apiUtils';
+import { callGemini, callGPT, callGrok } from '../utils/aiUtils';
 
 const VISUAL_STYLES = [
   { id: 'ultra-realista',    label: '📷 Ultra-Realista',      desc: 'Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita' },
@@ -21,7 +24,7 @@ const VISUAL_STYLES = [
   { id: 'flat-design',       label: '📱 Flat Design',           desc: 'Ilustração vetorial plana, sem sombras 3D, paleta de cores limpa' },
 ];
 
-export const ImagePromptsTab = () => {
+export const ImagePromptsTab = ({ setActiveTab }) => {
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [subtitleCount, setSubtitleCount] = useState(0);
@@ -116,76 +119,21 @@ ${formattedInput}
 ## OUTPUT — Return EXACTLY ${subtitleCount} prompts, one per line, in the format ID|PROMPT:`;
 
 
+      const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
+      const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
       let responseText = "";
 
-      if (activeAi === 'Gemini') {
-        const rawKey = localStorage.getItem('guru_gemini_key');
-        const apiKey = rawKey ? rawKey.trim() : null;
-        if (!apiKey) throw new Error("Chave Gemini ausente! Configure nas Configurações.");
-
-        let result;
-        try {
-          const modelsRes = await fetch(`/api/gemini/v1beta/models?key=${apiKey}`);
-          if (!modelsRes.ok) throw new Error("Falha ao buscar modelos Gemini.");
-          const modelsData = await modelsRes.json();
-          const targetModel =
-            modelsData.models?.find(m => m.name.includes('gemini-2.5-flash') && m.supportedGenerationMethods?.includes('generateContent')) ||
-            modelsData.models?.find(m => m.name.includes('gemini-2.0-flash') && m.supportedGenerationMethods?.includes('generateContent')) ||
-            modelsData.models?.find(m => m.name.includes('gemini-1.5-flash') && m.supportedGenerationMethods?.includes('generateContent')) ||
-            modelsData.models?.find(m => m.name.includes('gemini') && m.supportedGenerationMethods?.includes('generateContent'));
-
-          if (targetModel) {
-            const cleanModel = targetModel.name.replace('models/', '');
-            const res = await fetch(`/api/gemini/v1beta/models/${cleanModel}:generateContent?key=${apiKey}`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: promptParam }] }] })
-            });
-            const data = await res.json();
-            if (data.candidates?.length > 0) result = data.candidates[0].content.parts[0].text;
-            else if (data.error) throw new Error(`Gemini: ${data.error.message}`);
-          }
-        } catch(e) {
-          if (!result) {
-            const res = await fetch(`/api/gemini/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: promptParam }] }] })
-            });
-            const data = await res.json();
-            if (data.candidates?.length > 0) result = data.candidates[0].content.parts[0].text;
-            else throw new Error(`Gemini: ${data.error?.message || 'Resposta inválida'}`);
-          }
+      // Smart Fallback: Try GPT primary, Gemini as backup
+      try {
+        if (!gptKey || gptKey.includes('YOUR_')) throw new Error("GPT key missing");
+        responseText = await callGPT(gptKey, promptParam);
+      } catch (gptError) {
+        console.warn("GPT Failed, trying Gemini fallback:", gptError);
+        if (geminiKey && geminiKey.length > 5) {
+          responseText = await callGemini(geminiKey, promptParam);
+        } else {
+          throw new Error("Saldo do GPT insuficiente e Gemini não configurado.");
         }
-        responseText = result;
-
-      } else if (activeAi === 'GPT') {
-        const rawKey = localStorage.getItem('guru_gpt_key');
-        const apiKey = rawKey ? rawKey.trim() : null;
-        if (!apiKey) throw new Error("Chave GPT ausente! Configure nas Configurações.");
-        const response = await fetch("/api/openai/v1/chat/completions", {
-          method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: promptParam }] })
-        });
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(`GPT: ${err.error?.message || response.statusText}`);
-        }
-        const data = await response.json();
-        responseText = data.choices[0].message.content;
-
-      } else if (activeAi === 'Grok') {
-        const rawKey = localStorage.getItem('guru_grok_key');
-        const apiKey = rawKey ? rawKey.trim() : null;
-        if (!apiKey) throw new Error("Chave Grok ausente! Configure nas Configurações.");
-        const response = await fetch("/api/grok/v1/chat/completions", {
-          method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: "grok-beta", messages: [{ role: "system", content: "You are a professional image prompt generator. Output only the requested format." }, { role: "user", content: promptParam }] })
-        });
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(`Grok: ${err.error?.message || response.statusText}`);
-        }
-        const data = await response.json();
-        responseText = data.choices[0].message.content;
       }
 
       if (!responseText) throw new Error("A IA não retornou nenhum conteúdo.");
@@ -213,7 +161,7 @@ ${formattedInput}
 
     } catch (error) {
       console.error(error);
-      alert("Erro ao gerar prompts:\n" + error.message);
+      alert("Erro ao gerar prompts [Motor: GPT]:\n" + error.message);
     } finally {
       setIsGenerating(false);
     }
@@ -232,38 +180,70 @@ ${formattedInput}
     URL.revokeObjectURL(url);
   };
 
+  const handleTransferToWhisk = () => {
+    if (!prompts) return;
+    localStorage.setItem('guru_whisk_transfer', prompts);
+    if (setActiveTab) setActiveTab('whisk');
+  };
+
   return (
-    <div className="p-8 max-w-6xl mx-auto h-full flex flex-col gap-6">
+    <div className="p-8 max-w-6xl mx-auto h-full flex flex-col gap-6 overflow-y-auto custom-scrollbar">
       <header>
         <h2 className="text-4xl font-bold text-glow-pink text-white flex items-center gap-3">
-          <ImageIcon className="text-neon-pink w-10 h-10" />
+          <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-br from-neon-pink to-neon-purple shadow-[0_0_20px_rgba(255,44,182,0.3)] overflow-hidden border border-white/10 shrink-0">
+            <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-full" />
+          </div>
           Gerar Prompts de Imagem
         </h2>
-        <p className="text-gray-400 mt-2">Faça o upload do seu SRT, escolha um estilo visual e gere os prompts perfeitos.</p>
+        <p className="text-gray-400 mt-2 flex items-center gap-2">
+          Faça o upload do seu SRT, escolha um estilo visual e gere os prompts perfeitos.
+          <span className="flex items-center gap-1 px-2 py-0.5 bg-neon-purple/20 border border-neon-purple/30 rounded text-[10px] font-black text-neon-purple uppercase tracking-widest ml-2 animate-pulse">
+            <Zap className="w-3 h-3 fill-current" /> Motor GPT Ativado
+          </span>
+        </p>
       </header>
 
       {/* Style Selector */}
-      <div className="glass-card p-5">
-        <h3 className="text-sm font-bold text-gray-300 uppercase tracking-widest mb-3">
-          🎨 Estilo Visual — <span className="text-neon-pink">{getActiveStyle().label}</span>
+      <div className="glass-card p-6">
+        <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-neon-pink" /> 
+          Estilo Visual — <span className="text-neon-pink">{getActiveStyle().label}</span>
         </h3>
-        <div className="flex flex-wrap gap-2">
-          {VISUAL_STYLES.map(style => (
-            <button
-              key={style.id}
-              onClick={() => setSelectedStyle(style.id)}
-              title={style.desc}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 border ${
-                selectedStyle === style.id
-                  ? 'bg-neon-pink/20 border-neon-pink text-neon-pink shadow-[0_0_10px_rgba(255,44,182,0.3)]'
-                  : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/30 hover:bg-white/10'
-              }`}
-            >
-              {style.label}
-            </button>
-          ))}
+        
+        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-16 gap-1.5">
+          {VISUAL_STYLES.map(style => {
+            const [emoji, ...textParts] = style.label.split(' ');
+            const labelText = textParts.join(' ');
+            const isSelected = selectedStyle === style.id;
+            
+            return (
+              <button
+                key={style.id}
+                onClick={() => setSelectedStyle(style.id)}
+                title={style.desc}
+                className={`flex flex-col items-center justify-center gap-0.5 p-1.5 aspect-square rounded-lg transition-all duration-300 border group ${
+                  isSelected
+                    ? 'bg-neon-pink/20 border-neon-pink text-neon-pink shadow-[0_0_10px_rgba(255,44,182,0.2)]'
+                    : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/30 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <span className={`text-base transition-transform duration-300 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>
+                  {emoji}
+                </span>
+                <span className={`text-[8px] font-black uppercase tracking-tighter text-center line-clamp-2 leading-[1.05] ${isSelected ? 'text-neon-pink' : 'text-gray-400 group-hover:text-white'}`}>
+                  {labelText}
+                </span>
+              </button>
+            );
+          })}
         </div>
-        <p className="text-xs text-gray-500 mt-2 italic">{getActiveStyle().desc}</p>
+        
+        <div className="mt-6 flex items-center gap-3 p-3 bg-neon-pink/5 border border-neon-pink/10 rounded-xl">
+          <div className="w-8 h-8 rounded-lg bg-neon-pink/20 flex items-center justify-center shrink-0">
+             <Zap className="w-4 h-4 text-neon-pink" />
+          </div>
+          <p className="text-xs text-gray-300 font-medium italic">{getActiveStyle().desc}</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 min-h-0">
@@ -308,36 +288,48 @@ ${formattedInput}
             </div>
           )}
 
-          <div className="flex gap-3 mt-auto">
-            <button
-              onClick={handleGenerate}
-              disabled={!file || isGenerating}
-              className={`flex-1 py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 ${
-                !file || isGenerating
-                  ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-pink-600 to-neon-purple text-white hover:shadow-neon-pink hover:scale-[1.02]'
-              }`}
-            >
-              {isGenerating ? (
-                <span className="flex items-center gap-2 animate-pulse">
-                  <Wand2 className="w-5 h-5 animate-spin" /> Gerando Prompts...
-                </span>
-              ) : (
-                <>
-                  <Wand2 className="w-5 h-5" /> Gerar {subtitleCount > 0 ? subtitleCount : ''} Prompts
-                </>
-              )}
-            </button>
-
-            {prompts && !isGenerating && (
+          <div className="flex flex-col gap-3 mt-auto">
+            <div className="flex gap-3">
               <button
                 onClick={handleGenerate}
-                title="Gerar novamente com o mesmo arquivo e estilo"
-                className="px-4 py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 bg-white/10 text-white hover:bg-white/20 hover:scale-[1.02] border border-white/20"
+                disabled={!file || isGenerating}
+                className={`flex-1 py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 ${
+                  !file || isGenerating
+                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-pink-600 to-neon-purple text-white hover:shadow-neon-pink hover:scale-[1.02]'
+                }`}
               >
-                <RefreshCw className="w-5 h-5" />
+                {isGenerating ? (
+                  <LoadingSpinner message="Gerando Prompts..." size="sm" />
+                ) : (
+                  <>
+                    <Wand2 className="w-5 h-5" /> Gerar {subtitleCount > 0 ? subtitleCount : ''} Prompts
+                  </>
+                )}
               </button>
-            )}
+
+              {prompts && !isGenerating && (
+                <button
+                  onClick={handleGenerate}
+                  title="Gerar novamente com o mesmo arquivo e estilo"
+                  className="px-4 py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 bg-white/10 text-white hover:bg-white/20 hover:scale-[1.02] border border-white/20"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={handleTransferToWhisk}
+              disabled={!prompts || isGenerating}
+              className={`w-full py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 ${
+                !prompts || isGenerating
+                  ? 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-50'
+                  : 'bg-gradient-to-r from-neon-cyan to-blue-600 text-white shadow-[0_0_20px_rgba(0,243,255,0.2)] hover:scale-[1.02]'
+              }`}
+            >
+              <Zap className="w-5 h-5 fill-current" /> Gerar Imagens (Whisk)
+            </button>
           </div>
         </div>
 
@@ -364,8 +356,8 @@ ${formattedInput}
               prompts
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center text-gray-500 italic">
-                {isGenerating
-                  ? "Analisando cenas e aplicando estilo visual selecionado..."
+              {isGenerating
+                  ? <LoadingSpinner message="Analisando cenas e aplicando estilo..." size="md" />
                   : "Seus prompts de geração de imagem aparecerão aqui..."}
               </div>
             )}

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            width: 250px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background: #0f172a;
+            color: white;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 10px;
+        }
+        .logo {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(to bottom right, #00f3ff, #2563eb);
+            border-radius: 6px;
+        }
+        .title {
+            font-size: 14px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .status {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(0, 243, 255, 0.1);
+            color: #00f3ff;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        .footer {
+            margin-top: 15px;
+            font-size: 10px;
+            color: #475569;
+            text-align: center;
+        }
+        button {
+            width: 100%;
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #1d4ed8;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo"></div>
+        <div class="title">Auto Whisk</div>
+    </div>
+    <div class="status">
+        Companion status: <span class="badge" id="botStatus">ACTIVE</span>
+    </div>
+    <div id="queueInfo" style="font-size: 11px; color: #cbd5e1; margin-bottom: 10px;">
+        Polling for prompts from Guru Master...
+    </div>
+    <button id="openApp">Open Guru Master App</button>
+    <div class="footer">
+        Automating Whisk AI | v1.0.0
+    </div>
+    <script>
+        document.getElementById('openApp').onclick = () => {
+             // In a real local app, this would be a deep link or just informative
+             alert("Switch to your Guru Master desktop application to manage prompts.");
+        };
+    </script>
+</body>
+</html>

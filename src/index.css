@@ -10,7 +10,7 @@
 
 @layer utilities {
   .glass-card {
-    @apply bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-2xl shadow-lg;
+    @apply bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-xl shadow-lg overflow-hidden;
   }
   
   .glass-panel {
@@ -23,6 +23,29 @@
   .text-glow-pink {
     text-shadow: 0 0 10px rgba(255, 0, 234, 0.7);
   }
+}
+
+/* Reduce Motion / Performance Mode: Disable Neon Glows */
+.reduce-motion .text-glow-cyan,
+.reduce-motion .text-glow-pink,
+.reduce-motion .text-glow-purple,
+.reduce-motion [class*="text-glow-"],
+.reduce-motion [class*="shadow-[0_0_"],
+.reduce-motion [class*="shadow-neon"] {
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.reduce-motion .bg-neon-cyan\/5,
+.reduce-motion .bg-neon-pink\/5,
+.reduce-motion .bg-neon-purple\/5,
+.reduce-motion .blur-\[150px\] {
+  display: none !important;
+}
+
+.reduce-motion .animate-pulse,
+.reduce-motion .animate-spin {
+  animation: none !important;
 }
 
 /* Minimal Theme Overrides */
@@ -71,29 +94,38 @@
   @apply bg-dark-lighter !important;
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar - Minimalist 'Hidden until interaction' approach */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 6px !important;
+  height: 6px !important;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-dark;
+  background: transparent !important;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-neon-purple/50 rounded-full;
-}
-.theme-minimal ::-webkit-scrollbar-thumb {
-  @apply bg-gray-600;
+  background: transparent !important;
+  border-radius: 10px;
+  transition: background 0.3s ease;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-neon-purple/80;
+/* Show thumb only on hover of the scrollable container */
+.custom-scrollbar:hover::-webkit-scrollbar-thumb,
+.overflow-y-auto:hover::-webkit-scrollbar-thumb,
+.overflow-x-auto:hover::-webkit-scrollbar-thumb {
+  background: rgba(191, 64, 255, 0.3) !important; /* neon-purple/30 */
 }
-.theme-minimal ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-500;
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(191, 64, 255, 0.6) !important; /* neon-purple/60 */
 }
+
+/* Theme overrides for interactive scrollbars */
+.theme-minimal .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(75, 85, 99, 0.3) !important; }
+.theme-light .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3) !important; }
+.theme-soft .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(191, 64, 255, 0.2) !important; }
 
 /* Theme: Light */
 .theme-light.bg-dark, .theme-light .bg-dark { background-color: #f8fafc !important; }
@@ -140,6 +172,15 @@
 /* Remove harsh glows in Soft Theme */
 .theme-soft [class*="shadow-[0_0_"], .theme-soft [class*="shadow-neon"], 
 .theme-soft .text-glow-cyan, .theme-soft .text-glow-pink, .theme-soft .text-glow-purple { box-shadow: none !important; text-shadow: none !important; }
+
+@keyframes spin-clockwise {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-clockwise {
+  animation: spin-clockwise 0.8s linear infinite;
+}
 
 @keyframes shimmer {
   100% {

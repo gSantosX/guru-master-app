@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Auto Whisk Companion",
+  "version": "1.0.0",
+  "description": "Companion for Guru Master to automate Google Labs Whisk.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://labs.google/*",
+    "http://localhost:5000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://labs.google/fx/*/tools/whisk*"],
+      "js": ["content.js"]
+    }
+  ]
+}

@@ -20,15 +20,15 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/grok/, '')
       },
       '/api/gemini': {
-        target: 'https://generativelanguage.googleapis.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/gemini/, '')
-      },
-      // Local Backend Proxy
-      '/api/system': {
         target: 'http://localhost:5000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/system/, '/api')
+        rewrite: (path) => path.replace(/^\/api\/gemini/, '/api/gemini')
+      },
+      // Generic Local Backend Proxy
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        rewrite: (path) => path
       }
     }
   }

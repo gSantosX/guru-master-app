@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { stackPush } from '../utils/stackUtils';
-import { Wand2, Type, Layout, Target, FileText, Download, FileJson, File as FilePdf, Settings, BookOpen, Copy, Check } from 'lucide-react';
+import { Wand2, Type, Layout, Target, FileText, Download, FileJson, File as FilePdf, Settings, BookOpen, Copy, Check, Sparkles, Languages, Gauge, Heart, Zap } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import jsPDF from 'jspdf';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
+import { resolveApiUrl } from '../utils/apiUtils';
+import { callGemini, callGPT, callGrok } from '../utils/aiUtils';
+import { t } from '../utils/i18n';
 
 const DNA_OPTIONS = [
   "Linear Tradicional", "Jornada do Herói", "O Grande Mistério", "Ponto vs Contraponto",
@@ -139,95 +143,29 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
 
           let responseText = "";
 
-          if (activeAi === 'Gemini') {
-            const apiKey = configs.gemini_key;
-            if (!apiKey || apiKey.includes('YOUR_GEMINI_KEY_HERE')) {
-              alert("⚠️ Chave de API do Gemini não encontrada!\n\nPor favor, vá para a aba de Configurações e insira sua chave antes de gerar o roteiro.");
-              setIsGenerating(false);
-              return;
-            }
-            let result;
-            let lastError = null;
-
+            const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
+            const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
+            
+            // Smart Fallback within the generation loop
             try {
-               const modelsRes = await fetch(`/api/gemini/v1beta/models?key=${apiKey}`);
-               const modelsData = await modelsRes.json();
-               if (modelsData.models) {
-                  let targetModel = modelsData.models.find(m => m.name.includes('gemini-1.5-flash') && m.supportedGenerationMethods?.includes('generateContent'));
-                  if (!targetModel) {
-                      targetModel = modelsData.models.find(m => m.name.includes('gemini') && m.supportedGenerationMethods?.includes('generateContent'));
-                  }
-                  
-                  if (targetModel) {
-                      const cleanModelName = targetModel.name.replace('models/', '');
-                      const res = await fetch(`/api/gemini/v1beta/models/${cleanModelName}:generateContent?key=${apiKey}`, {
-                         method: 'POST',
-                         headers: { 'Content-Type': 'application/json' },
-                         body: JSON.stringify({
-                            contents: [{ role: "user", parts: [{ text: currentPrompt }] }]
-                         })
-                      });
-                      const data = await res.json();
-                      if (data.error) throw new Error(data.error.message);
-                      if (data.candidates && data.candidates.length > 0) result = data.candidates[0].content.parts[0].text;
-                  }
-               } else if (modelsData.error) lastError = new Error(modelsData.error.message);
-            } catch(e) { }
-
-            if (!result) {
-              const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro", "gemini-pro"];
-              for (const modelName of modelsToTry) {
-                try {
-                    const res = await fetch(`/api/gemini/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
-                       method: 'POST', headers: { 'Content-Type': 'application/json' },
-                       body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: currentPrompt }] }] })
-                    });
-                    const data = await res.json();
-                   if (data.error && data.error.code === 404) throw new Error("404");
-                   if (data.error) throw new Error(data.error.message);
-                   if (data.candidates && data.candidates.length > 0) { result = data.candidates[0].content.parts[0].text; break; }
-                } catch (e) {
-                   lastError = e;
-                   if (!e.message || !e.message.includes('404')) break;
-                }
-              }
+               if (!gptKey || gptKey.includes('YOUR_')) throw new Error("GPT key missing");
+               responseText = await callGPT(gptKey, currentPrompt);
+            } catch (gptError) {
+               console.warn("GPT script generation failed, trying Gemini fallback:", gptError);
+               if (geminiKey && geminiKey.length > 5) {
+                 responseText = await callGemini(geminiKey, currentPrompt);
+               } else {
+                 throw new Error("Saldo do GPT insuficiente e Gemini não configurado.");
+               }
             }
-            if (!result) throw lastError || new Error("Não foi possível conectar ao Gemini.");
-            responseText = result;
-            
-          } else if (activeAi === 'GPT') {
-            const apiKey = configs.gpt_key;
-            if (!apiKey || apiKey.includes('YOUR_GPT_KEY_HERE')) { alert("⚠️ Chave API GPT não encontrada!"); setIsGenerating(false); return; }
-            
-            const reqUrl = "/api/openai/v1/chat/completions";
-            const response = await fetch(reqUrl, {
-                method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content: currentPrompt }] })
-            });
-            const data = await response.json();
-            if (data.error) throw new Error(data.error.message);
-            responseText = data.choices[0].message.content;
 
-          } else if (activeAi === 'Grok') {
-            const apiKey = configs.grok_key;
-            if (!apiKey || apiKey.includes('YOUR_GROK_KEY_HERE')) { alert("⚠️ Chave API Grok não encontrada!"); setIsGenerating(false); return; }
-            
-            const response = await fetch("/api/grok/v1/chat/completions", {
-                method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-                body: JSON.stringify({ model: "grok-beta", messages: [{ role: "system", content: "You are a helpful assistant." }, { role: "user", content: currentPrompt }] })
-            });
-            const data = await response.json();
-            if (data.error) throw new Error(data.error.message);
-            responseText = data.choices[0].message.content;
-          }
-
-          // Agrega o texto da IA (limpando o marcador de continuação se ela escrever algo indesejado)
-          if (isContinuation) {
-              responseText = responseText.replace(/CONTINUE.*/gi, '').trim(); // Algumas IAs ecoam o comando
-              scriptContent += " " + responseText;
-          } else {
-              scriptContent = responseText;
-          }
+            // Agrega o texto da IA (limpando o marcador de continuação se ela escrever algo indesejado)
+            if (isContinuation) {
+                responseText = responseText.replace(/CONTINUE.*/gi, '').trim(); // Algumas IAs ecoam o comando
+                scriptContent += " " + responseText;
+            } else {
+                scriptContent = responseText;
+            }
 
           // Verificação Matemática de Margem
           const margin = 2000;
@@ -281,6 +219,13 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
     }, 500); // Small initial delay for UI animation to kick in
   };
 
+  const transferToWhisk = () => {
+    if (!generatedScript) return;
+    // Simple logic to convert script to prompts: use sentences or paragraphs
+    localStorage.setItem('guru_whisk_transfer', generatedScript.content);
+    setActiveTab('whisk');
+  };
+
   const clearCurrentScript = () => {
     setGeneratedScript(null);
     setTitulo('');
@@ -327,115 +272,126 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
   };
 
   const OptionGrid = ({ options, selected, onSelect, color }) => (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
       {options.map((opt) => (
         <button
           key={opt}
           onClick={() => onSelect(opt)}
-          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 border
+          className={`px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all duration-300 border flex flex-col items-center justify-center gap-1 text-center h-full
             ${selected === opt 
-              ? `bg-${color}/20 text-${color} border-${color} shadow-[0_0_10px_currentColor] scale-105` 
-              : 'bg-dark/30 text-gray-400 border-white/5 hover:border-white/20 hover:text-white'
+              ? `bg-${color}/20 text-${color} border-${color} shadow-[0_0_15px_rgba(0,0,0,0.2)] ring-1 ring-${color}/50 scale-[1.02]` 
+              : 'bg-white/5 text-gray-400 border-white/5 hover:border-white/20 hover:text-white hover:bg-white/10'
             }
           `}
         >
-          {opt}
+          <span className="leading-tight">{opt}</span>
         </button>
       ))}
     </div>
   );
 
   return (
-    <div className="flex flex-col lg:flex-row h-full w-full max-w-[1600px] mx-auto p-4 md:p-6 gap-6 overflow-y-auto lg:overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-full w-full max-w-[1600px] mx-auto gap-6 overflow-y-auto lg:overflow-hidden">
       {/* Left Column - Form & Configurations */}
-      <div className="w-full lg:w-7/12 flex flex-col h-auto lg:h-full overflow-y-visible lg:overflow-y-auto pr-0 lg:pr-4 custom-scrollbar shrink-0">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="w-full lg:w-7/12 flex flex-col h-auto lg:h-full overflow-y-visible lg:overflow-y-auto pr-0 lg:pr-8 custom-scrollbar capitalize"
+      >
         <header className="mb-6 md:mb-8">
-          <h2 className="text-2xl md:text-4xl font-black text-glow-cyan text-white flex items-center gap-2 md:gap-3 tracking-tight">
-            <Wand2 className="text-neon-cyan w-8 h-8 md:w-10 md:h-10 shrink-0" />
-            Gerador de Roteiros
+          <h2 className="text-2xl md:text-4xl font-black text-white flex items-center gap-2 md:gap-3 tracking-tight">
+            <div className="w-12 h-12 md:w-16 md:h-16 rounded-full p-0.5 bg-gradient-to-br from-neon-cyan to-blue-600 shadow-[0_0_30px_rgba(0,243,255,0.3)] overflow-hidden border border-white/10 shrink-0">
+              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-full" />
+            </div>
+            {t('script.title')}
           </h2>
-          <p className="text-neon-pink/80 mt-2 font-medium text-base md:text-lg">Escolha o DNA e a Alma da sua história</p>
+          <p className="text-gray-400 mt-2 font-medium text-sm md:text-base border-l-2 border-neon-pink pl-3 ml-2">{t('script.subtitle')}</p>
         </header>
 
         <div className="space-y-6 md:space-y-8 pb-10">
           
           {/* CAMPO 1 */}
-          <div className="glass-card p-6 border-l-4 border-l-neon-cyan relative overflow-hidden group">
+          <div className="glass-card p-6 border border-white/5 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/5 rounded-full blur-[50px] pointer-events-none group-hover:bg-neon-cyan/10 transition-colors" />
-            <label className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2 uppercase tracking-widest">
-              <span className="text-neon-cyan">01</span> Título do Vídeo
+            <label className="text-[10px] font-black text-gray-500 mb-3 flex items-center gap-2 uppercase tracking-[0.2em]">
+              <Type className="w-3 h-3 text-neon-cyan" /> {t('script.field_title')}
             </label>
             <input 
               type="text"
-              className="w-full bg-dark/60 border border-white/10 rounded-xl p-4 text-white text-lg focus:outline-none focus:border-neon-cyan focus:ring-1 focus:ring-neon-cyan transition-all shadow-inner"
-              placeholder="Ex: O segredo oculto das pirâmides..."
+              className="w-full bg-dark/40 border border-white/5 rounded-lg p-4 text-white text-lg focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/20 transition-all placeholder:text-gray-700"
+              placeholder={t('script.field_title_placeholder')}
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
             />
           </div>
 
           {/* CAMPO 2 */}
-          <div className="glass-card p-6 border-l-4 border-l-neon-purple relative overflow-hidden group">
-             <label className="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2 uppercase tracking-widest">
-              <span className="text-neon-purple">02</span> Estrutura Narrativa (DNA)
+          <div className="glass-card p-6 border border-white/5 relative overflow-hidden group">
+             <label className="text-[10px] font-black text-gray-500 mb-4 flex items-center gap-2 uppercase tracking-[0.2em]">
+              <Layout className="w-3 h-3 text-neon-purple" /> {t('script.field_dna')}
             </label>
             <OptionGrid options={DNA_OPTIONS} selected={dna} onSelect={setDna} color="neon-purple" />
           </div>
 
           {/* CAMPO 3 */}
-          <div className="glass-card p-6 border-l-4 border-l-neon-pink relative overflow-hidden group">
-            <label className="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2 uppercase tracking-widest">
-              <span className="text-neon-pink">03</span> Entonação Ultra-Humana (Alma)
+          <div className="glass-card p-6 border border-white/5 relative overflow-hidden group">
+            <label className="text-[10px] font-black text-gray-500 mb-4 flex items-center gap-2 uppercase tracking-[0.2em]">
+              <Target className="w-3 h-3 text-neon-pink" /> {t('script.field_alma')}
             </label>
             <OptionGrid options={ALMA_OPTIONS} selected={alma} onSelect={setAlma} color="neon-pink" />
           </div>
 
           {/* CAMPO 4 */}
-          <div className="glass-card p-6 border-l-4 border-l-green-400 relative overflow-hidden group">
-            <label className="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2 uppercase tracking-widest">
-              <span className="text-green-400">04</span> Chamada Para Ação (CTA)
+          <div className="glass-card p-6 border border-white/5 relative overflow-hidden group">
+            <label className="text-[10px] font-black text-gray-500 mb-4 flex items-center gap-2 uppercase tracking-[0.2em]">
+              <Languages className="w-3 h-3 text-green-400" /> {t('script.field_cta')}
             </label>
             <OptionGrid options={CTA_OPTIONS} selected={cta} onSelect={setCta} color="green-400" />
           </div>
 
           {/* CONFIGURAÇÕES SECUNDÁRIAS */}
-          <div className="glass-card p-6">
-            <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2 border-b border-white/10 pb-3">
-              <Settings className="w-5 h-5 text-gray-400" /> Configurações Secundárias
+          <div className="glass-card p-6 bg-black/20 border border-white/5">
+            <h3 className="text-sm font-black text-white mb-6 flex items-center gap-2 border-b border-white/5 pb-4 uppercase tracking-widest">
+              <Settings className="w-4 h-4 text-gray-500" /> {t('script.sec_configs')}
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-xs font-medium text-gray-400 uppercase tracking-wider block mb-2">Nicho</label>
-                <select className="w-full bg-dark/50 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-white/30" value={nicho} onChange={e=>setNicho(e.target.value)}>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">{t('script.niche')}</label>
+                <select className="w-full bg-dark/40 border border-white/5 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-white/20" value={nicho} onChange={e=>setNicho(e.target.value)}>
                   {NICHO_OPTIONS.map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-400 uppercase tracking-wider block mb-2">Idioma</label>
-                <select className="w-full bg-dark/50 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-white/30" value={idioma} onChange={e=>setIdioma(e.target.value)}>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">{t('script.lang')}</label>
+                <select className="w-full bg-dark/40 border border-white/5 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-white/20" value={idioma} onChange={e=>setIdioma(e.target.value)}>
                   {IDIOMA_OPTIONS.map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-400 uppercase tracking-wider block mb-2">Formato do Roteiro</label>
-                <select className="w-full bg-dark/50 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-white/30" value={formato} onChange={e=>setFormato(e.target.value)}>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-1">{t('script.format')}</label>
+                <select className="w-full bg-dark/40 border border-white/5 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-white/20" value={formato} onChange={e=>setFormato(e.target.value)}>
                   {FORMATO_OPTIONS.map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-400 uppercase tracking-wider block mb-2">Natureza do Conteúdo</label>
-                <select className="w-full bg-dark/50 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-white/30" value={natureza} onChange={e=>setNatureza(e.target.value)}>
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">{t('script.nature')}</label>
+                <select className="w-full bg-dark/40 border border-white/5 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-white/20" value={natureza} onChange={e=>setNatureza(e.target.value)}>
                   {NATUREZA_OPTIONS.map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
             </div>
 
             {/* SLIDER TAMANHO */}
-            <div className="mt-8">
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-xs font-medium text-gray-400 uppercase tracking-wider block">Tamanho do Roteiro</label>
-                <span className="text-neon-cyan font-bold font-mono bg-neon-cyan/10 px-2 py-1 rounded">{tamanho} caracteres</span>
+            <div className="mt-8 pt-6 border-t border-white/5">
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2">
+                   <Gauge className="w-4 h-4 text-neon-cyan" />
+                   <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">{t('script.size')}</label>
+                </div>
+                <span className="text-[10px] font-black font-mono text-neon-cyan bg-neon-cyan/10 px-2.5 py-1 rounded-full border border-neon-cyan/20">
+                   {tamanho} {t('script.chars')}
+                </span>
               </div>
               <input 
                 type="range" 
@@ -444,11 +400,11 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
                 step="500"
                 value={tamanho}
                 onChange={(e) => setTamanho(Number(e.target.value))}
-                className="w-full h-2 bg-dark-lighter rounded-lg appearance-none cursor-pointer accent-neon-cyan"
+                className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-neon-cyan"
               />
-              <div className="flex justify-between text-xs text-gray-600 mt-1">
-                <span>1.000 (Curto)</span>
-                <span>20.000 (Longo)</span>
+              <div className="flex justify-between text-[10px] font-bold text-gray-600 mt-2 uppercase tracking-tighter">
+                <span>{t('script.short')}</span>
+                <span>{t('script.long')}</span>
               </div>
             </div>
           </div>
@@ -456,126 +412,133 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
           <button 
             onClick={handleGenerate}
             disabled={isGenerating || !titulo}
-            className={`w-full py-5 rounded-xl flex items-center justify-center gap-3 font-black text-lg transition-all duration-300 transform active:scale-[0.98] ${
-              isGenerating || !titulo
-                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-neon-cyan via-blue-500 to-neon-purple text-white shadow-[0_0_30px_rgba(0,243,255,0.4)] hover:shadow-[0_0_50px_rgba(0,243,255,0.6)] hover:scale-[1.01]'
-            }`}
+            className={`w-full py-5 rounded-xl flex items-center justify-center gap-3 font-black text-lg transition-all duration-500 transform active:scale-[0.98] relative overflow-hidden group
+              ${isGenerating || !titulo
+                ? 'bg-white/5 text-gray-600 border border-white/5 cursor-not-allowed'
+                : 'bg-white text-dark shadow-[0_10px_30px_rgba(255,255,255,0.1)] hover:shadow-[0_15px_40px_rgba(0,243,255,0.2)] hover:-translate-y-1'
+              }
+            `}
           >
             {isGenerating ? (
-              <span className="flex items-center gap-3 animate-pulse">
-                <Wand2 className="w-6 h-6 animate-spin" /> Gerando Obra-Prima...
+              <span className="flex items-center gap-3">
+                <Wand2 className="w-6 h-6 animate-spin text-neon-cyan" /> {t('script.generating')}
               </span>
             ) : (
               <>
-                <Wand2 className="w-6 h-6" /> Gerar Roteiro Profissional
+                <Wand2 className={`w-6 h-6 ${!titulo ? 'text-gray-600' : 'text-neon-purple'}`} /> {t('script.generate')}
+                <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan/0 via-white/20 to-neon-purple/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 pointer-events-none" />
               </>
             )}
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Right Column - Preview & Output */}
-      <div className="w-full lg:w-5/12 h-[600px] lg:h-full flex flex-col shrink-0 pb-6 lg:pb-0 font-sans">
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="w-full lg:w-5/12 h-[600px] lg:h-full flex flex-col pb-6 lg:pb-0 font-sans"
+      >
           <div className="glass-card flex flex-col h-full relative overflow-hidden border border-white/10 shadow-2xl">
             {/* Ambient Background Glow inside the card */}
             <div className="absolute top-0 right-0 w-full h-64 bg-gradient-to-b from-neon-cyan/5 to-transparent pointer-events-none" />
             
-            <div className="p-5 border-b border-white/10 bg-dark/40 flex justify-between items-center z-10 backdrop-blur-sm">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <BookOpen className="text-neon-cyan w-5 h-5" /> Visualizador de Roteiro
+            <div className="p-6 md:p-8 border-b border-white/5 bg-black/20 flex justify-between items-center z-10 backdrop-blur-md">
+              <h3 className="text-sm font-black text-white flex items-center gap-2 uppercase tracking-widest">
+                <BookOpen className="text-neon-cyan w-4 h-4" /> {t('script.viewer_title')}
               </h3>
               {generatedScript && (
-                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded font-bold uppercase tracking-wider">Pronto</span>
+                <span className="text-[10px] bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded font-black uppercase tracking-widest">{t('script.ready')}</span>
               )}
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6 relative z-10 bg-dark-lighter/30 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-8 md:p-10 relative z-10 bg-dark/20 custom-scrollbar">
               {isGenerating ? (
-                <div className="h-full flex flex-col items-center justify-center text-neon-cyan/60 animate-pulse">
-                  <div className="relative mb-6">
-                     <div className="w-20 h-20 border-4 border-neon-cyan/20 border-t-neon-cyan rounded-full animate-spin" />
-                     <Wand2 className="w-8 h-8 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-neon-cyan" />
-                  </div>
-                  <p className="font-bold text-lg">Iniciando Redes Neurais...</p>
-                  <p className="text-sm mt-3 text-gray-400 max-w-xs text-center">Injetando DNA '{dna}' e Alma '{alma}' na estrutura narrativa...</p>
-                </div>
+                <LoadingSpinner message={t('script.generating')} size="lg" fullHeight />
               ) : generatedScript ? (
                 <div className="animate-fade-in">
-                  <div className="mb-6 bg-dark/50 p-4 rounded-xl border border-white/5 shadow-inner">
-                     <h4 className="text-2xl font-black text-white mb-2 leading-tight">{generatedScript.title}</h4>
-                     <div className="flex flex-wrap gap-2 text-xs font-mono text-gray-400">
-                       <span className="bg-white/5 px-2 py-1 rounded text-neon-cyan">{generatedScript.niche}</span>
-                       <span className="bg-white/5 px-2 py-1 rounded text-neon-pink">{dna}</span>
-                       <span className="bg-white/5 px-2 py-1 rounded">{generatedScript.date}</span>
+                  <div className="mb-6 bg-black/40 p-5 rounded-2xl border border-white/5">
+                     <h4 className="text-xl font-black text-white mb-3 leading-tight tracking-tight">{generatedScript.title}</h4>
+                     <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest">
+                       <span className="bg-neon-cyan/10 border border-neon-cyan/20 px-2.5 py-1.5 rounded-lg text-neon-cyan flex items-center">{generatedScript.niche}</span>
+                       <span className="bg-neon-purple/10 border border-neon-purple/20 px-2.5 py-1.5 rounded-lg text-neon-purple flex items-center">{dna}</span>
+                       <div className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg flex flex-col justify-center leading-tight">
+                          <span className="text-[9px] text-gray-500 mb-0.5">{generatedScript.date ? generatedScript.date.split(',')[0] : ''}</span>
+                          <span className="text-white font-bold text-xs">{generatedScript.date && generatedScript.date.includes(',') ? generatedScript.date.split(',')[1].trim() : ''}</span>
+                       </div>
+                       <div className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg flex flex-col justify-center items-center leading-tight min-w-[60px]">
+                          <span className="text-white font-black text-sm">{generatedScript.content.length}</span>
+                          <span className="text-[9px] text-gray-500">CHARS</span>
+                       </div>
                      </div>
                   </div>
-                  <div className="font-mono text-[13.5px] text-gray-300 whitespace-pre-wrap leading-relaxed">
+                  <div className="font-mono text-[14px] text-gray-300 whitespace-pre-wrap leading-relaxed px-2">
                     {generatedScript.content}
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-500/60 italic flex h-full items-center justify-center text-center text-lg font-medium p-8">
-                  Seu roteiro magistral ganhará vida aqui...<br/><br/>Preencha os campos e inicie a geração.
+                <p className="text-gray-600/40 italic h-full flex items-center justify-center text-center text-sm font-bold p-12 leading-loose uppercase tracking-[0.1em]">
+                  {t('script.empty_hint')}
                 </p>
               )}
             </div>
             
-            <div className="p-4 bg-dark/60 border-t border-white/10 z-10 sticky bottom-0 backdrop-blur-md flex flex-col gap-3">
+            <div className="p-6 md:p-10 bg-black/40 border-t border-white/5 z-10 sticky bottom-0 backdrop-blur-xl flex flex-col gap-4">
               {generatedScript && (
                 <button 
                   onClick={clearCurrentScript}
-                  className="w-full py-3 rounded-lg bg-neon-cyan/20 border border-neon-cyan text-neon-cyan hover:bg-neon-cyan/30 transition-all font-bold flex items-center justify-center gap-2 text-sm shadow-[0_0_10px_rgba(0,243,255,0.2)]"
+                  className="w-full py-3 rounded-xl bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/20 transition-all font-black uppercase tracking-widest flex items-center justify-center gap-2 text-[10px]"
                 >
-                  + Iniciar Novo Roteiro
+                  <Sparkles className="w-3 h-3" /> {t('script.new_script')}
                 </button>
               )}
               <div className="flex justify-between gap-3">
                 <button 
                   onClick={handleDownloadTxt}
                   disabled={!generatedScript} 
-                  className="flex-1 py-3 rounded-lg bg-dark border border-white/10 text-gray-300 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all font-medium disabled:opacity-30 flex items-center justify-center gap-2 text-sm"
+                  className="flex-1 py-3 rounded-xl bg-white/5 border border-white/5 text-gray-400 hover:text-white hover:border-white/20 hover:bg-white/10 transition-all font-black uppercase tracking-widest disabled:opacity-30 flex items-center justify-center gap-2 text-[9px]"
                 >
-                  <Download className="w-4 h-4" /> Baixar TXT
+                  <Download className="w-3 h-3 text-neon-cyan" /> {t('script.download_txt')}
                 </button>
                 <button 
                   onClick={handleDownloadSrt}
                   disabled={!generatedScript} 
-                  className="flex-1 py-3 rounded-lg bg-dark border border-white/10 text-gray-300 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all font-medium disabled:opacity-30 flex items-center justify-center gap-2 text-sm"
+                  className="flex-1 py-3 rounded-xl bg-white/5 border border-white/5 text-gray-400 hover:text-white hover:border-white/20 hover:bg-white/10 transition-all font-black uppercase tracking-widest disabled:opacity-30 flex items-center justify-center gap-2 text-[9px]"
                 >
-                  <FileJson className="w-4 h-4" /> Baixar SRT
-                </button>
-                <button 
-                  onClick={handleExportPdf}
-                  disabled={!generatedScript} 
-                  className="flex-1 py-3 rounded-lg bg-dark border border-white/10 text-gray-300 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all font-medium disabled:opacity-30 flex items-center justify-center gap-2 text-sm"
-                >
-                  <FilePdf className="w-4 h-4" /> PDF
+                  <FileJson className="w-3 h-3 text-neon-purple" /> {t('script.download_srt')}
                 </button>
               </div>
               {generatedScript && (
                 <button 
                   onClick={handleCopy}
-                  className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all group overflow-hidden relative ${
-                    isCopied 
+                  className={`w-full py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all relative overflow-hidden text-[10px]
+                    ${isCopied 
                     ? 'bg-green-500/20 border border-green-500 text-green-400' 
-                    : 'bg-white text-dark hover:bg-gray-100 shadow-[0_0_20px_rgba(255,255,255,0.2)]'
+                    : 'bg-white text-dark shadow-xl hover:-translate-y-0.5 active:translate-y-0'
                   }`}
                 >
                   {isCopied ? (
                     <>
-                      <Check className="w-5 h-5 animate-bounce" /> Copiado com Sucesso!
+                      <Check className="w-4 h-4" /> {t('script.copied')}
                     </>
                   ) : (
                     <>
-                      <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" /> Copiar Roteiro Completo
+                      <Copy className="w-4 h-4" /> {t('script.copy_full')}
                     </>
                   )}
                 </button>
               )}
+              {generatedScript && (
+                <button 
+                  onClick={transferToWhisk}
+                  className="w-full py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-neon-cyan to-blue-600 text-white shadow-[0_0_20px_rgba(0,243,255,0.2)] hover:scale-[1.02] text-[10px]"
+                >
+                  <Zap className="w-4 h-4 fill-current" /> {t('whisk.btn_start')} (Whisk)
+                </button>
+              )}
             </div>
           </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Video, Settings2, Play, Music, Mic, Layers, Image as ImageIcon, CheckCircle, Captions } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { stackPush, stackRead, MAX_STACK } from '../utils/stackUtils';
+import { resolveApiUrl } from '../utils/apiUtils';
 
 export const VideoTab = () => {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -63,7 +65,7 @@ export const VideoTab = () => {
       });
 
       // Send to python backend
-      const response = await fetch('http://localhost:5000/api/render', {
+      const response = await fetch(resolveApiUrl('/api/render'), {
          method: 'POST',
          body: formData
       });
@@ -104,7 +106,7 @@ export const VideoTab = () => {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto md:overflow-hidden">
+    <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto md:overflow-hidden custom-scrollbar">
       <header className="mb-6 md:mb-8 shrink-0">
         <h2 className="text-2xl md:text-4xl font-bold text-glow-purple text-white flex items-center gap-2 md:gap-3">
           <Video className="text-neon-purple w-8 h-8 md:w-10 md:h-10 shrink-0" />
@@ -381,9 +383,7 @@ export const VideoTab = () => {
                 }`}
               >
                 {isGenerating ? (
-                  <span className="flex items-center gap-3 animate-pulse">
-                    <Video className="w-6 h-6 animate-spin" /> Compilando Matriz Audiovisual...
-                  </span>
+                  <LoadingSpinner message="Compilando Matriz Audiovisual..." size="sm" />
                 ) : (
                   <>
                     <Video className="w-6 h-6" /> INICIAR REDE DE RENDERIZAÇÃO

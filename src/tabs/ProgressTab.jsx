@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, XCircle, Loader2 } from 'lucide-react';
+import { Activity, XCircle } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
 import { stackPush, stackWrite } from '../utils/stackUtils';
+import { resolveApiUrl } from '../utils/apiUtils';
 
 export const ProgressTab = () => {
   const [projects, setProjects] = useState([]);
@@ -29,10 +31,12 @@ export const ProgressTab = () => {
     const interval = setInterval(async () => {
       let changed = false;
       const updatedPromises = projects.map(async (p) => {
-        if (p.progress >= 100) return p;
+        // Robust check for valid job ID
+        const validId = p.id && String(p.id).trim() !== "" && p.id !== "undefined" && p.id !== "null";
+        if (p.progress >= 100 || !validId) return p;
         
         try {
-           const res = await fetch(`http://localhost:5000/api/status/${p.id}`);
+           const res = await fetch(resolveApiUrl(`/api/status/${p.id}`));
            if (res.ok) {
               const data = await res.json();
               if (data.progress !== p.progress || data.status !== p.status) {
@@ -80,7 +84,7 @@ export const ProgressTab = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto md:overflow-hidden">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto md:overflow-hidden custom-scrollbar">
       <header className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2 md:gap-0 shrink-0">
         <div>
           <h2 className="text-2xl md:text-4xl font-bold text-glow-cyan text-white flex items-center gap-2 md:gap-3">
@@ -97,7 +101,7 @@ export const ProgressTab = () => {
       <div className="flex-1">
         {projects.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-400 glass-card">
-            <Loader2 className="w-16 h-16 text-gray-600 mb-4 animate-spin-slow" />
+            <LoadingSpinner size="lg" message="Aguardando Projetos..." />
             <h3 className="text-xl font-medium text-white mb-2">Fila Vazia</h3>
             <p className="max-w-md text-center">Nenhum projeto está renderizando no momento. Vá para Gerar Vídeo para iniciar um novo pipeline.</p>
           </div>
@@ -133,9 +137,9 @@ export const ProgressTab = () => {
                   
                   <div className="mt-auto">
                     <div className="flex justify-between items-end mb-2">
-                       <span className="text-sm font-medium text-gray-400 flex items-center gap-2">
-                         <Loader2 className="w-4 h-4 animate-spin" /> {project.status}
-                       </span>
+                       <div className="flex items-center gap-2 text-xs font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+                         <LoadingSpinner size="xs" message="" /> {project.status}
+                    </div>
                        <span className={`text-sm font-bold text-${project.color}`}>{project.progress}%</span>
                     </div>
                     
@@ -155,7 +159,7 @@ export const ProgressTab = () => {
 
             {/* Empty Slots */}
             {Array.from({ length: Math.max(0, 6 - projects.length) }).map((_, i) => (
-               <div key={`empty-${i}`} className="glass-panel border-dashed border-2 flex items-center justify-center h-48 rounded-2xl opacity-50">
+               <div key={`empty-${i}`} className="glass-card border-dashed border-2 flex items-center justify-center h-48 rounded-xl opacity-50">
                   <span className="text-gray-500 font-medium">Slot Vazio</span>
                </div>
             ))}
