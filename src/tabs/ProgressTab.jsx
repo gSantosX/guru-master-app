@@ -59,14 +59,23 @@ export const ProgressTab = () => {
            
            if (newlyCompleted.length > 0) {
                // LIFO push each newly completed project — auto-ejects oldest if > 6
+               const existingCompleted = JSON.parse(localStorage.getItem('guru_completed_renders') || '[]');
+               let pushed = false;
                newlyCompleted.forEach(p => {
-                 stackPush('guru_completed_renders', {
-                   id: p.id,
-                   name: p.name,
-                   date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
-                 });
+                 // Check if ID already exists to prevent duplication
+                 if (!existingCompleted.some(e => e.id === p.id)) {
+                     stackPush('guru_completed_renders', {
+                       id: p.id,
+                       name: p.name,
+                       date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
+                       path: p.result_file
+                     });
+                     pushed = true;
+                 }
                });
-               window.dispatchEvent(new Event('guru_completed_updated'));
+               if (pushed) {
+                   window.dispatchEvent(new Event('guru_completed_updated'));
+               }
             }
            
            stackWrite('guru_active_renders', stillActive);

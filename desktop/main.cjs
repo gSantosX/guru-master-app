@@ -1,5 +1,6 @@
 const electron = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 
 // If for some reason we are in Node mode but want to be in Electron mode,
@@ -64,6 +65,53 @@ function startBackend() {
 }
 
 app.whenReady().then(() => {
+  ipcMain.handle('save-video', async (event, jobId, suggestedName) => {
+      try {
+          const sourcePath = path.join(__dirname, '../backend/output', `${jobId}.mp4`);
+          if (!fs.existsSync(sourcePath)) {
+              return { success: false, error: 'Arquivo original não encontrado no sistema local.' };
+          }
+          
+          const { canceled, filePath } = await electron.dialog.showSaveDialog({
+              title: "Salvar Vídeo Renderizado",
+              defaultPath: suggestedName || `video_${jobId.slice(0,6)}.mp4`,
+              filters: [{ name: 'Movies', extensions: ['mp4'] }]
+          });
+          
+          if (canceled || !filePath) return { success: false, canceled: true };
+          
+          fs.copyFileSync(sourcePath, filePath);
+          return { success: true, savedPath: filePath };
+      } catch (err) {
+          console.error("Erro ao salvar vídeo:", err);
+          return { success: false, error: err.message };
+      }
+  });
+
+  ipcMain.handle('select-folder', async () => {
+      try {
+          const { canceled, filePaths } = await electron.dialog.showOpenDialog({
+              title: "Selecionar Pasta de Saída",
+              properties: ['openDirectory', 'createDirectory']
+          });
+          if (canceled || filePaths.length === 0) return { success: false };
+          return { success: true, folderPath: filePaths[0] };
+      } catch (err) {
+          console.error("Erro ao abrir seletor de pastas:", err);
+          return { success: false, error: err.message };
+      }
+  });
+
+  ipcMain.handle('open-in-folder', async (event, fullPath) => {
+      try {
+          if (!fs.existsSync(fullPath)) return { success: false, error: 'Arquivo não encontrado' };
+          electron.shell.showItemInFolder(fullPath);
+          return { success: true };
+      } catch (err) {
+          return { success: false, error: err.message };
+      }
+  });
+
   startBackend();
   createWindow();
 

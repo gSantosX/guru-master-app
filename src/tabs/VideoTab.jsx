@@ -22,6 +22,19 @@ export const VideoTab = () => {
   const [zoomStyle, setZoomStyle] = useState('zoom-in');
   const [zoomSpeed, setZoomSpeed] = useState('Normal (1.1x)');
   const [filterStyle, setFilterStyle] = useState('nenhum');
+  const [outputDir, setOutputDir] = useState(() => localStorage.getItem('guru_output_dir') || '');
+
+  const handleSelectFolder = async () => {
+    if (window.electronAPI && window.electronAPI.selectFolder) {
+      const res = await window.electronAPI.selectFolder();
+      if (res.success && res.folderPath) {
+         setOutputDir(res.folderPath);
+         localStorage.setItem('guru_output_dir', res.folderPath);
+      }
+    } else {
+      alert("A seleção de pastas só está disponível na versão Desktop.");
+    }
+  };
 
   const startRender = async () => {
     if (!audioFile && imageFiles.length === 0) {
@@ -52,7 +65,8 @@ export const VideoTab = () => {
         transitionStyle,
         zoomStyle,
         zoomSpeed,
-        filterStyle
+        filterStyle,
+        outputDir
       };
       formData.append('settings', JSON.stringify(settings));
       
@@ -352,11 +366,24 @@ export const VideoTab = () => {
                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Impacto Previsto</p>
                    <p className="text-sm font-bold text-neon-purple transition-colors">Tamanho Médio</p>
                    <p className="text-xs font-mono text-gray-400">{resolution.split('(')[0]}</p>
-                </div>
-             </div>
-          </div>
+                 </div>
+              </div>
+              <div className="mt-6 w-full max-w-sm mb-4">
+                 <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-gray-400 font-bold uppercase tracking-wider text-green-400">Pasta de Saída</label>
+                    <button type="button" onClick={handleSelectFolder} className="text-[10px] bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded transition-colors border border-white/5 font-mono cursor-pointer relative z-20">Alterar</button>
+                 </div>
+                 <div className="w-full bg-dark/60 border border-white/10 rounded-lg p-3 flex flex-col items-start min-h-[44px] justify-center text-xs shadow-inner cursor-pointer hover:border-white/30 transition-colors relative z-20" onClick={handleSelectFolder}>
+                    {outputDir ? (
+                       <span className="text-green-400 font-mono tracking-tighter truncate w-full" title={outputDir}>{outputDir}</span>
+                    ) : (
+                       <span className="text-gray-500 italic">Pasta padrão (/backend/output/)</span>
+                    )}
+                 </div>
+              </div>
+           </div>
 
-          <div className="p-5 mt-auto relative z-10 bg-dark/30 backdrop-blur-md border-t border-white/10 min-h-[96px] flex items-center justify-center">
+           <div className="p-5 mt-auto relative z-10 bg-dark/30 backdrop-blur-md border-t border-white/10 min-h-[96px] flex items-center justify-center">
             {renderSuccess ? (
               <div className="w-full flex w-full p-4 rounded-xl flex items-center justify-between gap-4 bg-green-500/10 border border-green-500/30 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.15)] animate-fade-in">
                 <div className="flex items-center gap-3">

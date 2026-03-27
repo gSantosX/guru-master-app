@@ -82,32 +82,32 @@ export const ImagePromptsTab = ({ setActiveTab }) => {
       const styleInfo = getActiveStyle();
       const formattedInput = subtitleBlocks.map((b, i) => `[ID ${i+1}] ${b}`).join('\n');
 
-      const promptParam = `You are a world-class visual director and AI image prompt engineer.
-Your task is to convert each script fragment into a SINGLE, EXHAUSTIVE, photorealistic image generation prompt.
+      const promptParam = `You are a strict, literal visual director and AI image prompt engineer.
+Your task is to convert each script fragment into a SINGLE image generation prompt in English.
+
+## CORE DIRECTIVE: STRIC LITERAL FIDELITY
+You MUST NOT invent fiction, add fantasy elements, or embellish the scene beyond what is strictly necessary to visualize the EXACT words in the fragment. The image must represent EXACTLY what the caption says, in a highly realistic, grounded, and believable way. Avoid hyperbole and overly dramatic scene creation unless the text specifically requires it.
 
 ## RULES — FOLLOW STRICTLY:
 
-1. **Extreme Fidelity to Script**: Each prompt must be DIRECTLY derived from its corresponding fragment.
-   - Extract the EXACT scene, action, subject, environment and emotion described.
-   - DO NOT invent elements that are not in the fragment.
-   - If the fragment is narration/voice-over, visualize EXACTLY what is being spoken about.
+1. **Extreme Fidelity to Script**: 
+   - Visualize ONLY the concepts explicitly mentioned in the fragment.
+   - Ground everything in reality. If the fragment says "a person working", describe a normal person in a normal office, do NOT add sci-fi or magical elements.
+   - IT MUST NOT LOOK LIKE FICTION (unless the text is explicitly a fictional story). Keep the atmosphere real and authentic.
 
 2. **Visual Style for ALL prompts**: "${styleInfo.label}" — ${styleInfo.desc}
-   - Enforce this style consistently throughout EVERY prompt.
+   - Apply this chosen aesthetic carefully without violating the literal meaning of the text.
 
-3. **Photographic & Cinematic Realism**:
-   - Respect physical laws: correct lighting, shadows, reflections, material textures.
-   - Describe: camera angle (eye-level, low angle, bird's eye, Dutch tilt, etc.)
-   - Describe: lens (50mm portrait, 24mm wide, 85mm shallow DOF, etc.)
-   - Describe: lighting setup (golden hour, overcast, studio 3-point, rim light, etc.)
-   - Describe: color palette (muted earth tones, high contrast, analogous blues, etc.)
-   - Describe: mood/atmosphere (tense, serene, melancholic, epic, intimate, etc.)
-   - Describe: environment details (textures of surfaces, time of day, weather, etc.)
+3. **Detailed & Realistic Photography**:
+   - While keeping the subject highly literal, you MUST be very detailed regarding the photographic representation.
+   - Describe: the main focal point clearly.
+   - Describe: camera angle (eye-level, wide shot, close-up, etc.)
+   - Describe: lighting (natural sunlight, soft studio lighting, harsh shadows, etc.)
+   - Describe: visual quality (highly detailed, 8k resolution, photorealistic)
 
-4. **Prompt Quality Requirements**:
-   - Minimum 40 words per prompt, maximum 120 words.
-   - Use professional photography / cinematography vocabulary.
-   - Each prompt must be self-contained and executable without context from other prompts.
+4. **Prompt Limits**:
+   - Be concise and direct. Keep the prompt between 20 and 80 words.
+   - Focus strictly on WHAT is in the frame and HOW it is lit/photographed.
    - Write in English only.
 
 5. **Format** — MANDATORY (no extra text, no markdown, no numbering other than the ID):

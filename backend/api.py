@@ -16,12 +16,11 @@ from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
-import urllib.request
-import urllib.parse
 import urllib.error
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 import webbrowser
+import ffmpeg_utils
 
 app = Flask(__name__)
 CORS(app)
@@ -239,7 +238,7 @@ def check_system():
     config = load_config()
     ffmpeg_ver = "Not found"
     try:
-        res = subprocess.run([config.get('ffmpeg_path', 'ffmpeg'), '-version'], capture_output=True, text=True)
+        res = subprocess.run([str(config.get('ffmpeg_path', 'ffmpeg')), '-version'], capture_output=True, text=True)
         if res.returncode == 0:
             ffmpeg_ver = res.stdout.split('\n')[0]
     except: pass
@@ -247,27 +246,35 @@ def check_system():
     youtube_status = False
     youtube_error = None
     yt_key = config.get('youtube_key')
-    if yt_key and len(yt_key) > 5:
+    if yt_key and isinstance(yt_key, str) and len(yt_key) > 5:
         import ssl
         try:
             # Check a dummy public video to verify key validity
             url = f"https://www.googleapis.com/youtube/v3/videos?part=id&id=Ks-_Mh1QhMc&key={yt_key}"
             # Disable SSL verification for the diagnostic check to avoid certificate issues on some systems
             ctx = ssl._create_unverified_context()
-            with urllib.request.urlopen(url, timeout=10, context=ctx) as response:
+            with urlopen(url, timeout=10, context=ctx) as response:
                 if response.status == 200:
                     youtube_status = True
         except Exception as e:
              youtube_error = str(e)
              youtube_status = False
 
+    gemini_key = config.get('gemini_key')
+    gemini_status = bool(gemini_key and isinstance(gemini_key, str) and len(gemini_key) > 5)
+
+    openai_key = config.get('gpt_key')
+    openai_status = bool(openai_key and isinstance(openai_key, str) and len(openai_key) > 5)
+
+    grok_key = config.get('grok_key')
+    grok_status = bool(grok_key and isinstance(grok_key, str) and len(grok_key) > 5)
     status = {
         "status": "online",
         "ffmpeg": ffmpeg_ver,
         "ai": {
-            "gemini": bool(config.get('gemini_key') and len(config.get('gemini_key')) > 5),
-            "gpt": bool(config.get('gpt_key') and len(config.get('gpt_key')) > 5),
-            "grok": bool(config.get('grok_key') and len(config.get('grok_key')) > 5),
+            "gemini": gemini_status,
+            "openai": openai_status,
+            "grok": grok_status,
             "youtube": youtube_status,
             "youtube_error": youtube_error
         },
@@ -463,28 +470,39 @@ def handle_config():
 
 def proxy_response(req):
     try:
-        # Add a default User-Agent if not present
+        # Add a default User-Agent
         if not req.get_header('User-agent'):
             req.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
             
-        with urlopen(req, context=ctx, timeout=30) as response:
+        with urlopen(req, context=ctx, timeout=45) as response:
             res_body = response.read()
             res_status = response.status
-            # Filter hop-by-hop and problematic headers
+            
+            # Filter headers
             safe_headers = []
             for k, v in response.getheaders():
                 kl = k.lower()
-                if kl not in ['content-encoding', 'transfer-encoding', 'content-length', 'connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailers', 'upgrade']:
+                if kl not in ['content-encoding', 'transfer-encoding', 'content-length', 'connection', 'access-control-allow-origin']:
                     safe_headers.append((k, v))
+            
+            # Ensure CORS is handled by Flask-CORS, so we filter it out from proxy
             return res_body, res_status, safe_headers
+            
     except urllib.error.HTTPError as e:
-        # Filter headers even on error
+        print(f"Proxy HTTP Error: {e.code} - {e.reason}")
+        try:
+            body = e.read()
+        except:
+            body = str(e).encode('utf-8')
+        
         safe_headers = []
         for k, v in e.headers.items():
             if k.lower() not in ['content-encoding', 'transfer-encoding', 'content-length', 'connection']:
                 safe_headers.append((k, v))
-        return e.read(), e.code, safe_headers
+        return body, e.code, safe_headers
+        
     except Exception as e:
+        print(f"Proxy General Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/gemini/<path:subpath>', methods=['GET', 'POST'])
@@ -558,39 +576,171 @@ def youtube_proxy(subpath):
 @app.route('/api/render', methods=['POST'])
 def render_video():
     project_name = request.form.get('projectName', 'Unnamed Project')
+    settings_raw = request.form.get('settings', '{}')
+    settings = json.loads(settings_raw)
+    
     job_id = str(uuid.uuid4())
+    job_dir = os.path.join(UPLOAD_FOLDER, job_id)
+    os.makedirs(job_dir, exist_ok=True)
     
     render_jobs[job_id] = {
         "id": job_id,
         "name": project_name,
-        "status": "Iniciando FFMPEG...",
-        "progress": 0,
+        "status": "Iniciando Processo...",
+        "progress": 5,
         "color": "neon-purple"
     }
     
-    def background_render(jid):
-        steps = [
-            ("Processando Ativos...", 10, 2),
-            ("Gerando Quadros...", 30, 4),
-            ("Sincronizando Áudio...", 60, 3),
-            ("Compilando Vídeo (FFmpeg)...", 85, 5),
-            ("Finalizando...", 100, 2)
-        ]
-        for status, progress, wait in steps:
-            time.sleep(wait)
-            if jid in render_jobs:
-                render_jobs[jid]["status"] = status
-                render_jobs[jid]["progress"] = progress
+    # Save uploaded files
+    saved_files = {
+        "audio": None,
+        "music": None,
+        "subtitle": None,
+        "images": []
+    }
     
-    threading.Thread(target=background_render, args=(job_id,)).start()
+    try:
+        if 'audio' in request.files:
+            audio_path = os.path.join(job_dir, 'audio.mp3')
+            request.files['audio'].save(audio_path)
+            saved_files["audio"] = audio_path
+            
+        if 'music' in request.files:
+            music_path = os.path.join(job_dir, 'music.mp3')
+            request.files['music'].save(music_path)
+            saved_files["music"] = music_path
+            
+        if 'subtitle' in request.files:
+            sub_filename = secure_filename(request.files['subtitle'].filename)
+            sub_path = os.path.join(job_dir, sub_filename)
+            request.files['subtitle'].save(sub_path)
+            saved_files["subtitle"] = sub_path
+            
+        # Images are multiple
+        for key in request.files:
+            if key.startswith('image_'):
+                img_file = request.files[key]
+                img_path = os.path.join(job_dir, secure_filename(img_file.filename))
+                img_file.save(img_path)
+                saved_files["images"].append(img_path)
+                
+    except Exception as e:
+        print(f"Error saving files: {e}")
+        return jsonify({"error": f"Erro ao salvar arquivos: {str(e)}"}), 500
+
+    if not saved_files["images"]:
+        return jsonify({"error": "Nenhuma imagem enviada para o vídeo."}), 400
+
+    def background_render(jid, files, config_settings):
+        try:
+            # 1. Prepare output path
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            safe_name = "".join([c if c.isalnum() else "_" for c in project_name])
+            output_filename = f"video_{safe_name}_{timestamp}.mp4"
+            
+            custom_output_dir = config_settings.get("outputDir")
+            if custom_output_dir and os.path.exists(custom_output_dir) and os.path.isdir(custom_output_dir):
+                output_path = os.path.join(custom_output_dir, output_filename)
+            else:
+                output_path = os.path.join(OUTPUT_FOLDER, output_filename)
+            
+            render_jobs[jid]["status"] = "Compilando Matriz..."
+            render_jobs[jid]["progress"] = 20
+            
+            filter_script_path = os.path.join(job_dir, 'filter_complex.txt')
+            
+            # 2. Build and run FFmpeg command (using relative paths for assets)
+            cmd = ffmpeg_utils.build_ffmpeg_command(
+                output_path,
+                files["images"],
+                audio=files["audio"],
+                music=files["music"],
+                subtitle=files["subtitle"],
+                settings=config_settings,
+                ffmpeg_path=FFMPEG_CMD,
+                filter_script_path=filter_script_path
+            )
+            
+            log_path = os.path.join(job_dir, 'render.log')
+            with open(log_path, 'w', encoding='utf-8') as log_file:
+                log_file.write(f"FFMPEG CMD (Relative to JobDir): {' '.join(cmd)}\n\n")
+                
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    universal_newlines=True,
+                    encoding='utf-8',
+                    errors='replace',
+                    cwd=job_dir # Use relative paths!
+                )
+                
+                total_duration = ffmpeg_utils.get_audio_duration(files["audio"]) if files["audio"] else (len(files["images"]) * 5.0)
+                
+                for line in process.stdout:
+                    log_file.write(line)
+                    log_file.flush()
+                    if 'time=' in line:
+                        time_match = re.search(r'time=(\d+:\d+:\d+\.\d+)', line)
+                        if time_match:
+                            time_str = time_match.group(1)
+                            h, m, s = map(float, time_str.split(':'))
+                            curr_time = h*3600 + m*60 + s
+                            progress = min(95, 20 + int((curr_time / total_duration) * 75))
+                            render_jobs[jid]["progress"] = progress
+                            render_jobs[jid]["status"] = f"Processando frames... ({int((curr_time/total_duration)*100)}%)"
+
+                process.wait()
+            
+            if process.returncode == 0:
+                render_jobs[jid]["status"] = "Renderização Concluída!"
+                render_jobs[jid]["progress"] = 100
+                render_jobs[jid]["result_file"] = output_path # Store where the file is
+            else:
+                render_jobs[jid]["status"] = "Erro no FFmpeg"
+                render_jobs[jid]["progress"] = 0
+                
+        except Exception as e:
+            print(f"Render Task Error: {e}")
+            if jid in render_jobs:
+                render_jobs[jid]["status"] = f"Falha: {str(e)}"
+                render_jobs[jid]["progress"] = 0
+                
+    threading.Thread(target=background_render, args=(job_id, saved_files, settings)).start()
     return jsonify({"job_id": job_id})
 
 @app.route('/api/status/<job_id>', methods=['GET'])
-def get_render_status(job_id):
-    job = render_jobs.get(job_id)
-    if job:
-        return jsonify(job)
-    return jsonify({"error": "Job not found"}), 404
+def render_status(job_id):
+    if job_id not in render_jobs:
+        return jsonify({"error": "Job not found"}), 404
+        
+    return jsonify(render_jobs[job_id])
+
+@app.route('/api/download/<job_id>', methods=['GET'])
+def download_video(job_id):
+    if job_id not in render_jobs:
+        return jsonify({"error": "Job not found", "requested_id": job_id}), 404
+        
+    job = render_jobs[job_id]
+    
+    if job.get("status") not in ["Renderização Concluída!", "Render SUCCESS!"] and job.get("progress") < 100:
+         # Allow downloading if file exists anyway, but warn
+         if not job.get("result_file") or not os.path.exists(job.get("result_file")):
+             return jsonify({"error": "Renderização não concluída", "requested_id": job_id}), 400
+
+    video_path = job.get("result_file")
+    if not video_path:
+         video_path = os.path.join(OUTPUT_FOLDER, f"{job_id}.mp4")
+
+    if not video_path or not os.path.exists(video_path):
+        return jsonify({"error": "Arquivo não encontrado no servidor.", "requested_id": job_id}), 404
+        
+    try:
+        # Determine a safe filename
+        filename = f"video_{job.get('name', 'pronto').replace(' ', '_')}.mp4"
+        return send_file(video_path, as_attachment=True, download_name=filename, mimetype='video/mp4')
+    except Exception as e:
+        return jsonify({"error": str(e), "requested_id": job_id}), 500
 
 @app.route('/api/whisk/open', methods=['POST'])
 def whisk_open():

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, Download, Play, Trash2, Archive } from 'lucide-react';
+import { Play, Download, Trash2, CheckCircle, FolderOpen, Archive } from 'lucide-react';
 import { resolveApiUrl } from '../utils/apiUtils';
 
 export const CompletedTab = () => {
@@ -26,42 +26,19 @@ export const CompletedTab = () => {
     saveProjects(projects.filter(p => p.id !== id));
   };
 
-  const handleDownload = async (id) => {
+  const handleOpenLocation = async (project) => {
     try {
-      const response = await fetch(resolveApiUrl(`/api/download/${id}`));
-      if (!response.ok) {
-        let errorMsg = 'Arquivo não encontrado no servidor.';
-        try {
-          const errorData = await response.json();
-          errorMsg = errorData.error || errorMsg;
-          if (errorData.requested_id) {
-            console.error("DEBUG Download:", errorData);
+      if (window.electronAPI && window.electronAPI.openInFolder && project.path) {
+          const result = await window.electronAPI.openInFolder(project.path);
+          if (!result.success) {
+              alert("Não foi possível abrir o local. O arquivo pode ter sido movido ou excluído.");
           }
-        } catch (e) {}
-        alert(`Erro ao baixar: ${errorMsg}`);
-        return;
+      } else {
+          alert("O caminho automático não está disponível para este projeto. O recurso funciona apenas para projetos recém-gerados e no app Desktop.");
       }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      
-      // Tentar pegar o nome do arquivo do cabeçalho ou usar um padrão
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let fileName = `video_pronto_${new Date().getTime()}.mp4`;
-      if (contentDisposition && contentDisposition.includes('filename=')) {
-        fileName = contentDisposition.split('filename=')[1].split(';')[0].replace(/"/g, '');
-      }
-      
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
     } catch (err) {
-      console.error("Erro no download:", err);
-      alert("Erro de conexão com o servidor de download.");
+      console.error("Erro ao abrir pasta:", err);
+      alert("Erro ao tentar acessar o arquivo.");
     }
   };
 
@@ -116,10 +93,10 @@ export const CompletedTab = () => {
                     
                     <div className="mt-auto flex gap-2">
                       <button 
-                         onClick={() => handleDownload(project.id)}
-                         className="flex-1 py-2 bg-gradient-to-r from-neon-pink/20 to-neon-purple/20 hover:from-neon-pink/40 hover:to-neon-purple/40 text-white rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all"
+                         onClick={() => handleOpenLocation(project)}
+                         className="flex-1 py-2 bg-gradient-to-r from-neon-cyan/20 to-blue-500/20 hover:from-neon-cyan/40 hover:to-blue-500/40 text-white rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all"
                       >
-                         <Download className="w-4 h-4" /> Baixar
+                         <FolderOpen className="w-4 h-4" /> Abrir Local
                       </button>
                       <button 
                          onClick={() => handleDelete(project.id)}

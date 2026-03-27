@@ -7,7 +7,7 @@ import { resolveApiUrl } from '../utils/apiUtils';
 import { callGemini, callGPT, callGrok } from '../utils/aiUtils';
 import { t } from '../utils/i18n';
 
-export const ChannelMonitoringTab = () => {
+export const ChannelMonitoringTab = ({ isActive }) => {
   const { configs } = useSystemStatus();
   const [channels, setChannels] = useState(() => {
     const saved = localStorage.getItem('guru_monitored_channels');
@@ -38,6 +38,35 @@ export const ChannelMonitoringTab = () => {
     return () => clearTimeout(timer);
   }, [newUrl]);
 
+  const isRefreshingRef = React.useRef(false);
+
+  const refreshAllChannelsQuietly = async () => {
+    if (channels.length === 0 || isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
+    
+    try {
+      // Update each channel one by one
+      for (let i = 0; i < channels.length; i++) {
+        try {
+          const freshData = await fetchChannelData({ type: 'id', value: channels[i].id });
+          setChannels(prev => prev.map(c => c.id === freshData.id ? freshData : c));
+        } catch (err) {
+          console.error(`Failed to refresh channel ${channels[i].title}:`, err);
+        }
+      }
+    } finally {
+      // Cooldown of 10 seconds to prevent API spam on multiple rapid clicks
+      setTimeout(() => { isRefreshingRef.current = false; }, 10000);
+    }
+  };
+
+  // Refresh all channels on component mount
+  useEffect(() => {
+    if (isActive) {
+      refreshAllChannelsQuietly();
+    }
+  }, [isActive]); // Refresh when tab becomes active
+
   useEffect(() => {
     localStorage.setItem('guru_monitored_channels', JSON.stringify(channels));
   }, [channels]);
@@ -51,12 +80,18 @@ export const ChannelMonitoringTab = () => {
     }
   }, [analysisResult]);
 
-  // Auto-refresh data if missing when opening channel
+  // Auto-refresh data when opening channel
   useEffect(() => {
-    if (selectedChannel && (!selectedChannel.viralVideos || selectedChannel.viralVideos.length === 0)) {
-       handleRefreshChannel();
+    if (selectedChannel) {
+       // We only trigger refresh if it's the first time in this "session" or explicitly requested
+       // But user said "always when clicks", so we trigger it.
+       // To avoid infinite loops (since setSelectedChannel(data) triggers this effect),
+       // we skip if isAnalyzing is already true (refresh is in progress)
+       if (!isAnalyzing) {
+         handleRefreshChannel();
+       }
     }
-  }, [selectedChannel]);
+  }, [selectedChannel?.id]); // Only trigger when ID changes to avoid loops
 
   const extractChannelIdOrHandle = (url) => {
     if (!url) return null;
@@ -199,6 +234,16 @@ export const ChannelMonitoringTab = () => {
   const runAnalysis = async (type, count = 10) => {
     if (!selectedChannel) return;
     setIsAnalyzing(true);
+    
+    // Refresh data before analysis to ensure real-time accuracy
+    try {
+      const freshData = await fetchChannelData({ type: 'id', value: selectedChannel.id });
+      setChannels(prev => prev.map(c => c.id === freshData.id ? freshData : c));
+      setSelectedChannel(freshData);
+    } catch (err) {
+      console.warn('Silent refresh fail before analysis:', err);
+    }
+    
     setAnalysisType(type);
     setAnalysisResult(null);
     setShowCountSelector(false);
@@ -298,7 +343,7 @@ IMPORTANTE:
   };
 
   return (
-    <div className="flex flex-col h-full w-full max-w-[1600px] mx-auto overflow-hidden">
+    <div className="flex flex-col h-full w-full max-w-[1600px] mx-auto overflow-hidden" onClickCapture={refreshAllChannelsQuietly}>
       <AnimatePresence mode="wait">
         {!selectedChannel ? (
           <motion.div 
@@ -360,7 +405,8 @@ IMPORTANTE:
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.9 }}
                       onClick={() => {
-                        setSelectedChannel(channel);
+                        const original = channels.find(c => c.id === channel.id);
+                        setSelectedChannel(original);
                         setAnalysisResult(null);
                         setShowCountSelector(false);
                       }}

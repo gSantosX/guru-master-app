@@ -28,3 +28,6 @@ brain/
 # Environment and Scripts
 backend/venv/
 backend/test_gemini.*
+**/__pycache__/
+*.pyc
+inject.py

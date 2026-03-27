@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // Add any IPC bridge methods here if needed
-  // Example: ping: () => ipcRenderer.invoke('ping')
+  saveVideo: (jobId, defaultName) => ipcRenderer.invoke('save-video', jobId, defaultName),
+  selectFolder: () => ipcRenderer.invoke('select-folder'),
+  openInFolder: (fullPath) => ipcRenderer.invoke('open-in-folder', fullPath)
 });

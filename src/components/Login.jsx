@@ -15,8 +15,8 @@ export const Login = () => {
   // Form Data
   const [formData, setFormData] = useState({ 
     name: '', 
-    email: '', 
-    password: '', 
+    email: 'jose.santos.pe1970@gmail.com', 
+    password: '68308055', 
     confirmPassword: '',
     code: ''
   });
