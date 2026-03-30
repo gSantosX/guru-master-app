@@ -15,13 +15,13 @@ export const Login = () => {
   // Form Data
   const [formData, setFormData] = useState({ 
     name: '', 
-    email: 'jose.santos.pe1970@gmail.com', 
-    password: '68308055', 
+    email: localStorage.getItem('guru_last_email') || '', 
+    password: '', 
     confirmPassword: '',
     code: ''
   });
   
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(localStorage.getItem('guru_remember_me') !== 'false'); // Default to true
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,6 +95,13 @@ export const Login = () => {
     if (!res.success) {
        setError(res.error);
     } else {
+       // Persist "Remember Login" preference
+       localStorage.setItem('guru_remember_me', rememberMe ? 'true' : 'false');
+       if (rememberMe) {
+          localStorage.setItem('guru_last_email', formData.email);
+       } else {
+          localStorage.removeItem('guru_last_email');
+       }
        checkConnectivity();
     }
   };

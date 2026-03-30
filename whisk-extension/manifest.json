@@ -12,8 +12,7 @@
     "http://localhost:5000/*"
   ],
   "action": {
-    "default_popup": "popup.html",
-    "default_icon": "icons/icon128.png"
+    "default_popup": "popup.html"
   },
   "content_scripts": [
     {

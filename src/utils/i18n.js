@@ -11,10 +11,12 @@ const TRANSLATIONS = {
       profile: "Perfil",
       whisk: "Auto Whisk",
       channel_monitoring: "Monitoramento",
+      channel_mining: "Mineração de Canais",
+      modelador_canais: "Modelador de Canais",
       settings: "Configurações",
       check_update: "Checar Update",
       wait: "Aguarde...",
-      version: "v1.0.4",
+      version: "v2.1.1",
       user_guru: "Usuário Guru",
       view_profile: "Perfil",
       pro_member: "Membro Pro",
@@ -110,7 +112,7 @@ const TRANSLATIONS = {
       youtube_connection: "Conexão YouTube (Data V3)",
       about_title: "Sobre o Sistema",
       about_desc: "GURU MASTER AI Pipeline",
-      version: "v1.0.4"
+      version: "v2.1.1"
     },
     whisk: {
       title: "Auto Whisk",
@@ -156,6 +158,42 @@ const TRANSLATIONS = {
       empty: "Nenhum canal monitorado ainda. Adicione um acima!",
       invalid_url: "URL ou ID de canal inválido",
       fetch_error: "Erro ao buscar dados do canal"
+    },
+    modelador: {
+      title: "Modelador de Canais",
+      subtitle: "Analise canais em alta e extraia padrões replicáveis para criar canais virais.",
+      input_label: "URL do Canal do YouTube",
+      input_placeholder: "Cole a URL do canal aqui (ex: youtube.com/@nome)",
+      btn_analyze: "Analisar Canal",
+      btn_analyzing: "Analisando Canal...",
+      results_title: "Resultado da Modelagem",
+      empty_hint: "A análise profunda do canal aparecerá aqui após você colar a URL e clicar em analisar.",
+      analysis: "Análise do Canal",
+      niche: "Identificação de Nicho",
+      content: "Engenharia de Conteúdo",
+      thumbs: "Análise de Capas (Thumbs)",
+      metrics: "Métricas Estratégicas",
+      opportunities: "Identificação de Oportunidades",
+      modeling: "Modelagem do Canal",
+      validation: "Validação (Micronicho)"
+    },
+    mining: {
+      title: "Mineração de Canais",
+      subtitle: "Encontre canais em ascensão (poucos vídeos e muitos resultados).",
+      rising_header: "Canais em Ascensão",
+      niche_label: "Nicho Estratégico",
+      lang_label: "Idioma de Busca",
+      btn_search: "Minerar Canais",
+      searching: "Minerando...",
+      copy_btn: "Copiar URL",
+      view_more: "Ver Mais",
+      latest_videos: "Últimos Vídeos",
+      copied: "URL Copiada!",
+      stats_videos: "Vídeos",
+      stats_views: "Views Totais",
+      stats_subs: "Inscritos",
+      efficiency: "Eficiência",
+      efficiency_desc: "Média de views por vídeo"
     }
   },
   en: {
@@ -170,10 +208,12 @@ const TRANSLATIONS = {
       profile: "Profile",
       whisk: "Auto Whisk",
       channel_monitoring: "Monitoring",
+      channel_mining: "Channel Mining",
+      modelador_canais: "Channel Modeler",
       settings: "Settings",
       check_update: "Check Update",
       wait: "Wait...",
-      version: "v1.0.4",
+      version: "v2.1.1",
       user_guru: "Guru User",
       view_profile: "Profile",
       pro_member: "Pro Member"
@@ -266,7 +306,7 @@ const TRANSLATIONS = {
       youtube_connection: "YouTube Connection",
       about_title: "About the System",
       about_desc: "GURU MASTER AI Pipeline",
-      version: "v1.0.4"
+      version: "v2.1.1"
     },
     whisk: {
       title: "Auto Whisk",
@@ -312,6 +352,42 @@ const TRANSLATIONS = {
       empty: "No channels monitored yet. Add one above!",
       invalid_url: "Invalid URL or channel ID",
       fetch_error: "Error fetching channel data"
+    },
+    modelador: {
+      title: "Channel Modeler",
+      subtitle: "Analyze trending channels and extract replicable patterns to create viral channels.",
+      input_label: "YouTube Channel URL",
+      input_placeholder: "Paste the channel URL here (e.g., youtube.com/@name)",
+      btn_analyze: "Analyze Channel",
+      btn_analyzing: "Analyzing Channel...",
+      results_title: "Modeling Results",
+      empty_hint: "The deep channel analysis will appear here after you paste the URL and click analyze.",
+      analysis: "Channel Analysis",
+      niche: "Niche Identification",
+      content: "Content Engineering",
+      thumbs: "Thumbnail Analysis",
+      metrics: "Strategic Metrics",
+      opportunities: "Opportunity Identification",
+      modeling: "Channel Modeling",
+      validation: "Validation (Micro-niche)"
+    },
+    mining: {
+      title: "Channel Mining",
+      subtitle: "Find rising channels (few videos, high impact).",
+      rising_header: "Rising Channels",
+      niche_label: "Strategic Niche",
+      lang_label: "Search Language",
+      btn_search: "Mine Channels",
+      searching: "Mining...",
+      copy_btn: "Copy URL",
+      view_more: "View More",
+      latest_videos: "Latest Videos",
+      copied: "URL Copied!",
+      stats_videos: "Videos",
+      stats_views: "Total Views",
+      stats_subs: "Subscribers",
+      efficiency: "Efficiency",
+      efficiency_desc: "Average views per video"
     }
   },
   es: {
@@ -326,10 +402,12 @@ const TRANSLATIONS = {
       profile: "Perfil",
       whisk: "Auto Whisk",
       channel_monitoring: "Monitoreo",
+      channel_mining: "Minería de Canales",
+      modelador_canais: "Modelador de Canales",
       settings: "Configuraciones",
       check_update: "Checar Actualización",
       wait: "Espere...",
-      version: "v1.0.4",
+      version: "v2.1.1",
       user_guru: "Usuario Guru",
       view_profile: "Perfil",
       pro_member: "Miembro Pro"
@@ -420,7 +498,7 @@ const TRANSLATIONS = {
       grok_connection: "Conexión Grok",
       about_title: "Acerca del Sistema",
       about_desc: "GURU MASTER AI Pipeline",
-      version: "v1.0.4"
+      version: "v2.1.1"
     },
     whisk: {
       title: "Auto Whisk",
@@ -463,6 +541,42 @@ const TRANSLATIONS = {
       empty: "Ningún canal monitoreado aún. ¡Agregue uno arriba!",
       invalid_url: "URL o ID de canal inválido",
       fetch_error: "Error al buscar datos del canal"
+    },
+    modelador: {
+      title: "Modelador de Canales",
+      subtitle: "Analice canales en tendencia y extraiga patrones replicables para crear canales virales.",
+      input_label: "URL del Canal de YouTube",
+      input_placeholder: "Pegue la URL del canal aquí (ej: youtube.com/@nombre)",
+      btn_analyze: "Analizar Canal",
+      btn_analyzing: "Analizando Canal...",
+      results_title: "Resultado del Modelado",
+      empty_hint: "El análisis profundo del canal aparecerá aquí después de pegar la URL y hacer clic en analizar.",
+      analysis: "Análisis del Canal",
+      niche: "Identificación de Nicho",
+      content: "Ingeniería de Contenido",
+      thumbs: "Análisis de Portadas (Thumbs)",
+      metrics: "Métricas Estratégicas",
+      opportunities: "Identificación de Oportunidades",
+      modeling: "Modelado del Canal",
+      validation: "Validación (Micronicho)"
+    },
+    mining: {
+      title: "Minería de Canales",
+      subtitle: "Encuentra canales en ascenso (pocos videos, alto impacto).",
+      rising_header: "Canales en Ascenso",
+      niche_label: "Nicho Estratégico",
+      lang_label: "Idioma de Búsqueda",
+      btn_search: "Minerar Canales",
+      searching: "Minerando...",
+      copy_btn: "Copiar URL",
+      view_more: "Ver Más",
+      latest_videos: "Últimos Videos",
+      copied: "URL Copiada!",
+      stats_videos: "Videos",
+      stats_views: "Vistas Totales",
+      stats_subs: "Suscriptores",
+      efficiency: "Eficiencia",
+      efficiency_desc: "Promedio de vistas por video"
     }
   }
 };

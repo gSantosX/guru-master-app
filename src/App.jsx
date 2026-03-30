@@ -11,6 +11,8 @@ import { SettingsTab } from './tabs/SettingsTab';
 import { ProfileTab } from './tabs/ProfileTab';
 import { WhiskTab } from './tabs/WhiskTab';
 import { ChannelMonitoringTab } from './tabs/ChannelMonitoringTab';
+import { ChannelModelerTab } from './tabs/ChannelModelerTab';
+import { ChannelMiningTab } from './tabs/ChannelMiningTab';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { SystemStatusProvider, useSystemStatus } from './contexts/SystemStatusContext';
 import { Cpu, Zap, Shield, Wand2 } from 'lucide-react';
@@ -28,6 +30,8 @@ const tabComponents = {
   'profile': ProfileTab,
   'whisk': WhiskTab,
   'channel-monitoring': ChannelMonitoringTab,
+  'channel-mining': ChannelMiningTab,
+  'channel-modeler': ChannelModelerTab,
   'settings': SettingsTab
 };
 

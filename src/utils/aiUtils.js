@@ -110,6 +110,47 @@ export const callGemini = async (apiKey, prompt, options = {}) => {
 };
 
 /**
+ * Calls Gemini (Imagen) to generate an image from a prompt.
+ * Uses the v1beta endpoint for Imagen 3.
+ */
+export const callGeminiImage = async (apiKey, prompt, options = {}) => {
+  if (!apiKey) throw new Error("Chave Gemini ausente!");
+
+  const modelPath = options.model || "models/imagen-3.0-generate-001";
+  const url = resolveApiUrl(`/api/gemini/v1beta/${modelPath}:generateImages?key=${apiKey}`);
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: prompt,
+        number_of_images: 1,
+        aspect_ratio: options.aspect_ratio || "16:9",
+        safety_settings: options.safety_settings || []
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.images?.[0]?.url) {
+      return data.images[0].url;
+    } else if (res.ok && data.images?.[0]?.image_url) {
+      return data.images[0].image_url;
+    }
+    
+    // Fallback if the above doesn't work (some accounts use a different response structure)
+    if (data.error) {
+       throw new Error(`Gemini Image Error: ${data.error.message}`);
+    }
+    
+    throw new Error("Resposta de imagem do Gemini vazia ou malformada.");
+  } catch (e) {
+    console.error("Gemini Image generation failed:", e);
+    throw e;
+  }
+};
+
+/**
  * Robustly calls OpenAI (GPT) API via proxy.
  */
 export const callGPT = async (apiKey, prompt, model = "gpt-4o-mini", options = {}) => {

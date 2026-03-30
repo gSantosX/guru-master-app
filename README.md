@@ -1,16 +1,71 @@
-# React + Vite
+# 🚀 Guru Master AI - v2.1.1
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+O Guru Master é um pipeline completo de automação para criação de conteúdo em vídeo, mineração de canais e geração de assets via IA. Esta versão 2.1.1 traz estabilidade, novas ferramentas de modelagem de canais e suporte aprimorado para renderização via FFmpeg.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠️ Requisitos de Sistema (Necessários para Funcionar)
 
-## React Compiler
+Para que o Guru Master funcione perfeitamente em sua máquina, você **precisa** instalar os seguintes componentes:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 1. Node.js (LTS)
+O motor principal para o frontend e a ponte Electron.
+- **Versão recomendada:** v20 ou superior.
+- **Download:** [nodejs.org](https://nodejs.org/)
 
-## Expanding the ESLint configuration
+### 2. Python 3.10+
+Responsável por toda a lógica de backend, automação do Whisk e processamento de dados.
+- **IMPORTANTE:** Certifique-se de marcar a opção **"Add Python to PATH"** durante a instalação.
+- **Download:** [python.org](https://www.python.org/downloads/)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 3. FFmpeg (Full Build)
+Essencial para a renderização de vídeos e manipulação de áudio.
+- **Instrução:** O executável `ffmpeg` e `ffprobe` devem estar acessíveis no seu terminal (PATH do sistema) ou configurados manualmente na aba de Configurações do app.
+- **Download Recomendado:** [Gyan.dev (Windows Full Build)](https://www.gyan.dev/ffmpeg/builds/)
+
+### 4. Google Chrome
+Necessário para a automação do **Auto Whisk** (Geração de Imagens).
+- Certifique-se de ter o Chrome instalado para que a extensão e a automação funcionem corretamente.
+
+---
+
+## 🚀 Como Instalar e Rodar
+
+1.  **Clone o repositório:**
+    ```bash
+    git clone https://github.com/gSantosX/guru-master-app.git
+    cd guru-master-app
+    ```
+
+2.  **Instale as dependências do Frontend:**
+    ```bash
+    npm install
+    ```
+
+3.  **Instale as dependências do Backend (Python):**
+    ```bash
+    pip install -r backend/requirements.txt
+    ```
+
+4.  **Inicie o Aplicativo:**
+    Execute o arquivo `GURU_MASTER.bat` na raiz do projeto para subir o servidor e a interface simultaneamente.
+
+---
+
+## 🏗️ Estrutura do Projeto
+
+*   `/src`: Código fonte da interface React.
+*   `/backend`: API em Python (Flask) e processamento de vídeo.
+*   `/desktop`: Configurações do Electron.
+*   `/whisk-extension`: Extensão para automação do Google Whisk.
+
+---
+
+## 📝 Notas da Versão 2.1.1
+- Sincronização de versão em toda a interface.
+- Novo módulo de **Modelagem de Canais**.
+- Melhorias na fila de renderização (Progress Tab).
+- Suporte a filtros complexos no FFmpeg.
+
+---
+**Desenvolvido por gSantosX**

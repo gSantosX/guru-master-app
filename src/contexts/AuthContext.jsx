@@ -8,7 +8,18 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Force login screen on every startup
+    // Check if user should be remembered
+    const remember = localStorage.getItem('guru_remember') === 'true';
+    const storedUser = localStorage.getItem('guru_user');
+    const activeSession = sessionStorage.getItem('guru_active_session') === 'true';
+
+    if (storedUser && (remember || activeSession)) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        localStorage.removeItem('guru_user');
+      }
+    }
     setLoading(false);
   }, []);
 
@@ -107,6 +118,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('guru_user');
+    localStorage.removeItem('guru_remember');
     sessionStorage.removeItem('guru_active_session');
     window.location.reload();
   };

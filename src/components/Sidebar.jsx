@@ -16,6 +16,8 @@ const getNavItems = () => [
   { id: 'completed', label: t('sidebar.completed'), icon: CheckCircle, color: 'text-neon-pink', shadow: 'shadow-neon-pink' },
   { id: 'capa-video', label: t('sidebar.capa_video'), icon: ImageIcon, color: 'text-neon-purple', shadow: 'shadow-neon-purple' },
   { id: 'profile', label: t('sidebar.profile'), icon: User, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
+  { id: 'channel-mining', label: t('sidebar.channel_mining'), icon: Youtube, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
+  { id: 'channel-modeler', label: t('sidebar.modelador_canais'), icon: Youtube, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
   { id: 'settings', label: t('sidebar.settings'), icon: Settings, color: 'text-gray-400', shadow: '' },
 ];
 
@@ -69,7 +71,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
         <div className="w-16 h-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent rounded-full opacity-50 shadow-[0_0_10px_rgba(0,243,255,0.2)]"></div>
       </div>
 
-      <nav className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 md:pb-0 items-center md:items-stretch custom-scrollbar">
+      <nav className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto pb-2 md:pb-0 items-center md:items-stretch custom-scrollbar">
         {getNavItems().map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;

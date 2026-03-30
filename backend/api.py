@@ -564,6 +564,8 @@ def youtube_proxy(subpath):
     import urllib.parse
     target_url += "?" + urllib.parse.urlencode(query_params)
     
+    print(f"DEBUG: YouTube Proxy Request -> {target_url.split('key=')[0]}key=***")
+    
     headers = {k: v for k, v in request.headers.items() if k.lower() not in ['host', 'accept-encoding']}
     
     req = Request(
@@ -571,7 +573,14 @@ def youtube_proxy(subpath):
         headers=headers,
         method='GET'
     )
-    return proxy_response(req)
+    
+    try:
+        res_body, res_status, res_headers = proxy_response(req)
+        print(f"DEBUG: YouTube Proxy Response Code -> {res_status}")
+        return res_body, res_status, res_headers
+    except Exception as e:
+        print(f"DEBUG: YouTube Proxy Exception -> {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/render', methods=['POST'])
 def render_video():

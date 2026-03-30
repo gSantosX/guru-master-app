@@ -33,6 +33,7 @@ export const ImagePromptsTab = ({ setActiveTab }) => {
   const [selectedStyle, setSelectedStyle] = useState('ultra-realista');
   const fileInputRef = useRef(null);
   const [subtitleBlocks, setSubtitleBlocks] = useState([]);
+  const [generationProgress, setGenerationProgress] = useState({ current: 0, total: 0 });
 
   const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = () => setIsDragging(false);
@@ -76,94 +77,114 @@ export const ImagePromptsTab = ({ setActiveTab }) => {
   const handleGenerate = async () => {
     if (!file || subtitleBlocks.length === 0) return;
     setIsGenerating(true);
+    setPrompts("");
+    
+    const CHUNK_SIZE = 50;
+    const totalChunks = Math.ceil(subtitleBlocks.length / CHUNK_SIZE);
+    setGenerationProgress({ current: 0, total: totalChunks });
+
+    const activeAi = localStorage.getItem('guru_active_ai') || 'Gemini';
+    const styleInfo = getActiveStyle();
+    const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
+    const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
+    
+    let allGeneratedPrompts = "";
+    let previousContext = ""; // To maintain cohesion
 
     try {
-      const activeAi = localStorage.getItem('guru_active_ai') || 'Gemini';
-      const styleInfo = getActiveStyle();
-      const formattedInput = subtitleBlocks.map((b, i) => `[ID ${i+1}] ${b}`).join('\n');
+      for (let i = 0; i < totalChunks; i++) {
+        setGenerationProgress({ current: i + 1, total: totalChunks });
+        
+        const startIdx = i * CHUNK_SIZE;
+        const endIdx = Math.min(startIdx + CHUNK_SIZE, subtitleBlocks.length);
+        const currentChunk = subtitleBlocks.slice(startIdx, endIdx);
+        const chunkSubtitleCount = currentChunk.length;
+        
+        const formattedInput = currentChunk.map((b, idx) => `[ID ${startIdx + idx + 1}] ${b}`).join('\n');
 
-      const promptParam = `You are a strict, literal visual director and AI image prompt engineer.
-Your task is to convert each script fragment into a SINGLE image generation prompt in English.
+        const promptParam = `You are a world-class Visual Director and AI Video Prompt Engineer.
+YOUR MISSION: Transform script fragments into EXTREMELY DETAILED, CINEMATIC video prompts in English.
 
-## CORE DIRECTIVE: STRIC LITERAL FIDELITY
-You MUST NOT invent fiction, add fantasy elements, or embellish the scene beyond what is strictly necessary to visualize the EXACT words in the fragment. The image must represent EXACTLY what the caption says, in a highly realistic, grounded, and believable way. Avoid hyperbole and overly dramatic scene creation unless the text specifically requires it.
+## BLOCK CONTEXT:
+You are processing block ${i + 1} of ${totalChunks}.
+${previousContext ? `## VISUAL COHESION (Context from previous block):\n${previousContext}` : ""}
 
-## RULES — FOLLOW STRICTLY:
+## THE CORE OBJECTIVE: HYPER-REALISM & MOTION
+Each prompt MUST feel like a professional film scene. It must be so detailed that the AI knows exactly what is moving, how the camera behaves, and the precise atmosphere of the shot.
 
-1. **Extreme Fidelity to Script**: 
-   - Visualize ONLY the concepts explicitly mentioned in the fragment.
-   - Ground everything in reality. If the fragment says "a person working", describe a normal person in a normal office, do NOT add sci-fi or magical elements.
-   - IT MUST NOT LOOK LIKE FICTION (unless the text is explicitly a fictional story). Keep the atmosphere real and authentic.
+## MANDATORY VISUAL ELEMENTS (For every prompt):
+1. **The Subject & Action**: Describe the subject in high detail. What are they doing? Give them life, emotion, and subtle micro-movements.
+2. **Camera Movement**: Mandatory. Specify if it is a "Slow tracking shot", "Dynamic dolly-in", "Dramatic low-angle pan", "Handheld shaky cam", or "Smooth cinematic crane shot".
+3. **Lighting & Atmosphere**: Mandatory. Describe the light (volumetric, golden hour, neon flicker, soft studio diffusal) and environmental details (dust motes, rain, steam, reflections).
+4. **Cinematic Style**: Always apply the chosen visual style: "${styleInfo.label}" — ${styleInfo.desc}.
+5. **Text-to-Video Optimization**: Use descriptive verbs (whispering, sprinting, glistening, drifting) to trigger high-quality motion in the video model.
 
-2. **Visual Style for ALL prompts**: "${styleInfo.label}" — ${styleInfo.desc}
-   - Apply this chosen aesthetic carefully without violating the literal meaning of the text.
+## STRICT RULES:
+- **Absolute Cohesion**: Ensure that if a character or setting appears in multiple consecutive fragments, they remain visually consistent.
+- **Literal Fidelity**: While adding cinematic detail, NEVER invent new story elements not present in the text.
+- **Word Count**: Be extremely descriptive. Aim for 80 to 200 words per prompt.
+- **No Formatting**: Return only the raw text in the specified format. No markdown, no bold.
+- **Language**: English only.
 
-3. **Detailed & Realistic Photography**:
-   - While keeping the subject highly literal, you MUST be very detailed regarding the photographic representation.
-   - Describe: the main focal point clearly.
-   - Describe: camera angle (eye-level, wide shot, close-up, etc.)
-   - Describe: lighting (natural sunlight, soft studio lighting, harsh shadows, etc.)
-   - Describe: visual quality (highly detailed, 8k resolution, photorealistic)
+## FORMAT (MANDATORY):
+${currentChunk.map((_, idx) => `${startIdx + idx + 1}|[THE HIGH-DETAIL VIDEO PROMPT HERE]`).join('\n')}
 
-4. **Prompt Limits**:
-   - Be concise and direct. Keep the prompt between 20 and 80 words.
-   - Focus strictly on WHAT is in the frame and HOW it is lit/photographed.
-   - Write in English only.
-
-5. **Format** — MANDATORY (no extra text, no markdown, no numbering other than the ID):
-${subtitleBlocks.map((_, i) => `${i+1}|[full prompt here]`).join('\n')}
-
-## INPUT — Script Fragments to convert (${subtitleCount} total):
+## INPUT (Script fragments to convert):
 ${formattedInput}
 
-## OUTPUT — Return EXACTLY ${subtitleCount} prompts, one per line, in the format ID|PROMPT:`;
+## OUTPUT: Return EXACTLY ${chunkSubtitleCount} prompts, one per line, in the format ID|PROMPT:`;
 
+        let responseText = "";
 
-      const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
-      const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
-      let responseText = "";
-
-      // Smart Fallback: Try GPT primary, Gemini as backup
-      try {
-        if (!gptKey || gptKey.includes('YOUR_')) throw new Error("GPT key missing");
-        responseText = await callGPT(gptKey, promptParam);
-      } catch (gptError) {
-        console.warn("GPT Failed, trying Gemini fallback:", gptError);
-        if (geminiKey && geminiKey.length > 5) {
-          responseText = await callGemini(geminiKey, promptParam);
-        } else {
-          throw new Error("Saldo do GPT insuficiente e Gemini não configurado.");
+        // Smart Fallback per chunk
+        try {
+          if (!gptKey || gptKey.includes('YOUR_')) throw new Error("GPT key missing");
+          responseText = await callGPT(gptKey, promptParam);
+        } catch (gptError) {
+          console.warn(`Block ${i + 1} GPT Failed, trying Gemini fallback:`, gptError);
+          if (geminiKey && geminiKey.length > 5) {
+            responseText = await callGemini(geminiKey, promptParam);
+          } else {
+            throw new Error(`Erro no Bloco ${i + 1}: Saldo do GPT insuficiente e Gemini não configurado.`);
+          }
         }
-      }
 
-      if (!responseText) throw new Error("A IA não retornou nenhum conteúdo.");
+        if (!responseText) throw new Error(`A IA não retornou conteúdo no Bloco ${i + 1}.`);
 
-      // Parse strictly ID|PROMPT lines
-      const rawLines = responseText.split('\n').filter(l => /^\d+\s*\|/.test(l.trim()));
-      let finalOutput = "";
+        // Parse strictly ID|PROMPT lines for this chunk
+        const rawLines = responseText.split('\n').filter(l => /^\d+\s*\|/.test(l.trim()));
+        let chunkOutput = "";
+        let lastThreePrompts = [];
 
-      subtitleBlocks.forEach((block, idx) => {
-        const expectedId = idx + 1;
-        const matchedLine = rawLines.find(l => {
-          const idPart = parseInt(l.trim().split('|')[0].trim());
-          return idPart === expectedId;
+        currentChunk.forEach((block, idx) => {
+          const expectedId = startIdx + idx + 1;
+          const matchedLine = rawLines.find(l => {
+            const idPart = parseInt(l.trim().split('|')[0].trim());
+            return idPart === expectedId;
+          });
+
+          if (matchedLine) {
+            const promptOnly = matchedLine.substring(matchedLine.indexOf('|') + 1).trim();
+            chunkOutput += `${promptOnly}\n\n`;
+            lastThreePrompts.push(`ID ${expectedId}: ${promptOnly.substring(0, 150)}...`);
+          } else {
+            chunkOutput += `${styleInfo.desc}, cinematic scene illustrating: ${block.substring(0, 50)}...\n\n`;
+          }
         });
 
-        if (matchedLine) {
-          const promptOnly = matchedLine.substring(matchedLine.indexOf('|') + 1).trim();
-          finalOutput += `${promptOnly}\n\n`;
-        } else {
-          finalOutput += `${styleInfo.desc}, cinematic scene illustrating: ${block.substring(0, 50)}...\n\n`;
-        }
-      });
+        allGeneratedPrompts += chunkOutput;
+        setPrompts(prev => prev + chunkOutput); // Show incremental progress
 
-      setPrompts(finalOutput.trim());
+        // Update context for next block cohesion (last 3 items)
+        previousContext = `Keep visual consistency with the previous scene: ${lastThreePrompts.slice(-3).join(" | ")}`;
+      }
 
     } catch (error) {
       console.error(error);
-      alert("Erro ao gerar prompts [Motor: GPT]:\n" + error.message);
+      alert("Erro durante a geração por blocos:\n" + error.message);
     } finally {
       setIsGenerating(false);
+      setGenerationProgress({ current: 0, total: 0 });
     }
   };
 
@@ -300,7 +321,7 @@ ${formattedInput}
                 }`}
               >
                 {isGenerating ? (
-                  <LoadingSpinner message="Gerando Prompts..." size="sm" />
+                  <LoadingSpinner message={generationProgress.total > 0 ? `Bloco ${generationProgress.current} de ${generationProgress.total}...` : "Gerando Prompts..."} size="sm" />
                 ) : (
                   <>
                     <Wand2 className="w-5 h-5" /> Gerar {subtitleCount > 0 ? subtitleCount : ''} Prompts
