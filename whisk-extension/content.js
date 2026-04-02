@@ -12,9 +12,9 @@ async function getNextPrompt() {
     try {
         const res = await fetch(`${API_BASE}/next`);
         const data = await res.json();
-        return data.prompt;
+        return { prompt: data.prompt, index: data.index };
     } catch (e) {
-        return null;
+        return { prompt: null, index: null };
     }
 }
 
@@ -23,7 +23,7 @@ async function getWhiskSettings() {
         const res = await fetch(`${API_BASE}/settings`);
         return await res.json();
     } catch (e) {
-        return { aspect_ratio: "16:9", image_count: 1, auto_download: true };
+        return { aspect_ratio: "16:9", image_count: 1, prompt_interval: 5, auto_download: true };
     }
 }
 
@@ -31,75 +31,108 @@ async function automate() {
     if (isRunning) return;
     isRunning = true;
     console.log("Starting Whisk Automation Loop...");
+    let processedAtLeastOne = false;
     
     while (true) {
-        const prompt = await getNextPrompt();
-        if (!prompt) {
-            await sleep(5000);
-            continue;
-        }
-
-        console.log("🚀 Processing prompt:", prompt);
-        
-        // 1. Find and fill prompt input
-        // Using extra robust selectors for Google Labs Whisk
-        let input = document.querySelector('[contenteditable="true"]') || 
+        // 1. Aguardar o input estar disponível ANTES de puxar do backend para evitar pular prompts (descarte)
+        let input = null;
+        for(let i = 0; i < 5; i++) {
+            input = document.querySelector('[contenteditable="true"]') || 
                     document.querySelector('textarea.sc-18deeb1d-8.DwQls') ||
                     document.querySelector('textarea[placeholder*="Descreva sua ideia"]') ||
                     document.querySelector('textarea[placeholder*="describe"]') ||
                     document.querySelector('textarea[placeholder*="descreva"]') ||
                     document.querySelector('textarea[aria-label*="prompt"]') ||
                     document.querySelector('textarea');
+            if (input) break;
+            await sleep(2000);
+        }
 
         if (!input) {
-            console.error("❌ Prompt input not found. Retrying in 5s...");
+            console.warn("🔌 Prompt input not found. Retrying in 5s...");
             await sleep(5000);
             continue;
         }
 
-        input.focus();
+        // 2. Com a página carregada, puxar o prompt da fila
+        const nextData = await getNextPrompt();
+        const prompt = nextData.prompt;
         
-        // Click to focus if needed
+        if (!prompt) {
+            if (processedAtLeastOne) {
+                isRunning = false;
+                return; // Para o loop ao concluir sem mensagem visual
+            }
+            await sleep(5000);
+            continue;
+        }
+
+        processedAtLeastOne = true;
+        console.log(`🚀 Processing prompt [${nextData.index}]:`, prompt);
+        
+        try {
+            chrome.runtime.sendMessage({ type: "SET_PROMPT_INDEX", index: nextData.index });
+        } catch(err) {
+            console.warn("Could not notify background script.", err);
+        }
+
+        input.focus();
         input.click();
         await sleep(500);
 
         if (input.tagName === 'DIV' || input.getAttribute('contenteditable') === 'true') {
             input.innerText = prompt;
         } else {
-            input.value = prompt;
+            // Bypass React's Virtual DOM to simulate a real user typing
+            let nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
+            if (!nativeSetter) nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+            
+            if (nativeSetter) {
+                nativeSetter.call(input, prompt);
+            } else {
+                input.value = prompt;
+            }
         }
         
         // Trigger all possible events to let the page know we typed
+        input.dispatchEvent(new Event('focus', { bubbles: true }));
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
         input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
 
-        await sleep(1000);
-
-        // 2. Click Generate button
-        let buttons = Array.from(document.querySelectorAll('button'));
-        let genBtn = buttons.find(b => {
-            const txt = b.innerText.toLowerCase();
-            const label = b.getAttribute('aria-label')?.toLowerCase() || "";
-            return txt.includes('generate') || txt.includes('gerar') || txt.includes('criar') || 
-                   txt.includes('enviar') || label.includes('generate') || label.includes('gerar') || 
-                   label.includes('enviar') || label.includes('comando');
-        });
-        
-        if (!genBtn) {
-            // Find by SVG/Icon if text is missing
-            genBtn = document.querySelector('button[aria-label="Enviar comando"]') || 
-                     document.querySelector('button.sc-bece3008-0.iCCEfi.sc-18deeb1d-6.cTTkJg') ||
-                     document.querySelector('button[type="submit"]') || 
-                     document.querySelector('button.generate-button') ||
-                     document.querySelector('.prompt-submit-button') ||
-                     document.querySelector('button[aria-disabled="false"]');
+        // 3. Click Generate button with safe retries
+        let genBtn = null;
+        for(let i = 0; i < 5; i++) {
+            await sleep(1500); // Wait for React state to enable button
+            
+            let allClickables = Array.from(document.querySelectorAll('button, [role="button"], input[type="submit"]'));
+            genBtn = allClickables.find(b => {
+                const txt = (b.innerText || "").toLowerCase();
+                const label = b.getAttribute('aria-label')?.toLowerCase() || "";
+                const title = b.getAttribute('title')?.toLowerCase() || "";
+                return txt.includes('generate') || txt.includes('gerar') || txt.includes('criar') || 
+                       txt.includes('enviar') || txt.includes('send') || txt.includes('submit') || 
+                       label.includes('generate') || label.includes('gerar') || label.includes('enviar') || 
+                       label.includes('comando') || label.includes('send') || label.includes('submit') ||
+                       title.includes('generate') || title.includes('gerar') || title.includes('send') || title.includes('enviar');
+            });
+            
+            if (!genBtn) {
+                genBtn = document.querySelector('button[type="submit"]') || 
+                         document.querySelector('button[aria-disabled="false"]') ||
+                         document.querySelector('.prompt-submit-button');
+            }
+            
+            if (genBtn) break;
+            
+            // Re-trigger event as fallback if button not enabled
+            input.dispatchEvent(new Event('input', { bubbles: true }));
         }
 
         if (!genBtn) {
-            console.error("❌ Generate button not found.");
-            await sleep(5000);
-            continue;
+            console.warn("🧭 Generate button not found after attempting. Discarding this prompt to not stall.");
+            continue; // Can't recover, must skip to prevent deadlocking system
         }
 
         console.log("⚡ Clicking Generate...");
@@ -119,27 +152,67 @@ async function automate() {
                               document.querySelector('button[aria-label*="Baixar"]') ||
                               document.querySelector('button[title*="Download"]') ||
                               document.querySelector('button[title*="Baixar"]') ||
-                              Array.from(document.querySelectorAll('button')).find(b => {
-                                  const txt = b.innerText.toLowerCase();
-                                  return txt.includes('download') || txt.includes('baixar');
-                              });
+                              document.querySelector('button[aria-label*="Salvar"]') ||
+                              document.querySelector('button[aria-label*="Save"]');
+                              
+            if (!downloadBtn) {
+                // Procurar por botões que contenham o texto 'download'
+                let allBtns = Array.from(document.querySelectorAll('button, a'));
+                downloadBtn = allBtns.find(b => {
+                    const txt = (b.innerText || "").toLowerCase();
+                    return txt.includes('download') || txt.includes('baixar') || txt.includes('salvar');
+                });
+            }
+
+            if (!downloadBtn) {
+                // Fallback extremo: Procurar pela seta de download SVG (Material UI Download icon)
+                const svgDownload = document.querySelector('svg path[d*="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"]');
+                if (svgDownload) downloadBtn = svgDownload.closest('button, a, div[role="button"]');
+            }
 
             if (downloadBtn) {
                 console.log("✅ Result found! Triggering download...");
                 const settings = await getWhiskSettings();
                 if (settings.auto_download) {
-                    downloadBtn.click();
-                    await sleep(2000); // Wait for download trig
+                    let allDownloads = Array.from(document.querySelectorAll('button[aria-label*="Download"], button[aria-label*="Baixar"], button[title*="Baixar"], button[aria-label*="Salvar"], svg path[d*="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"]'));
+                    
+                    // Filter valid clickable elements
+                    const uniqueBtns = new Set();
+                    allDownloads.forEach(btn => {
+                        const clickable = btn.closest('button, a, div[role="button"]') || btn;
+                        uniqueBtns.add(clickable);
+                    });
+                    
+                    const btnArray = Array.from(uniqueBtns);
+                    // Decide how many to click based on image_count
+                    const toDownload = Math.min(settings.image_count || 1, btnArray.length > 0 ? btnArray.length : 1);
+                    
+                    console.log(`Baixando ${toDownload} variações...`);
+                    for (let i = 0; i < toDownload; i++) {
+                        if (btnArray[i]) {
+                           btnArray[i].click();
+                           await sleep(1500); // Wait between downloads
+                        } else {
+                           downloadBtn.click(); // Fallback to the first found
+                           await sleep(1500);
+                        }
+                    }
+                    await sleep(3000); // 3 segundos adicionais para confirmar downloads finais
                 }
                 resultFound = true;
             }
         }
 
+        const finalSettings = await getWhiskSettings();
+        const delaySeconds = finalSettings.prompt_interval || 5;
+
         if (!resultFound) {
             console.warn("⚠️ Timed out waiting for image. Moving to next prompt.");
+            await sleep(5000);
+        } else {
+            console.log(`⏳ Aguardando ${delaySeconds}s antes do próximo prompt...`);
+            await sleep(delaySeconds * 1000);
         }
-
-        await sleep(4000); // Cooldown before next prompt
     }
 }
 
@@ -148,6 +221,8 @@ async function sendHeartbeat() {
         await fetch(`${API_BASE}/heartbeat`, { method: 'POST' });
     } catch (e) {}
 }
+
+// A função showCompletedOverlay foi removida a pedido do usuário.
 
 // Initialize
 if (location.href.includes('labs.google')) {

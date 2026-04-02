@@ -5,32 +5,77 @@ import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { t } from '../utils/i18n';
 
 export const SettingsTab = () => {
-  const { status, configs, checkConnectivity, updateConfig } = useSystemStatus();
+  const { status, configs, checkConnectivity, updateConfig, isInitialized } = useSystemStatus();
   
-  const [geminiKey, setGeminiKey] = useState(configs.gemini_key);
-  const [grokKey, setGrokKey] = useState(configs.grok_key);
-  const [gptKey, setGptKey] = useState(configs.gpt_key);
+  const [geminiKey, setGeminiKey] = useState(configs.gemini_key || '');
+  const [grokKey, setGrokKey] = useState(configs.grok_key || '');
+  const [gptKey, setGptKey] = useState(configs.gpt_key || '');
+  const [anthropicKey, setAnthropicKey] = useState(configs.anthropic_key || '');
+  const [deepseekKey, setDeepseekKey] = useState(configs.deepseek_key || '');
+  const [elevenlabsKey, setElevenlabsKey] = useState(configs.elevenlabs_key || '');
+  const [leonardoKey, setLeonardoKey] = useState(configs.leonardo_key || '');
   const [youtubeKey, setYoutubeKey] = useState(configs.youtube_key || '');
+  const [googleClientId, setGoogleClientId] = useState(configs.google_client_id || '');
+  const [smtpUser, setSmtpUser] = useState(configs.smtp_user || '');
+  const [smtpPass, setSmtpPass] = useState(configs.smtp_password || '');
   const [activeAi, setActiveAi] = useState(configs.active_ai);
   const [ffmpegPath, setFfmpegPath] = useState(configs.ffmpeg_path || 'ffmpeg');
+  const [ffprobePath, setFfprobePath] = useState(configs.ffprobe_path || 'ffprobe');
+  const [whiskDownloadsPath, setWhiskDownloadsPath] = useState(configs.whisk_downloads_path || '');
   
+  const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('guru_theme') || 'neon');
   const [reduceMotion, setReduceMotion] = useState(localStorage.getItem('guru_reduce_motion') === 'true');
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [appZoom, setAppZoom] = useState(Number(localStorage.getItem('guru_app_zoom')) || 1);
   const [appFontSize, setAppFontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);
-  const [storageInfo, setStorageInfo] = useState({ cache_size: 0, total_space: 21474836480, free_space: 0 }); // Default 20GB mock total 
+  const [storageInfo, setStorageInfo] = useState({ cache_size: 0, total_space: 21474836480, free_space: 0 }); 
 
   useEffect(() => {
-    setGeminiKey(configs.gemini_key);
-    setGrokKey(configs.grok_key);
-    setGptKey(configs.gpt_key);
+    setGeminiKey(configs.gemini_key || '');
+    setGrokKey(configs.grok_key || '');
+    setGptKey(configs.gpt_key || '');
+    setAnthropicKey(configs.anthropic_key || '');
+    setDeepseekKey(configs.deepseek_key || '');
+    setElevenlabsKey(configs.elevenlabs_key || '');
+    setLeonardoKey(configs.leonardo_key || '');
     setYoutubeKey(configs.youtube_key || '');
+    setGoogleClientId(configs.google_client_id || '');
+    setSmtpUser(configs.smtp_user || '');
+    setSmtpPass(configs.smtp_password || '');
     setActiveAi(configs.active_ai);
     setFfmpegPath(configs.ffmpeg_path || 'ffmpeg');
-    fetchStorageInfo();
+    setFfprobePath(configs.ffprobe_path || 'ffprobe');
+    setWhiskDownloadsPath(configs.whisk_downloads_path || '');
   }, [configs]);
+
+  // Auto-save logic (Debounce)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const hasChanges = 
+        geminiKey !== configs.gemini_key ||
+        grokKey !== configs.grok_key ||
+        gptKey !== configs.gpt_key ||
+        anthropicKey !== configs.anthropic_key ||
+        deepseekKey !== configs.deepseek_key ||
+        elevenlabsKey !== configs.elevenlabs_key ||
+        leonardoKey !== configs.leonardo_key ||
+        youtubeKey !== configs.youtube_key ||
+        googleClientId !== configs.google_client_id ||
+        smtpUser !== configs.smtp_user ||
+        smtpPass !== configs.smtp_password ||
+        ffmpegPath !== configs.ffmpeg_path ||
+        ffprobePath !== configs.ffprobe_path ||
+        whiskDownloadsPath !== configs.whisk_downloads_path;
+
+      if (hasChanges && isInitialized) {
+        handleSaveKeys();
+      }
+    }, 1500); // Wait 1.5s after typing to save
+
+    return () => clearTimeout(timer);
+  }, [geminiKey, grokKey, gptKey, anthropicKey, deepseekKey, elevenlabsKey, leonardoKey, youtubeKey, googleClientId, smtpUser, smtpPass, ffmpegPath, ffprobePath, whiskDownloadsPath]);
 
   const fetchStorageInfo = async () => {
     try {
@@ -53,15 +98,26 @@ export const SettingsTab = () => {
   };
 
   const handleSaveKeys = async () => {
+    setIsSaving(true);
     const success = await updateConfig({
       gemini_key: geminiKey,
       grok_key: grokKey,
       gpt_key: gptKey,
+      anthropic_key: anthropicKey,
+      deepseek_key: deepseekKey,
+      elevenlabs_key: elevenlabsKey,
+      leonardo_key: leonardoKey,
       youtube_key: youtubeKey,
+      google_client_id: googleClientId,
+      smtp_user: smtpUser,
+      smtp_password: smtpPass,
       active_ai: activeAi,
-      ffmpeg_path: ffmpegPath
+      ffmpeg_path: ffmpegPath,
+      ffprobe_path: ffprobePath,
+      whisk_downloads_path: whiskDownloadsPath
     });
     
+    setIsSaving(false);
     if (success) {
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);
@@ -174,16 +230,6 @@ export const SettingsTab = () => {
               </div>
               
               <div className="pt-2">
-                <label className="text-sm font-medium text-gray-300 block mb-1">{t('settings.grok_key')}</label>
-                <input 
-                  type="password" 
-                  value={grokKey}
-                  onChange={(e) => setGrokKey(e.target.value)}
-                  placeholder="xai-..."
-                  className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
-                />
-              </div>
-              <div>
                 <label className="text-sm font-medium text-gray-300 block mb-1">{t('settings.gemini_key')}</label>
                 <input 
                   type="password" 
@@ -193,6 +239,7 @@ export const SettingsTab = () => {
                   className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
                 />
               </div>
+
               <div>
                 <label className="text-sm font-medium text-gray-300 block mb-1">{t('settings.gpt_key')}</label>
                 <input 
@@ -203,7 +250,100 @@ export const SettingsTab = () => {
                   className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
                 />
               </div>
+              
+              <div className="pt-2">
+                <label className="text-sm font-medium text-gray-300 block mb-1">{t('settings.grok_key')}</label>
+                <input 
+                  type="password" 
+                  value={grokKey}
+                  onChange={(e) => setGrokKey(e.target.value)}
+                  placeholder="xai-..."
+                  className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
+                />
+              </div>
               <div>
+                <label className="text-sm font-medium text-gray-300 block mb-1">Anthropic (Claude) Key</label>
+                <input 
+                  type="password" 
+                  value={anthropicKey}
+                  onChange={(e) => setAnthropicKey(e.target.value)}
+                  placeholder="sk-ant-..."
+                  className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-300 block mb-1">DeepSeek Key</label>
+                <input 
+                  type="password" 
+                  value={deepseekKey}
+                  onChange={(e) => setDeepseekKey(e.target.value)}
+                  placeholder="ds-..."
+                  className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-white/5">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Multimídia & Voz</label>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="text-[10px] font-medium text-gray-400 mb-1 block">ElevenLabs API (Locução)</label>
+                    <input 
+                      type="password" 
+                      value={elevenlabsKey}
+                      onChange={(e) => setElevenlabsKey(e.target.value)}
+                      placeholder="Chave ElevenLabs..."
+                      className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-medium text-gray-400 mb-1 block">Leonardo.ai (Imagens)</label>
+                    <input 
+                      type="password" 
+                      value={leonardoKey}
+                      onChange={(e) => setLeonardoKey(e.target.value)}
+                      placeholder="Chave Leonardo..."
+                      className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-white/5">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Caminhos do Sistema</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-gray-400 mb-1 block">FFmpeg Executável</label>
+                    <input 
+                      type="text" 
+                      value={ffmpegPath}
+                      onChange={(e) => setFfmpegPath(e.target.value)}
+                      className="w-full bg-dark/50 border border-white/10 rounded-lg p-2 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 mb-1 block">FFprobe Executável</label>
+                    <input 
+                      type="text" 
+                      value={ffprobePath}
+                      onChange={(e) => setFfprobePath(e.target.value)}
+                      className="w-full bg-dark/50 border border-white/10 rounded-lg p-2 text-xs"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                    <label className="text-[10px] text-gray-400 mb-1 block">Pasta de Downloads Whisk</label>
+                    <input 
+                      type="text" 
+                      value={whiskDownloadsPath}
+                      onChange={(e) => setWhiskDownloadsPath(e.target.value)}
+                      placeholder="C:\Users\...\Whisk Downloads"
+                      className="w-full bg-dark/50 border border-white/10 rounded-lg p-2 text-[10px] font-mono"
+                    />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-white/5">
                 <label className="text-sm font-medium text-gray-300 block mb-1">{t('settings.youtube_key')}</label>
                 <input 
                   type="password" 
@@ -213,12 +353,56 @@ export const SettingsTab = () => {
                   className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
                 />
               </div>
-              <button 
-                onClick={handleSaveKeys}
-                className="w-full py-2 flex justify-center items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white text-sm font-medium transition-colors"
-              >
-                {isSaved ? <><CheckCircle className="w-4 h-4 text-green-400" /> {t('settings.saved_success')}</> : t('settings.save_keys')}
-              </button>
+              <div>
+                <label className="text-sm font-medium text-gray-300 block mb-1">Google Client ID (OAuth)</label>
+                <input 
+                  type="text" 
+                  value={googleClientId}
+                  onChange={(e) => setGoogleClientId(e.target.value)}
+                  placeholder="...apps.googleusercontent.com"
+                  className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-[10px] font-mono"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-white/5 mt-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Configurações de E-mail (SMTP)</label>
+                <div className="grid grid-cols-1 gap-3">
+                   <input 
+                     type="text" 
+                     value={smtpUser}
+                     onChange={(e) => setSmtpUser(e.target.value)}
+                     placeholder="seu-email@gmail.com"
+                     className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-xs"
+                   />
+                   <input 
+                     type="password" 
+                     value={smtpPass}
+                     onChange={(e) => setSmtpPass(e.target.value)}
+                     placeholder="Senha de app do Google"
+                     className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-xs"
+                   />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                 <div className="flex-1 h-[1px] bg-white/5"></div>
+                 <span className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">Salvamento Automático Ativo</span>
+                 <div className="flex-1 h-[1px] bg-white/5"></div>
+              </div>
+
+              {isSaving && (
+                <div className="flex items-center justify-center gap-2 py-2 text-neon-cyan animate-pulse">
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest italic">Sincronizando Chaves...</span>
+                </div>
+              )}
+
+              {isSaved && !isSaving && (
+                <div className="flex items-center justify-center gap-2 py-2 text-green-400">
+                  <CheckCircle className="w-3 h-3" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Conexões Atualizadas</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -423,6 +607,13 @@ export const SettingsTab = () => {
                />
 
                <StatusItem 
+                 label="FFprobe" 
+                 status={status.ffprobe} 
+                 icon={Info} 
+                 error={status.ffprobe === 'offline' ? 'FFprobe não encontrado' : null}
+               />
+
+               <StatusItem 
                  label={t('settings.gemini_connection')} 
                  status={status.gemini} 
                  icon={Shield} 
@@ -437,10 +628,31 @@ export const SettingsTab = () => {
                />
 
                <StatusItem 
-                 label={t('settings.grok_connection')} 
-                 status={status.grok} 
+                 label="Anthropic (Claude)" 
+                 status={status.anthropic} 
                  icon={Shield} 
-                 error={status.grok === 'offline' && grokKey ? 'Erro de chave ou conexão' : null}
+                 error={status.anthropic === 'offline' && anthropicKey ? 'Chave Claude inválida' : null}
+               />
+
+               <StatusItem 
+                 label="DeepSeek AI" 
+                 status={status.deepseek} 
+                 icon={Shield} 
+                 error={status.deepseek === 'offline' && deepseekKey ? 'Chave DeepSeek inválida' : null}
+               />
+
+               <StatusItem 
+                 label="ElevenLabs (Voz)" 
+                 status={status.elevenlabs} 
+                 icon={Info} 
+                 error={status.elevenlabs === 'offline' && elevenlabsKey ? 'Erro de chave ElevenLabs' : null}
+               />
+
+               <StatusItem 
+                 label="Leonardo.ai (Imagens)" 
+                 status={status.leonardo} 
+                 icon={Palette} 
+                 error={status.leonardo === 'offline' && leonardoKey ? 'Chave Leonardo inválida' : null}
                />
 
                <StatusItem 
@@ -448,6 +660,13 @@ export const SettingsTab = () => {
                  status={status.youtube} 
                  icon={Youtube} 
                  error={status.youtube === 'offline' && youtubeKey ? (status.details.youtube_error || 'Chave de API do YouTube inválida') : null}
+               />
+
+               <StatusItem 
+                 label="E-mail (SMTP)" 
+                 status={status.smtp} 
+                 icon={Shield} 
+                 error={status.smtp === 'offline' && smtpUser ? 'Erro de autenticação SMTP' : null}
                />
 
                {status.details.ffmpeg && status.ffmpeg === 'online' && (

@@ -12,6 +12,25 @@ const NICHES = [
   "Gameplay", "Culinária", "Viagens", "Pets", "Moda", "Educação"
 ];
 
+const NICHE_TRANSLATIONS = {
+  "Finanças": { pt: "Finanças", en: "Finance", es: "Finanzas", fr: "Finances", de: "Finanzen", it: "Finanza", hi: "वित", ja: "金融" },
+  "História": { pt: "História", en: "History", es: "Historia", fr: "Histoire", de: "Geschichte", it: "Storia", hi: "इतिहास", ja: "歴史" },
+  "Mistérios": { pt: "Mistérios", en: "Mysteries", es: "Misterios", fr: "Mystères", de: "Mysterien", it: "Misteri", hi: "रहस्य", ja: "ミステリー" },
+  "Crimes Reais": { pt: "Crimes Reais", en: "True Crime", es: "Crímenes Reales", fr: "Crimes réels", de: "Wahre Verbrechen", it: "Veri Crimini", hi: "वास्तविक अपराध", ja: "実録犯罪" },
+  "Espiritualidade": { pt: "Espiritualidade", en: "Spirituality", es: "Espiritualidad", fr: "Spiritualité", de: "Spiritualität", it: "Spiritualità", hi: "आध्यात्मिकता", ja: "スパイチュリティ" },
+  "Motivação": { pt: "Motivação", en: "Motivation", es: "Motivación", fr: "Motivation", de: "Motivation", it: "Motivazione", hi: "प्रेरणा", ja: "モチベーション" },
+  "Saúde": { pt: "Saúde", en: "Health", es: "Salud", fr: "Santé", de: "Gesundheit", it: "Salute", hi: "स्वास्थ्य", ja: "健康" },
+  "Tecnologia": { pt: "Tecnologia", en: "Technology", es: "Tecnología", fr: "Technologie", de: "Technologie", it: "Tecnologia", hi: "तकनीक", ja: "テクノロジー" },
+  "Curiosidades": { pt: "Curiosidades", en: "Curiosities", es: "Curiosidades", fr: "Curiosités", de: "Kuriositäten", it: "Curiosità", hi: "जिज्ञासा", ja: "好奇心" },
+  "Documentários": { pt: "Documentários", en: "Documentaries", es: "Documentales", fr: "Documentaires", de: "Dokumentarfilme", it: "Documentari", hi: "वृत्तचित्र", ja: "ドキュメンタリー" },
+  "Gameplay": { pt: "Gameplay", en: "Gameplay", es: "Gameplay", fr: "Gameplay", de: "Gameplay", it: "Gameplay", hi: "गेमप्ले", ja: "ゲームプレイ" },
+  "Culinária": { pt: "Culinária", en: "Cooking", es: "Cocina", fr: "Cuisine", de: "Kochen", it: "Cucina", hi: "पाक कला", ja: "料理" },
+  "Viagens": { pt: "Viagens", en: "Travel", es: "Viajes", fr: "Voyage", de: "Reisen", it: "Viaggi", hi: "यात्रा", ja: "旅行" },
+  "Pets": { pt: "Pets", en: "Pets", es: "Mascotas", fr: "Animaux", de: "Haustiere", it: "Animali", hi: "पालतू जानवर", ja: "ペット" },
+  "Moda": { pt: "Moda", en: "Fashion", es: "Moda", fr: "Mode", de: "Mode", it: "Moda", hi: "फैशन", ja: "ファッション" },
+  "Educação": { pt: "Educação", en: "Education", es: "Educación", fr: "Éducation", de: "Bildung", it: "Educazione", hi: "शिक्षा", ja: "教育" }
+};
+
 const LANGUAGES = [
   { name: "Português (BR)", code: "pt", region: "BR" },
   { name: "English", code: "en", region: "US" },
@@ -36,16 +55,21 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
     setChannels([]);
     
     try {
-      // 1. Calculate Date Boundary (12 months ago to find rising stars)
-      const twelveMonthsAgo = new Date();
-      twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
-      const dateString = twelveMonthsAgo.toISOString();
+      // 1. Calculate Date Boundary (6 months ago to find true rising stars)
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      const dateString = sixMonthsAgo.toISOString();
 
-      // 2. Search for popular videos in the niche/language
-      // Removed hardcoded "viral trending high views" keywords for non-English to avoid query zeroing
-      const viralWords = selectedLang.code === 'en' ? "viral trending high views" : ""; 
-      const query = encodeURIComponent(`${selectedNiche} ${selectedLang.name} ${viralWords}`.trim());
-      const searchUrl = resolveApiUrl(`/api/youtube/search?part=snippet&type=video&q=${query}&relevanceLanguage=${selectedLang.code}&regionCode=${selectedLang.region}&maxResults=50&order=viewCount`);
+      // 2. Resolve Niche Search Term (Translate niche to target language for accurate scraping)
+      const langCode = selectedLang.code;
+      const nicheTerm = (NICHE_TRANSLATIONS[selectedNiche] && NICHE_TRANSLATIONS[selectedNiche][langCode]) 
+                        ? NICHE_TRANSLATIONS[selectedNiche][langCode] 
+                        : selectedNiche;
+
+      // 3. Construct Search Query
+      // Using quotes around niche term forces the engine to respect the core topic
+      const query = encodeURIComponent(`"${nicheTerm}" viral popular channel`).trim();
+      const searchUrl = resolveApiUrl(`/api/youtube/search?part=snippet&type=video&q=${query}&relevanceLanguage=${langCode}&regionCode=${selectedLang.region}&maxResults=50&order=viewCount`);
       
       const res = await fetch(searchUrl);
       const data = await res.json();
@@ -71,11 +95,12 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
         throw new Error(`YouTube API (Channels): ${channelsData?.error?.message || "Falha ao obter dados dos canais."}`);
       }
 
-      // 5. Transform and Apply Strict Filters: < 20 videos AND < 4 months old AND > 50k views
+      // 5. Transform and Apply Strict Filters: < 50 videos AND < 6 months old AND > 30k views
       const minedChannels = (channelsData.items || [])
         .map(item => {
           const videoCount = parseInt(item.statistics.videoCount || 0);
           const viewCount = parseInt(item.statistics.viewCount || 0);
+          const efficiency = Math.round(viewCount / Math.max(1, videoCount));
           return {
             id: item.id,
             title: item.snippet.title,
@@ -86,22 +111,22 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
             viewCount: viewCount,
             subscriberCount: parseInt(item.statistics.subscriberCount || 0),
             publishedAt: item.snippet.publishedAt,
-            efficiency: Math.round(viewCount / Math.max(1, videoCount))
+            efficiency: efficiency,
+            isExplosive: efficiency > 50000 // Flag for explosive growth
           };
         })
         .filter(channel => {
-          const isRisingStar = new Date(channel.publishedAt) >= twelveMonthsAgo;
-          const hasFewVideos = channel.videoCount < 50; // User requested < 50
-          const hasManyViews = channel.viewCount >= 30000; // Slightly lower threshold to show more quality options
-          return isRisingStar && hasFewVideos && hasManyViews;
+          // Remove strict date and count filters. 
+          // Only keep minimal check for views to avoid channels with zero views.
+          return channel.viewCount >= 5000; 
         })
-        .sort((a, b) => b.efficiency - a.efficiency) // Sort by efficiency
-        .slice(0, 6); // Take exactly 6 as requested
+        .sort((a, b) => b.efficiency - a.efficiency) 
+        .slice(0, 15); // Increased to 15 results
 
       setChannels(minedChannels);
 
       if (minedChannels.length === 0) {
-        alert("Critérios Estritos: Não encontramos canais com < 20 vídeos, < 4 meses e > 50k views agora. Tente reduzir a rigidez da busca!");
+        alert("Não encontramos canais com os critérios atuais para este nicho. Tente outro tema ou idioma!");
       }
     } catch (error) {
       console.error("Mining error:", error);
@@ -217,9 +242,16 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                     <div className="absolute -bottom-8 left-6 w-16 h-16 rounded-2xl border-4 border-dark overflow-hidden shadow-2xl transition-transform group-hover:scale-110 duration-500">
                       <img src={channel.thumbnail} alt={channel.title} className="w-full h-full object-cover" />
                     </div>
-                    {/* Efficiency Badge */}
-                    <div className="absolute top-4 right-4 px-3 py-1 bg-neon-cyan text-dark font-black text-[10px] rounded-full shadow-[0_0_15px_rgba(0,243,255,0.4)] uppercase tracking-tighter">
-                      {formatNumber(channel.efficiency)} {t('mining.efficiency').toUpperCase()}
+                    {/* Efficiency & Rising Badge */}
+                    <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+                      {channel.isExplosive && (
+                        <div className="px-3 py-1 bg-neon-pink text-white font-black text-[9px] rounded-full shadow-[0_0_15px_rgba(255,0,110,0.5)] uppercase tracking-tighter flex items-center gap-1 animate-bounce">
+                          <Zap className="w-2.5 h-2.5 fill-current" /> {t('mining.explosive_growth')}
+                        </div>
+                      )}
+                      <div className="px-3 py-1 bg-neon-cyan text-dark font-black text-[10px] rounded-full shadow-[0_0_15px_rgba(0,243,255,0.4)] uppercase tracking-tighter">
+                        {formatNumber(channel.efficiency)} {t('mining.efficiency').toUpperCase()}
+                      </div>
                     </div>
                   </div>
 
@@ -248,10 +280,10 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                         </div>
                       </div>
                       <div className="flex flex-col items-center border-x border-white/10 px-2">
-                        <span className="text-[9px] text-gray-600 font-black uppercase tracking-tighter mb-1">{t('mining.stats_views')}</span>
+                        <span className="text-[9px] text-gray-600 font-black uppercase tracking-tighter mb-1">{t('mining.avg_views')}</span>
                         <div className="flex items-center gap-1">
                           <TrendingUp className="w-3 h-3 text-neon-cyan" />
-                          <span className="text-white font-black text-sm">{formatNumber(channel.viewCount)}</span>
+                          <span className="text-white font-black text-sm">{formatNumber(channel.efficiency)}</span>
                         </div>
                       </div>
                       <div className="flex flex-col items-center">

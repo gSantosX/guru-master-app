@@ -193,7 +193,9 @@ const TRANSLATIONS = {
       stats_views: "Views Totais",
       stats_subs: "Inscritos",
       efficiency: "Eficiência",
-      efficiency_desc: "Média de views por vídeo"
+      efficiency_desc: "Média de views por vídeo",
+      explosive_growth: "Crescimento Explosivo",
+      avg_views: "Views por Vídeo"
     }
   },
   en: {
@@ -387,7 +389,9 @@ const TRANSLATIONS = {
       stats_views: "Total Views",
       stats_subs: "Subscribers",
       efficiency: "Efficiency",
-      efficiency_desc: "Average views per video"
+      efficiency_desc: "Average views per video",
+      explosive_growth: "Explosive Growth",
+      avg_views: "Views per Video"
     }
   },
   es: {
@@ -576,7 +580,9 @@ const TRANSLATIONS = {
       stats_views: "Vistas Totales",
       stats_subs: "Suscriptores",
       efficiency: "Eficiencia",
-      efficiency_desc: "Promedio de vistas por video"
+      efficiency_desc: "Promedio de vistas por video",
+      explosive_growth: "Crecimiento Explosivo",
+      avg_views: "Vistas por Video"
     }
   }
 };

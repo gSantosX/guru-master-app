@@ -12,6 +12,7 @@ export const VideoTab = () => {
   const [musicFile, setMusicFile] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
   const [imageFiles, setImageFiles] = useState([]);
+  const [videoFiles, setVideoFiles] = useState([]);
   const [subtitleFile, setSubtitleFile] = useState(null);
   const [formKey, setFormKey] = useState(Date.now()); // Para forçar limpeza do buffer do input de arquivos
 
@@ -37,8 +38,8 @@ export const VideoTab = () => {
   };
 
   const startRender = async () => {
-    if (!audioFile && imageFiles.length === 0) {
-      alert("Por favor, adicione pelo menos um áudio de narração e algumas imagens antes de renderizar.");
+    if (!audioFile && imageFiles.length === 0 && videoFiles.length === 0) {
+      alert("Por favor, adicione pelo menos um áudio de narração e algumas imagens/vídeos antes de renderizar.");
       return;
     }
     
@@ -52,6 +53,7 @@ export const VideoTab = () => {
     
     const cleanFileName = (name) => name ? name.split('.').slice(0, -1).join('.') || name : null;
     let projNameSkeleton = cleanFileName(audioFile?.name);
+    if (!projNameSkeleton && videoFiles.length > 0) projNameSkeleton = `Vídeo ${cleanFileName(videoFiles[0].name)}`;
     if (!projNameSkeleton && imageFiles.length > 0) projNameSkeleton = `Vídeo ${cleanFileName(imageFiles[0].name)}`;
     if (!projNameSkeleton) projNameSkeleton = 'Projeto ' + new Date().getTime().toString().slice(-4);
 
@@ -76,6 +78,9 @@ export const VideoTab = () => {
       
       imageFiles.forEach((file, index) => {
          formData.append(`image_${index}`, file);
+      });
+      videoFiles.forEach((file, index) => {
+         formData.append(`video_${index}`, file);
       });
 
       // Send to python backend
@@ -105,7 +110,11 @@ export const VideoTab = () => {
       
     } catch (error) {
       console.error("Erro na renderização:", error);
-      alert("Erro ao conectar ao motor local! O Backend Python (Flask) está rodando?");
+      if (error.name === 'AbortError' || error.message.includes('network')) {
+        alert("A conexão com o servidor falhou. Se você estiver enviando muitos vídeos (ex: 185), o upload pode demorar alguns minutos. Tente novamente e aguarde a barra de progresso do navegador aparecer.");
+      } else {
+        alert("Erro ao conectar ao motor local! O Backend Python (Flask) está rodando e aceitando mídias pesadas?");
+      }
       setIsGenerating(false);
     }
   };
@@ -114,6 +123,7 @@ export const VideoTab = () => {
      setMusicFile(null);
      setAudioFile(null);
      setImageFiles([]);
+     setVideoFiles([]);
      setSubtitleFile(null);
      setRenderSuccess(false);
      setFormKey(Date.now());
@@ -174,6 +184,29 @@ export const VideoTab = () => {
                   </label>
                   <label className="text-[10px] md:text-xs px-2 md:px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-colors cursor-pointer shadow-inner border border-white/5 whitespace-nowrap">
                      <input key={formKey + 'dir'} type="file" accept="image/*" multiple webkitdirectory="true" directory="true" className="hidden" onChange={e => setImageFiles(prev => [...prev, ...Array.from(e.target.files).filter(f => f.type.startsWith('image/'))])} />
+                     + Pasta
+                  </label>
+                </div>
+              </div>
+
+              {/* Vídeos */}
+              <div className="p-3 bg-dark/50 border border-white/5 rounded-xl flex items-center justify-between group hover:border-white/20 transition-colors">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-10 h-10 shrink-0 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <Video className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-white font-medium text-sm">Biblioteca de Vídeos</h4>
+                    <p className="text-xs text-gray-500 truncate">{videoFiles.length > 0 ? `${videoFiles.length} vídeos carregados` : 'Pasta ou vídeos (.mp4)...'}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0 ml-2">
+                  <label className="text-[10px] md:text-xs px-2 md:px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-colors cursor-pointer shadow-inner border border-white/5 whitespace-nowrap">
+                     <input key={formKey + 'vid'} type="file" accept="video/mp4,video/quicktime,video/*" multiple className="hidden" onChange={e => setVideoFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+                     + Arquivos
+                  </label>
+                  <label className="text-[10px] md:text-xs px-2 md:px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-colors cursor-pointer shadow-inner border border-white/5 whitespace-nowrap">
+                     <input key={formKey + 'vdir'} type="file" accept="video/mp4,video/quicktime,video/*" multiple webkitdirectory="true" directory="true" className="hidden" onChange={e => setVideoFiles(prev => [...prev, ...Array.from(e.target.files).filter(f => f.type.startsWith('video/') || f.name.toLowerCase().endsWith('.mp4') || f.name.toLowerCase().endsWith('.mov'))])} />
                      + Pasta
                   </label>
                 </div>
@@ -359,7 +392,7 @@ export const VideoTab = () => {
              <div className="mt-8 grid grid-cols-2 gap-4 w-full max-w-sm">
                 <div className="bg-dark/40 p-3 rounded-lg border border-white/5 text-center">
                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Mídia Inserida</p>
-                   <p className="text-sm font-bold text-white">{imageFiles.length} Imagens</p>
+                   <p className="text-sm font-bold text-white">{imageFiles.length} Imgs / {videoFiles.length} Vids</p>
                    <p className="text-xs text-gray-400">{audioFile ? 'C/ Narração' : 'Sem Voz'}</p>
                 </div>
                 <div className="bg-dark/40 p-3 rounded-lg border border-white/5 text-center">

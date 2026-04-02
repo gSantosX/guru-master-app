@@ -61,6 +61,11 @@ function startBackend() {
     console.error(`Backend Error: ${data}`);
   });
 
+  cmd.on('error', (err) => {
+    console.error('Failed to start backend process:', err);
+    // Optionally notify the UI here via ipcMain
+  });
+
   backendProcess = cmd;
 }
 

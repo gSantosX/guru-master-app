@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles } from 'lucide-react';
+import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap, Box } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -42,7 +42,15 @@ export const VideoCoverTab = ({ isActive }) => {
     const [selectedScript, setSelectedScript] = useState(null);
     const [titles, setTitles] = useState([]);
     const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
-    // covers: { [index]: { url, prompt, loading, error } }
+    
+    const ENGINES = [
+        { id: 'pollinations', name: 'Pollinations AI', icon: Zap, color: 'neon-cyan', desc: 'Geração rápida, ilimitada e gratuita.', focus: 'shadow-[0_0_20px_rgba(0,243,255,0.2)] border-neon-cyan bg-neon-cyan/5' },
+        { id: 'dalle3', name: 'OpenAI DALL-E 3', icon: Sparkles, color: 'neon-pink', desc: 'Qualidade suprema. Requer API Key com saldo.', focus: 'shadow-[0_0_20px_rgba(255,0,110,0.2)] border-neon-pink bg-neon-pink/5' },
+        { id: 'prompt_only', name: 'Apenas Prompt', icon: Box, color: 'neon-purple', desc: 'Não gerar imagem. Cria texto para o Whisk/Discord.', focus: 'shadow-[0_0_20px_rgba(191,64,255,0.2)] border-neon-purple bg-neon-purple/5' }
+    ];
+    const [selectedEngine, setSelectedEngine] = useState('pollinations');
+
+    // covers: { [index]: { url, prompt, loading, error, isPromptOnly } }
     const [covers, setCovers] = useState({});
 
     useEffect(() => {
@@ -53,7 +61,11 @@ export const VideoCoverTab = ({ isActive }) => {
 
     const handleSelectScript = (script) => {
         setSelectedScript(script);
-        setTitles([script.title, '', '']);
+        setTitles([
+            { text: script.title, label: 'Titulo Original', isOriginal: true },
+            { text: '', label: 'Carregando Oportunidades...', isOriginal: false },
+            { text: '', label: 'Carregando Oportunidades...', isOriginal: false }
+        ]);
         setCovers({});
         generateTitleVariations(script.title);
     };
@@ -71,19 +83,43 @@ export const VideoCoverTab = ({ isActive }) => {
             const apiKey = configs?.gemini_key || localStorage.getItem('guru_gemini_key');
             if (!apiKey) throw new Error('Chave Gemini não configurada.');
 
-            const prompt = `Identifique a língua do título de vídeo original: "${originalTitle}".
-Crie 2 variações de títulos chamativos e virais para o YouTube NA MESMA LÍNGUA identificada.
-Retorne APENAS os 2 novos títulos, um em cada linha, sem numeração ou texto adicional.`;
+            const prompt = `Analise o título de vídeo original: "${originalTitle}".
+Crie 2 novas opções de títulos com altíssimo potencial de viralização no YouTube, na mesma língua do original.
+As variações NÃO devem ser iguais entre si. Use gatilhos mentais diferentes (ex: uma focada em Curiosidade extrema, e a outra focada em Uma Promessa Irresistível/Urgência).
+Identifique qual das duas tem o MAIOR potencial viral para se tornar a principal.
+Retorne ESTRITAMENTE um array JSON com 2 objetos. Não use crases markdown nem texto adicional de introdução. O array deve seguir a estrutura exata:
+[
+  { "text": "NOVO TITULO AQUI", "label": "Variação: [Nome do Gatilho]", "is_best": false },
+  { "text": "NOVO TITULO AQUI", "label": "Mais Viral: [Nome do Gatilho]", "is_best": true }
+]`;
 
             const result = await callGemini(apiKey, prompt);
 
-            if (result) {
-                const variations = result.split('\n').filter(t => t.trim().length > 0).slice(0, 2);
-                setTitles([originalTitle, variations[0] || 'Variação Viral 1', variations[1] || 'Variação Viral 2']);
+            let parsed = [];
+            try {
+                const cleanResult = result.replace(/```json/g, '').replace(/```/g, '').trim();
+                parsed = JSON.parse(cleanResult);
+            } catch (e) {
+                console.error("JSON parse failed, fallback text processing:", e);
+                const lines = result.split('\n').filter(t => t.trim().length > 3);
+                parsed = [
+                    { text: lines[0] || 'Variação Alternativa 1', label: 'Variação de Curiosidade', is_best: false },
+                    { text: lines[1] || 'Variação Alternativa 2', label: 'Garantia Viral ⭐', is_best: true }
+                ];
             }
+
+            setTitles([
+                { text: originalTitle, label: 'Título Original', isOriginal: true },
+                { text: parsed[0]?.text || 'Erro ao gerar', label: parsed[0]?.label || 'Variação 1', is_best: Boolean(parsed[0]?.is_best) },
+                { text: parsed[1]?.text || 'Erro ao gerar', label: parsed[1]?.label || 'Variação 2', is_best: Boolean(parsed[1]?.is_best) }
+            ]);
         } catch (error) {
             console.error('Erro ao gerar variações:', error);
-            setTitles([originalTitle, 'Variação Viral 1', 'Variação Viral 2']);
+            setTitles([
+                { text: originalTitle, label: 'Título Original', isOriginal: true },
+                { text: 'Falha ao conectar.', label: 'Variação 1', is_best: false },
+                { text: 'Tente novamente.', label: 'Variação 2', is_best: true }
+            ]);
         } finally {
             setIsGeneratingTitles(false);
         }
@@ -106,20 +142,39 @@ Retorne APENAS os 2 novos títulos, um em cada linha, sem numeração ou texto a
                 console.log(`[Cover ${index}] Generated prompt (GPT):`, visualPrompt);
             }
 
-            // Step 2: Build image URL from Pollinations.ai
-            const seed = Math.floor(Math.random() * 999999);
-            const imageUrl = buildPollinationsUrl(visualPrompt, seed);
+            let finalImageUrl = null;
+            if (selectedEngine === 'prompt_only') {
+                setCovers(prev => ({ ...prev, [index]: { loading: false, url: null, prompt: visualPrompt, error: null, isPromptOnly: true } }));
+                return;
+            } else if (selectedEngine === 'dalle3') {
+                const openaiKey = configs?.gpt_key || localStorage.getItem('guru_gpt_key');
+                if (!openaiKey || openaiKey.includes('YOUR_')) throw new Error('Chave OpenAI não configurada nas Configurações!');
+                
+                const res = await fetch(resolveApiUrl('/api/openai/v1/images/generations'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+                    body: JSON.stringify({ model: "dall-e-3", prompt: visualPrompt + " - create a landscape layout.", n: 1, size: "1792x1024" })
+                });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error.message || "Erro OpenAI DALL-E 3");
+                finalImageUrl = data.data[0].url;
+            } else {
+                const seed = Math.floor(Math.random() * 999999);
+                finalImageUrl = buildPollinationsUrl(visualPrompt, seed);
+            }
 
             // Step 3: Preload image to verify it loaded
-            await new Promise((resolve, reject) => {
-                const img = new window.Image();
-                img.onload = resolve;
-                img.onerror = () => reject(new Error('Falha ao carregar a imagem gerada.'));
-                img.src = imageUrl;
-                setTimeout(() => reject(new Error('Timeout ao carregar imagem.')), 30000);
-            });
+            if (finalImageUrl) {
+                await new Promise((resolve, reject) => {
+                    const img = new window.Image();
+                    img.onload = resolve;
+                    img.onerror = () => reject(new Error('Falha ao carregar a imagem gerada.'));
+                    img.src = finalImageUrl;
+                    setTimeout(() => reject(new Error('Timeout ao carregar imagem.')), 45000);
+                });
+            }
 
-            setCovers(prev => ({ ...prev, [index]: { loading: false, url: imageUrl, prompt: visualPrompt, error: null } }));
+            setCovers(prev => ({ ...prev, [index]: { loading: false, url: finalImageUrl, prompt: visualPrompt, error: null, isPromptOnly: false } }));
         } catch (error) {
             console.error('Erro ao gerar capa:', error);
             let displayError = error.message;
@@ -232,41 +287,115 @@ Retorne APENAS os 2 novos títulos, um em cada linha, sem numeração ou texto a
                 </button>
             </header>
 
+            {/* Engine Selector */}
+            <div className="mb-10">
+                <div className="flex items-center gap-3 mb-4">
+                    <Wand2 className="w-5 h-5 text-gray-500" />
+                    <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Selecione o Motor Gráfico da Capa</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {ENGINES.map(eng => {
+                        const isSelected = selectedEngine === eng.id;
+                        return (
+                            <div 
+                                key={eng.id}
+                                onClick={() => setSelectedEngine(eng.id)}
+                                className={`p-5 rounded-2xl cursor-pointer transition-all duration-300 border flex flex-col gap-4 relative overflow-hidden group
+                                    ${isSelected ? eng.focus : 'bg-dark/40 border-white/5 hover:border-white/20 hover:bg-white/5'}
+                                `}
+                            >
+                                <div className="flex justify-between items-center relative z-10">
+                                    <div className={`p-2 rounded-xl bg-${eng.color}/10 border border-${eng.color}/20 flex items-center justify-center`}>
+                                        <eng.icon className={`w-5 h-5 text-${eng.color}`} />
+                                    </div>
+                                    <div className={`w-4 h-4 rounded-full border-2 ${isSelected ? `border-${eng.color} bg-${eng.color}` : 'border-gray-600'} flex items-center justify-center transition-colors`}>
+                                        {isSelected && <div className="w-1.5 h-1.5 bg-dark rounded-full" />}
+                                    </div>
+                                </div>
+                                <div className="relative z-10">
+                                    <h4 className="text-white font-black uppercase tracking-tight">{eng.name}</h4>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-relaxed mt-1 line-clamp-2 md:line-clamp-none">{eng.desc}</p>
+                                </div>
+                                {isSelected && <div className={`absolute -right-8 -top-8 w-24 h-24 blur-[40px] bg-${eng.color}/20 pointer-events-none`} />}
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-8">
-                {titles.map((title, idx) => (
+                {titles.map((titleObj, idx) => {
+                    const titleText = titleObj?.text || '';
+                    const labelText = titleObj?.label || 'Variação';
+                    const isBest = titleObj?.is_best;
+                    const isOriginal = titleObj?.isOriginal;
+                    
+                    let badgeColor = 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+                    let glowClass = '';
+
+                    if (isOriginal) {
+                        badgeColor = 'bg-white/10 text-white border border-white/20';
+                    } else if (isBest) {
+                        badgeColor = 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 shadow-[0_0_10px_rgba(234,179,8,0.2)]';
+                        glowClass = 'border-yellow-500/30 shadow-[0_0_30px_rgba(234,179,8,0.05)]';
+                    } else {
+                        badgeColor = 'bg-neon-cyan/5 text-neon-cyan border border-neon-cyan/20';
+                        glowClass = 'border-neon-cyan/20';
+                    }
+
+                    return (
                     <motion.div
                         key={idx}
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.1 }}
-                        className="glass-card overflow-hidden flex flex-col lg:flex-row border border-white/10 group hover:border-neon-purple/50 transition-all duration-500"
+                        className={`glass-card overflow-hidden flex flex-col lg:flex-row border border-white/10 group transition-all duration-500 relative ${glowClass} ${!isOriginal && 'hover:border-neon-purple/50'}`}
                     >
                         {/* Left: Title & Controls */}
-                        <div className="flex-1 p-6 md:p-8 flex flex-col justify-between bg-white/5">
-                            <div>
-                                <div className="flex items-center gap-2 mb-3">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${idx === 0 ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-neon-purple/20 text-neon-purple'}`}>
-                                        {idx === 0 ? 'Original' : `Variação ${idx}`}
-                                    </span>
-                                    {isGeneratingTitles && idx > 0 && <LoadingSpinner size="xs" message="" />}
+                        <div className="flex-1 p-6 md:p-8 flex flex-col justify-between bg-white/5 relative">
+                            {isBest && (
+                                <div className="absolute top-0 right-0 bg-yellow-500 text-dark font-black text-[9px] md:text-[10px] px-3 py-1.5 rounded-bl-xl uppercase tracking-widest flex items-center gap-1.5 shadow-lg">
+                                    <Sparkles className="w-3.5 h-3.5" /> Mais Viral
                                 </div>
-                                <h3 className="text-xl md:text-2xl font-bold text-white leading-tight mb-4 group-hover:text-neon-purple transition-colors">
-                                    {title || (isGeneratingTitles ? 'Gerando título...' : 'Aguardando...')}
+                            )}
+                            <div>
+                                <div className="flex items-center gap-2 mb-3 mt-1">
+                                    <span className={`px-2 md:px-3 py-1 rounded text-[9px] md:text-[10px] font-black uppercase tracking-[0.1em] md:tracking-widest ${badgeColor}`}>
+                                        {labelText}
+                                    </span>
+                                    {isGeneratingTitles && !isOriginal && <LoadingSpinner size="xs" message="" />}
+                                </div>
+                                <h3 className={`text-xl md:text-2xl font-bold leading-tight mb-4 transition-colors ${isBest ? 'text-yellow-400 group-hover:text-yellow-300' : 'text-white group-hover:text-neon-purple'}`}>
+                                    {titleText || (isGeneratingTitles ? 'Identificando o melhor ângulo viral...' : 'Aguardando...')}
                                 </h3>
 
                                 {/* Show generated prompt hint */}
                                 {covers[idx]?.prompt && (
-                                    <p className="text-xs text-gray-500 italic mb-4 line-clamp-2">
-                                        🧠 <span className="text-gray-400">{covers[idx].prompt.substring(0, 120)}...</span>
-                                    </p>
+                                    <div className="mb-6 p-5 bg-dark/60 border border-white/5 rounded-2xl block relative group/prmpt shadow-inner">
+                                        <div className="flex items-center justify-between gap-2 mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <Wand2 className="w-4 h-4 text-neon-cyan" />
+                                                <span className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.2em]">Prompt Visual Gerado</span>
+                                            </div>
+                                            <button 
+                                                onClick={() => { navigator.clipboard.writeText(covers[idx].prompt); alert("Texto copiado para a área de transferência!"); }}
+                                                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2 border border-white/10"
+                                            >
+                                                Copiar Base
+                                            </button>
+                                        </div>
+                                        <p className="text-[11px] md:text-[13px] text-gray-400 italic max-h-[140px] overflow-y-auto custom-scrollbar pr-2 leading-relaxed font-mono">
+                                            {covers[idx].prompt}
+                                        </p>
+                                    </div>
                                 )}
                             </div>
 
                             {/* Action Buttons */}
                             <div className="flex flex-wrap gap-3 mt-4">
                                 <button
-                                    onClick={() => handleGenerateCover(idx, title)}
-                                    disabled={!title || covers[idx]?.loading || isGeneratingTitles}
+                                    onClick={() => handleGenerateCover(idx, titleText)}
+                                    disabled={!titleText || covers[idx]?.loading || isGeneratingTitles}
                                     className="px-6 py-3 bg-neon-purple text-white rounded-xl font-bold flex items-center gap-2 hover:bg-neon-purple/80 transition-all disabled:opacity-50 shadow-lg shadow-neon-purple/20"
                                 >
                                     {covers[idx]?.loading ? (
@@ -280,7 +409,7 @@ Retorne APENAS os 2 novos títulos, um em cada linha, sem numeração ou texto a
 
                                 {covers[idx]?.url && !covers[idx]?.loading && (
                                     <button
-                                        onClick={() => handleDownload(covers[idx].url, title)}
+                                        onClick={() => handleDownload(covers[idx].url, titleText)}
                                         className="px-6 py-3 bg-neon-cyan/20 border border-neon-cyan/40 text-neon-cyan rounded-xl font-bold flex items-center gap-2 hover:bg-neon-cyan/30 hover:border-neon-cyan/70 transition-all shadow-lg"
                                     >
                                         <Download className="w-5 h-5" /> Baixar JPG
@@ -295,7 +424,7 @@ Retorne APENAS os 2 novos títulos, um em cada linha, sem numeração ou texto a
                                     </p>
                                     {covers[idx]?.isQuotaError && (
                                         <button 
-                                            onClick={() => handleGenerateCover(idx, title, true)}
+                                            onClick={() => handleGenerateCover(idx, titleText, true)}
                                             className="text-[10px] font-bold bg-neon-cyan/20 text-neon-cyan py-1.5 rounded border border-neon-cyan/40 hover:bg-neon-cyan/30 transition-all uppercase tracking-widest"
                                         >
                                             Tentar com Gemini (Fallback)
@@ -314,10 +443,22 @@ Retorne APENAS os 2 novos títulos, um em cada linha, sem numeração ou texto a
                                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                                         className="absolute inset-0 z-10 bg-dark/90 flex flex-col items-center justify-center text-neon-purple gap-4"
                                     >
-                                        <LoadingSpinner size="lg" message="Criando Arte Digital..." />
+                                        <LoadingSpinner size="lg" message="O Motor Gráfico está Trabalhando..." />
                                         <div className="text-center">
-                                            <p className="text-xs text-gray-500 mt-1">IA analisando título e gerando imagem</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mt-1">Isso pode levar alguns segundos dependendo da fila.</p>
                                         </div>
+                                    </motion.div>
+                                ) : covers[idx]?.isPromptOnly && covers[idx]?.prompt ? (
+                                    <motion.div
+                                        key="prompt_only"
+                                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                        className="absolute inset-0 z-10 bg-dark/20 flex flex-col items-center justify-center p-8 text-center"
+                                    >
+                                        <div className="w-16 h-16 rounded-2xl bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20 mb-4">
+                                           <Type className="w-8 h-8 text-neon-purple" />
+                                        </div>
+                                        <h3 className="text-white font-black text-sm uppercase tracking-[0.2em] mb-2">Apenas Prompt Gerado</h3>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest max-w-[280px]">Copie o texto no painel à esquerda para renderizar sua arte no Whisk ou Midjourney.</p>
                                     </motion.div>
                                 ) : covers[idx]?.url ? (
                                     <motion.div
@@ -327,40 +468,41 @@ Retorne APENAS os 2 novos títulos, um em cada linha, sem numeração ou texto a
                                         transition={{ duration: 0.6 }}
                                         className="h-full w-full relative group/img"
                                     >
-                                        <img
-                                            src={covers[idx].url}
-                                            alt={title}
-                                            className="w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-105"
-                                        />
-                                        {/* Hover overlay */}
-                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                                            <button
-                                                onClick={() => handleDownload(covers[idx].url, title)}
-                                                className="p-4 bg-white text-dark rounded-full hover:scale-110 transition-transform shadow-2xl"
-                                                title="Baixar JPG"
-                                            >
-                                                <Download className="w-6 h-6" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleGenerateCover(idx, title)}
-                                                className="p-4 bg-neon-purple text-white rounded-full hover:scale-110 transition-transform shadow-2xl"
-                                                title="Gerar Novamente"
-                                            >
-                                                <RefreshCw className="w-6 h-6" />
-                                            </button>
+                                            <img
+                                                src={covers[idx].url}
+                                                alt={titleText}
+                                                className="w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-105"
+                                            />
+                                            {/* Hover overlay */}
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                                <button
+                                                    onClick={() => handleDownload(covers[idx].url, titleText)}
+                                                    className="p-4 bg-white text-dark rounded-full hover:scale-110 transition-transform shadow-2xl"
+                                                    title="Baixar JPG"
+                                                >
+                                                    <Download className="w-6 h-6" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleGenerateCover(idx, titleText)}
+                                                    className="p-4 bg-neon-purple text-white rounded-full hover:scale-110 transition-transform shadow-2xl"
+                                                    title="Gerar Novamente"
+                                                >
+                                                    <RefreshCw className="w-6 h-6" />
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    ) : (
+                                        <div className="text-gray-600 flex flex-col items-center gap-3 p-8 text-center">
+                                            <ImageIcon className="w-16 h-16 opacity-10" />
+                                            <p className="text-sm font-medium">Prévia da Capa (1280×720)</p>
+                                            <p className="text-xs text-gray-600">Clique em "Gerar Capa com IA" para criar</p>
                                         </div>
-                                    </motion.div>
-                                ) : (
-                                    <div className="text-gray-600 flex flex-col items-center gap-3 p-8 text-center">
-                                        <ImageIcon className="w-16 h-16 opacity-10" />
-                                        <p className="text-sm font-medium">Prévia da Capa (1280×720)</p>
-                                        <p className="text-xs text-gray-600">Clique em "Gerar Capa com IA" para criar</p>
-                                    </div>
-                                )}
-                            </AnimatePresence>
-                        </div>
-                    </motion.div>
-                ))}
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </motion.div>
+                    );
+                })}
             </div>
 
             {/* Info Box */}

@@ -9,8 +9,6 @@ import re
 import shutil
 import random
 import smtplib
-import tkinter as tk
-from tkinter import filedialog
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import Flask, request, jsonify, send_file
@@ -24,6 +22,8 @@ import ffmpeg_utils
 
 app = Flask(__name__)
 CORS(app)
+# Permitir envios de até 2GB (185 vídeos podem ser pesados)
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'temp')
@@ -49,9 +49,11 @@ def get_whisk_downloads():
 
 # Global queue for Whisk prompts
 whisk_queue = []
+whisk_total_prompts = 0
 whisk_settings = {
     "aspect_ratio": "16:9",
     "image_count": 1,
+    "prompt_interval": 5,
     "auto_download": True,
     "check_folder_on_start": True
 }
@@ -71,6 +73,10 @@ def load_config():
         "gemini_key": "",
         "grok_key": "",
         "gpt_key": "",
+        "anthropic_key": "",
+        "deepseek_key": "",
+        "elevenlabs_key": "",
+        "leonardo_key": "",
         "google_client_id": "",
         "youtube_key": "",
         "smtp_user": "",
@@ -243,42 +249,138 @@ def check_system():
             ffmpeg_ver = res.stdout.split('\n')[0]
     except: pass
     
+    ffprobe_ver = "Not found"
+    try:
+        res = subprocess.run([str(config.get('ffprobe_path', 'ffprobe')), '-version'], capture_output=True, text=True)
+        if res.returncode == 0:
+            ffprobe_ver = res.stdout.split('\n')[0]
+    except: pass
+    
+    import ssl
+    ctx = ssl._create_unverified_context()
+
+    # 1. YouTube Check (Real request)
     youtube_status = False
     youtube_error = None
     yt_key = config.get('youtube_key')
     if yt_key and isinstance(yt_key, str) and len(yt_key) > 5:
-        import ssl
         try:
-            # Check a dummy public video to verify key validity
             url = f"https://www.googleapis.com/youtube/v3/videos?part=id&id=Ks-_Mh1QhMc&key={yt_key}"
-            # Disable SSL verification for the diagnostic check to avoid certificate issues on some systems
-            ctx = ssl._create_unverified_context()
-            with urlopen(url, timeout=10, context=ctx) as response:
+            with urlopen(url, timeout=5, context=ctx) as response:
                 if response.status == 200:
                     youtube_status = True
+        except HTTPError as e:
+             try:
+                 error_data = json.loads(e.read().decode())
+                 youtube_error = error_data.get('error', {}).get('message', str(e))
+             except:
+                 youtube_error = str(e)
+             youtube_status = False
         except Exception as e:
              youtube_error = str(e)
              youtube_status = False
 
+    # 2. Gemini Check (Real request)
     gemini_key = config.get('gemini_key')
-    gemini_status = bool(gemini_key and isinstance(gemini_key, str) and len(gemini_key) > 5)
+    gemini_status = False
+    if gemini_key and len(gemini_key) > 5:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}"
+            with urlopen(url, timeout=5, context=ctx) as response:
+                if response.status == 200: gemini_status = True
+        except: gemini_status = False
 
+    # 3. OpenAI Check (Real request)
     openai_key = config.get('gpt_key')
-    openai_status = bool(openai_key and isinstance(openai_key, str) and len(openai_key) > 5)
+    openai_status = False
+    if openai_key and len(openai_key) > 5:
+        try:
+            req = Request("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {openai_key}"})
+            with urlopen(req, timeout=5, context=ctx) as response:
+                if response.status == 200: openai_status = True
+        except: openai_status = False
 
+    # 4. Grok Check (Real request)
     grok_key = config.get('grok_key')
-    grok_status = bool(grok_key and isinstance(grok_key, str) and len(grok_key) > 5)
+    grok_status = False
+    if grok_key and len(grok_key) > 5:
+        try:
+            req = Request("https://api.x.ai/v1/models", headers={"Authorization": f"Bearer {grok_key}"})
+            with urlopen(req, timeout=5, context=ctx) as response:
+                if response.status == 200: grok_status = True
+        except: grok_status = False
+
+    # 5. Anthropic Check
+    anthropic_key = config.get('anthropic_key')
+    anthropic_status = False
+    if anthropic_key and len(anthropic_key) > 5:
+        try:
+            req = Request("https://api.anthropic.com/v1/messages", 
+                          headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
+                          data=json.dumps({"model": "claude-3-haiku-20240307", "max_tokens": 1, "messages": [{"role": "user", "content": "hi"}]}).encode())
+            with urlopen(req, timeout=5, context=ctx) as response:
+                if response.status == 200: anthropic_status = True
+        except: anthropic_status = False
+
+    # 6. DeepSeek Check
+    deepseek_key = config.get('deepseek_key')
+    deepseek_status = False
+    if deepseek_key and len(deepseek_key) > 5:
+        try:
+            req = Request("https://api.deepseek.com/models", headers={"Authorization": f"Bearer {deepseek_key}"})
+            with urlopen(req, timeout=5, context=ctx) as response:
+                if response.status == 200: deepseek_status = True
+        except: deepseek_status = False
+
+    # 7. ElevenLabs Check
+    eleven_key = config.get('elevenlabs_key')
+    eleven_status = False
+    eleven_key = config.get('elevenlabs_key')
+    if eleven_key and len(eleven_key) > 5:
+        try:
+            req = Request("https://api.elevenlabs.io/v1/models", headers={"xi-api-key": eleven_key})
+            with urlopen(req, timeout=5, context=ctx) as response:
+                if response.status == 200: eleven_status = True
+        except: eleven_status = False
+
+    # 8. Leonardo.ai Check
+    leonardo_key = config.get('leonardo_key')
+    leonardo_status = False
+    if leonardo_key and len(leonardo_key) > 5:
+        try:
+            req = Request("https://api.leonardo.ai/v1/me", headers={"Authorization": f"Bearer {leonardo_key}"})
+            with urlopen(req, timeout=5, context=ctx) as response:
+                if response.status == 200: leonardo_status = True
+        except: leonardo_status = False
+
+    # 9. SMTP Check
+    smtp_status = False
+    smtp_user = config.get('smtp_user')
+    smtp_pass = config.get('smtp_password')
+    if smtp_user and smtp_pass:
+        try:
+            server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=5)
+            server.login(smtp_user, smtp_pass)
+            server.quit()
+            smtp_status = True
+        except: smtp_status = False
+
     status = {
         "status": "online",
         "ffmpeg": ffmpeg_ver,
+        "ffprobe": ffprobe_ver,
         "ai": {
             "gemini": gemini_status,
             "openai": openai_status,
             "grok": grok_status,
+            "anthropic": anthropic_status,
+            "deepseek": deepseek_status,
+            "elevenlabs": eleven_status,
+            "leonardo": leonardo_status,
             "youtube": youtube_status,
             "youtube_error": youtube_error
         },
-        "smtp": bool(config.get('smtp_user') and config.get('smtp_password'))
+        "smtp": smtp_status
     }
     return jsonify(status)
 
@@ -388,24 +490,8 @@ def serve_whisk_image(filename):
 
 @app.route('/api/whisk/select-folder', methods=['POST'])
 def select_whisk_folder():
-    try:
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes('-topmost', True)
-        path = filedialog.askdirectory(title="Selecionar Pasta para Downloads do Whisk")
-        root.destroy()
-        
-        if path:
-            # Normalize path
-            path = os.path.normpath(path)
-            config = load_config()
-            config["whisk_downloads_path"] = path
-            save_config(config)
-            return jsonify({"path": path, "message": "Pasta selecionada com sucesso"}), 200
-        else:
-            return jsonify({"message": "Seleção cancelada"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    # Remover Tkinter direto aqui para evitar hangs no servidor Flask Windows
+    return jsonify({"error": "Seleção de pasta via diálogo não disponível no momento. Use o config.json"}), 400
 
 whisk_heartbeat_time = 0
 
@@ -423,29 +509,32 @@ def whisk_heartbeat_get():
 
 @app.route('/api/whisk/prompts', methods=['GET', 'POST', 'DELETE'])
 def whisk_prompts():
-    global whisk_queue
+    global whisk_queue, whisk_total_prompts
     if request.method == 'POST':
         data = request.json
         if "prompts" in data:
             whisk_queue = data["prompts"]
         elif "prompt" in data:
             whisk_queue.append(data["prompt"])
+        whisk_total_prompts = len(whisk_queue)
         return jsonify({"message": "Fila atualizada", "count": len(whisk_queue)})
     
     if request.method == 'DELETE':
         whisk_queue = []
+        whisk_total_prompts = 0
         return jsonify({"message": "Fila limpa"})
         
     return jsonify({"prompts": whisk_queue})
 
 @app.route('/api/whisk/next', methods=['GET'])
 def whisk_next():
-    global whisk_queue
+    global whisk_queue, whisk_total_prompts
     if not whisk_queue:
         return jsonify({"prompt": None})
     
     prompt = whisk_queue.pop(0)
-    return jsonify({"prompt": prompt, "remaining": len(whisk_queue)})
+    current_index = whisk_total_prompts - len(whisk_queue)
+    return jsonify({"prompt": prompt, "remaining": len(whisk_queue), "index": current_index})
 
 @app.route('/api/whisk/settings', methods=['GET', 'POST'])
 def whisk_settings_api():
@@ -605,7 +694,8 @@ def render_video():
         "audio": None,
         "music": None,
         "subtitle": None,
-        "images": []
+        "images": [],
+        "videos": []
     }
     
     try:
@@ -625,20 +715,38 @@ def render_video():
             request.files['subtitle'].save(sub_path)
             saved_files["subtitle"] = sub_path
             
-        # Images are multiple
-        for key in request.files:
+        # Images and Videos are multiple
+        all_file_keys = [k for k in request.files if k.startswith('image_') or k.startswith('video_')]
+        file_count = len(all_file_keys)
+        print(f"DEBUG: Receiving {file_count} media files for job {job_id}")
+        
+        saved_vid_count = 0
+        saved_img_count = 0
+        
+        for key in all_file_keys:
+            current_file = request.files[key]
+            if not current_file.filename: continue
+            
+            safe_name = secure_filename(current_file.filename)
+            save_path = os.path.join(job_dir, safe_name)
+            current_file.save(save_path)
+            
             if key.startswith('image_'):
-                img_file = request.files[key]
-                img_path = os.path.join(job_dir, secure_filename(img_file.filename))
-                img_file.save(img_path)
-                saved_files["images"].append(img_path)
+                saved_files["images"].append(save_path)
+                saved_img_count += 1
+            else:
+                saved_files["videos"].append(save_path)
+                saved_vid_count += 1
+                
+        print(f"DEBUG: Saved {saved_img_count} images and {saved_vid_count} videos for job {job_id}")
                 
     except Exception as e:
         print(f"Error saving files: {e}")
         return jsonify({"error": f"Erro ao salvar arquivos: {str(e)}"}), 500
 
-    if not saved_files["images"]:
-        return jsonify({"error": "Nenhuma imagem enviada para o vídeo."}), 400
+    if not saved_files["images"] and not saved_files["videos"]:
+        print(f"DEBUG: Job {job_id} failed: No media provided.")
+        return jsonify({"error": "Nenhuma mídia enviada para o vídeo."}), 400
 
     def background_render(jid, files, config_settings):
         try:
@@ -662,6 +770,7 @@ def render_video():
             cmd = ffmpeg_utils.build_ffmpeg_command(
                 output_path,
                 files["images"],
+                videos=files.get("videos", []),
                 audio=files["audio"],
                 music=files["music"],
                 subtitle=files["subtitle"],
@@ -684,7 +793,7 @@ def render_video():
                     cwd=job_dir # Use relative paths!
                 )
                 
-                total_duration = ffmpeg_utils.get_audio_duration(files["audio"]) if files["audio"] else (len(files["images"]) * 5.0)
+                total_duration = ffmpeg_utils.get_media_duration(files["audio"]) if files["audio"] else (len(files["images"]) * 5.0 + sum(ffmpeg_utils.get_media_duration(v) for v in files.get("videos", [])))
                 
                 for line in process.stdout:
                     log_file.write(line)
@@ -757,4 +866,5 @@ def whisk_open():
     return jsonify({"message": "Website opened"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True, port=5000)
+    # Desativar debug mode para evitar reinicializações duplas e instabilidades no Windows com 185 uploads
+    app.run(host='0.0.0.0', debug=False, port=5000, threaded=True)

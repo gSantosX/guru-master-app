@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Square, Settings, Layout, Download, FileText, AlertTriangle, CheckCircle, Trash2, Zap, Image as ImageIcon } from 'lucide-react';
+import { Play, Square, Settings, Layout, Download, FileText, AlertTriangle, CheckCircle, Trash2, Zap, Image as ImageIcon, Hourglass } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { t } from '../utils/i18n';
@@ -10,6 +10,7 @@ export const WhiskTab = ({ isActive }) => {
   const [prompts, setPrompts] = useState('');
   const [aspectRatio, setAspectRatio] = useState('16:9');
   const [imageCount, setImageCount] = useState(1);
+  const [promptInterval, setPromptInterval] = useState(5);
   const [isRunning, setIsRunning] = useState(false);
   const [status, setStatus] = useState(t('whisk.status_ready'));
   const [whiskStatus, setWhiskStatus] = useState({ path: '', file_count: 0, is_empty: true, queue_count: 0 });
@@ -107,6 +108,7 @@ export const WhiskTab = ({ isActive }) => {
       const data = await res.json();
       setAspectRatio(data.aspect_ratio);
       setImageCount(data.image_count);
+      setPromptInterval(data.prompt_interval ?? 5);
       setAutoDownload(data.auto_download);
       setCheckFolderOnStart(data.check_folder_on_start ?? true);
     } catch (e) {
@@ -142,6 +144,7 @@ export const WhiskTab = ({ isActive }) => {
         body: JSON.stringify({
           aspect_ratio: aspectRatio,
           image_count: imageCount,
+          prompt_interval: promptInterval,
           auto_download: autoDownload,
           check_folder_on_start: checkFolderOnStart
         })
@@ -207,39 +210,45 @@ export const WhiskTab = ({ isActive }) => {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'done': return <CheckCircle className="w-4 h-4 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]" />;
-      case 'processing': return <LoadingSpinner size="xs" message="" />;
-      default: return <motion.div animate={{ opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 2 }} className="w-4 h-4 border border-white/20 rounded-full flex items-center justify-center text-[10px] text-gray-600">⌛</motion.div>;
+      case 'done': 
+        return <Hourglass className="w-4 h-4 text-green-500 drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]" />;
+      case 'processing': 
+        return (
+          <motion.div
+            animate={{ rotate: 180 }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+            className="flex items-center justify-center"
+          >
+            <Hourglass className="w-4 h-4 text-neon-cyan drop-shadow-[0_0_8px_rgba(0,243,255,0.6)]" />
+          </motion.div>
+        );
+      default: 
+        return <Hourglass className="w-4 h-4 text-gray-700 opacity-40" />;
     }
   };
 
   return (
-    <div className="max-w-6xl mx-auto h-full flex flex-col overflow-hidden px-2">
+    <div className="flex flex-col h-full w-full max-w-[1600px] mx-auto gap-8 font-sans overflow-hidden px-4 md:px-0 pt-4 md:pt-6">
       {/* Premium Header */}
-      <header className="mb-8 shrink-0 relative group">
-        <div className="absolute -inset-1 bg-gradient-to-r from-neon-purple/20 to-neon-cyan/20 rounded-full blur-2xl group-hover:opacity-100 opacity-0 transition-opacity duration-1000" />
-        <div className="flex items-center gap-6 relative">
-          <motion.div 
-            whileHover={{ rotate: 10, scale: 1.1 }}
-            className="w-16 h-16 rounded-3xl p-1 bg-gradient-to-br from-neon-cyan via-blue-600 to-neon-purple flex items-center justify-center shadow-[0_10px_30px_rgba(0,243,255,0.4)] overflow-hidden border border-white/20"
-          >
-            <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-2xl shadow-inner" />
-          </motion.div>
-          <div>
-            <h2 className="text-4xl font-black bg-gradient-to-r from-white via-neon-cyan to-white bg-clip-text text-transparent tracking-tighter uppercase">
-              {t('whisk.title')}
-            </h2>
-            <div className="flex items-center gap-2 mt-1">
-               <span className="h-[2px] w-8 bg-neon-cyan rounded-full" />
-               <p className="text-xs text-gray-400 font-black uppercase tracking-[0.3em]">{t('whisk.subtitle')}</p>
+      <header className="flex flex-col justify-between items-start gap-6 shrink-0">
+        <div>
+          <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-cyan via-blue-600 to-white p-[2px] shadow-[0_0_20px_rgba(0,243,255,0.3)] shrink-0">
+              <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center overflow-hidden">
+                <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover scale-[1.05]" />
+              </div>
             </div>
-          </div>
+            {t('whisk.title')}
+          </h2>
+          <p className="text-gray-400 mt-3 font-bold text-sm md:text-md uppercase tracking-[0.2em] border-l-4 border-neon-cyan pl-4 ml-2">
+            {t('whisk.subtitle')}
+          </p>
         </div>
       </header>
 
       {/* Main Tabs Navigation */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8 shrink-0">
-        <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-md">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 shrink-0 w-full">
+        <div className="flex w-full md:w-auto overflow-x-auto custom-scrollbar bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-md">
           {[
             { id: 'control', label: t('whisk.tab_control'), icon: Layout },
             { id: 'settings', label: t('whisk.tab_settings'), icon: Settings }
@@ -260,13 +269,13 @@ export const WhiskTab = ({ isActive }) => {
           ))}
         </div>
 
-        <div className="flex items-center gap-4 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
           <motion.button 
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleStart}
             disabled={isRunning || !prompts}
-            className={`flex-1 md:flex-none flex items-center justify-center gap-4 px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all relative overflow-hidden
+            className={`w-full sm:w-auto flex items-center justify-center gap-4 px-8 md:px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all relative overflow-hidden
               ${isRunning || !prompts 
                 ? 'bg-gray-800/50 text-gray-600 border border-white/5 cursor-not-allowed' 
                 : 'bg-gradient-to-br from-neon-cyan via-blue-600 to-neon-purple text-white shadow-[0_10px_40px_rgba(0,243,255,0.3)] ring-1 ring-white/20'
@@ -286,7 +295,7 @@ export const WhiskTab = ({ isActive }) => {
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               onClick={handleStop}
-              className="flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500/20 transition-all shadow-[0_0_20px_rgba(239,68,68,0.1)]"
+              className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500/20 transition-all shadow-[0_0_20px_rgba(239,68,68,0.1)]"
             >
               <Square className="w-4 h-4 fill-current" /> {t('whisk.btn_stop')}
             </motion.button>
@@ -294,9 +303,9 @@ export const WhiskTab = ({ isActive }) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar glass-card p-8 min-h-0 relative border-white/10">
-        <div className="absolute top-0 right-0 p-1 opacity-5">
-           <Zap className="w-32 h-32 text-neon-cyan" />
+      <div className="flex-1 overflow-y-auto custom-scrollbar glass-card p-4 md:p-8 lg:p-10 min-h-0 relative border-white/10 w-full max-w-full">
+        <div className="absolute top-0 right-0 p-1 opacity-5 pointer-events-none">
+           <Zap className="w-24 h-24 md:w-32 md:h-32 text-neon-cyan" />
         </div>
         <AnimatePresence mode="wait">
           {activeSubTab === 'control' && (
@@ -308,17 +317,17 @@ export const WhiskTab = ({ isActive }) => {
               className="space-y-10"
             >
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black text-neon-cyan uppercase tracking-[0.3em] flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <h3 className="text-[10px] md:text-xs font-black text-neon-cyan uppercase tracking-[0.3em] flex items-center gap-3 shrink-0">
                      <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse shadow-[0_0_8px_#00f3ff]" />
                      {t('whisk.prompt_list')}
                   </h3>
-                  <div className="flex gap-4">
-                     <select className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black uppercase text-gray-400 focus:outline-none focus:border-neon-cyan/50 hover:bg-white/10 transition-all cursor-pointer">
+                  <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-4 w-full sm:w-auto">
+                     <select className="flex-1 sm:flex-none bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black uppercase text-gray-400 focus:outline-none focus:border-neon-cyan/50 hover:bg-white/10 transition-all cursor-pointer">
                         <option>{t('whisk.starting_mode')}</option>
                      </select>
-                     <label className="bg-gradient-to-br from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 border border-white/10 px-5 py-2 rounded-xl text-[10px] text-white font-black uppercase tracking-widest cursor-pointer flex items-center gap-2 transition-all shadow-sm">
-                        <Download className="w-3 h-3 text-neon-cyan" /> {t('whisk.import_file')}
+                     <label className="flex-1 sm:flex-none justify-center bg-gradient-to-br from-white/10 to-white/5 hover:from-white/20 hover:to-white/10 border border-white/10 px-5 py-2 rounded-xl text-[10px] text-white font-black uppercase tracking-widest cursor-pointer flex items-center gap-2 transition-all shadow-sm">
+                        <Download className="w-3 h-3 text-neon-cyan shrink-0" /> <span className="truncate">{t('whisk.import_file')}</span>
                         <input type="file" className="hidden" onChange={handleFileUpload} />
                      </label>
                   </div>
@@ -330,15 +339,16 @@ export const WhiskTab = ({ isActive }) => {
                     value={prompts}
                     onChange={(e) => setPrompts(e.target.value)}
                     placeholder={t('whisk.prompt_placeholder')}
-                    className="relative w-full h-64 bg-dark/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 text-gray-200 focus:outline-none focus:border-neon-cyan/40 resize-none font-mono text-sm leading-relaxed custom-scrollbar shadow-inner"
+                    className="relative w-full h-40 md:h-64 bg-dark/60 backdrop-blur-2xl border border-white/10 rounded-3xl p-4 md:p-6 text-gray-200 focus:outline-none focus:border-neon-cyan/40 resize-none font-mono text-xs md:text-sm leading-relaxed custom-scrollbar shadow-inner"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
                 {[
                   { label: t('whisk.aspect_ratio'), value: aspectRatio, setter: setAspectRatio, options: ['16:9', '9:16', '1:1', '4:3'] },
-                  { label: t('whisk.image_count'), value: imageCount, setter: (v) => setImageCount(Number(v)), options: [1, 2, 3, 4] }
+                  { label: t('whisk.image_count'), value: imageCount, setter: (v) => setImageCount(Number(v)), options: [1, 2, 3, 4] },
+                  { label: "Delay (Segundos)", value: promptInterval, setter: (v) => setPromptInterval(Number(v)), options: [5, 10, 15, 20, 30] }
                 ].map((field, i) => (
                   <div key={i} className="space-y-3">
                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-1">{field.label}</label>
@@ -410,6 +420,92 @@ export const WhiskTab = ({ isActive }) => {
                   )}
                 </div>
               </div>
+
+              {/* Visual Queue Table Movie Inside Control Tab */}
+              {promptQueue.length > 0 && (
+                <div className="mt-10 shrink-0 flex flex-col min-h-0 bg-dark/20 p-8 rounded-[40px] border border-white/5 backdrop-blur-3xl">
+                   {/* Progress Bar Header */}
+                   <div className="mb-10 space-y-4">
+                      <div className="flex justify-between items-end px-2">
+                         <div className="space-y-1">
+                            <span className="text-[10px] font-black text-neon-purple uppercase tracking-[0.4em] block">{status}</span>
+                            <h4 className="text-xl font-black text-white uppercase tracking-tight">Status da Automação</h4>
+                         </div>
+                         <div className="text-right">
+                            <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Total Concluído</div>
+                            <div className="text-2xl font-black text-white tabular-nums flex items-center gap-2 justify-end">
+                               {promptQueue.filter(p => p.status === 'done').length} <span className="text-white/20 text-sm">/</span> {promptQueue.length}
+                               <span className="text-xs bg-white/10 px-2 py-1 rounded text-neon-cyan ml-2 border border-white/5">
+                                  {promptQueue.length > 0 ? Math.round((promptQueue.filter(p => p.status === 'done').length / promptQueue.length) * 100) : 0}%
+                               </span>
+                            </div>
+                         </div>
+                      </div>
+                      <div className="w-full h-4 bg-white/5 rounded-full overflow-hidden border border-white/5 p-[2px] shadow-inner relative">
+                         <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(promptQueue.filter(p => p.status === 'done').length / (promptQueue.length || 1)) * 100}%` }}
+                            className="h-full bg-gradient-to-r from-neon-purple via-neon-cyan to-blue-500 rounded-full shadow-[0_0_20px_rgba(0,243,255,0.4)] relative z-10"
+                         />
+                         {/* Decorative background grid inside bar */}
+                         <div className="absolute inset-0 opacity-10 flex border-r border-white/20 pointer-events-none">
+                            {[...Array(10)].map((_, i) => <div key={i} className="flex-1 border-l border-white/20" />)}
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="flex items-center justify-between mb-4 px-2">
+                      <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] flex items-center gap-3">
+                         <Layout className="w-3.5 h-3.5 text-neon-cyan" /> {t('whisk.tab_tools').split(' ')[0]} da Fila Visual
+                      </h3>
+                      <div className="flex gap-6 text-[10px] font-black uppercase tracking-widest">
+                         <span className="flex items-center gap-2 text-green-500/80"><CheckCircle className="w-3.5 h-3.5" /> {t('whisk.ready')}</span>
+                         <span className="flex items-center gap-2 text-neon-cyan/80"><div className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-ping" /> {t('whisk.status_running')}</span>
+                      </div>
+                   </div>
+                   
+                   <div className="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar bg-dark/40 border border-white/10 rounded-3xl shadow-2xl max-h-72 w-full max-w-full block">
+                      <table className="w-full text-left border-collapse min-w-[700px]">
+                         <thead className="sticky top-0 bg-dark/90 backdrop-blur-xl border-b border-white/10 z-10">
+                            <tr>
+                               <th className="p-6 text-[10px] font-black text-neon-cyan/60 uppercase tracking-widest w-16 text-center">ID</th>
+                               <th className="p-6 text-[10px] font-black text-neon-cyan/60 uppercase tracking-widest">Conteúdo do Prompt</th>
+                               <th className="p-6 text-[10px] font-black text-neon-cyan/60 uppercase tracking-widest w-24 text-center">Preview</th>
+                               <th className="p-6 text-[10px] font-black text-neon-cyan/60 uppercase tracking-widest w-20 text-center">Status</th>
+                            </tr>
+                         </thead>
+                         <tbody className="divide-y divide-white/[0.03]">
+                            {promptQueue.map((p, idx) => (
+                               <tr key={p.id} className={`group transition-all duration-300 ${p.status === 'processing' ? 'bg-neon-cyan/5' : 'hover:bg-white/[0.02]'}`}>
+                                  <td className="p-6 text-xs font-mono text-gray-600 text-center">{String(idx + 1).padStart(2, '0')}</td>
+                                  <td className="p-6">
+                                     <div className={`text-xs transition-colors duration-300 line-clamp-1 group-hover:line-clamp-none leading-relaxed ${p.status === 'done' ? 'text-gray-500 italic' : 'text-gray-300 font-bold'}`}>
+                                        {p.text}
+                                     </div>
+                                  </td>
+                                  <td className="p-6">
+                                     <div className={`w-14 h-9 mx-auto rounded-xl border border-dashed flex items-center justify-center transition-all duration-500
+                                        ${p.status === 'done' ? 'bg-green-500/10 border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'bg-dark/50 border-white/10'}
+                                     `}>
+                                        {p.status === 'done' ? (
+                                           <ImageIcon className="w-4 h-4 text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.5)]" />
+                                        ) : (
+                                           <Zap className="w-3 h-3 text-gray-800" />
+                                        )}
+                                     </div>
+                                  </td>
+                                  <td className="p-6 text-center">
+                                     <div className="flex justify-center transform group-hover:scale-110 transition-transform">
+                                        {getStatusIcon(p.status)}
+                                     </div>
+                                  </td>
+                               </tr>
+                            ))}
+                         </tbody>
+                      </table>
+                   </div>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -421,23 +517,23 @@ export const WhiskTab = ({ isActive }) => {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-10"
             >
-              <div className="flex items-center gap-4 mb-2">
-                 <div className="w-1.5 h-8 bg-neon-purple rounded-full shadow-[0_0_15px_#bf40ff]" />
-                 <h3 className="text-2xl font-black text-white tracking-tight">{t('whisk.folder_config')}</h3>
+               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-2">
+                 <div className="w-1.5 h-8 bg-neon-purple rounded-full shadow-[0_0_15px_#bf40ff] hidden sm:block" />
+                 <h3 className="text-xl md:text-2xl font-black text-white tracking-tight">{t('whisk.folder_config')}</h3>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10">
                  {/* Folder Path Card */}
-                 <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 space-y-6 hover:bg-white/[0.07] transition-colors group">
+                 <div className="bg-white/5 border border-white/10 rounded-[24px] md:rounded-[32px] p-6 md:p-8 space-y-4 md:space-y-6 hover:bg-white/[0.07] transition-colors group">
                     <div className="flex items-center gap-4">
-                       <div className="w-10 h-10 rounded-2xl bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20">
-                          <Download className="w-5 h-5 text-neon-cyan" />
+                       <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20 shrink-0">
+                          <Download className="w-4 h-4 md:w-5 md:h-5 text-neon-cyan" />
                        </div>
                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{t('whisk.folder_path')}</label>
                     </div>
                     
                     <div className="space-y-4">
-                       <div className="p-5 bg-dark/60 border border-white/5 rounded-2xl text-gray-400 font-mono text-xs break-all leading-normal shadow-inner italic">
+                       <div className="p-4 md:p-5 bg-dark/60 border border-white/5 rounded-xl md:rounded-2xl text-gray-400 font-mono text-[10px] md:text-xs break-all leading-normal shadow-inner italic">
                           {whiskStatus.path || 'Nenhuma pasta selecionada...'}
                        </div>
                        <motion.button 
@@ -453,20 +549,20 @@ export const WhiskTab = ({ isActive }) => {
                  </div>
 
                  {/* Toggles Card */}
-                 <div className="space-y-6">
-                    <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 flex items-center justify-between hover:bg-white/[0.07] transition-all">
-                       <div className="flex items-center gap-5">
-                          <div className="w-10 h-10 rounded-2xl bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20">
-                             <Zap className="w-5 h-5 text-neon-purple" />
+                 <div className="space-y-4 md:space-y-6">
+                    <div className="bg-white/5 border border-white/10 rounded-[24px] md:rounded-[32px] p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4 hover:bg-white/[0.07] transition-all">
+                       <div className="flex items-center gap-4 md:gap-5">
+                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20 shrink-0">
+                             <Zap className="w-4 h-4 md:w-5 md:h-5 text-neon-purple" />
                           </div>
                           <div>
-                             <p className="text-sm font-black text-white uppercase tracking-tighter">{t('whisk.check_folder')}</p>
-                             <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{t('whisk.check_folder_hint')}</p>
+                             <p className="text-xs md:text-sm font-black text-white uppercase tracking-tighter">{t('whisk.check_folder')}</p>
+                             <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">{t('whisk.check_folder_hint')}</p>
                           </div>
                        </div>
                        <button 
                          onClick={() => setCheckFolderOnStart(!checkFolderOnStart)}
-                         className={`w-14 h-7 rounded-full transition-all relative ${checkFolderOnStart ? 'bg-neon-cyan shadow-[0_0_15px_rgba(0,243,255,0.4)]' : 'bg-white/10 ring-1 ring-white/5'}`}
+                         className={`w-14 h-7 rounded-full transition-all relative shrink-0 ${checkFolderOnStart ? 'bg-neon-cyan shadow-[0_0_15px_rgba(0,243,255,0.4)]' : 'bg-white/10 ring-1 ring-white/5'}`}
                        >
                           <motion.div 
                             animate={{ x: checkFolderOnStart ? 28 : 4 }}
@@ -475,19 +571,19 @@ export const WhiskTab = ({ isActive }) => {
                        </button>
                     </div>
 
-                    <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 flex items-center justify-between hover:bg-white/[0.07] transition-all">
-                       <div className="flex items-center gap-5">
-                          <div className="w-10 h-10 rounded-2xl bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20">
-                             <CheckCircle className="w-5 h-5 text-neon-cyan" />
+                    <div className="bg-white/5 border border-white/10 rounded-[24px] md:rounded-[32px] p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4 hover:bg-white/[0.07] transition-all">
+                       <div className="flex items-center gap-4 md:gap-5">
+                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20 shrink-0">
+                             <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-neon-cyan" />
                           </div>
                           <div>
-                             <p className="text-sm font-black text-white uppercase tracking-tighter">Auto Download</p>
-                             <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Baixar imagens automaticamente</p>
+                             <p className="text-xs md:text-sm font-black text-white uppercase tracking-tighter">Auto Download</p>
+                             <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Baixar imagens automaticamente</p>
                           </div>
                        </div>
                        <button 
                          onClick={() => setAutoDownload(!autoDownload)}
-                         className={`w-14 h-7 rounded-full transition-all relative ${autoDownload ? 'bg-neon-purple shadow-[0_0_15px_#bf40ff44]' : 'bg-white/10 ring-1 ring-white/5'}`}
+                         className={`w-14 h-7 rounded-full transition-all relative shrink-0 ${autoDownload ? 'bg-neon-purple shadow-[0_0_15px_#bf40ff44]' : 'bg-white/10 ring-1 ring-white/5'}`}
                        >
                           <motion.div 
                             animate={{ x: autoDownload ? 28 : 4 }}
@@ -504,16 +600,16 @@ export const WhiskTab = ({ isActive }) => {
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="p-10 bg-red-500/5 border border-red-500/20 rounded-[40px] relative overflow-hidden group"
+                    className="p-6 md:p-10 bg-red-500/5 border border-red-500/20 rounded-[32px] md:rounded-[40px] relative overflow-hidden group"
                   >
                      <div className="absolute top-0 left-0 w-1 h-full bg-red-500 shadow-[0_0_15px_#ef4444]" />
-                     <div className="flex flex-col md:flex-row items-center gap-8 relative">
-                        <div className="w-20 h-20 rounded-3xl bg-red-500/10 flex items-center justify-center border border-red-500/20 shrink-0">
-                           <AlertTriangle className="text-red-500 w-10 h-10 animate-bounce" />
+                     <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 relative">
+                        <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-red-500/10 flex items-center justify-center border border-red-500/20 shrink-0">
+                           <AlertTriangle className="text-red-500 w-8 h-8 md:w-10 md:h-10 animate-bounce" />
                         </div>
                         <div className="flex-1 text-center md:text-left">
-                           <p className="text-2xl font-black text-white tracking-tight mb-1">{t('whisk.folder_exists_error')}</p>
-                           <p className="text-red-400/60 text-sm font-bold uppercase tracking-[0.2em] flex items-center justify-center md:justify-start gap-2">
+                           <p className="text-xl md:text-2xl font-black text-white tracking-tight mb-1">{t('whisk.folder_exists_error')}</p>
+                           <p className="text-red-400/60 text-xs md:text-sm font-bold uppercase tracking-[0.2em] flex items-center justify-center md:justify-start gap-2">
                               <span className="w-1 h-1 rounded-full bg-red-500" />
                               Contém {whiskStatus.file_count} arquivos residuais
                            </p>
@@ -522,7 +618,7 @@ export const WhiskTab = ({ isActive }) => {
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={handleClearFolder}
-                          className="px-10 py-5 bg-red-500 hover:bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-[0_10px_30px_rgba(239,68,68,0.3)] flex items-center gap-3"
+                          className="w-full md:w-auto px-10 py-4 md:py-5 bg-red-500 hover:bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-[0_10px_30px_rgba(239,68,68,0.3)] flex items-center justify-center gap-3 shrink-0"
                         >
                            <Trash2 className="w-4 h-4" /> {t('whisk.clear_folder')}
                         </motion.button>
@@ -532,15 +628,15 @@ export const WhiskTab = ({ isActive }) => {
                   <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="p-10 bg-green-500/5 border border-green-500/20 rounded-[40px] flex items-center gap-8 relative overflow-hidden"
+                    className="p-6 md:p-10 bg-green-500/5 border border-green-500/20 rounded-[32px] md:rounded-[40px] flex flex-col md:flex-row items-center text-center md:text-left gap-6 md:gap-8 relative overflow-hidden"
                   >
-                     <div className="absolute top-0 left-0 w-1 h-full bg-green-500 shadow-[0_0_15px_#22c55e]" />
-                     <div className="w-20 h-20 rounded-3xl bg-green-500/10 flex items-center justify-center border border-green-500/20 shrink-0">
-                        <CheckCircle className="w-10 h-10 text-green-500" />
+                     <div className="absolute top-0 left-0 w-full h-1 md:w-1 md:h-full bg-green-500 shadow-[0_0_15px_#22c55e]" />
+                     <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-green-500/10 flex items-center justify-center border border-green-500/20 shrink-0">
+                        <CheckCircle className="w-8 h-8 md:w-10 md:h-10 text-green-500" />
                      </div>
                      <div>
-                        <p className="text-2xl font-black text-white tracking-tight mb-1">{t('whisk.status_ready')}</p>
-                        <p className="text-green-400/60 text-xs font-black uppercase tracking-[0.2em]">Pasta de downloads limpa e sincronizada</p>
+                        <p className="text-xl md:text-2xl font-black text-white tracking-tight mb-1">{t('whisk.status_ready')}</p>
+                        <p className="text-green-400/60 text-[10px] md:text-xs font-black uppercase tracking-[0.2em]">Pasta de downloads limpa e sincronizada</p>
                      </div>
                   </motion.div>
                 )}
@@ -557,84 +653,6 @@ export const WhiskTab = ({ isActive }) => {
           )}
         </AnimatePresence>
       </div>
-      {/* Visual Queue Table */}
-      {promptQueue.length > 0 && (
-        <div className="mt-10 shrink-0 flex flex-col min-h-0 bg-dark/20 p-8 rounded-[40px] border border-white/5 backdrop-blur-3xl">
-           {/* Progress Bar Header */}
-           <div className="mb-10 space-y-4">
-              <div className="flex justify-between items-end px-2">
-                 <div className="space-y-1">
-                    <span className="text-[10px] font-black text-neon-purple uppercase tracking-[0.4em] block">{status}</span>
-                    <h4 className="text-xl font-black text-white uppercase tracking-tight">Status da Automação</h4>
-                 </div>
-                 <div className="text-right">
-                    <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Total Concluído</div>
-                    <div className="text-2xl font-black text-white tabular-nums">
-                       {promptQueue.filter(p => p.status === 'done').length} <span className="text-white/20">/</span> {promptQueue.length}
-                    </div>
-                 </div>
-              </div>
-              <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden border border-white/5 p-[2px]">
-                 <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(promptQueue.filter(p => p.status === 'done').length / promptQueue.length) * 100}%` }}
-                    className="h-full bg-gradient-to-r from-neon-purple via-neon-cyan to-blue-500 rounded-full shadow-[0_0_20px_rgba(0,243,255,0.3)]"
-                 />
-              </div>
-           </div>
-
-           <div className="flex items-center justify-between mb-4 px-2">
-              <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] flex items-center gap-3">
-                 <Layout className="w-3.5 h-3.5 text-neon-cyan" /> {t('whisk.tab_tools').split(' ')[0]} da Fila Visual
-              </h3>
-              <div className="flex gap-6 text-[10px] font-black uppercase tracking-widest">
-                 <span className="flex items-center gap-2 text-green-500/80"><CheckCircle className="w-3.5 h-3.5" /> {t('whisk.ready')}</span>
-                 <span className="flex items-center gap-2 text-neon-cyan/80"><div className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-ping" /> {t('whisk.status_running')}</span>
-              </div>
-           </div>
-           
-           <div className="flex-1 overflow-y-auto custom-scrollbar bg-dark/40 border border-white/10 rounded-3xl shadow-2xl max-h-72">
-              <table className="w-full text-left border-collapse">
-                 <thead className="sticky top-0 bg-dark/90 backdrop-blur-xl border-b border-white/10 z-10">
-                    <tr>
-                       <th className="p-6 text-[10px] font-black text-neon-cyan/60 uppercase tracking-widest w-16 text-center">ID</th>
-                       <th className="p-6 text-[10px] font-black text-neon-cyan/60 uppercase tracking-widest">Conteúdo do Prompt</th>
-                       <th className="p-6 text-[10px] font-black text-neon-cyan/60 uppercase tracking-widest w-24 text-center">Preview</th>
-                       <th className="p-6 text-[10px] font-black text-neon-cyan/60 uppercase tracking-widest w-20 text-center">Status</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-white/[0.03]">
-                    {promptQueue.map((p, idx) => (
-                       <tr key={p.id} className={`group transition-all duration-300 ${p.status === 'processing' ? 'bg-neon-cyan/5' : 'hover:bg-white/[0.02]'}`}>
-                          <td className="p-6 text-xs font-mono text-gray-600 text-center">{String(idx + 1).padStart(2, '0')}</td>
-                          <td className="p-6">
-                             <div className={`text-xs transition-colors duration-300 line-clamp-1 group-hover:line-clamp-none leading-relaxed ${p.status === 'done' ? 'text-gray-500 italic' : 'text-gray-300 font-bold'}`}>
-                                {p.text}
-                             </div>
-                          </td>
-                          <td className="p-6">
-                             <div className={`w-14 h-9 mx-auto rounded-xl border border-dashed flex items-center justify-center transition-all duration-500
-                                ${p.status === 'done' ? 'bg-green-500/10 border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'bg-dark/50 border-white/10'}
-                             `}>
-                                {p.status === 'done' ? (
-                                   <ImageIcon className="w-4 h-4 text-green-500 drop-shadow-[0_0_5px_rgba(34,197,94,0.5)]" />
-                                ) : (
-                                   <Zap className="w-3 h-3 text-gray-800" />
-                                )}
-                             </div>
-                          </td>
-                          <td className="p-6 text-center">
-                             <div className="flex justify-center transform group-hover:scale-110 transition-transform">
-                                {getStatusIcon(p.status)}
-                             </div>
-                          </td>
-                       </tr>
-                    ))}
-                 </tbody>
-              </table>
-           </div>
-        </div>
-      )}
     </div>
   );
 };

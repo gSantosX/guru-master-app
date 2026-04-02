@@ -8,17 +8,30 @@ export const SystemStatusProvider = ({ children }) => {
   const [status, setStatus] = useState({
     rendering: 'checking...',
     ffmpeg: 'checking...',
+    ffprobe: 'checking...',
     gemini: 'checking...',
     openai: 'checking...',
     grok: 'checking...',
+    anthropic: 'checking...',
+    deepseek: 'checking...',
+    elevenlabs: 'checking...',
+    leonardo: 'checking...',
+    smtp: 'checking...',
+    youtube: 'checking...',
     details: { ffmpeg: '', error: '', youtube_error: '' }
   });
   const [configs, setConfigs] = useState({
     gemini_key: '',
     grok_key: '',
     gpt_key: '',
+    anthropic_key: '',
+    deepseek_key: '',
+    elevenlabs_key: '',
+    leonardo_key: '',
     youtube_key: '',
     google_client_id: '',
+    smtp_user: '',
+    smtp_password: '',
     active_ai: 'Gemini'
   });
 
@@ -37,10 +50,16 @@ export const SystemStatusProvider = ({ children }) => {
                     ...prev,
                     rendering: 'online',
                     ffmpeg: data.ffmpeg !== 'Not found' ? 'online' : 'offline',
+                    ffprobe: data.ffprobe !== 'Not found' ? 'online' : 'offline',
                     gemini: data.ai?.gemini ? 'online' : 'offline',
-                    openai: data.ai?.gpt ? 'online' : 'offline',
+                    openai: data.ai?.openai ? 'online' : 'offline',
                     grok: data.ai?.grok ? 'online' : 'offline',
+                    anthropic: data.ai?.anthropic ? 'online' : 'offline',
+                    deepseek: data.ai?.deepseek ? 'online' : 'offline',
+                    elevenlabs: data.ai?.elevenlabs ? 'online' : 'offline',
+                    leonardo: data.ai?.leonardo ? 'online' : 'offline',
                     youtube: data.ai?.youtube ? 'online' : 'offline',
+                    smtp: data.smtp ? 'online' : 'offline',
                     details: { 
                       ...prev.details, 
                       ffmpeg: data.ffmpeg, 
