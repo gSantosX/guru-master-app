@@ -1,10 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Youtube, Search, Loader2, Globe, TrendingUp, Video, Users, Copy, Check, ExternalLink, Zap, Layers, PlayCircle } from 'lucide-react';
+import { 
+  Youtube, 
+  Search, 
+  Loader2, 
+  Globe, 
+  TrendingUp, 
+  Video, 
+  Users, 
+  Copy, 
+  Check, 
+  ExternalLink, 
+  Zap, 
+  Layers, 
+  PlayCircle,
+  X,
+  Sparkles,
+  Brain,
+  History,
+  ListChecks
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { t } from '../utils/i18n';
 import { resolveApiUrl } from '../utils/apiUtils';
+import { usePersistence } from '../contexts/PersistenceContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { callGemini } from '../utils/aiUtils';
 
 const NICHES = [
   "Finanças", "História", "Mistérios", "Crimes Reais", "Espiritualidade", 
@@ -44,11 +65,40 @@ const LANGUAGES = [
 
 export const ChannelMiningTab = ({ setActiveTab }) => {
   const { configs } = useSystemStatus();
-  const [selectedNiche, setSelectedNiche] = useState(NICHES[0]);
+  const { miningState, setMiningState } = usePersistence();
+  const { channels, niche: selectedNiche, isSearching } = miningState;
+
+  const setSelectedNiche = (val) => setMiningState(prev => ({ ...prev, niche: val }));
+  const setChannels = (val) => setMiningState(prev => ({ ...prev, channels: val }));
+  const setIsSearching = (val) => setMiningState(prev => ({ ...prev, isSearching: val }));
+
   const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [channels, setChannels] = useState([]);
   const [copiedId, setCopiedId] = useState(null);
+  
+  // Title Generation States
+  const [showTitleGenerator, setShowTitleGenerator] = useState(false);
+  const [selectedChannel, setSelectedChannel] = useState(null);
+  const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
+  const [generatedResults, setGeneratedResults] = useState(null);
+  const [generationStep, setGenerationStep] = useState('');
+  const [knowledge, setKnowledge] = useState(() => {
+    try {
+      const saved = localStorage.getItem('guru_title_knowledge');
+      const parsed = saved ? JSON.parse(saved) : { themes: [], structures: [], count: 0 };
+      return {
+        themes: Array.isArray(parsed.themes) ? parsed.themes : [],
+        structures: Array.isArray(parsed.structures) ? parsed.structures : [],
+        count: typeof parsed.count === 'number' ? parsed.count : 0
+      };
+    } catch {
+      return { themes: [], structures: [], count: 0 };
+    }
+  });
+
+  const saveKnowledge = (newKnowledge) => {
+    setKnowledge(newKnowledge);
+    localStorage.setItem('guru_title_knowledge', JSON.stringify(newKnowledge));
+  };
 
   const handleSearch = async () => {
     setIsSearching(true);
@@ -133,6 +183,67 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
       alert("Falha na Mineração:\n" + error.message);
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleGenerateViralTitles = async (channel) => {
+    setSelectedChannel(channel);
+    setShowTitleGenerator(true);
+    setIsGeneratingTitles(true);
+    setGeneratedResults(null);
+    setGenerationStep('Buscando vídeos de alta performance...');
+
+    try {
+      // 1. Fetch Top 15 Videos for the channel
+      const vidsUrl = resolveApiUrl(`/api/youtube/search?part=snippet&channelId=${channel.id}&order=viewCount&type=video&maxResults=15`);
+      const vidsRes = await fetch(vidsUrl);
+      const vidsData = await vidsRes.json();
+
+      if (!vidsRes.ok) throw new Error("Falha ao buscar vídeos do canal.");
+      
+      const titles = (vidsData.items || []).map(v => v.snippet.title);
+      if (titles.length === 0) throw new Error("Nenhum vídeo encontrado para analisar.");
+
+      setGenerationStep('Analisando DNA do canal e padrões vencedores...');
+
+      // 2. Logic: Analyze Theme and Structure with Gemini
+      const analysisPrompt = `
+        Analise os seguintes títulos de vídeos de sucesso do canal "${channel.title}":
+        ${titles.map((t, i) => `${i+1}. ${t}`).join('\n')}
+
+        Com base nesses títulos e no seu conhecimento prévio sobre o que torna um canal viral:
+        1. Identifique o TEMA PRINCIPAL que mais desenvolve o canal (o que o público realmente quer ver aqui).
+        2. Identifique 3 ESTRUTURAS VENCEDORAS de títulos (ex: "Pergunta Curiosa", "Desafio Impossível", "Lista de Segredos").
+        3. Com base nessas estruturas, mas VARIANDO para não repetir, crie 5 NOVOS TÍTULOS VIRAIS que esse canal poderia postar hoje.
+
+        Responda EXCLUSIVAMENTE em formato JSON puro, sem markdown, com a seguinte estrutura:
+        {
+          "mainTheme": "Descrição curta do tema",
+          "structures": ["Estrutura 1", "Estrutura 2", "Estrutura 3"],
+          "newTitles": ["Título 1", "Título 2", "Título 3", "Título 4", "Título 5"]
+        }
+        Previous Knowledge context: ${JSON.stringify(knowledge.structures.slice(-5))}
+      `;
+
+      const response = await callGemini(configs.gemini_key, analysisPrompt);
+      const cleanJson = response.replace(/```json|```/g, '').trim();
+      const results = JSON.parse(cleanJson);
+
+      // 3. Store Knowledge
+      const updatedKnowledge = {
+        themes: [...new Set([...(knowledge.themes || []), results.mainTheme])].slice(-20),
+        structures: [...new Set([...(knowledge.structures || []), ...(results.structures || [])])].slice(-30),
+        count: (knowledge.count || 0) + 1
+      };
+      saveKnowledge(updatedKnowledge);
+
+      setGeneratedResults(results);
+      setGenerationStep('Concluído!');
+    } catch (error) {
+      console.error("Title Generation Error:", error);
+      alert("Falha na Geração de Títulos:\n" + error.message);
+    } finally {
+      setIsGeneratingTitles(false);
     }
   };
 
@@ -297,8 +408,11 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
 
                     {/* Actions */}
                     <div className="grid grid-cols-2 gap-3 pb-6">
-                      <button className="flex items-center justify-center gap-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black text-gray-400 uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all">
-                        <ExternalLink className="w-3.5 h-3.5" /> {t('mining.view_more')}
+                      <button 
+                        onClick={() => handleGenerateViralTitles(channel)}
+                        className="flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-neon-purple/10 to-neon-cyan/10 border border-neon-cyan/20 rounded-xl text-[10px] font-black text-neon-cyan uppercase tracking-widest hover:from-neon-purple/20 hover:to-neon-cyan/20 transition-all shadow-lg"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" /> {t('mining.generate_titles') || 'Gerar Títulos Virais'}
                       </button>
                       <button className="flex items-center justify-center gap-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black text-gray-400 uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all">
                         <PlayCircle className="w-3.5 h-3.5" /> {t('mining.latest_videos')}
@@ -335,6 +449,148 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Title Generator Modal */}
+      <AnimatePresence>
+        {showTitleGenerator && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-8 bg-dark/80 backdrop-blur-xl">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-4xl max-h-full bg-dark/90 border border-white/10 rounded-[40px] shadow-2xl overflow-hidden flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                <div className="flex items-center gap-5">
+                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-lg">
+                      <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
+                        <Sparkles className="w-7 h-7 text-white animate-pulse" />
+                      </div>
+                   </div>
+                   <div>
+                     <h3 className="text-2xl font-black text-white tracking-tight uppercase italic flex items-center gap-3">
+                       Agente de Títulos Virais
+                     </h3>
+                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">Analisando: {selectedChannel?.title}</p>
+                   </div>
+                </div>
+                <button 
+                  onClick={() => setShowTitleGenerator(false)}
+                  className="w-12 h-12 rounded-full hover:bg-white/10 flex items-center justify-center transition-all group"
+                >
+                  <X className="w-6 h-6 text-gray-500 group-hover:text-white" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+                {isGeneratingTitles ? (
+                  <div className="flex flex-col items-center justify-center py-20 space-y-8">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-neon-cyan/20 blur-[50px] animate-pulse rounded-full" />
+                      <LoadingSpinner size="lg" message="" />
+                    </div>
+                    <div className="text-center space-y-3">
+                       <p className="text-sm font-black text-white uppercase tracking-widest">{generationStep}</p>
+                       <div className="flex justify-center gap-1">
+                          {[1,2,3].map(i => <motion.div key={i} animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 1, delay: i*0.2 }} className="w-1.5 h-1.5 bg-neon-cyan rounded-full" />)}
+                       </div>
+                    </div>
+                  </div>
+                ) : generatedResults ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                    {/* Left: Agent Insight */}
+                    <div className="space-y-8">
+                      <div className="bg-white/5 border border-white/10 rounded-3xl p-8 space-y-6">
+                        <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+                          <Brain className="w-6 h-6 text-neon-purple" />
+                          <h4 className="text-xs font-black text-white uppercase tracking-widest">Mental Model do Agente</h4>
+                        </div>
+                        
+                        <div className="space-y-6">
+                          <div>
+                            <p className="text-[9px] font-black text-neon-purple uppercase tracking-widest mb-2 flex items-center gap-2">
+                              <Zap className="w-3 h-3 fill-current" /> Tema Central Identificado
+                            </p>
+                            <p className="text-sm font-bold text-gray-300 italic pl-3 border-l-2 border-neon-purple">
+                              "{generatedResults.mainTheme}"
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-[9px] font-black text-neon-cyan uppercase tracking-widest mb-3 flex items-center gap-2">
+                              <TrendingUp className="w-3 h-3" /> Estruturas Vencedoras do Canal
+                            </p>
+                            <div className="space-y-2">
+                              {generatedResults.structures.map((s, idx) => (
+                                <div key={idx} className="flex items-center gap-3 px-4 py-2.5 bg-white/5 rounded-xl border border-white/5 text-[11px] font-bold text-gray-400">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan shadow-[0_0_8px_rgba(0,243,255,0.5)]" />
+                                  {s}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="pt-4 mt-4 border-t border-white/5 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                               <History className="w-3 h-3 text-gray-600" />
+                               <span className="text-[9px] font-black text-gray-600 uppercase">Conhecimento Acumulado:</span>
+                            </div>
+                            <span className="text-[10px] font-mono text-neon-cyan font-black">{knowledge.structures.length} padrões</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: New Titles */}
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-3">
+                           <ListChecks className="w-5 h-5 text-green-400" />
+                           <h4 className="text-xs font-black text-white uppercase tracking-widest">Títulos Variados Sugeridos</h4>
+                         </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        {generatedResults.newTitles.map((title, idx) => (
+                          <motion.div 
+                            key={idx}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            className="group bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/[0.08] hover:border-green-500/30 transition-all cursor-pointer relative overflow-hidden"
+                            onClick={() => {
+                              navigator.clipboard.writeText(title);
+                              alert("Título copiado!");
+                            }}
+                          >
+                             <div className="absolute top-0 right-0 w-12 h-12 bg-green-500/5 rounded-full blur-xl group-hover:bg-green-500/10 transition-all" />
+                             <div className="flex gap-4">
+                               <span className="text-green-500 font-mono text-xs opacity-50">#{idx + 1}</span>
+                               <p className="text-sm font-bold text-white leading-relaxed">{title}</p>
+                             </div>
+                             <div className="mt-4 flex items-center justify-end">
+                                <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest group-hover:text-green-500 transition-colors uppercase">Clique para copiar DNA Estrutural</span>
+                             </div>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      <button 
+                        onClick={() => handleGenerateViralTitles(selectedChannel)}
+                        className="w-full py-4 bg-gradient-to-r from-neon-purple to-neon-cyan rounded-2xl text-white font-black text-xs uppercase tracking-widest shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                      >
+                        <Sparkles className="w-4 h-4" /> Gerar Outra Variação
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

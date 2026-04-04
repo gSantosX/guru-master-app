@@ -4,7 +4,7 @@
  * Max size = 6. The 7th oldest item is auto-removed.
  */
 
-export const MAX_STACK = 6;
+export const MAX_STACK = 5;
 
 /**
  * Push a new item to the top of a LIFO stack (localStorage key).

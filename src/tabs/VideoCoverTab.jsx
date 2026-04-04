@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap, Box } from 'lucide-react';
+import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap, Box, Copy, Check } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -41,7 +41,9 @@ export const VideoCoverTab = ({ isActive }) => {
     const [scripts, setScripts] = useState([]);
     const [selectedScript, setSelectedScript] = useState(null);
     const [titles, setTitles] = useState([]);
+    const [shockWords, setShockWords] = useState({ one: '', two: '', three: '' });
     const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
+    const [copiedIndex, setCopiedIndex] = useState(null);
     
     const ENGINES = [
         { id: 'pollinations', name: 'Pollinations AI', icon: Zap, color: 'neon-cyan', desc: 'Geração rápida, ilimitada e gratuita.', focus: 'shadow-[0_0_20px_rgba(0,243,255,0.2)] border-neon-cyan bg-neon-cyan/5' },
@@ -66,6 +68,7 @@ export const VideoCoverTab = ({ isActive }) => {
             { text: '', label: 'Carregando Oportunidades...', isOriginal: false },
             { text: '', label: 'Carregando Oportunidades...', isOriginal: false }
         ]);
+        setShockWords({ one: '', two: '', three: '' });
         setCovers({});
         generateTitleVariations(script.title);
     };
@@ -73,6 +76,7 @@ export const VideoCoverTab = ({ isActive }) => {
     const handleReset = () => {
         setSelectedScript(null);
         setTitles([]);
+        setShockWords({ one: '', two: '', three: '' });
         setCovers({});
     };
 
@@ -87,32 +91,55 @@ export const VideoCoverTab = ({ isActive }) => {
 Crie 2 novas opções de títulos com altíssimo potencial de viralização no YouTube, na mesma língua do original.
 As variações NÃO devem ser iguais entre si. Use gatilhos mentais diferentes (ex: uma focada em Curiosidade extrema, e a outra focada em Uma Promessa Irresistível/Urgência).
 Identifique qual das duas tem o MAIOR potencial viral para se tornar a principal.
-Retorne ESTRITAMENTE um array JSON com 2 objetos. Não use crases markdown nem texto adicional de introdução. O array deve seguir a estrutura exata:
-[
-  { "text": "NOVO TITULO AQUI", "label": "Variação: [Nome do Gatilho]", "is_best": false },
-  { "text": "NOVO TITULO AQUI", "label": "Mais Viral: [Nome do Gatilho]", "is_best": true }
-]`;
+
+Além disso, identifique 3 "Palavras Choque" (palavras curtas e impactantes para usar na CAPA/THUMBNAIL):
+1. Uma única palavra (ex: "REVELADO", "CHOQUE", "ERROU")
+2. Duas palavras (ex: "SÓ ISSO?", "POR QUE?")
+3. Três palavras (ex: "TOTALMENTE DE GRAÇA", "VAI ACABAR HOJE")
+
+Retorne ESTRITAMENTE um objeto JSON exatamente como este:
+{
+  "variations": [
+    { "text": "...", "label": "Variação ...", "is_best": false },
+    { "text": "...", "label": "Mais Viral ...", "is_best": true }
+  ],
+  "shockWords": {
+    "one": "...",
+    "two": "...",
+    "three": "..."
+  }
+}`;
 
             const result = await callGemini(apiKey, prompt);
 
-            let parsed = [];
+            let parsed = { variations: [], shockWords: { one: '-', two: '-', three: '-' } };
             try {
                 const cleanResult = result.replace(/```json/g, '').replace(/```/g, '').trim();
                 parsed = JSON.parse(cleanResult);
             } catch (e) {
                 console.error("JSON parse failed, fallback text processing:", e);
                 const lines = result.split('\n').filter(t => t.trim().length > 3);
-                parsed = [
-                    { text: lines[0] || 'Variação Alternativa 1', label: 'Variação de Curiosidade', is_best: false },
-                    { text: lines[1] || 'Variação Alternativa 2', label: 'Garantia Viral ⭐', is_best: true }
-                ];
+                parsed = {
+                    variations: [
+                        { text: lines[0] || 'Variação Alternativa 1', label: 'Variação de Curiosidade', is_best: false },
+                        { text: lines[1] || 'Variação Alternativa 2', label: 'Garantia Viral ⭐', is_best: true }
+                    ],
+                    shockWords: { one: 'AGORA', two: 'COMO ASSIM?', three: 'VERDADE REVELADA' }
+                };
             }
 
             setTitles([
                 { text: originalTitle, label: 'Título Original', isOriginal: true },
-                { text: parsed[0]?.text || 'Erro ao gerar', label: parsed[0]?.label || 'Variação 1', is_best: Boolean(parsed[0]?.is_best) },
-                { text: parsed[1]?.text || 'Erro ao gerar', label: parsed[1]?.label || 'Variação 2', is_best: Boolean(parsed[1]?.is_best) }
+                { text: parsed.variations?.[0]?.text || 'Erro ao gerar', label: parsed.variations?.[0]?.label || 'Variação 1', is_best: Boolean(parsed.variations?.[0]?.is_best) },
+                { text: parsed.variations?.[1]?.text || 'Erro ao gerar', label: parsed.variations?.[1]?.label || 'Variação 2', is_best: Boolean(parsed.variations?.[1]?.is_best) }
             ]);
+            // Robust parsing for shock words
+            const sw = parsed.shockWords || parsed.shock_words || parsed.palavras_choque || {};
+            setShockWords({
+                one: sw.one || sw.palavra1 || sw.first || '-',
+                two: sw.two || sw.palavra2 || sw.second || '-',
+                three: sw.three || sw.palavra3 || sw.third || '-'
+            });
         } catch (error) {
             console.error('Erro ao gerar variações:', error);
             setTitles([
@@ -322,6 +349,60 @@ Retorne ESTRITAMENTE um array JSON com 2 objetos. Não use crases markdown nem t
                     })}
                 </div>
             </div>
+            
+            {/* Shock Words Section */}
+            <AnimatePresence>
+                {shockWords.one && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-10"
+                    >
+                        <div className="flex items-center gap-3 mb-5">
+                            <Zap className="w-5 h-5 text-neon-cyan" />
+                            <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Palavras Choque para a Capa</h3>
+                            <div className="h-px flex-1 bg-white/5 ml-2" />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {[
+                                { id: 'one', title: '1 Palavra', color: 'neon-cyan', text: shockWords.one },
+                                { id: 'two', title: '2 Palavras', color: 'neon-pink', text: shockWords.two },
+                                { id: 'three', title: '3 Palavras', color: 'neon-purple', text: shockWords.three }
+                            ].map((card) => (
+                                <div 
+                                    key={card.id}
+                                    className={`glass-card p-5 border flex flex-col gap-3 group relative overflow-hidden
+                                        ${card.id === 'one' ? 'border-neon-cyan/20 bg-neon-cyan/5' : ''}
+                                        ${card.id === 'two' ? 'border-neon-pink/20 bg-neon-pink/5' : ''}
+                                        ${card.id === 'three' ? 'border-neon-purple/20 bg-neon-purple/5' : ''}
+                                    `}
+                                >
+                                    <div className="flex justify-between items-center relative z-10">
+                                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] text-${card.color}`}>{card.title}</span>
+                                        <button 
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(card.text);
+                                                // Optional: alert or toast
+                                            }}
+                                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all border border-white/5"
+                                            title="Copiar"
+                                        >
+                                            <Download className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                    <div className="relative z-10">
+                                        <h4 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] transition-all">
+                                            {card.text || '...'}
+                                        </h4>
+                                    </div>
+                                    <div className={`absolute -right-4 -bottom-4 w-16 h-16 blur-[30px] bg-${card.color}/10 pointer-events-none group-hover:bg-${card.color}/20 transition-all`} />
+                                </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <div className="grid grid-cols-1 gap-8">
                 {titles.map((titleObj, idx) => {
@@ -363,6 +444,23 @@ Retorne ESTRITAMENTE um array JSON com 2 objetos. Não use crases markdown nem t
                                     <span className={`px-2 md:px-3 py-1 rounded text-[9px] md:text-[10px] font-black uppercase tracking-[0.1em] md:tracking-widest ${badgeColor}`}>
                                         {labelText}
                                     </span>
+                                    <button 
+                                        onClick={() => {
+                                            if (!titleText) return;
+                                            navigator.clipboard.writeText(titleText);
+                                            setCopiedIndex(idx);
+                                            setTimeout(() => setCopiedIndex(null), 2000);
+                                        }}
+                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all border border-white/5 flex items-center justify-center gap-2 group/copy"
+                                        title="Copiar Título"
+                                    >
+                                        {copiedIndex === idx ? (
+                                            <Check className="w-3.5 h-3.5 text-neon-cyan" />
+                                        ) : (
+                                            <Copy className="w-3.5 h-3.5" />
+                                        )}
+                                        <span className="text-[8px] font-black uppercase tracking-widest hidden group-hover/copy:block">Copiar</span>
+                                    </button>
                                     {isGeneratingTitles && !isOriginal && <LoadingSpinner size="xs" message="" />}
                                 </div>
                                 <h3 className={`text-xl md:text-2xl font-bold leading-tight mb-4 transition-colors ${isBest ? 'text-yellow-400 group-hover:text-yellow-300' : 'text-white group-hover:text-neon-purple'}`}>

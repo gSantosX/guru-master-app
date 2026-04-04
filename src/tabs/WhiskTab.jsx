@@ -230,25 +230,25 @@ export const WhiskTab = ({ isActive }) => {
   return (
     <div className="flex flex-col h-full w-full max-w-[1600px] mx-auto gap-8 font-sans overflow-hidden px-4 md:px-0 pt-4 md:pt-6">
       {/* Premium Header */}
-      <header className="flex flex-col justify-between items-start gap-6 shrink-0">
+      <header className="flex flex-col justify-between items-start gap-4 shrink-0">
         <div>
-          <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-cyan via-blue-600 to-white p-[2px] shadow-[0_0_20px_rgba(0,243,255,0.3)] shrink-0">
-              <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center overflow-hidden">
-                <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover scale-[1.05]" />
+          <h2 className="text-3xl md:text-4xl font-bold text-white flex items-center gap-3 tracking-tight uppercase italic">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-neon-cyan via-blue-600 to-white p-[1px] shadow-[0_0_15px_rgba(0,243,255,0.3)] shrink-0">
+              <div className="w-full h-full bg-dark rounded-full flex items-center justify-center overflow-hidden">
+                <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-full" />
               </div>
             </div>
             {t('whisk.title')}
           </h2>
-          <p className="text-gray-400 mt-3 font-bold text-sm md:text-md uppercase tracking-[0.2em] border-l-4 border-neon-cyan pl-4 ml-2">
+          <p className="text-gray-500 mt-2 font-black text-[10px] uppercase tracking-[0.2em] border-l-2 border-neon-cyan pl-3 ml-1">
             {t('whisk.subtitle')}
           </p>
         </div>
       </header>
 
       {/* Main Tabs Navigation */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6 shrink-0 w-full">
-        <div className="flex w-full md:w-auto overflow-x-auto custom-scrollbar bg-white/5 p-1 rounded-2xl border border-white/5 backdrop-blur-md">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shrink-0 w-full">
+        <div className="flex w-full md:w-auto bg-white/5 p-1 rounded-xl border border-white/5 backdrop-blur-md">
           {[
             { id: 'control', label: t('whisk.tab_control'), icon: Layout },
             { id: 'settings', label: t('whisk.tab_settings'), icon: Settings }
@@ -256,29 +256,29 @@ export const WhiskTab = ({ isActive }) => {
             <button
               key={tab.id}
               onClick={() => setActiveSubTab(tab.id)}
-              className={`flex items-center gap-3 px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all
+              className={`flex items-center gap-2 px-6 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all
                 ${activeSubTab === tab.id 
                   ? 'bg-gradient-to-br from-neon-cyan/20 to-blue-600/20 text-neon-cyan shadow-inner border border-neon-cyan/30' 
                   : 'text-gray-500 hover:text-white hover:bg-white/5'
                 }
               `}
             >
-              <tab.icon className={`w-4 h-4 ${activeSubTab === tab.id ? 'animate-pulse' : ''}`} />
+              <tab.icon className={`w-3.5 h-3.5 ${activeSubTab === tab.id ? 'animate-pulse' : ''}`} />
               {tab.label}
             </button>
           ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+        <div className="flex items-center gap-4 w-full md:w-auto">
           <motion.button 
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleStart}
             disabled={isRunning || !prompts}
-            className={`w-full sm:w-auto flex items-center justify-center gap-4 px-8 md:px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all relative overflow-hidden
+            className={`w-full sm:w-auto flex items-center justify-center gap-3 px-6 md:px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all
               ${isRunning || !prompts 
-                ? 'bg-gray-800/50 text-gray-600 border border-white/5 cursor-not-allowed' 
-                : 'bg-gradient-to-br from-neon-cyan via-blue-600 to-neon-purple text-white shadow-[0_10px_40px_rgba(0,243,255,0.3)] ring-1 ring-white/20'
+                ? 'bg-gray-800/50 text-gray-600 border border-white/5' 
+                : 'bg-gradient-to-r from-neon-cyan to-blue-600 text-white shadow-[0_0_20px_rgba(0,243,255,0.2)]'
               }
             `}
           >
@@ -295,9 +295,9 @@ export const WhiskTab = ({ isActive }) => {
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               onClick={handleStop}
-              className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500/20 transition-all shadow-[0_0_20px_rgba(239,68,68,0.1)]"
+              className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500/20 transition-all shadow-[0_0_15px_rgba(239,68,68,0.1)]"
             >
-              <Square className="w-4 h-4 fill-current" /> {t('whisk.btn_stop')}
+              <Square className="w-3.5 h-3.5 fill-current" /> {t('whisk.btn_stop')}
             </motion.button>
           )}
         </div>
@@ -522,72 +522,72 @@ export const WhiskTab = ({ isActive }) => {
                  <h3 className="text-xl md:text-2xl font-black text-white tracking-tight">{t('whisk.folder_config')}</h3>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                  {/* Folder Path Card */}
-                 <div className="bg-white/5 border border-white/10 rounded-[24px] md:rounded-[32px] p-6 md:p-8 space-y-4 md:space-y-6 hover:bg-white/[0.07] transition-colors group">
+                 <div className="bg-white/5 border border-white/10 rounded-3xl p-6 space-y-6 hover:bg-white/[0.07] transition-colors group">
                     <div className="flex items-center gap-4">
-                       <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20 shrink-0">
-                          <Download className="w-4 h-4 md:w-5 md:h-5 text-neon-cyan" />
+                       <div className="w-8 h-8 rounded-xl bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20 shrink-0">
+                          <Download className="w-4 h-4 text-neon-cyan" />
                        </div>
-                       <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{t('whisk.folder_path')}</label>
+                       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{t('whisk.folder_path')}</label>
                     </div>
                     
                     <div className="space-y-4">
-                       <div className="p-4 md:p-5 bg-dark/60 border border-white/5 rounded-xl md:rounded-2xl text-gray-400 font-mono text-[10px] md:text-xs break-all leading-normal shadow-inner italic">
+                       <div className="p-4 bg-dark/60 border border-white/5 rounded-xl text-gray-400 font-mono text-[10px] break-all leading-normal shadow-inner italic">
                           {whiskStatus.path || 'Nenhuma pasta selecionada...'}
                        </div>
                        <motion.button 
                          whileHover={{ scale: 1.02 }}
                          whileTap={{ scale: 0.98 }}
                          onClick={handleSelectFolder}
-                         className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-white font-black text-[10px] uppercase tracking-[0.2em] transition-all group/btn"
+                         className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white font-black text-[10px] uppercase tracking-widest transition-all group/btn"
                        >
-                         <Layout className="w-4 h-4 text-neon-cyan group-hover/btn:rotate-12 transition-transform" />
+                         <Layout className="w-4 h-4 text-neon-cyan" />
                          {whiskStatus.path ? 'Alterar Localização' : 'Selecionar Pasta de Captura'}
                        </motion.button>
                     </div>
                  </div>
 
                  {/* Toggles Card */}
-                 <div className="space-y-4 md:space-y-6">
-                    <div className="bg-white/5 border border-white/10 rounded-[24px] md:rounded-[32px] p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4 hover:bg-white/[0.07] transition-all">
-                       <div className="flex items-center gap-4 md:gap-5">
-                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20 shrink-0">
-                             <Zap className="w-4 h-4 md:w-5 md:h-5 text-neon-purple" />
+                 <div className="space-y-4">
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex items-center justify-between gap-4 hover:bg-white/[0.07] transition-all">
+                       <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-xl bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20 shrink-0">
+                             <Zap className="w-4 h-4 text-neon-purple" />
                           </div>
                           <div>
-                             <p className="text-xs md:text-sm font-black text-white uppercase tracking-tighter">{t('whisk.check_folder')}</p>
-                             <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">{t('whisk.check_folder_hint')}</p>
+                             <p className="text-xs font-black text-white uppercase tracking-tighter">{t('whisk.check_folder')}</p>
+                             <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{t('whisk.check_folder_hint')}</p>
                           </div>
                        </div>
                        <button 
                          onClick={() => setCheckFolderOnStart(!checkFolderOnStart)}
-                         className={`w-14 h-7 rounded-full transition-all relative shrink-0 ${checkFolderOnStart ? 'bg-neon-cyan shadow-[0_0_15px_rgba(0,243,255,0.4)]' : 'bg-white/10 ring-1 ring-white/5'}`}
+                         className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${checkFolderOnStart ? 'bg-neon-cyan shadow-[0_0_10px_rgba(0,243,255,0.4)]' : 'bg-white/10 ring-1 ring-white/5'}`}
                        >
                           <motion.div 
-                            animate={{ x: checkFolderOnStart ? 28 : 4 }}
-                            className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-lg" 
+                            animate={{ x: checkFolderOnStart ? 26 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-lg" 
                           />
                        </button>
                     </div>
 
-                    <div className="bg-white/5 border border-white/10 rounded-[24px] md:rounded-[32px] p-6 md:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4 hover:bg-white/[0.07] transition-all">
-                       <div className="flex items-center gap-4 md:gap-5">
-                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl md:rounded-2xl bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20 shrink-0">
-                             <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-neon-cyan" />
+                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex items-center justify-between gap-4 hover:bg-white/[0.07] transition-all">
+                       <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-xl bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20 shrink-0">
+                             <CheckCircle className="w-4 h-4 text-neon-cyan" />
                           </div>
                           <div>
-                             <p className="text-xs md:text-sm font-black text-white uppercase tracking-tighter">Auto Download</p>
-                             <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest">Baixar imagens automaticamente</p>
+                             <p className="text-xs font-black text-white uppercase tracking-tighter">Auto Download</p>
+                             <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Baixar imagens automaticamente</p>
                           </div>
                        </div>
                        <button 
                          onClick={() => setAutoDownload(!autoDownload)}
-                         className={`w-14 h-7 rounded-full transition-all relative shrink-0 ${autoDownload ? 'bg-neon-purple shadow-[0_0_15px_#bf40ff44]' : 'bg-white/10 ring-1 ring-white/5'}`}
+                         className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${autoDownload ? 'bg-neon-purple shadow-[0_0_10px_#bf40ff44]' : 'bg-white/10 ring-1 ring-white/5'}`}
                        >
                           <motion.div 
-                            animate={{ x: autoDownload ? 28 : 4 }}
-                            className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-lg" 
+                            animate={{ x: autoDownload ? 26 : 4 }}
+                            className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-lg" 
                           />
                        </button>
                     </div>
@@ -628,15 +628,15 @@ export const WhiskTab = ({ isActive }) => {
                   <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="p-6 md:p-10 bg-green-500/5 border border-green-500/20 rounded-[32px] md:rounded-[40px] flex flex-col md:flex-row items-center text-center md:text-left gap-6 md:gap-8 relative overflow-hidden"
+                    className="p-6 bg-green-500/5 border border-green-500/20 rounded-3xl flex flex-col md:flex-row items-center text-center md:text-left gap-6 relative overflow-hidden"
                   >
                      <div className="absolute top-0 left-0 w-full h-1 md:w-1 md:h-full bg-green-500 shadow-[0_0_15px_#22c55e]" />
-                     <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl md:rounded-3xl bg-green-500/10 flex items-center justify-center border border-green-500/20 shrink-0">
-                        <CheckCircle className="w-8 h-8 md:w-10 md:h-10 text-green-500" />
+                     <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center border border-green-500/20 shrink-0">
+                        <CheckCircle className="w-6 h-6 text-green-500" />
                      </div>
                      <div>
-                        <p className="text-xl md:text-2xl font-black text-white tracking-tight mb-1">{t('whisk.status_ready')}</p>
-                        <p className="text-green-400/60 text-[10px] md:text-xs font-black uppercase tracking-[0.2em]">Pasta de downloads limpa e sincronizada</p>
+                        <p className="text-xl font-black text-white tracking-tight mb-1">{t('whisk.status_ready')}</p>
+                        <p className="text-green-400/60 text-[9px] font-black uppercase tracking-[0.2em]">Pasta de downloads limpa e sincronizada</p>
                      </div>
                   </motion.div>
                 )}

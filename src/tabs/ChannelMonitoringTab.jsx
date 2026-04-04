@@ -232,6 +232,12 @@ export const ChannelMonitoringTab = ({ isActive }) => {
   };
 
   const runAnalysis = async (type, count = 10) => {
+    let brainContext = "";
+    try {
+      const brainRes = await fetch(resolveApiUrl('/api/brain/context?niche=Geral'));
+      const brainData = await brainRes.json();
+      brainContext = brainData.experience;
+    } catch (err) { console.error('Brain Fetch Error', err); }
     if (!selectedChannel) return;
     setIsAnalyzing(true);
     
@@ -263,8 +269,7 @@ export const ChannelMonitoringTab = ({ isActive }) => {
     let prompt = '';
 
     if (type === 'titles') {
-      prompt = `Aja como um especialista em SEO e viralização de vídeos no YouTube. 
-Analise os vídeos do canal "${selectedChannel.title}":
+      prompt = `Use sua MEMÓRIA DE GURU e EXPERIÊNCIA ACUMULADA para esta análise:\n\n${brainContext}\n\nAja como um especialista em SEO e viralização de vídeos no YouTube.\n\nAnalise os vídeos do canal "${selectedChannel.title}":
 POPULARES: ${viralText}
 RECENTES: ${latestText}
 
@@ -277,8 +282,7 @@ IMPORTANTE:
 
 Retorne APENAS a lista numerada (1. Título, 2. Título...). Sem texto antes ou depois.`;
     } else {
-      prompt = `Aja como um mentor experiente de YouTube explicando para um TOTAL INICIANTE.
-Analise a estratégia do canal "${selectedChannel.title}".
+      prompt = `Use sua MEMÓRIA DE GURU e EXPERIÊNCIA ACUMULADA para esta análise:\n\n${brainContext}\n\nAja como um mentor experiente de YouTube explicando para um TOTAL INICIANTE.\n\nAnalise a estratégia do canal "${selectedChannel.title}".
 
 DADOS DO CANAL:
 Vídeos Populares:
@@ -312,6 +316,16 @@ IMPORTANTE:
       
       // alert(`Análise recebida com sucesso! Tamanho: ${result.length} caracteres.`);
       setAnalysisResult(result);
+      // Auto-Learn Pattern
+      fetch(resolveApiUrl('/api/brain/learn'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          niche: 'Geral',
+          report: result,
+          metadata: { channel_name: selectedChannel.title, type: analysisType }
+        })
+      }).catch(err => console.error('Learning Fail', err));
     } catch (err) {
       alert('Erro na análise: ' + err.message);
     } finally {

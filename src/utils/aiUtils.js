@@ -178,6 +178,30 @@ export const callGPT = async (apiKey, prompt, model = "gpt-4o-mini", options = {
 };
 
 /**
+ * Translates SRT content while preserving timestamps and structure.
+ */
+export const translateSRT = async (srtText, targetLang, apiKey, provider = 'gemini') => {
+  if (!apiKey) throw new Error("API Key ausente para tradução!");
+
+  const prompt = `Translate the following SRT file content into ${targetLang}. 
+  STRICT RULES:
+  1. Keep EXACTLY the same timestamps and block numbers.
+  2. Translate ONLY the text lines.
+  3. Maintain the SRT format perfectly (Number -> Time -> Text -> Empty Line).
+  4. Preserve any special characters or formatting like <i> or <b>.
+  5. Return ONLY the translated SRT content.
+
+  CONTENT:
+  ${srtText}`;
+
+  if (provider === 'gpt') {
+    return await callGPT(apiKey, prompt, "gpt-4o-mini");
+  } else {
+    return await callGemini(apiKey, prompt);
+  }
+};
+
+/**
  * Robustly calls Grok API via proxy.
  */
 export const callGrok = async (apiKey, prompt, model = "grok-beta", options = {}) => {

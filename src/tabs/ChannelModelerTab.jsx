@@ -7,15 +7,9 @@ import { t } from '../utils/i18n';
 import { stackPush, stackRead, stackRemove } from '../utils/stackUtils';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { ViralHacker } from '../components/ViralHacker';
 
-const VIRAL_HOOKS = [
-  { id: 'secret', name: 'O Segredo Revelado', icon: ShieldCheck, color: 'neon-cyan', prompt: 'Curiosidade extrema e segredos ocultos', isHot: true },
-  { id: 'error', name: 'O Grande Erro', icon: XCircle, color: 'neon-pink', prompt: 'Medo de errar e perda de dinheiro/tempo' },
-  { id: 'journey', name: 'Transformação Real', icon: TrendingUp, color: 'green-400', prompt: 'Jornada de superação e resultados práticos' },
-  { id: 'truth', name: 'Verdade Chocante', icon: AlertCircle, color: 'orange-400', prompt: 'Controvérsia e fatos que ninguém conta' },
-  { id: 'fast', name: 'Caminho Rápido', icon: Zap, color: 'yellow-400', prompt: 'Velocidade, hacks e atalhos de eficiência' },
-  { id: 'proof', name: 'A Prova Social', icon: CheckCircle, color: 'neon-purple', prompt: 'Estudo de caso e prova de conceito' }
-];
+// VIRAL_HOOKS moved to dedicated component
 
 export const ChannelModelerTab = () => {
   const { configs } = useSystemStatus();
@@ -25,14 +19,12 @@ export const ChannelModelerTab = () => {
   const [history, setHistory] = useState([]);
   const [activeHistoryId, setActiveHistoryId] = useState(null);
   
-  const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
-  const [generatedTitles, setGeneratedTitles] = useState([]);
-  const [activeHook, setActiveHook] = useState(null);
-  const [copiedIndex, setCopiedIndex] = useState(null);
+  
   
   const [selectedLanguage, setSelectedLanguage] = useState({ name: 'Brasil', code: 'pt', flag: '🇧🇷' });
   const [localizedChannelNames, setLocalizedChannelNames] = useState([]);
   const [isTranslatingNames, setIsTranslatingNames] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
   const workspaceRef = React.useRef(null);
 
   useEffect(() => {
@@ -87,8 +79,17 @@ export const ChannelModelerTab = () => {
         subscriberCount: stats.subscriberCount,
         viewCount: stats.viewCount,
         videoCount: stats.videoCount,
-        viralVideos: (viralData.items || []).map(v => ({ title: v.snippet.title, viewCount: videoStats[v.id.videoId] || 0 })),
-        latestVideos: (latestData.items || []).map(v => ({ title: v.snippet.title, viewCount: videoStats[v.id.videoId] || 0 }))
+        viralVideos: (viralData.items || []).map(v => ({ 
+          title: v.snippet.title, 
+          viewCount: videoStats[v.id.videoId] || 0,
+          thumbnail: v.snippet.thumbnails.high?.url || v.snippet.thumbnails.medium.url,
+          id: v.id.videoId
+        })),
+        latestVideos: (latestData.items || []).map(v => ({ 
+          title: v.snippet.title, 
+          viewCount: videoStats[v.id.videoId] || 0,
+          id: v.id.videoId
+        }))
       };
     } catch (err) {
       console.error('Fetch error:', err);
@@ -97,12 +98,17 @@ export const ChannelModelerTab = () => {
   };
 
   const handleAnalyze = async () => {
+    let brainContext = "";
+    try {
+      const brainRes = await fetch(resolveApiUrl('/api/brain/context?niche=Geral'));
+      const brainData = await brainRes.json();
+      brainContext = brainData.experience;
+    } catch (err) { console.error('Brain Fetch Error', err); }
     if (!url) return;
     setIsAnalyzing(true);
+    setShowSidebar(false);
     setResult(null);
-    setGeneratedTitles([]);
     setLocalizedChannelNames([]);
-    setActiveHook(null);
     setSelectedLanguage({ name: 'Brasil', code: 'pt', flag: '🇧🇷' });
 
     const info = extractChannelIdOrHandle(url);
@@ -122,28 +128,26 @@ ${realData.viralVideos.map(v => `- ${v.title} (${v.viewCount} views)`).join('\n'
 ${realData.latestVideos.map(v => `- ${v.title} (${v.viewCount} views)`).join('\n')}
 ` : `URL do canal: ${url}`;
 
-    const prompt = `Você é um especialista em crescimento de canais virais no YouTube e engenharia reversa de conteúdo.
-
+    const prompt = `Você é o maior Engenheiro de Viralização do Mundo. Use sua MEMÓRIA DE GURU e EXPERIÊNCIA ACUMULADA para esta análise:\n\n${brainContext}\n\nSua missão é realizar uma ANÁLISE CIRÚRGICA do canal abaixo.\n\n
 IMPORTANTE: Responda usando exatamente os delimitadores [SECAO_1] até [SECAO_9]. Seja direto e tático.
 
 Sua tarefa é analisar profundamente um canal a partir dos dados reais fornecidos e extrair padrões replicáveis.
 
 ${statsContext}
 
-[SECAO_1] ANÁLISE DO CANAL (Tempo, Frequência, Views, Outliers encontrados)
-[SECAO_2] IDENTIFICAÇÃO DE NICHO (Nivel 1, 2, 3 e Tema Central)
-[SECAO_3] ENGENHARIA DE CONTEÚDO (Títulos, Copy, Gatilhos e Palavras mais fortes)
-[SECAO_4] ANÁLISE DE CAPAS (Design, Cores, Emoções, Clickbait)
-[SECAO_5] PADRÕES VIRAIS (O que mais gera views baseado nos outliers, Retenção, Formatos)
-[SECAO_6] OPORTUNIDADES (Brechas, Diferenciação, Temas pouco explorados)
-[SECAO_7] MODELAGEM DO NOVO CANAL (Nome sugerido, Posicionamento, 10 IDEIAS VIRAIS)
-[SECAO_8] VALIDAÇÃO (Responda: 50+ vídeos? Dor clara? RESULTADO FINAL: MICRONICHO IDEAL ou NÃO)
-[SECAO_9] MERCADOS GLOBAIS (Priorize mercados com a MENOR CONCORRÊNCIA absoluta para replicar a estratégia, independentemente do RPM/CPM. Identifique onde há escassez de conteúdo de qualidade neste nicho. Justifique.)
+[SECAO_1] PERFORMANCE BRUTA (Analise os outliers vs frequência de postagem)
+[SECAO_2] PSICOLOGIA DO NICHO (Identifique as dores latentes e o "Status" que o espectador busca)
+[SECAO_3] ENGENHARIA DE HOOKS (Identifique ganchos de Curiosidade, Medo ou Erro nos títulos)
+[SECAO_4] DNA VISUAL (thumbnails: Descreva a composição ideal de cores e elementos baseada nos virais)
+[SECAO_5] PADRÕES TÁTICOS (Pacing, Estrutura do Storytelling, Frequência vs Retenção)
+[SECAO_6] BRECHAS ESTRATÉGICAS (Onde o concorrente falha? O que os inscritos estão implorando?)
+[SECAO_7] MODELAGEM EXECUTIVA (Sugira Nome, 5 Títulos Virais p/ começar, Guia de Thumbnail)
+[SECAO_8] VEREDITO CIRÚRGICO (Dificuldade de Replica: Fácil | Média | Difícil. ROI Estimado: $$$)
+[SECAO_9] EXPANSÃO GLOBAL (Seja um estrategista: Esqueça o RPM se houver certeza absoluta de viralização. Identifique países com ESCASSEZ de conteúdo de qualidade neste nicho. Onde a viralização é 100% certa por falta de concorrência? Justifique.)
 
-IMPORTANTE: Ao final da SECAO 9, coloque uma linha com este formato exato:
-ESTRATÉGIA_PAISES: [Estados Unidos|en, México|es, Brasil|pt, Índia|hi]
+IMPORTANTE: Ao final da SECAO 9, coloque exatamente: ESTRATÉGIA_PAISES: [País1|code1, País2|code2]
 
-Foque em viralização e padrões replicáveis. Use frases curtas e diretas.`;
+Seja frio, técnico e cirúrgico. Sem elogios.`;
 
     try {
       const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
@@ -176,7 +180,7 @@ Foque em viralização e padrões replicáveis. Use frases curtas e diretas.`;
       if (parsedSections.countries && parsedSections.countries.length > 0) {
         const topMarket = parsedSections.countries[0];
         setSelectedLanguage(topMarket);
-        translateChannelNames(topMarket);
+        translateChannelNames(topMarket, newAnalysis);
       }
 
       if (workspaceRef.current) {
@@ -186,6 +190,7 @@ Foque em viralização e padrões replicáveis. Use frases curtas e diretas.`;
       alert(`Erro na análise: ${error.message}`);
     } finally {
       setIsAnalyzing(false);
+    setShowSidebar(false);
     }
   };
 
@@ -204,62 +209,47 @@ Foque em viralização e padrões replicáveis. Use frases curtas e diretas.`;
       sections[i] = content;
     }
     
-    const countriesMatch = text.match(/ESTRATÉGIA_PAISES:\s*\[(.*?)\]/i) || text.match(/PAISES:\s*\[(.*?)\]/i);
+    const countriesMatch = text.match(/ESTRATÉGIA_PAISES:\s*\[?(.*?)\]?/i) || text.match(/PAISES:\s*\[?(.*?)\]?/i);
     if (countriesMatch) {
-       sections.countries = countriesMatch[1].split(',').map(item => {
+       const rawItems = countriesMatch[1].split(/,|-|;/);
+       sections.countries = rawItems.map(item => {
           const parts = item.trim().split('|');
-          const name = parts[0];
-          const code = parts[1] || 'en';
+          if (parts.length < 1) return null;
+          const name = parts[0].replace(/\[|\]/g, '').trim();
+          const code = (parts[1] || 'en').replace(/\[|\]/g, '').trim();
           return { name, code, flag: getFlag(code) };
-       }).filter(c => c.name && c.code);
+       }).filter(c => c && c.name && c.code);
+    }
+    
+    // Fallback if AI fails to format correctly - extract from text
+    if (!sections.countries || sections.countries.length === 0) {
+      sections.countries = [
+        { name: 'México', code: 'es', flag: '🇲🇽' },
+        { name: 'Indonésia', code: 'id', flag: '🇮🇩' },
+        { name: 'Vietnã', code: 'vn', flag: '🇻🇳' },
+        { name: 'Índia', code: 'in', flag: '🇮🇳' }
+      ];
     }
     return sections;
   };
 
   const getFlag = (code) => {
-    const flags = { 'pt': '🇧🇷', 'en': '🇺🇸', 'es': '🇲🇽', 'hi': '🇮🇳', 'id': '🇮🇩', 'fr': '🇫🇷', 'de': '🇩🇪', 'jp': '🇯🇵', 'ru': '🇷🇺' };
+    const flags = { 
+      'pt': '🇧🇷', 'br': '🇧🇷', 'en': '🇺🇸', 'us': '🇺🇸', 'uk': '🇬🇧', 'es': '🇲🇽', 'mx': '🇲🇽', 
+      'hi': '🇮🇳', 'in': '🇮🇳', 'id': '🇮🇩', 'fr': '🇫🇷', 'de': '🇩🇪', 'jp': '🇯🇵', 
+      'ru': '🇷🇺', 'it': '🇮🇹', 'kr': '🇰🇷', 'tr': '🇹🇷', 'vn': '🇻🇳', 'th': '🇹🇭',
+      'ng': '🇳🇬', 'eg': '🇪🇬', 'sa': '🇸🇦', 'ph': '🇵🇭'
+    };
     return flags[code.toLowerCase()] || '🌐';
   };
 
-  const handleGenerateHookTitles = async (hook) => {
-    if (!result || isGeneratingTitles) return;
-    setIsGeneratingTitles(true);
-    setActiveHook(hook);
-    setGeneratedTitles([]);
-    
-    const niche = result.sections?.[2] || 'Canal Viral';
-    const mainTopic = result.channelMeta?.title || 'este nicho';
-    const langName = selectedLanguage.code === 'pt' ? 'Português' : 
-                     selectedLanguage.code === 'en' ? 'Inglês' : 
-                     selectedLanguage.code === 'es' ? 'Espanhol' : 
-                     selectedLanguage.code === 'hi' ? 'Hindi' : selectedLanguage.name;
+  
 
-    const prompt = `Aja como o melhor estrategista de títulos virais em ${langName}.
-Crie 4 títulos virais numerados de 1 a 4 para o nicho "${niche}" e canal "${mainTopic}".
-Gatilho: ${hook.name} (${hook.prompt}). Escreva apenas em ${langName.toUpperCase()}. CTR Explosivo!`;
-
-    try {
-      const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
-      const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
-      let responseText = "";
-      try { responseText = await callGPT(gptKey, prompt); } catch (err) { responseText = await callGemini(geminiKey, prompt); }
-      
-      const lines = responseText.split('\n').filter(l => l.trim().length > 3);
-      // Identify titles (lines starting with numbers) vs intro
-      const titles = lines.filter(l => /^\d+[\.\s\)]/.test(l.trim())).map(l => l.replace(/^[\d\s\.\-)]+/, '').replace(/^["']|["']$/g, '').trim());
-      const intro = lines.find(l => !/^\d+[\.\s\)]/.test(l.trim())) || "";
-      
-      setGeneratedTitles(titles.length > 0 ? titles : lines.slice(0, 4));
-      // Store intro message separately if needed or just use logic in render
-      if (intro) setGeneratedTitles(prev => [ `INFO:${intro}`, ...prev ]);
-      
-    } catch (err) { console.error(err); } finally { setIsGeneratingTitles(false); }
-  };
-
-  const translateChannelNames = async (langObj) => {
-    if (!result || isTranslatingNames) return;
+  const translateChannelNames = async (langObj, resultOverride = null) => {
+    const targetResult = resultOverride || result;
+    if (!targetResult || isTranslatingNames) return;
     setIsTranslatingNames(true);
-    const originalNames = result.sections?.[7] || "Nome de Canal";
+    const originalNames = targetResult.sections?.[7] || "Nome de Canal";
     const lang = langObj.name;
 
     const prompt = `Sugira 3 nomes de canais atraentes e virais especificamente para o idioma e mercado: ${lang}. 
@@ -285,6 +275,7 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
 
   const loadFromHistory = (item) => {
     if (!item) return;
+    setShowSidebar(false);
     setIsAnalyzing(false);
     setResult(null);
     
@@ -293,11 +284,19 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
         const rawContent = item.content || "";
         const sections = parseSections(rawContent);
         const hydratedResult = { ...item, sections, id: item.id || `hist-${Date.now()}` };
-        setResult(hydratedResult);
+        // Auto-Learn Pattern
+        fetch(resolveApiUrl('/api/brain/learn'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            niche: 'Geral',
+            report: rawContent,
+            metadata: { channel_name: hydratedResult.channelMeta?.title }
+          })
+        }).catch(err => console.error('Learning Fail', err));
         setActiveHistoryId(hydratedResult.id);
-        setGeneratedTitles([]);
+        setResult(hydratedResult);
         setLocalizedChannelNames([]);
-        setActiveHook(null);
         setSelectedLanguage({ name: 'Brasil', code: 'pt', flag: '🇧🇷' });
         if (workspaceRef.current) workspaceRef.current.scrollTop = 0;
       } catch (e) { console.error(e); }
@@ -311,11 +310,6 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
     if (result && result.id === id) { setResult(null); setActiveHistoryId(null); }
   };
 
-  const copyTitle = (text, index) => {
-    navigator.clipboard.writeText(text);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
-  };
 
   const formatNumber = (num) => {
     if (!num) return '0';
@@ -347,9 +341,10 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
 
   return (
     <div className="flex flex-col lg:flex-row h-full w-full max-w-[1700px] mx-auto gap-6 lg:overflow-hidden font-sans">
-      
       {/* Sidebar - Left */}
-      <motion.div 
+      <AnimatePresence>
+        {showSidebar && (
+          <motion.div 
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         className="w-full lg:w-[400px] flex flex-col h-auto lg:h-full lg:pr-8 lg:border-r lg:border-white/5 overflow-y-auto custom-scrollbar shrink-0 px-4 lg:px-0"
@@ -418,6 +413,8 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
           </div>
         </div>
       </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Workspace - Right */}
       <motion.div 
@@ -429,6 +426,12 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
            <header className="p-6 md:p-8 border-b border-white/5 bg-black/20 flex justify-between items-center z-10 backdrop-blur-md">
              <div className="flex items-center gap-3">
                 <Brain className="text-neon-cyan w-5 h-5 shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
+                {!showSidebar && (
+                  <button onClick={() => setShowSidebar(true)} className="mr-4 p-2 rounded-lg bg-white/5 border border-white/5 hover:bg-neon-cyan/20 hover:border-neon-cyan/40 text-gray-400 hover:text-neon-cyan transition-all group flex items-center gap-2">
+                     <PanelLeft className="w-4 h-4" />
+                     <span className="text-[10px] font-black uppercase tracking-widest hidden md:inline">VOLTAR</span>
+                  </button>
+                )}
                 <h3 className="text-sm font-black text-white uppercase tracking-widest">{t('modelador.results_title')}</h3>
              </div>
              {result && (
@@ -461,7 +464,21 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
                        <DashboardCard title="1. Métricas de Performance" icon={BarChart4} color="neon-cyan">{result.sections?.[1]}</DashboardCard>
                        <DashboardCard title="2. DNA do Canal" icon={Dna} color="neon-purple">{result.sections?.[2]}</DashboardCard>
                        <DashboardCard title="3. Copyright & Storytelling" icon={Lightbulb} color="neon-cyan">{result.sections?.[3]}</DashboardCard>
-                       <DashboardCard title="4. Design Visionário" icon={Palette} color="neon-pink">{result.sections?.[4]}</DashboardCard>
+                        <DashboardCard title="4. Design Visionário" icon={Palette} color="neon-pink">
+                           {result.channelMeta?.viralVideos && (
+                             <div className="mb-4 grid grid-cols-2 gap-2">
+                               {result.channelMeta.viralVideos.slice(0, 4).map((v, idx) => (
+                                 <div key={idx} className="group/th relative rounded-lg overflow-hidden border border-white/10 aspect-video bg-black/40">
+                                    <img src={v.thumbnail} alt="Viral" className="w-full h-full object-cover group-hover/th:scale-110 transition-transform opacity-70 group-hover/th:opacity-100" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-2 opacity-0 group-hover/th:opacity-100 transition-opacity">
+                                       <span className="text-[7px] font-black text-white/80 uppercase truncate">{formatNumber(v.viewCount)} Views</span>
+                                    </div>
+                                 </div>
+                               ))}
+                             </div>
+                           )}
+                           <div className="opacity-80">{result.sections?.[4]}</div>
+                        </DashboardCard>
                        <DashboardCard title="5. Fatores do Viral" icon={Flame} color="orange-400">{result.sections?.[5]}</DashboardCard>
                        <DashboardCard title="6. Brechas Estratégicas" icon={AlertCircle} color="green-400">{result.sections?.[6]}</DashboardCard>
                        
@@ -504,129 +521,13 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
                        </DashboardCard>
                     </div>
 
-                    <section className="bg-black/40 p-10 rounded-3xl border border-white/5 relative group overflow-hidden">
-                       <div className="absolute top-0 right-0 w-64 h-64 bg-neon-cyan/5 blur-[100px] -z-10 group-hover:bg-neon-cyan/10 transition-all" />
-                       
-                       <header className="mb-10 flex flex-col md:flex-row justify-between items-start gap-8">
-                          <div className="flex-1">
-                             <h3 className="text-md font-black text-white flex items-center gap-2 uppercase tracking-widest">
-                                <Zap className="w-5 h-5 text-neon-cyan fill-current shadow-[0_0_15px_rgba(34,211,238,0.5)]" /> Hacker de Viralização
-                             </h3>
-                             <p className="text-[10px] text-gray-500 font-bold uppercase mt-1">Geração de Estratégias Locais</p>
-                             
-                             {/* Country Opportunity Cards - REFINED DESIGN */}
-                             {result.sections?.countries && (
-                               <div className="mt-8 space-y-4">
-                                  <div className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-widest pl-1">
-                                    <Globe className="w-3 h-3" /> Mercados de Replicação (Mude a língua aqui):
-                                  </div>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                    {result.sections.countries.map((c, i) => (
-                                      <button 
-                                        key={i} 
-                                        onClick={() => { 
-                                          setSelectedLanguage(c); 
-                                          translateChannelNames(c);
-                                          if(activeHook) handleGenerateHookTitles(c); 
-                                        }} 
-                                        className={`p-4 rounded-2xl border transition-all flex flex-col items-start gap-2 relative overflow-hidden group/c
-                                          ${selectedLanguage.code === c.code 
-                                            ? 'bg-neon-cyan/20 border-neon-cyan text-white shadow-[0_0_20px_rgba(0,243,255,0.2)]' 
-                                            : i === 0 
-                                              ? 'bg-orange-500/10 border-orange-500/40 text-orange-400 hover:border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.1)]' 
-                                              : 'bg-white/5 border-white/5 text-gray-400 hover:border-white/20 hover:bg-white/10'
-                                          }
-                                        `}
-                                      >
-                                         <div className="flex items-center gap-3">
-                                            <span className="text-2xl leading-none filter grayscale-[0.3] group-hover/c:grayscale-0 transition-all">{c.flag}</span> 
-                                            <span className="text-[11px] font-black uppercase tracking-tight">{c.name}</span>
-                                         </div>
-                                         
-                                         {i === 0 ? (
-                                           <span className="text-[8px] text-orange-400 font-bold bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">MÁXIMO POTENCIAL</span>
-                                         ) : (
-                                           <span className="text-[8px] text-gray-600 font-bold uppercase tracking-widest">Oportunidade</span>
-                                         )}
-
-                                         {selectedLanguage.code === c.code && (
-                                           <div className="absolute top-2 right-2 flex gap-1">
-                                              <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan shadow-[0_0_8px_rgba(0,243,255,1)]" />
-                                           </div>
-                                         )}
-                                      </button>
-                                    ))}
-                                  </div>
-                               </div>
-                             )}
-                          </div>
-                          
-                          <div className="flex flex-col items-end gap-2">
-                             {isGeneratingTitles || isTranslatingNames ? (
-                               <div className="flex items-center gap-3 px-4 py-2 bg-neon-cyan/10 rounded-full border border-neon-cyan/20">
-                                  <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />
-                                  <span className="text-[10px] font-black text-neon-cyan uppercase tracking-widest">IA Localizando...</span>
-                               </div>
-                             ) : (
-                               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                                  Língua: {selectedLanguage.name}
-                               </div>
-                             )}
-                          </div>
-                       </header>
-
-                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-10">
-                          {VIRAL_HOOKS.map(h => (
-                            <button 
-                              key={h.id} 
-                              onClick={() => handleGenerateHookTitles(h)} 
-                              disabled={isGeneratingTitles} 
-                              className={`p-5 rounded-2xl border text-[10px] font-black transition-all flex flex-col items-center gap-4 relative overflow-hidden group/h
-                                ${activeHook?.id === h.id 
-                                  ? `bg-${h.color}/20 border-${h.color} text-white shadow-[0_0_20px_rgba(0,243,255,0.1)]` 
-                                  : h.isHot 
-                                    ? 'bg-neon-pink/5 border-neon-pink/20 text-neon-pink hover:bg-neon-pink/10 hover:border-neon-pink/40'
-                                    : 'bg-white/5 border-white/5 text-gray-500 hover:text-white hover:bg-white/10 hover:border-white/10'
-                                }
-                              `}
-                            >
-                               <h.icon className={`w-6 h-6 ${activeHook?.id === h.id ? `text-${h.color}` : h.isHot ? 'text-neon-pink' : 'text-gray-600'}`} /> 
-                               <span className="uppercase tracking-tighter leading-none text-center">{h.name}</span>
-                               {h.isHot && !activeHook && (
-                                 <span className="absolute top-2 right-2 flex h-3 w-3">
-                                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neon-pink opacity-75"></span>
-                                   <span className="relative inline-flex rounded-full h-3 w-3 bg-neon-pink shadow-[0_0_10px_rgba(255,18,131,0.5)]"></span>
-                                 </span>
-                               )}
-                               
-                               {activeHook?.id === h.id && (
-                                 <motion.div layoutId="activeHookTab" className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white to-transparent" />
-                               )}
-                            </button>
-                          ))}
-                       </div>
-                       <AnimatePresence>
-                          {generatedTitles.length > 0 && (
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 pt-8 border-t border-white/5">
-                               {generatedTitles.map((t, i) => {
-                                 const isInfo = t.startsWith('INFO:');
-                                 const cleanText = isInfo ? t.replace('INFO:', '') : t;
-                                 
-                                 return (
-                                   <div key={i} className={`flex justify-between items-center bg-black/40 p-5 rounded-2xl border border-white/5 group hover:border-neon-cyan/30 transition-all ${isInfo ? 'opacity-80 italic' : ''}`}>
-                                      <span className={`${isInfo ? 'text-xs text-gray-400' : 'text-sm font-bold text-gray-200'}`}>{cleanText}</span>
-                                      {!isInfo && (
-                                        <button onClick={() => copyTitle(cleanText, i)} className={`px-5 py-2.5 rounded-xl font-black text-[10px] uppercase flex items-center gap-2 transition-all ${copiedIndex === i ? 'bg-green-500 text-dark' : 'bg-white/10 text-gray-400 hover:text-white'}`}>
-                                           {copiedIndex === i ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copiedIndex === i ? 'Copiado' : 'Copiar'}
-                                        </button>
-                                      )}
-                                   </div>
-                                 );
-                               })}
-                            </motion.div>
-                          )}
-                       </AnimatePresence>
-                    </section>
+                    <ViralHacker 
+                      result={result} 
+                      configs={configs} 
+                      selectedLanguage={selectedLanguage} 
+                      setSelectedLanguage={setSelectedLanguage} 
+                      translateChannelNames={translateChannelNames} 
+                    />
                   </motion.div>
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center opacity-20 text-center py-32">

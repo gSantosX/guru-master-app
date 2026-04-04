@@ -84,22 +84,31 @@ export const ScriptTab = ({ setActiveTab }) => {
         const promptParam = `Você é um roteirista profissional especialista em vídeos virais e storytelling.
 Sua missão é criar um roteiro altamente envolvente, focado 100% na locução, como se fosse o texto exato para um narrador gravar.
 
-Use a seguinte configuração de direcionamento:
+!!! IMPORTANTE: O ROTEIRO DEVE SER ESCRITO 100% NO IDIOMA: ${idioma.toUpperCase()} !!!
+
 Tema/Assunto: ${titulo || 'Vídeo Viral'}
 Estrutura narrativa ("DNA"): ${dna}
 Tom narrativo ("Alma"): ${alma}
 Tipo de chamada para ação (CTA): ${cta}
 Idioma: ${idioma}
 Natureza: ${natureza}
+Formato do Roteiro: ${formato}
 Tamanho aproximado e complexidade: Roteiro adequado para ${tamanho} caracteres.
 
-REGRAS DE FORMATAÇÃO (CRÍTICO - SIGA RIGOROSAMENTE):
+REGRAS DE FORMATAÇÃO DO FORMATO "${formato.toUpperCase()}":
+${formato === 'Por Partes' ? `
+- O ROTEIRO DEVE SER PENSADO EM BLOCOS LÓGICOS PARA MANTER A COESÃO, MAS NÃO DEVE CONTER NENHUMA MARCAÇÃO DE TEXTO.
+- NÃO USE: Títulos, Identificação de Partes, "Parte 1", "Bloco A", ou qualquer tipo de Numeração.
+- ENTREGUE SOMENTE O TEXTO DA LOCUÇÃO, 100% CORRIDO, COM TODAS AS PARTES JUNTAS E PRONTAS PARA NARRAR.` : formato === 'Lista' ? `
+- O ROTEIRO DEVE SER ESTRUTURADO COMO UMA LISTA DINÂMICA E ENGAJANTE (1., 2., 3., etc).
+- MANTENHA UM TEMA CENTRAL UNIFICADO ENTRE OS ITENS.` : `
 - O TEXTO DEVE SER 100% CORRIDO, PRONTO PARA O NARRADOR LER IMEDIATAMENTE.
-- NÃO ADICIONE DIVISÕES POR PARTES (Introdução, Desenvolvimento, Conclusão).
-- NÃO ADICIONE TÍTULO ALGUM NO INÍCIO OU FIM.
+- NÃO ADICIONE DIVISÕES POR PARTES.`}
+- NÃO ADICIONE TÍTULO ALGUM NO INÍCIO OU FINAL.
 - NÃO ADICIONE MARCAÇÕES CÊNICAS COMO [Texto na tela], [Música sobe], [Locutor], [Cena 1], [Pausa], [Transição].
 - NÃO USE MARKDOWN: SEM NEGRITO (**), SEM ITÁLICO (*), SEM LISTAS COM BULLETS. ZERO FORMATAÇÃO.
 - O SEU RETORNO DEVE CONTER APENAS AS PALAVRAS EXATAS QUE SERÃO FALADAS PELO NARRADOR, MAIS NADA.
+- TODO O TEXTO DEVE SER GERADO COM COESÃO NARRATIVA TOTAL, COMO UMA ÚNICA HISTÓRIA MAGISTRAL.
 
 Regras de escrita:
 - Alternar frases curtas e longas para ritmo
@@ -133,12 +142,15 @@ Escreva o roteiro exatamente abaixo:
           if (isContinuation) {
              const deficit = tamanho - scriptContent.length;
              const excerpt = scriptContent.length > 500 ? scriptContent.substring(scriptContent.length - 500) : scriptContent;
-             currentPrompt = `Continue exatamente o roteiro abaixo, sem títulos e sem explicações. Aja como se estivesse apenas digitando a continuação direta das próximas frases da locução.
+             currentPrompt = `!!! CRITICAL: STICK TO ${idioma.toUpperCase()} LANGUAGE AND "${formato.toUpperCase()}" FORMAT !!!
+Continue exatamente o roteiro abaixo, sem títulos de introdução e sem explicações.
+Garanta total COESÃO e CONTINUIDADE com o que já foi escrito. Não repita informações.
+Aja como se estivesse apenas digitando a continuação direta das próximas frases da locução.
 Gere mais conteúdo até bater a marca de adicionar +${deficit} caracteres na história total.
 ÚLTIMO TRECHO:
 "...${excerpt}"
 
-CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
+CONTINUE IMEDIATAMENTE A PARTIR DAQUI EM ${idioma.toUpperCase()} (apenas texto narrado):`;
           }
 
           let responseText = "";
@@ -396,7 +408,7 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI (apenas texto narrado):`;
               <input 
                 type="range" 
                 min="1000" 
-                max="20000" 
+                max="35000" 
                 step="500"
                 value={tamanho}
                 onChange={(e) => setTamanho(Number(e.target.value))}

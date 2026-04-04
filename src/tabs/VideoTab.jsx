@@ -1,29 +1,46 @@
 import React, { useState } from 'react';
-import { Video, Settings2, Play, Music, Mic, Layers, Image as ImageIcon, CheckCircle, Captions } from 'lucide-react';
-import { LoadingSpinner } from '../components/LoadingSpinner';
-import { stackPush, stackRead, MAX_STACK } from '../utils/stackUtils';
+import { Video, Settings2, Play, Music, Mic, Layers, Image as ImageIcon, CheckCircle, Captions, RefreshCw, Trash2 } from 'lucide-react';
 import { resolveApiUrl } from '../utils/apiUtils';
+import { ActiveRenderMonitor } from '../components/ActiveRenderMonitor';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { usePersistence } from '../contexts/PersistenceContext';
+import { translateSRT } from '../utils/aiUtils';
+import { stackRead, stackPush, MAX_STACK } from '../utils/stackUtils';
 
 export const VideoTab = () => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [renderSuccess, setRenderSuccess] = useState(false);
-  
-  // Ativos de Mídia
-  const [musicFile, setMusicFile] = useState(null);
-  const [audioFile, setAudioFile] = useState(null);
-  const [imageFiles, setImageFiles] = useState([]);
-  const [videoFiles, setVideoFiles] = useState([]);
-  const [subtitleFile, setSubtitleFile] = useState(null);
-  const [formKey, setFormKey] = useState(Date.now()); // Para forçar limpeza do buffer do input de arquivos
+  const { videoState, setVideoState, updateVideoSettings, clearVideoState } = usePersistence();
+  const { resolution, fps, transitionStyle, zoomStyle, zoomSpeed, filterStyle, outputDir, narrationVolume, videoVolume, musicVolume } = videoState.settings;
+  const { audioFile, musicFile, imageFiles, videoFiles, subtitleFile } = videoState;
 
-  // Configs FFMPEG
-  const [resolution, setResolution] = useState('1080p (1920x1080)');
-  const [fps, setFps] = useState('30 FPS');
-  const [transitionStyle, setTransitionStyle] = useState('crossfade');
-  const [zoomStyle, setZoomStyle] = useState('zoom-in');
-  const [zoomSpeed, setZoomSpeed] = useState('Normal (1.1x)');
-  const [filterStyle, setFilterStyle] = useState('nenhum');
-  const [outputDir, setOutputDir] = useState(() => localStorage.getItem('guru_output_dir') || '');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [targetLang, setTargetLang] = useState('English');
+  const [activeJobId, setActiveJobId] = useState(null);
+  const [renderSuccess, setRenderSuccess] = useState(false);
+  const [formKey, setFormKey] = useState(Date.now()); 
+
+  const setAudioFile = (file) => setVideoState(prev => ({ ...prev, audioFile: file }));
+  const setMusicFile = (file) => setVideoState(prev => ({ ...prev, musicFile: file }));
+  const setImageFiles = (updater) => {
+    const nextImages = typeof updater === 'function' ? updater(imageFiles) : updater;
+    setVideoState(prev => ({ ...prev, imageFiles: nextImages }));
+  };
+  const setVideoFiles = (updater) => {
+    const nextVideos = typeof updater === 'function' ? updater(videoFiles) : updater;
+    setVideoState(prev => ({ ...prev, videoFiles: nextVideos }));
+  };
+  const setSubtitleFile = (file) => setVideoState(prev => ({ ...prev, subtitleFile: file }));
+
+  const setResolution = (val) => updateVideoSettings({ resolution: val });
+  const setFps = (val) => updateVideoSettings({ fps: val });
+  const setTransitionStyle = (val) => updateVideoSettings({ transitionStyle: val });
+  const setZoomStyle = (val) => updateVideoSettings({ zoomStyle: val });
+  const setZoomSpeed = (val) => updateVideoSettings({ zoomSpeed: val });
+  const setFilterStyle = (val) => updateVideoSettings({ filterStyle: val });
+  const setOutputDir = (val) => {
+    updateVideoSettings({ outputDir: val });
+    localStorage.setItem('guru_output_dir', val);
+  };
 
   const handleSelectFolder = async () => {
     if (window.electronAPI && window.electronAPI.selectFolder) {
@@ -37,20 +54,49 @@ export const VideoTab = () => {
     }
   };
 
-  const startRender = async () => {
-    if (!audioFile && imageFiles.length === 0 && videoFiles.length === 0) {
-      alert("Por favor, adicione pelo menos um áudio de narração e algumas imagens/vídeos antes de renderizar.");
+
+  const handleTranslate = async () => {
+    if (!subtitleFile) return;
+    const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
+    if (!geminiKey) {
+      alert("Chave Gemini necessária para tradução!");
       return;
     }
-    
+
+    setIsTranslating(true);
+    try {
+      const reader = new FileReader();
+      const text = await new Promise((resolve) => {
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsText(subtitleFile);
+      });
+
+      const translated = await translateSRT(text, targetLang, geminiKey);
+      const blob = new Blob([translated], { type: 'text/plain' });
+      const newFile = new File([blob], `${subtitleFile.name.replace('.srt', '')}_${targetLang}.srt`, { type: 'text/plain' });
+      setSubtitleFile(newFile);
+      alert(`Legenda traduzida para ${targetLang} com sucesso!`);
+    } catch (error) {
+      console.error(error);
+      alert("Erro na tradução: " + error.message);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleStartRender = async () => {
+    if (!audioFile && imageFiles.length === 0 && videoFiles.length === 0) {
+      alert("Por favor, adicione pelo menos um áudio e algumas mídias antes de renderizar.");
+      return;
+    }
+
     const activeRenders = stackRead('guru_active_renders');
     if (activeRenders.length >= MAX_STACK) {
-        alert(`Limite de ${MAX_STACK} projetos ativos atingido. Cancele algum na aba de Progresso ou espere finalizar.`);
+        alert(`Limite de ${MAX_STACK} renderizações simultâneas atingido.`);
         return;
     }
-    
+
     setIsGenerating(true);
-    
     const cleanFileName = (name) => name ? name.split('.').slice(0, -1).join('.') || name : null;
     let projNameSkeleton = cleanFileName(audioFile?.name);
     if (!projNameSkeleton && videoFiles.length > 0) projNameSkeleton = `Vídeo ${cleanFileName(videoFiles[0].name)}`;
@@ -68,7 +114,10 @@ export const VideoTab = () => {
         zoomStyle,
         zoomSpeed,
         filterStyle,
-        outputDir
+        outputDir,
+        narrationVolume,
+        videoVolume,
+        musicVolume
       };
       formData.append('settings', JSON.stringify(settings));
       
@@ -89,7 +138,18 @@ export const VideoTab = () => {
          body: formData
       });
       
-      if (!response.ok) throw new Error('Falha de conexão com Motor FFmpeg (Backend Python)');
+      if (!response.ok) {
+         let serverError = "Erro desconhecido no servidor.";
+         try {
+            const errorData = await response.json();
+            serverError = errorData.error || errorData.message || JSON.stringify(errorData);
+         } catch(e) {
+            try {
+               serverError = await response.text();
+            } catch(e2) {}
+         }
+         throw new Error(`Servidor respondeu com ${response.status}: ${serverError}`);
+      }
       
       const data = await response.json();
       
@@ -105,27 +165,33 @@ export const VideoTab = () => {
       stackPush('guru_active_renders', newProj);
       window.dispatchEvent(new Event('guru_active_updated'));
       
+      setActiveJobId(data.job_id);
       setIsGenerating(false);
       setRenderSuccess(true);
       
     } catch (error) {
       console.error("Erro na renderização:", error);
-      if (error.name === 'AbortError' || error.message.includes('network')) {
-        alert("A conexão com o servidor falhou. Se você estiver enviando muitos vídeos (ex: 185), o upload pode demorar alguns minutos. Tente novamente e aguarde a barra de progresso do navegador aparecer.");
+      
+      const errorMessage = error.message || "";
+      const isNetworkError = errorMessage.toLowerCase().includes('network') || 
+                             errorMessage.toLowerCase().includes('fetch') || 
+                             errorMessage.toLowerCase().includes('failed');
+
+      if (errorMessage.includes('413')) {
+        alert("O servidor recusou o envio (Erro 413: Payload Too Large). Aumentamos o limite para 10GB no backend, mas certifique-se de que os arquivos não excedam isso ou que o computador tenha memória RAM suficiente.");
+      } else if (error.name === 'AbortError' || isNetworkError) {
+        alert("A conexão com o servidor local falhou ou foi interrompida. \n\nSe você está enviando 100+ vídeos, o upload pode demorar alguns minutos. Se o erro for imediato, verifique se o Backend Python está rodando na porta 5000.");
       } else {
-        alert("Erro ao conectar ao motor local! O Backend Python (Flask) está rodando e aceitando mídias pesadas?");
+        alert("Erro ao conectar ao motor local! \n\nDetalhe: " + errorMessage + "\n\nO Backend Python (Flask) está rodando e aceitando mídias massivas?");
       }
       setIsGenerating(false);
     }
   };
 
   const clearForm = () => {
-     setMusicFile(null);
-     setAudioFile(null);
-     setImageFiles([]);
-     setVideoFiles([]);
-     setSubtitleFile(null);
+     clearVideoState();
      setRenderSuccess(false);
+     setActiveJobId(null);
      setFormKey(Date.now());
   }
 
@@ -144,9 +210,22 @@ export const VideoTab = () => {
         {/* Left Column: Configuration */}
         <div className="space-y-6">
           <div className="glass-card p-6 border-l-4 border-neon-cyan">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4 border-b border-white/10 pb-2">
-              <Layers className="text-neon-cyan w-5 h-5" /> Ativos de Mídia
-            </h3>
+            <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Layers className="text-neon-cyan w-5 h-5" /> Ativos de Mídia
+              </h3>
+              <button 
+                onClick={() => {
+                  clearVideoState();
+                  setFormKey(Date.now());
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400/70 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-red-500/10 group"
+                title="Limpar todos os arquivos desta seção"
+              >
+                <Trash2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                Limpar
+              </button>
+            </div>
             
             <div className="space-y-4">
               {/* Narração */}
@@ -253,15 +332,39 @@ export const VideoTab = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2 shrink-0 ml-2">
-                  <label className="text-xs px-3 py-1.5 bg-white/10 hover:bg-yellow-500/20 hover:border-yellow-500/40 rounded-md text-white transition-colors cursor-pointer shadow-inner border border-white/5">
+                <div className="flex flex-wrap gap-2 shrink-0 ml-2">
+                  {subtitleFile && (
+                    <div className="flex items-center bg-white/5 border border-white/10 rounded-md overflow-hidden h-9">
+                      <select 
+                        value={targetLang}
+                        onChange={(e) => setTargetLang(e.target.value)}
+                        className="bg-transparent text-[10px] text-gray-400 px-2 focus:outline-none border-r border-white/10 cursor-pointer h-full"
+                      >
+                        <option value="English">EN</option>
+                        <option value="Spanish">ES</option>
+                        <option value="French">FR</option>
+                        <option value="German">DE</option>
+                        <option value="Hindi">HI</option>
+                        <option value="Japanese">JA</option>
+                        <option value="Portuguese">PT</option>
+                      </select>
+                      <button
+                        onClick={handleTranslate}
+                        disabled={isTranslating}
+                        className="px-3 text-[10px] font-black text-yellow-500 hover:bg-yellow-500/10 transition-colors h-full disabled:opacity-30"
+                      >
+                        {isTranslating ? '...' : <RefreshCw className="w-3 h-3" />}
+                      </button>
+                    </div>
+                  )}
+                  <label className="text-xs px-3 py-1.5 h-9 flex items-center bg-white/10 hover:bg-yellow-500/20 hover:border-yellow-500/40 rounded-md text-white transition-colors cursor-pointer shadow-inner border border-white/5">
                     <input key={formKey + 'sub'} type="file" accept=".srt,.ass,.vtt" className="hidden" onChange={e => setSubtitleFile(e.target.files[0])} />
                     {subtitleFile ? 'Trocar' : 'Selecionar'}
                   </label>
                   {subtitleFile && (
                     <button
                       onClick={() => setSubtitleFile(null)}
-                      className="text-xs px-2 py-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-md text-red-400 border border-red-500/20 transition-colors"
+                      className="w-9 h-9 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 rounded-md text-red-400 border border-red-500/20 transition-colors"
                       title="Remover legenda"
                     >✕</button>
                   )}
@@ -357,12 +460,54 @@ export const VideoTab = () => {
                 />
               </div>
 
+              {/* Volume Narração */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-orange-400 font-bold uppercase tracking-wider block">Volume Narração</label>
+                  <span className="text-[10px] text-gray-300 font-mono bg-white/10 px-1.5 py-0.5 rounded">{narrationVolume} dB</span>
+                </div>
+                <input 
+                  type="range" min="-30" max="20" step="1" 
+                  value={narrationVolume}
+                  onChange={(e) => updateVideoSettings({ narrationVolume: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-dark border border-white/5 rounded-lg appearance-none cursor-pointer accent-orange-500 mt-2"
+                />
+              </div>
+
+              {/* Volume Vídeos da Biblioteca */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-purple-400 font-bold uppercase tracking-wider block">Volume Video-Broll</label>
+                  <span className="text-[10px] text-gray-300 font-mono bg-white/10 px-1.5 py-0.5 rounded">{videoVolume} dB</span>
+                </div>
+                <input 
+                  type="range" min="-60" max="0" step="1" 
+                  value={videoVolume}
+                  onChange={(e) => updateVideoSettings({ videoVolume: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-dark border border-white/5 rounded-lg appearance-none cursor-pointer accent-purple-500 mt-2"
+                />
+              </div>
+
+              {/* Volume Música de Fundo */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-green-400 font-bold uppercase tracking-wider block">Volume Música</label>
+                  <span className="text-[10px] text-gray-300 font-mono bg-white/10 px-1.5 py-0.5 rounded">{musicVolume} dB</span>
+                </div>
+                <input 
+                  type="range" min="-60" max="0" step="1" 
+                  value={musicVolume}
+                  onChange={(e) => updateVideoSettings({ musicVolume: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-dark border border-white/5 rounded-lg appearance-none cursor-pointer accent-green-500 mt-2"
+                />
+              </div>
+
             </div>
           </div>
         </div>
 
         {/* Right Column: Preview and Action */}
-        <div className="glass-card flex flex-col relative overflow-hidden shadow-2xl">
+        <div className="glass-card flex flex-col relative overflow-y-auto md:overflow-hidden shadow-2xl custom-scrollbar">
           <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/5 via-dark to-dark-lighter pointer-events-none" />
           
           <div className="p-5 border-b border-white/10 bg-dark/50 relative z-10 flex justify-between items-center backdrop-blur-sm">
@@ -372,22 +517,31 @@ export const VideoTab = () => {
             <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-1 bg-neon-purple/20 text-neon-purple rounded border border-neon-purple/30">FFmpeg Pipeline</span>
           </div>
           
-          <div className="flex-1 p-6 relative z-10 flex flex-col items-center justify-center">
-             <div className={`w-full max-w-sm ${resolution.includes('Shorts') ? 'aspect-[9/16] w-auto h-64' : resolution.includes('Quadrado') ? 'aspect-square w-48' : 'aspect-video'} bg-dark-lighter rounded-xl border border-white/10 flex flex-col items-center justify-center relative overflow-hidden group shadow-[0_0_50px_rgba(0,0,0,0.6)] transition-all duration-500`}>
-               <div className="absolute inset-0 opacity-10 flex flex-wrap gap-1 p-2 overflow-hidden pointer-events-none">
-                  {[...Array(20)].map((_, i) => <div key={i} className="w-1/4 h-1/4 min-w-[30px] min-h-[30px] bg-white rounded-sm" />)}
-               </div>
-               <Play className="w-12 h-12 text-white/40 group-hover:text-neon-purple group-hover:scale-110 transition-all cursor-pointer z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" />
-               <div className="absolute inset-0 border-2 border-transparent group-hover:border-neon-purple/50 transition-colors rounded-xl pointer-events-none" />
-               
-               {/* Label on video frame showing applied visual filter */}
-               {filterStyle !== 'nenhum' && (
-                 <div className="absolute bottom-2 left-2 bg-dark/80 px-2 py-1 rounded text-[10px] font-mono text-neon-pink uppercase">Filtro: {filterStyle}</div>
-               )}
-               {zoomStyle !== 'none' && (
-                 <div className="absolute bottom-2 right-2 bg-dark/80 px-2 py-1 rounded text-[10px] font-mono text-blue-400 uppercase">Mov: {zoomStyle}</div>
-               )}
-             </div>
+          <div className="flex-1 p-6 relative z-10 flex flex-col items-center justify-start overflow-y-auto custom-scrollbar">
+             {renderSuccess && activeJobId ? (
+                <div className="w-full h-full flex items-center justify-center">
+                   <ActiveRenderMonitor 
+                     jobId={activeJobId} 
+                     onFinished={() => console.log("Render finished")} 
+                   />
+                </div>
+             ) : (
+                <div className={`w-full max-w-sm ${resolution.includes('Shorts') ? 'aspect-[9/16] w-auto h-64' : resolution.includes('Quadrado') ? 'aspect-square w-48' : 'aspect-video'} bg-dark-lighter rounded-xl border border-white/10 flex flex-col items-center justify-center relative overflow-hidden group shadow-[0_0_50px_rgba(0,0,0,0.6)] transition-all duration-500`}>
+                  <div className="absolute inset-0 opacity-10 flex flex-wrap gap-1 p-2 overflow-hidden pointer-events-none">
+                     {[...Array(20)].map((_, i) => <div key={i} className="w-1/4 h-1/4 min-w-[30px] min-h-[30px] bg-white rounded-sm" />)}
+                  </div>
+                  <Play className="w-12 h-12 text-white/40 group-hover:text-neon-purple group-hover:scale-110 transition-all cursor-pointer z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" />
+                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-neon-purple/50 transition-colors rounded-xl pointer-events-none" />
+                  
+                  {/* Label on video frame showing applied visual filter */}
+                  {filterStyle !== 'nenhum' && (
+                    <div className="absolute bottom-2 left-2 bg-dark/80 px-2 py-1 rounded text-[10px] font-mono text-neon-pink uppercase">Filtro: {filterStyle}</div>
+                  )}
+                  {zoomStyle !== 'none' && (
+                    <div className="absolute bottom-2 right-2 bg-dark/80 px-2 py-1 rounded text-[10px] font-mono text-blue-400 uppercase">Mov: {zoomStyle}</div>
+                  )}
+                </div>
+             )}
              
              <div className="mt-8 grid grid-cols-2 gap-4 w-full max-w-sm">
                 <div className="bg-dark/40 p-3 rounded-lg border border-white/5 text-center">
@@ -418,23 +572,23 @@ export const VideoTab = () => {
 
            <div className="p-5 mt-auto relative z-10 bg-dark/30 backdrop-blur-md border-t border-white/10 min-h-[96px] flex items-center justify-center">
             {renderSuccess ? (
-              <div className="w-full flex w-full p-4 rounded-xl flex items-center justify-between gap-4 bg-green-500/10 border border-green-500/30 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.15)] animate-fade-in">
+              <div className="w-full flex w-full p-4 rounded-xl flex items-center justify-between gap-4 bg-green-500/10 border border-green-500/30 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.15)] animate-fade-in translate-y-[-10px]">
                 <div className="flex items-center gap-3">
                    <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
                      <CheckCircle className="w-5 h-5" />
                    </div>
                    <div>
-                     <h4 className="font-bold text-sm">Arquivo Renderizando!</h4>
-                     <p className="text-xs text-green-400/80 mt-0.5">O processo foi iniciado. Verifique a aba <b>Em Progresso</b> para detalhes.</p>
+                     <h4 className="font-bold text-sm">Processando Master Audiovisual</h4>
+                     <p className="text-xs text-green-400/80 mt-0.5">Veja os detalhes e baixe o arquivo acima.</p>
                    </div>
                 </div>
-                <button onClick={clearForm} className="text-xs font-bold px-3 py-2 bg-green-500/20 hover:bg-green-500/40 rounded-lg transition-colors border border-green-500/30">
-                  Criar Novo
+                <button onClick={clearForm} className="text-xs font-bold px-4 py-2 bg-green-500/20 hover:bg-green-500/40 rounded-lg transition-colors border border-green-500/30 whitespace-nowrap">
+                  Novo Vídeo
                 </button>
               </div>
             ) : (
               <button 
-                onClick={startRender}
+                onClick={handleStartRender}
                 disabled={isGenerating}
                 className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-black tracking-wide transition-all duration-300 transform active:scale-[0.98] ${
                   isGenerating

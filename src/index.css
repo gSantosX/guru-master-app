@@ -4,17 +4,35 @@
 
 @layer base {
   body {
-    @apply bg-dark text-gray-200 antialiased h-screen overflow-hidden;
+    @apply bg-dark text-gray-200 antialiased h-screen overflow-hidden select-none cursor-default;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    scroll-behavior: smooth;
   }
 }
 
 @layer utilities {
   .glass-card {
-    @apply bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-xl shadow-lg overflow-hidden;
+    @apply bg-dark-card/80 backdrop-blur-md border border-white/5 rounded-xl shadow-lg overflow-hidden transition-all duration-300;
   }
   
+  .glass-card:hover {
+    @apply border-white/10 shadow-2xl;
+  }
+
+  .premium-grain {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.08;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
   .glass-panel {
-    @apply bg-dark-lighter/80 backdrop-blur-xl border-r border-white/10;
+    @apply bg-dark-lighter/80 backdrop-blur-xl border-r border-white/10 transition-colors duration-500;
   }
 
   .text-glow-cyan {
@@ -36,9 +54,6 @@
   box-shadow: none !important;
 }
 
-.reduce-motion .bg-neon-cyan\/5,
-.reduce-motion .bg-neon-pink\/5,
-.reduce-motion .bg-neon-purple\/5,
 .reduce-motion .blur-\[150px\] {
   display: none !important;
 }
@@ -49,6 +64,7 @@
 }
 
 /* Minimal Theme Overrides */
+.theme-minimal.bg-dark, .theme-minimal .bg-dark { background-color: #0f1115 !important; }
 .theme-minimal .text-neon-cyan,
 .theme-minimal .text-neon-pink,
 .theme-minimal .text-neon-purple {
@@ -152,8 +168,8 @@
 .theme-light .text-glow-cyan, .theme-light .text-glow-pink, .theme-light .text-glow-purple { box-shadow: none !important; text-shadow: none !important; }
 
 /* Theme: Soft (Pastel Dark) */
-.theme-soft.bg-dark, .theme-soft .bg-dark { background-color: #2a2a35 !important; }
-.theme-soft .bg-dark-lighter, .theme-soft .glass-panel { background-color: #363644 !important; border-color: #4a4a5a !important; }
+.theme-soft.bg-dark, .theme-soft .bg-dark { background-color: #1a1a2e !important; }
+.theme-soft .bg-dark-lighter, .theme-soft .glass-panel { background-color: #24243e !important; border-color: #3b3b5c !important; }
 .theme-soft .bg-dark-card\/80, .theme-soft .glass-card { background-color: rgba(54, 54, 68, 0.85) !important; border-color: rgba(255,255,255,0.08) !important; }
 .theme-soft .bg-dark\/50, .theme-soft .bg-dark\/60, .theme-soft .bg-dark\/40, .theme-soft .bg-dark\/30 { background-color: #2a2a35 !important; border-color: rgba(255,255,255,0.05) !important; }
 .theme-soft .bg-white\/5, .theme-soft .bg-white\/10 { background-color: #363644 !important; border-color: rgba(255,255,255,0.1) !important; }

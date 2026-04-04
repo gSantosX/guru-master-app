@@ -17,7 +17,10 @@ import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { SystemStatusProvider, useSystemStatus } from './contexts/SystemStatusContext';
 import { Cpu, Zap, Shield, Wand2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
+import { PersistenceProvider } from './contexts/PersistenceContext';
 import { Login } from './components/Login';
+import InteractiveBackground from './components/InteractiveBackground';
 
 const tabComponents = {
   'create-script': ScriptTab,
@@ -131,36 +134,30 @@ function AppContent() {
           )}
         </AnimatePresence>
 
-        {/* Dynamic Animated Background */}
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-neon-cyan/5 rounded-full blur-[150px]" />
-          <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-neon-purple/5 rounded-full blur-[150px]" />
-        </div>
+        {/* Elite Interactive Background System */}
+        <InteractiveBackground />
 
         {isAuthenticated && (
           <>
+            <div className="premium-grain" />
             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
             
             <main className="flex-1 relative z-10 overflow-hidden bg-transparent">
-              {Object.entries(tabComponents).map(([key, Component]) => {
-                const isActive = activeTab === key;
-                return (
-                  <motion.div
-                    key={key}
-                    initial={false}
-                    animate={{
-                      opacity: isActive ? 1 : 0,
-                      scale: isActive ? 1 : 0.98,
-                      filter: isActive ? "blur(0px)" : "blur(4px)",
-                      zIndex: isActive ? 10 : 0
-                    }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className={`absolute inset-0 p-6 md:p-10 lg:p-12 overflow-y-auto custom-scrollbar ${isActive ? 'pointer-events-auto' : 'pointer-events-none'}`}
-                  >
-                    <Component setActiveTab={setActiveTab} isActive={isActive} />
-                  </motion.div>
-                );
-              })}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, x: 20, filter: "blur(10px)" }}
+                  animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, x: -20, filter: "blur(10px)" }}
+                  transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-0 p-6 md:p-10 lg:p-12 overflow-y-auto custom-scrollbar"
+                >
+                  {React.createElement(tabComponents[activeTab], { 
+                    setActiveTab, 
+                    isActive: true 
+                  })}
+                </motion.div>
+              </AnimatePresence>
             </main>
           </>
         )}
@@ -171,11 +168,15 @@ function AppContent() {
 
 function App() {
   return (
-    <SystemStatusProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </SystemStatusProvider>
+    <GlobalErrorBoundary>
+      <SystemStatusProvider>
+        <AuthProvider>
+          <PersistenceProvider>
+            <AppContent />
+          </PersistenceProvider>
+        </AuthProvider>
+      </SystemStatusProvider>
+    </GlobalErrorBoundary>
   );
 }
 

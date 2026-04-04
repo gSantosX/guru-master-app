@@ -20,7 +20,7 @@ export const resolveApiUrl = (path) => {
      
      if (isElectron) {
         // Force full URL in Electron to ensure it hits the Flask backend regardless of load method
-        return `http://127.0.0.1:5000${path}`;
+        return `http://localhost:5000${path}`;
      }
   }
   

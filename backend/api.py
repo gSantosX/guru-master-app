@@ -18,12 +18,30 @@ import urllib.error
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 import webbrowser
+import logging
 import ffmpeg_utils
+import guru_brain
+
+# --- ELITE STABILITY LOGGING ---
+LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend_logs.txt')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILE, encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger("GuruMaster")
 
 app = Flask(__name__)
 CORS(app)
-# Permitir envios de até 2GB (185 vídeos podem ser pesados)
-app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024 * 1024 
+# Permitir envios massivos (ex: 185 vídeos podem chegar a 10GB)
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024 
+# Evitar que o Werkzeug limite a quantidade de campos no formulário
+app.config['MAX_FORM_PARTS'] = 3000
+# Aumentar memória para campos não-arquivos (ex: JSON de settings gigante)
+app.config['MAX_FORM_MEMORY_SIZE'] = 100 * 1024 * 1024 # 100MB
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'temp')
@@ -94,7 +112,7 @@ def load_config():
                 loaded = json.load(f)
                 config.update(loaded)
         except Exception as e:
-            print(f"Error loading config: {e}")
+            logger.error(f"Error loading config: {e}")
     
     FFMPEG_CMD = config.get("ffmpeg_path", "ffmpeg")
     FFPROBE_CMD = config.get("ffprobe_path", "ffprobe")
@@ -244,17 +262,23 @@ def check_system():
     config = load_config()
     ffmpeg_ver = "Not found"
     try:
-        res = subprocess.run([str(config.get('ffmpeg_path', 'ffmpeg')), '-version'], capture_output=True, text=True)
+        res = subprocess.run([str(config.get('ffmpeg_path', 'ffmpeg')), '-version'], capture_output=True, text=True, timeout=3)
         if res.returncode == 0:
             ffmpeg_ver = res.stdout.split('\n')[0]
-    except: pass
+    except subprocess.TimeoutExpired:
+        ffmpeg_ver = "FFmpeg Timeout"
+    except Exception as e:
+        logger.error(f"FFmpeg Check Error: {e}")
     
     ffprobe_ver = "Not found"
     try:
-        res = subprocess.run([str(config.get('ffprobe_path', 'ffprobe')), '-version'], capture_output=True, text=True)
+        res = subprocess.run([str(config.get('ffprobe_path', 'ffprobe')), '-version'], capture_output=True, text=True, timeout=3)
         if res.returncode == 0:
             ffprobe_ver = res.stdout.split('\n')[0]
-    except: pass
+    except subprocess.TimeoutExpired:
+        ffprobe_ver = "FFprobe Timeout"
+    except Exception as e: 
+        logger.error(f"FFprobe Check Error: {e}")
     
     import ssl
     ctx = ssl._create_unverified_context()
@@ -288,7 +312,9 @@ def check_system():
             url = f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}"
             with urlopen(url, timeout=5, context=ctx) as response:
                 if response.status == 200: gemini_status = True
-        except: gemini_status = False
+        except Exception as e:
+            logger.error(f"Gemini Check Fail: {e}")
+            gemini_status = False
 
     # 3. OpenAI Check (Real request)
     openai_key = config.get('gpt_key')
@@ -298,7 +324,9 @@ def check_system():
             req = Request("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {openai_key}"})
             with urlopen(req, timeout=5, context=ctx) as response:
                 if response.status == 200: openai_status = True
-        except: openai_status = False
+        except Exception as e:
+            logger.error(f"OpenAI Check Fail: {e}")
+            openai_status = False
 
     # 4. Grok Check (Real request)
     grok_key = config.get('grok_key')
@@ -383,6 +411,27 @@ def check_system():
         "smtp": smtp_status
     }
     return jsonify(status)
+
+# --- GURU GLOBAL BRAIN (Learning Engine) ---
+
+@app.route('/api/brain/learn', methods=['POST'])
+def guru_learn():
+    data = request.json
+    niche = data.get('niche', 'Geral')
+    report = data.get('report', '')
+    metadata = data.get('metadata', {})
+    
+    if not report:
+        return jsonify({"error": "Report is empty"}), 400
+        
+    success = guru_brain.learn_from_analysis(niche, report, metadata)
+    return jsonify({"success": success, "message": "Guru aprendeu com esta análise."})
+
+@app.route('/api/brain/context', methods=['GET'])
+def guru_context():
+    niche = request.args.get('niche', 'Geral')
+    experience = guru_brain.get_niche_experience(niche)
+    return jsonify({"experience": experience})
 
 @app.route('/api/auth/send-code', methods=['POST'])
 def send_code():
@@ -790,7 +839,7 @@ def render_video():
                     universal_newlines=True,
                     encoding='utf-8',
                     errors='replace',
-                    cwd=job_dir # Use relative paths!
+                    cwd=job_dir
                 )
                 
                 total_duration = ffmpeg_utils.get_media_duration(files["audio"]) if files["audio"] else (len(files["images"]) * 5.0 + sum(ffmpeg_utils.get_media_duration(v) for v in files.get("videos", [])))
@@ -802,11 +851,15 @@ def render_video():
                         time_match = re.search(r'time=(\d+:\d+:\d+\.\d+)', line)
                         if time_match:
                             time_str = time_match.group(1)
-                            h, m, s = map(float, time_str.split(':'))
-                            curr_time = h*3600 + m*60 + s
-                            progress = min(95, 20 + int((curr_time / total_duration) * 75))
-                            render_jobs[jid]["progress"] = progress
-                            render_jobs[jid]["status"] = f"Processando frames... ({int((curr_time/total_duration)*100)}%)"
+                            try:
+                                h, m, s = map(float, time_str.split(':'))
+                                curr_time = h*3600 + m*60 + s
+                                # Scale progress from 20% (init) to 98% (almost done)
+                                progress_percent = min(98, 20 + int((curr_time / max(1, total_duration)) * 78))
+                                render_jobs[jid]["progress"] = progress_percent
+                                render_jobs[jid]["status"] = f"Codificando: {int((curr_time/max(1, total_duration))*100)}%"
+                                render_jobs[jid]["last_log"] = line.strip()
+                            except: pass
 
                 process.wait()
             
@@ -833,6 +886,25 @@ def render_status(job_id):
         return jsonify({"error": "Job not found"}), 404
         
     return jsonify(render_jobs[job_id])
+
+@app.route('/api/render/log/<job_id>', methods=['GET'])
+def render_log(job_id):
+    if job_id not in render_jobs:
+        return jsonify({"error": "Job not found"}), 404
+        
+    job_dir = os.path.join(UPLOAD_FOLDER, job_id)
+    log_path = os.path.join(job_dir, 'render.log')
+    
+    if not os.path.exists(log_path):
+        return jsonify({"log": ["Aguardando início do motor..."]})
+        
+    try:
+        with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
+            # Return last 10 lines
+            lines = f.readlines()
+            return jsonify({"log": [l.strip() for l in lines[-10:]]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/download/<job_id>', methods=['GET'])
 def download_video(job_id):

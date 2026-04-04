@@ -681,7 +681,7 @@ export const SettingsTab = () => {
             <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
               <Shield className="text-gray-400 w-5 h-5" /> {t('settings.about_title')}
             </h3>
-            <p className="text-sm text-gray-400 mb-4">{t('settings.about_desc')} v2.1.1</p>
+            <p className="text-sm text-gray-400 mb-4">{t('settings.about_desc')} v2.4.1</p>
             <div className="text-xs text-gray-500 space-y-1">
                <p>Frontend: React, TailwindCSS, Framer Node</p>
                <p>Backend Engine: Local Python Workers</p>
