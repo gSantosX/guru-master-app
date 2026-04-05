@@ -21,6 +21,8 @@ export const PersistenceProvider = ({ children }) => {
         zoomStyle: 'zoom-in',
         zoomSpeed: 'Normal (1.1x)',
         filterStyle: 'nenhum',
+        encoder: 'libx264',
+        renderPreset: 'medium',
         narrationVolume: 0,
         videoVolume: -15,
         musicVolume: -15,

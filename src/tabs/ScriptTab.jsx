@@ -231,10 +231,10 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI EM ${idioma.toUpperCase()} (apenas texto n
     }, 500); // Small initial delay for UI animation to kick in
   };
 
-  const transferToWhisk = () => {
+  const transferToFlow = () => {
     if (!generatedScript) return;
     // Simple logic to convert script to prompts: use sentences or paragraphs
-    localStorage.setItem('guru_whisk_transfer', generatedScript.content);
+    localStorage.setItem('guru_flow_transfer', generatedScript.content);
     setActiveTab('whisk');
   };
 
@@ -542,10 +542,10 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI EM ${idioma.toUpperCase()} (apenas texto n
               )}
               {generatedScript && (
                 <button 
-                  onClick={transferToWhisk}
+                  onClick={transferToFlow}
                   className="w-full py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-neon-cyan to-blue-600 text-white shadow-[0_0_20px_rgba(0,243,255,0.2)] hover:scale-[1.02] text-[10px]"
                 >
-                  <Zap className="w-4 h-4 fill-current" /> {t('whisk.btn_start')} (Whisk)
+                  <Zap className="w-4 h-4 fill-current" /> {t('whisk.btn_start')} (Auto Flow)
                 </button>
               )}
             </div>

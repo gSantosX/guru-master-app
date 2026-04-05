@@ -42,20 +42,33 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
   const handleUpdate = async () => {
     setIsUpdating(true);
     try {
+      // 1. Verificar se há atualização
+      const checkRes = await fetch(resolveApiUrl('/api/check_update'));
+      const checkData = await checkRes.json();
+      
+      if (!checkRes.ok) throw new Error(checkData.error || "Erro ao verificar versão");
+
+      if (!checkData.needs_update) {
+        alert("Guru Master já está na versão mais recente.");
+        return;
+      }
+
+      // 2. Confirmar com o usuário
+      const confirmMsg = `Nova atualização disponível!\n\nDescrição: ${checkData.message}\n\nDeseja atualizar agora? Seus dados e chaves de API serão preservados.`;
+      if (!window.confirm(confirmMsg)) return;
+
+      // 3. Executar o Git Pull
       const res = await fetch(resolveApiUrl('/api/update'), { method: 'POST' });
       const data = await res.json();
       
       if (res.ok) {
         alert(data.message);
-        if (data.status === 'updated') {
-           // Opcional: Recarregar a página se necessário, mas o aviso de reiniciar é melhor
-        }
       } else {
         alert("Erro na atualização: " + (data.message || "Falha desconhecida"));
       }
     } catch (error) {
        console.error("Update error:", error);
-       alert("Erro ao conectar com o serviço de atualização. Verifique se o backend está rodando.");
+       alert("Ocorreu um erro: " + error.message);
     } finally {
       setIsUpdating(false);
     }

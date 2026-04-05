@@ -9,7 +9,7 @@ const TRANSLATIONS = {
       completed: "Concluídos",
       capa_video: "Capa de Vídeo",
       profile: "Perfil",
-      whisk: "Auto Whisk",
+      whisk: "Auto Flow",
       channel_monitoring: "Monitoramento",
       channel_mining: "Mineração de Canais",
       modelador_canais: "Modelador de Canais",
@@ -115,8 +115,8 @@ const TRANSLATIONS = {
       version: "v2.4.1"
     },
     whisk: {
-      title: "Auto Whisk",
-      subtitle: "Automatize a criação de imagens no Google Whisk",
+      title: "Auto Flow",
+      subtitle: "Automação inteligente de geração de imagens",
       tab_control: "Controle",
       tab_settings: "Configurações",
       tab_tools: "Outras Ferramentas",
@@ -208,7 +208,7 @@ const TRANSLATIONS = {
       completed: "Completed",
       capa_video: "Video Cover",
       profile: "Profile",
-      whisk: "Auto Whisk",
+      whisk: "Auto Flow",
       channel_monitoring: "Monitoring",
       channel_mining: "Channel Mining",
       modelador_canais: "Channel Modeler",
@@ -311,8 +311,8 @@ const TRANSLATIONS = {
       version: "v2.4.1"
     },
     whisk: {
-      title: "Auto Whisk",
-      subtitle: "Automate image creation on Google Whisk",
+      title: "Auto Flow",
+      subtitle: "Intelligent image generation automation",
       tab_control: "Control",
       tab_settings: "Settings",
       tab_tools: "Other Tools",
@@ -404,7 +404,7 @@ const TRANSLATIONS = {
       completed: "Completados",
       capa_video: "Portada de Video",
       profile: "Perfil",
-      whisk: "Auto Whisk",
+      whisk: "Auto Flow",
       channel_monitoring: "Monitoreo",
       channel_mining: "Minería de Canales",
       modelador_canais: "Modelador de Canales",
@@ -505,8 +505,8 @@ const TRANSLATIONS = {
       version: "v2.4.1"
     },
     whisk: {
-      title: "Auto Whisk",
-      subtitle: "Automatice la creación de imágenes en Google Whisk",
+      title: "Auto Flow",
+      subtitle: "Automatización inteligente de generación de imágenes",
       tab_control: "Control",
       tab_settings: "Configuraciones",
       tab_tools: "Outras Ferramentas",

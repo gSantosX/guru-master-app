@@ -21,7 +21,7 @@ export const SettingsTab = () => {
   const [activeAi, setActiveAi] = useState(configs.active_ai);
   const [ffmpegPath, setFfmpegPath] = useState(configs.ffmpeg_path || 'ffmpeg');
   const [ffprobePath, setFfprobePath] = useState(configs.ffprobe_path || 'ffprobe');
-  const [whiskDownloadsPath, setWhiskDownloadsPath] = useState(configs.whisk_downloads_path || '');
+  const [flowDownloadsPath, setFlowDownloadsPath] = useState(configs.flow_downloads_path || '');
   
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -47,7 +47,7 @@ export const SettingsTab = () => {
     setActiveAi(configs.active_ai);
     setFfmpegPath(configs.ffmpeg_path || 'ffmpeg');
     setFfprobePath(configs.ffprobe_path || 'ffprobe');
-    setWhiskDownloadsPath(configs.whisk_downloads_path || '');
+    setFlowDownloadsPath(configs.flow_downloads_path || '');
   }, [configs]);
 
   // Auto-save logic (Debounce)
@@ -67,7 +67,7 @@ export const SettingsTab = () => {
         smtpPass !== configs.smtp_password ||
         ffmpegPath !== configs.ffmpeg_path ||
         ffprobePath !== configs.ffprobe_path ||
-        whiskDownloadsPath !== configs.whisk_downloads_path;
+        flowDownloadsPath !== configs.flow_downloads_path;
 
       if (hasChanges && isInitialized) {
         handleSaveKeys();
@@ -75,7 +75,7 @@ export const SettingsTab = () => {
     }, 1500); // Wait 1.5s after typing to save
 
     return () => clearTimeout(timer);
-  }, [geminiKey, grokKey, gptKey, anthropicKey, deepseekKey, elevenlabsKey, leonardoKey, youtubeKey, googleClientId, smtpUser, smtpPass, ffmpegPath, ffprobePath, whiskDownloadsPath]);
+  }, [geminiKey, grokKey, gptKey, anthropicKey, deepseekKey, elevenlabsKey, leonardoKey, youtubeKey, googleClientId, smtpUser, smtpPass, ffmpegPath, ffprobePath, flowDownloadsPath]);
 
   const fetchStorageInfo = async () => {
     try {
@@ -114,7 +114,7 @@ export const SettingsTab = () => {
       active_ai: activeAi,
       ffmpeg_path: ffmpegPath,
       ffprobe_path: ffprobePath,
-      whisk_downloads_path: whiskDownloadsPath
+      flow_downloads_path: flowDownloadsPath
     });
     
     setIsSaving(false);
@@ -332,12 +332,12 @@ export const SettingsTab = () => {
                   </div>
                 </div>
                 <div className="mt-3">
-                    <label className="text-[10px] text-gray-400 mb-1 block">Pasta de Downloads Whisk</label>
+                    <label className="text-[10px] text-gray-400 mb-1 block">Pasta de Downloads Auto Flow</label>
                     <input 
                       type="text" 
-                      value={whiskDownloadsPath}
-                      onChange={(e) => setWhiskDownloadsPath(e.target.value)}
-                      placeholder="C:\Users\...\Whisk Downloads"
+                      value={flowDownloadsPath}
+                      onChange={(e) => setFlowDownloadsPath(e.target.value)}
+                      placeholder="C:\Users\...\Auto Flow Downloads"
                       className="w-full bg-dark/50 border border-white/10 rounded-lg p-2 text-[10px] font-mono"
                     />
                 </div>

@@ -159,7 +159,8 @@ def build_ffmpeg_command(
         if zoom_style != 'none':
             scale_w, scale_h = int(width * 1.5), int(height * 1.5)
 
-        chain = f"{input_label}scale={scale_w}:{scale_h}:force_original_aspect_ratio=increase,crop={scale_w}:{scale_h},setsar=1"
+        sws_flags = "fast_bilinear" if settings.get('renderPreset') in ['ultrafast', 'superfast'] else "bicubic"
+        chain = f"{input_label}scale={scale_w}:{scale_h}:force_original_aspect_ratio=increase:flags={sws_flags},crop={scale_w}:{scale_h},setsar=1"
         
         if filter_style == 'sepia': chain += ",colorchannelmixer=.393:.769:.189:0:.349:.686:.168:0:.272:.534:.131"
         elif filter_style == 'grayscale': chain += ",hue=s=0"
@@ -284,8 +285,41 @@ def build_ffmpeg_command(
         sub_path_safe = subtitle.replace('\\', '/').replace(':', '\\\\:')
         cmd.extend(['-vf', f"subtitles='{sub_path_safe}'"])
 
+    # Codificador e Velocidade
+    encoder = settings.get('encoder', 'libx264')
+    render_preset = settings.get('renderPreset', 'medium')
+    
+    # Mapeamento de presets para hardware (nvenc usa p1...p7, mas aceita alguns nomes)
+    # Para ser seguro e compatível, vamos traduzir os nomes comuns
+    hw_preset = render_preset
+    if encoder == 'h264_nvenc':
+        nv_map = {
+            'ultrafast': 'p1', 'superfast': 'p2', 'veryfast': 'p3', 
+            'faster': 'p4', 'fast': 'p4', 'medium': 'p5', 
+            'slow': 'p6', 'slower': 'p7', 'veryslow': 'p7'
+        }
+        hw_preset = nv_map.get(render_preset, 'p4')
+    elif encoder == 'h264_amf':
+         amf_map = {
+            'ultrafast': 'speed', 'superfast': 'speed', 'veryfast': 'speed',
+            'medium': 'balanced', 'slow': 'quality', 'veryslow': 'quality'
+         }
+         hw_preset = amf_map.get(render_preset, 'balanced')
+
+    cmd.extend(['-c:v', encoder])
+    
+    # Alguns encoders não suportam -crf, usamos -b:v como fallback ou apenas o preset
+    if encoder == 'libx264':
+        cmd.extend(['-preset', render_preset, '-crf', '23'])
+    else:
+        # Encoders de hardware geralmente preferem controle de bitrate ou presets de qualidade
+        cmd.extend(['-preset', hw_preset])
+        if encoder == 'h264_nvenc':
+            cmd.extend(['-rc', 'vbr', '-cq', '24', '-gpu', 'any'])
+        elif encoder == 'h264_qsv':
+            cmd.extend(['-global_quality', '23'])
+
     cmd.extend([
-        '-c:v', 'libx264', '-preset', 'medium', '-crf', '23',
         '-c:a', 'aac', '-b:a', '192k',
         '-pix_fmt', 'yuv420p'
     ])

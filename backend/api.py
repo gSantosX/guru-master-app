@@ -35,7 +35,8 @@ logging.basicConfig(
 logger = logging.getLogger("GuruMaster")
 
 app = Flask(__name__)
-CORS(app)
+# Configuração de CORS Ultra-Permissiva para evitar bloqueios de Extensões
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 # Permitir envios massivos (ex: 185 vídeos podem chegar a 10GB)
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024 
 # Evitar que o Werkzeug limite a quantidade de campos no formulário
@@ -60,12 +61,44 @@ WHISK_DOWNLOADS = os.path.join(os.path.expanduser("~"), "Whisk Downloads")
 
 def get_whisk_downloads():
     config = load_config()
-    path = config.get("whisk_downloads_path", WHISK_DOWNLOADS)
+    path = config.get("flow_downloads_path", os.path.join(os.path.expanduser("~"), "Downloads"))
     if not os.path.exists(path):
-        os.makedirs(path, exist_ok=True)
+        try:
+            os.makedirs(path, exist_ok=True)
+        except:
+            pass
     return path
 
-# Global queue for Whisk prompts
+def get_next_batch_name():
+    path = get_whisk_downloads()
+    if not os.path.exists(path):
+        return "Auto Guru 01"
+    
+    # Listar apenas diretórios que começam com "Auto Guru "
+    try:
+        existing = [d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d)) and d.startswith("Auto Guru ")]
+        if not existing:
+            return "Auto Guru 01"
+            
+        indices = []
+        for d in existing:
+            try:
+                # Extrair o número após "Auto Guru "
+                num_str = d.replace("Auto Guru ", "").strip()
+                indices.append(int(num_str))
+            except:
+                pass
+        
+        if not indices:
+            return "Auto Guru 01"
+            
+        next_idx = max(indices) + 1
+        return f"Auto Guru {next_idx:02d}"
+    except Exception as e:
+        logger.error(f"Erro ao calcular próximo nome de projeto: {e}")
+        return "Auto Guru 01"
+
+# Global queue for Auto Flow prompts
 whisk_queue = []
 whisk_total_prompts = 0
 whisk_settings = {
@@ -73,8 +106,11 @@ whisk_settings = {
     "image_count": 1,
     "prompt_interval": 5,
     "auto_download": True,
-    "check_folder_on_start": True
+    "check_folder_on_start": True,
+    "batch_folder": "Auto Guru 01",
+    "mode": "video"
 }
+whisk_last_heartbeat = 0
 
 # Global store for active render jobs
 render_jobs = {}
@@ -512,11 +548,15 @@ def login_route():
 def whisk_status():
     path = get_whisk_downloads()
     files = os.listdir(path) if os.path.exists(path) else []
+    completed = whisk_total_prompts - len(whisk_queue)
     return jsonify({
         "path": path,
         "file_count": len(files),
         "is_empty": len(files) == 0,
-        "queue_count": len(whisk_queue)
+        "queue_count": len(whisk_queue),
+        "total_prompts": whisk_total_prompts,
+        "completed_prompts": max(0, completed),
+        "current_mode": whisk_settings.get('mode', 'video')
     })
 
 @app.route('/api/whisk/clear', methods=['POST'])
@@ -542,31 +582,33 @@ def select_whisk_folder():
     # Remover Tkinter direto aqui para evitar hangs no servidor Flask Windows
     return jsonify({"error": "Seleção de pasta via diálogo não disponível no momento. Use o config.json"}), 400
 
-whisk_heartbeat_time = 0
-
-@app.route('/api/whisk/heartbeat', methods=['POST'])
-def whisk_heartbeat_post():
-    global whisk_heartbeat_time
-    whisk_heartbeat_time = time.time()
-    return jsonify({"status": "ok", "time": whisk_heartbeat_time})
-
-@app.route('/api/whisk/heartbeat', methods=['GET'])
-def whisk_heartbeat_get():
-    global whisk_heartbeat_time
-    is_active = (time.time() - whisk_heartbeat_time) < 15
-    return jsonify({"active": is_active, "last_seen": whisk_heartbeat_time})
+# Heartbeat routes — handled below near /api/whisk/open
 
 @app.route('/api/whisk/prompts', methods=['GET', 'POST', 'DELETE'])
 def whisk_prompts():
-    global whisk_queue, whisk_total_prompts
+    global whisk_queue, whisk_total_prompts, whisk_settings
     if request.method == 'POST':
         data = request.json
+        mode = data.get('mode', whisk_settings.get('mode', 'video'))
+        
+        # New Batch Trigger - Generate new folder name automatically
+        whisk_settings['batch_folder'] = get_next_batch_name()
+        
         if "prompts" in data:
-            whisk_queue = data["prompts"]
+            new_prompts = []
+            for p in data["prompts"]:
+                if isinstance(p, str):
+                    new_prompts.append({"prompt": p, "mode": mode, "batch_folder": whisk_settings['batch_folder']})
+                else:
+                    new_item = p.copy()
+                    new_item['batch_folder'] = whisk_settings['batch_folder']
+                    new_prompts.append(new_item)
+            whisk_queue = new_prompts
         elif "prompt" in data:
-            whisk_queue.append(data["prompt"])
+            whisk_queue.append({"prompt": data["prompt"], "mode": mode, "batch_folder": whisk_settings['batch_folder']})
+            
         whisk_total_prompts = len(whisk_queue)
-        return jsonify({"message": "Fila atualizada", "count": len(whisk_queue)})
+        return jsonify({"message": "Fila atualizada", "count": len(whisk_queue), "batch": whisk_settings['batch_folder']})
     
     if request.method == 'DELETE':
         whisk_queue = []
@@ -579,11 +621,27 @@ def whisk_prompts():
 def whisk_next():
     global whisk_queue, whisk_total_prompts
     if not whisk_queue:
-        return jsonify({"prompt": None})
+        return jsonify({"prompt": None, "mode": None, "batch_folder": whisk_settings.get('batch_folder', 'Auto Guru 01')})
     
-    prompt = whisk_queue.pop(0)
+    item = whisk_queue.pop(0)
     current_index = whisk_total_prompts - len(whisk_queue)
-    return jsonify({"prompt": prompt, "remaining": len(whisk_queue), "index": current_index})
+    
+    if isinstance(item, str):
+        return jsonify({
+            "prompt": item, 
+            "mode": whisk_settings.get('mode', 'video'), 
+            "batch_folder": whisk_settings.get('batch_folder', 'Auto Guru 01'),
+            "remaining": len(whisk_queue), 
+            "index": current_index
+        })
+    
+    return jsonify({
+        "prompt": item.get('prompt'),
+        "mode": item.get('mode', 'video'),
+        "batch_folder": item.get('batch_folder', whisk_settings.get('batch_folder', 'Auto Guru 01')),
+        "remaining": len(whisk_queue),
+        "index": current_index
+    })
 
 @app.route('/api/whisk/settings', methods=['GET', 'POST'])
 def whisk_settings_api():
@@ -801,8 +859,17 @@ def render_video():
         try:
             # 1. Prepare output path
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            safe_name = "".join([c if c.isalnum() else "_" for c in project_name])
-            output_filename = f"video_{safe_name}_{timestamp}.mp4"
+            # Clean name for filesystem but keep more characters than just alnum for readability
+            safe_name = "".join([c if (c.isalnum() or c in " .-_()") else "_" for c in project_name]).strip()
+            
+            # Default to the project name as requested by user
+            output_filename = f"{safe_name}.mp4"
+            
+            # Check for conflict to avoid overwriting existing work
+            check_dir = custom_output_dir if (custom_output_dir and os.path.exists(custom_output_dir)) else OUTPUT_FOLDER
+            if os.path.exists(os.path.join(check_dir, output_filename)):
+                output_filename = f"{safe_name}_{timestamp}.mp4"
+            
             
             custom_output_dir = config_settings.get("outputDir")
             if custom_output_dir and os.path.exists(custom_output_dir) and os.path.isdir(custom_output_dir):
@@ -934,8 +1001,98 @@ def download_video(job_id):
 
 @app.route('/api/whisk/open', methods=['POST'])
 def whisk_open():
-    webbrowser.open("https://labs.google/fx/pt/tools/whisk")
+    webbrowser.open("https://labs.google/fx/pt/tools/flow")
     return jsonify({"message": "Website opened"})
+
+# --- AUTO FLOW HEARTBEAT ---
+# The Chrome extension sends a POST every 10s from both background.js and content.js.
+# The app polls GET every 10s to check if the extension is alive.
+
+@app.route('/api/whisk/heartbeat', methods=['POST'])
+def whisk_heartbeat():
+    global whisk_last_heartbeat
+    whisk_last_heartbeat = time.time()
+    logger.info(f"[HEARTBEAT] Recebido da extensão às {datetime.fromtimestamp(whisk_last_heartbeat)}")
+    return jsonify({"status": "ok", "time": whisk_last_heartbeat})
+
+@app.route('/api/whisk/heartbeat', methods=['GET'])
+def whisk_heartbeat_get():
+    global whisk_last_heartbeat
+    diff = time.time() - whisk_last_heartbeat
+    is_active = diff < 20
+    # logger.info(f"[HEARTBEAT CHECK] App consultando status. Ativo: {is_active} (visto há {diff:.1f}s)")
+    return jsonify({"active": is_active, "last_seen": whisk_last_heartbeat})
+
+# --- SISTEMA DE ATUALIZAÇÃO AUTOMÁTICA ---
+
+def get_local_commit():
+    try:
+        # Pega o hash do commit local
+        res = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True, check=True)
+        return res.stdout.strip()
+    except Exception as e:
+        logger.error(f"Erro ao obter commit local: {e}")
+        return "desconhecido"
+
+@app.route('/api/check_update', methods=['GET'])
+def check_update():
+    local_hash = get_local_commit()
+    # URL da API do GitHub para o repositório principal
+    repo_url = "https://api.github.com/repos/gSantosX/guru-master-app/commits/main"
+    
+    try:
+        # Requisitar usando a biblioteca urllib padrão (já importada)
+        req = Request(repo_url, headers={
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "GuruMaster-Updater"
+        })
+        
+        with urlopen(req, context=ctx, timeout=10) as response:
+            data = json.loads(response.read().decode())
+            remote_hash = data.get('sha')
+            
+            needs_update = (local_hash != remote_hash) and (remote_hash is not None)
+            
+            return jsonify({
+                "local": local_hash,
+                "remote": remote_hash,
+                "needs_update": needs_update,
+                "message": data.get('commit', {}).get('message', 'Sem descrição'),
+                "author": data.get('commit', {}).get('author', {}).get('name', 'Guru')
+            })
+    except Exception as e:
+        logger.error(f"Erro na checagem de update: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/update', methods=['POST'])
+def perform_update():
+    logger.info("Iniciando processo de atualização via GIT...")
+    try:
+        # 1. Stash para evitar bloqueio por mudanças locais temporárias
+        subprocess.run(['git', 'stash'], check=False)
+        
+        # 2. Pull do repositório
+        res = subprocess.run(['git', 'pull', 'origin', 'main'], capture_output=True, text=True, check=True)
+        logger.info(f"Git Pull executado: {res.stdout}")
+        
+        # 3. Atualizar dependências se necessário
+        req_path = os.path.join(BASE_DIR, 'requirements.txt')
+        if os.path.exists(req_path):
+            logger.info("Atualizando dependências Python...")
+            subprocess.run(['pip', 'install', '-r', req_path], check=False)
+            
+        return jsonify({
+            "status": "updated",
+            "message": "Atualização concluída com sucesso! Por favor, reinicie o aplicativo para aplicar as mudanças.",
+            "details": res.stdout
+        })
+        
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Falha no Git Pull: {e.stderr}")
+        return jsonify({"error": f"Erro no servidor: {e.stderr}"}), 500
+    except Exception as e:
+        logger.error(f"Erro fatal no Update: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     # Desativar debug mode para evitar reinicializações duplas e instabilidades no Windows com 185 uploads

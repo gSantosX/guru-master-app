@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap, Box, Copy, Check } from 'lucide-react';
+import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap, Box, Copy, Check, Palette, CloudMoon, Target, Maximize, MousePointer2, Globe, Terminal, AlertTriangle } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -7,10 +7,17 @@ import { resolveApiUrl } from '../utils/apiUtils';
 import { callGemini, callGPT } from '../utils/aiUtils';
 
 // Helper: use GPT to build a detailed visual prompt for the cover
-async function buildCoverPromptWithGPT(title, apiKey) {
+async function buildCoverPromptWithGPT(title, apiKey, prefs = {}) {
+    const { includeText, colorStyle, distance } = prefs;
     const instruction = `You are an expert YouTube thumbnail art director. 
 Given the video title: "${title}"
 Generate a detailed, vivid image generation prompt (in English) for a professional YouTube thumbnail.
+
+User Preferences:
+- Include Text: ${includeText ? `YES (Detect the language of "${title}" and add the text overlay in that SAME language)` : 'NO'}
+- Color Style: ${colorStyle === 'bw' ? 'Black and White / Grisaille' : colorStyle === 'selective' ? 'Selective Color (Main objects in color, background muted/classic)' : 'Vibrant Colors'}
+- Shot Type: ${distance === 'wide' ? 'Wide Cinema Shot / Far' : 'Close-Up / Focused'}
+
 The prompt must describe: main subject, background, lighting, colors, mood, composition, style.
 Example style: "cinematic wide shot of [subject], dramatic lighting, vibrant colors, ..."
 Return ONLY the raw image prompt, no explanations, no quotes, no markdown.`;
@@ -19,10 +26,17 @@ Return ONLY the raw image prompt, no explanations, no quotes, no markdown.`;
 }
 
 // Helper: use Gemini to build a detailed visual prompt for the cover (fallback)
-async function buildCoverPromptWithGemini(title, apiKey) {
+async function buildCoverPromptWithGemini(title, apiKey, prefs = {}) {
+    const { includeText, colorStyle, distance } = prefs;
     const instruction = `You are an expert YouTube thumbnail art director. 
 Given the video title: "${title}"
 Generate a detailed, vivid image generation prompt (in English) for a professional YouTube thumbnail.
+
+User Preferences:
+- Include Text: ${includeText ? `YES (Detect the language of "${title}" and add the text overlay in that SAME language)` : 'NO'}
+- Color Style: ${colorStyle === 'bw' ? 'Black and White / Monochrome' : colorStyle === 'selective' ? 'Color Pop (Subject in color, background black and white)' : 'Cinematic Color Grading'}
+- Shot Type: ${distance === 'wide' ? 'Long Shot / Wide perspective' : 'Extreme Close-Up / Portrait style'}
+
 The prompt must describe: main subject, background, lighting, colors, mood, composition, style.
 Example style: "cinematic wide shot of [subject], dramatic lighting, vibrant colors, ..."
 Return ONLY the raw image prompt, no explanations, no quotes, no markdown.`;
@@ -33,7 +47,7 @@ Return ONLY the raw image prompt, no explanations, no quotes, no markdown.`;
 // Helper: generate actual image via Pollinations.ai (free, no key)
 function buildPollinationsUrl(prompt, seed) {
     const encoded = encodeURIComponent(prompt + ', youtube thumbnail, high quality, vibrant, 16:9');
-    return `https://image.pollinations.ai/prompt/${encoded}?width=1280&height=720&seed=${seed}&nologo=true&enhance=true`;
+    return `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=576&seed=${seed}&nologo=true&enhance=true`;
 }
 
 export const VideoCoverTab = ({ isActive }) => {
@@ -54,6 +68,9 @@ export const VideoCoverTab = ({ isActive }) => {
 
     // covers: { [index]: { url, prompt, loading, error, isPromptOnly } }
     const [covers, setCovers] = useState({});
+    
+    // coverPrefs: { [index]: { includeText, colorStyle, distance } }
+    const [coverPrefs, setCoverPrefs] = useState({});
 
     useEffect(() => {
         if (!isActive) return;
@@ -70,6 +87,7 @@ export const VideoCoverTab = ({ isActive }) => {
         ]);
         setShockWords({ one: '', two: '', three: '' });
         setCovers({});
+        setCoverPrefs({});
         generateTitleVariations(script.title);
     };
 
@@ -78,6 +96,7 @@ export const VideoCoverTab = ({ isActive }) => {
         setTitles([]);
         setShockWords({ one: '', two: '', three: '' });
         setCovers({});
+        setCoverPrefs({});
     };
 
     const generateTitleVariations = async (originalTitle) => {
@@ -89,6 +108,7 @@ export const VideoCoverTab = ({ isActive }) => {
 
             const prompt = `Analise o título de vídeo original: "${originalTitle}".
 Crie 2 novas opções de títulos com altíssimo potencial de viralização no YouTube, na mesma língua do original.
+IMPORTANTE: Os títulos devem ter no MÁXIMO 100 caracteres cada. Seja direto e impactante.
 As variações NÃO devem ser iguais entre si. Use gatilhos mentais diferentes (ex: uma focada em Curiosidade extrema, e a outra focada em Uma Promessa Irresistível/Urgência).
 Identifique qual das duas tem o MAIOR potencial viral para se tornar a principal.
 
@@ -129,9 +149,9 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este:
             }
 
             setTitles([
-                { text: originalTitle, label: 'Título Original', isOriginal: true },
-                { text: parsed.variations?.[0]?.text || 'Erro ao gerar', label: parsed.variations?.[0]?.label || 'Variação 1', is_best: Boolean(parsed.variations?.[0]?.is_best) },
-                { text: parsed.variations?.[1]?.text || 'Erro ao gerar', label: parsed.variations?.[1]?.label || 'Variação 2', is_best: Boolean(parsed.variations?.[1]?.is_best) }
+                { text: originalTitle.substring(0, 100), label: 'Título Original', isOriginal: true },
+                { text: (parsed.variations?.[0]?.text || 'Erro ao gerar').substring(0, 100), label: parsed.variations?.[0]?.label || 'Variação 1', is_best: Boolean(parsed.variations?.[0]?.is_best) },
+                { text: (parsed.variations?.[1]?.text || 'Erro ao gerar').substring(0, 100), label: parsed.variations?.[1]?.label || 'Variação 2', is_best: Boolean(parsed.variations?.[1]?.is_best) }
             ]);
             // Robust parsing for shock words
             const sw = parsed.shockWords || parsed.shock_words || parsed.palavras_choque || {};
@@ -152,70 +172,41 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este:
         }
     };
 
-    const handleGenerateCover = async (index, title, useGemini = false) => {
-        setCovers(prev => ({ ...prev, [index]: { loading: true, url: null, prompt: null, error: null } }));
+    const handleGenerateCover = async (index, title) => {
+        setCovers(prev => ({ ...prev, [index]: { loading: true, prompt: null, error: null } }));
 
         try {
+            const prefs = coverPrefs[index] || { includeText: false, colorStyle: 'standard', distance: 'close' };
             let visualPrompt;
-            if (useGemini) {
-                const apiKey = configs?.gemini_key || localStorage.getItem('guru_gemini_key');
-                if (!apiKey) throw new Error('Chave Gemini não configurada para fallback.');
-                visualPrompt = await buildCoverPromptWithGemini(title, apiKey);
-                console.log(`[Cover ${index}] Generated prompt (Gemini Fallback):`, visualPrompt);
+            
+            const geminiKey = configs?.gemini_key || localStorage.getItem('guru_gemini_key');
+            const gptKey = configs?.gpt_key || localStorage.getItem('guru_gpt_key');
+
+            if (geminiKey) {
+                try {
+                    visualPrompt = await buildCoverPromptWithGemini(title, geminiKey, prefs);
+                } catch (e) {
+                    if (gptKey) {
+                        visualPrompt = await buildCoverPromptWithGPT(title, gptKey, prefs);
+                    } else {
+                        throw e;
+                    }
+                }
+            } else if (gptKey) {
+                visualPrompt = await buildCoverPromptWithGPT(title, gptKey, prefs);
             } else {
-                const apiKey = configs?.gpt_key || localStorage.getItem('guru_gpt_key');
-                if (!apiKey) throw new Error('Chave GPT não configurada nas Configurações.');
-                visualPrompt = await buildCoverPromptWithGPT(title, apiKey);
-                console.log(`[Cover ${index}] Generated prompt (GPT):`, visualPrompt);
+                throw new Error('Nenhuma chave de IA configurada (Gemini ou GPT) nas Configurações.');
             }
 
-            let finalImageUrl = null;
-            if (selectedEngine === 'prompt_only') {
-                setCovers(prev => ({ ...prev, [index]: { loading: false, url: null, prompt: visualPrompt, error: null, isPromptOnly: true } }));
-                return;
-            } else if (selectedEngine === 'dalle3') {
-                const openaiKey = configs?.gpt_key || localStorage.getItem('guru_gpt_key');
-                if (!openaiKey || openaiKey.includes('YOUR_')) throw new Error('Chave OpenAI não configurada nas Configurações!');
-                
-                const res = await fetch(resolveApiUrl('/api/openai/v1/images/generations'), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
-                    body: JSON.stringify({ model: "dall-e-3", prompt: visualPrompt + " - create a landscape layout.", n: 1, size: "1792x1024" })
-                });
-                const data = await res.json();
-                if (data.error) throw new Error(data.error.message || "Erro OpenAI DALL-E 3");
-                finalImageUrl = data.data[0].url;
-            } else {
-                const seed = Math.floor(Math.random() * 999999);
-                finalImageUrl = buildPollinationsUrl(visualPrompt, seed);
-            }
-
-            // Step 3: Preload image to verify it loaded
-            if (finalImageUrl) {
-                await new Promise((resolve, reject) => {
-                    const img = new window.Image();
-                    img.onload = resolve;
-                    img.onerror = () => reject(new Error('Falha ao carregar a imagem gerada.'));
-                    img.src = finalImageUrl;
-                    setTimeout(() => reject(new Error('Timeout ao carregar imagem.')), 45000);
-                });
-            }
-
-            setCovers(prev => ({ ...prev, [index]: { loading: false, url: finalImageUrl, prompt: visualPrompt, error: null, isPromptOnly: false } }));
+            setCovers(prev => ({ ...prev, [index]: { loading: false, prompt: visualPrompt, error: null } }));
         } catch (error) {
-            console.error('Erro ao gerar capa:', error);
-            let displayError = error.message;
-            if (error.message === 'QUOTA_EXCEEDED') {
-                displayError = 'Cota do GPT excedida! Sua conta OpenAI está sem créditos.';
-            }
+            console.error('Erro ao gerar prompt da capa:', error);
             setCovers(prev => ({ 
                 ...prev, 
                 [index]: { 
                     loading: false, 
-                    url: null, 
                     prompt: null, 
-                    error: displayError,
-                    isQuotaError: error.message === 'QUOTA_EXCEEDED'
+                    error: error.message
                 } 
             }));
         }
@@ -427,23 +418,31 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este:
                     return (
                     <motion.div
                         key={idx}
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                        className={`glass-card overflow-hidden flex flex-col lg:flex-row border border-white/10 group transition-all duration-500 relative ${glowClass} ${!isOriginal && 'hover:border-neon-purple/50'}`}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: idx * 0.1, duration: 0.4 }}
+                        className={`glass-card overflow-hidden border border-white/10 group transition-all duration-500 relative mb-6 shadow-[0_10px_30px_rgba(0,0,0,0.4)] ${glowClass} ${!isOriginal && 'hover:border-neon-purple/50'}`}
                     >
-                        {/* Left: Title & Controls */}
-                        <div className="flex-1 p-6 md:p-8 flex flex-col justify-between bg-white/5 relative">
+                        <div className="p-5 md:p-8 flex flex-col gap-6 bg-white/5 relative">
                             {isBest && (
-                                <div className="absolute top-0 right-0 bg-yellow-500 text-dark font-black text-[9px] md:text-[10px] px-3 py-1.5 rounded-bl-xl uppercase tracking-widest flex items-center gap-1.5 shadow-lg">
+                                <div className="absolute top-0 right-0 bg-yellow-500 text-dark font-black text-[9px] md:text-[10px] px-4 py-1.5 rounded-bl-xl uppercase tracking-[0.2em] flex items-center gap-2 shadow-2xl z-30 animate-pulse">
                                     <Sparkles className="w-3.5 h-3.5" /> Mais Viral
                                 </div>
                             )}
-                            <div>
-                                <div className="flex items-center gap-2 mb-3 mt-1">
-                                    <span className={`px-2 md:px-3 py-1 rounded text-[9px] md:text-[10px] font-black uppercase tracking-[0.1em] md:tracking-widest ${badgeColor}`}>
+
+                            {/* Section 1: Title Header */}
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <span className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${badgeColor}`}>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
                                         {labelText}
                                     </span>
+                                    {isGeneratingTitles && !isOriginal && <LoadingSpinner size="xs" message="" />}
+                                </div>
+                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                    <h3 className={`text-xl md:text-2xl font-black leading-[1.2] transition-colors max-w-4xl ${isBest ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(234,179,8,0.2)]' : 'text-white'}`}>
+                                        {titleText || (isGeneratingTitles ? 'Projetando o melhor ângulo...' : 'Aguardando...')}
+                                    </h3>
                                     <button 
                                         onClick={() => {
                                             if (!titleText) return;
@@ -451,154 +450,158 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este:
                                             setCopiedIndex(idx);
                                             setTimeout(() => setCopiedIndex(null), 2000);
                                         }}
-                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all border border-white/5 flex items-center justify-center gap-2 group/copy"
-                                        title="Copiar Título"
+                                        className="shrink-0 h-10 w-10 lg:w-36 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all border border-white/10 flex items-center justify-center gap-2 group/copy active:scale-95"
                                     >
-                                        {copiedIndex === idx ? (
-                                            <Check className="w-3.5 h-3.5 text-neon-cyan" />
-                                        ) : (
-                                            <Copy className="w-3.5 h-3.5" />
-                                        )}
-                                        <span className="text-[8px] font-black uppercase tracking-widest hidden group-hover/copy:block">Copiar</span>
+                                        {copiedIndex === idx ? <Check className="w-4 h-4 text-neon-cyan" /> : <Copy className="w-4 h-4" />}
+                                        <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">{copiedIndex === idx ? 'Copiado!' : 'Copiar Título'}</span>
                                     </button>
-                                    {isGeneratingTitles && !isOriginal && <LoadingSpinner size="xs" message="" />}
                                 </div>
-                                <h3 className={`text-xl md:text-2xl font-bold leading-tight mb-4 transition-colors ${isBest ? 'text-yellow-400 group-hover:text-yellow-300' : 'text-white group-hover:text-neon-purple'}`}>
-                                    {titleText || (isGeneratingTitles ? 'Identificando o melhor ângulo viral...' : 'Aguardando...')}
-                                </h3>
+                            </div>
 
-                                {/* Show generated prompt hint */}
-                                {covers[idx]?.prompt && (
-                                    <div className="mb-6 p-5 bg-dark/60 border border-white/5 rounded-2xl block relative group/prmpt shadow-inner">
-                                        <div className="flex items-center justify-between gap-2 mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <Wand2 className="w-4 h-4 text-neon-cyan" />
-                                                <span className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.2em]">Prompt Visual Gerado</span>
-                                            </div>
-                                            <button 
-                                                onClick={() => { navigator.clipboard.writeText(covers[idx].prompt); alert("Texto copiado para a área de transferência!"); }}
-                                                className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2 border border-white/10"
-                                            >
-                                                Copiar Base
-                                            </button>
-                                        </div>
-                                        <p className="text-[11px] md:text-[13px] text-gray-400 italic max-h-[140px] overflow-y-auto custom-scrollbar pr-2 leading-relaxed font-mono">
-                                            {covers[idx].prompt}
-                                        </p>
+                            {/* Section 2: Laboratory Control Center */}
+                            <div className="p-5 bg-dark/40 border border-white/5 rounded-2xl relative overflow-hidden group/lab">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="p-1.5 bg-neon-pink/10 rounded-lg">
+                                        <Wand2 className="w-4 h-4 text-neon-pink" />
                                     </div>
-                                )}
-                            </div>
+                                    <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Centro de Customização Visual</h3>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                                    {/* Text Toggle Chip */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Type className="w-3 h-3 text-gray-500" />
+                                            <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Incluir Texto</label>
+                                        </div>
+                                        <button 
+                                            onClick={() => setCoverPrefs(prev => ({ ...prev, [idx]: { ...prev[idx], includeText: !prev[idx]?.includeText } }))}
+                                            className={`w-full h-11 rounded-xl px-4 transition-all flex items-center justify-between border ${coverPrefs[idx]?.includeText ? 'bg-neon-cyan/10 border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.05)]' : 'bg-white/5 border-white/5'}`}
+                                        >
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${coverPrefs[idx]?.includeText ? 'text-neon-cyan' : 'text-gray-500'}`}>
+                                                {coverPrefs[idx]?.includeText ? 'Com Texto' : 'Sem Texto'}
+                                            </span>
+                                            <div className={`w-7 h-3.5 rounded-full p-0.5 transition-all flex items-center ${coverPrefs[idx]?.includeText ? 'bg-neon-cyan' : 'bg-gray-700'}`}>
+                                                <div className={`w-2.5 h-2.5 bg-white rounded-full transition-all ${coverPrefs[idx]?.includeText ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                                            </div>
+                                        </button>
+                                    </div>
+                                    
+                                    {/* Color Style Pills */}
+                                    <div className="space-y-2 lg:col-span-1">
+                                        <div className="flex items-center gap-2">
+                                            <Palette className="w-3 h-3 text-gray-500" />
+                                            <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Estilo Visual</label>
+                                        </div>
+                                        <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 h-11">
+                                            {[
+                                                { id: 'standard', label: 'Color', icon: Zap },
+                                                { id: 'bw', label: 'P&B', icon: CloudMoon },
+                                                { id: 'selective', label: 'Foco', icon: Target }
+                                            ].map(c => (
+                                                <button 
+                                                    key={c.id}
+                                                    onClick={() => setCoverPrefs(prev => ({ ...prev, [idx]: { ...prev[idx], colorStyle: c.id } }))}
+                                                    className={`flex-1 flex flex-col items-center justify-center rounded-lg transition-all gap-0.5
+                                                        ${(coverPrefs[idx]?.colorStyle || 'standard') === c.id ? 'bg-neon-pink text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}
+                                                    `}
+                                                >
+                                                    <c.icon className="w-3 h-3" />
+                                                    <span className="text-[7px] font-black uppercase tracking-tighter">{c.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex flex-wrap gap-3 mt-4">
-                                <button
-                                    onClick={() => handleGenerateCover(idx, titleText)}
-                                    disabled={!titleText || covers[idx]?.loading || isGeneratingTitles}
-                                    className="px-6 py-3 bg-neon-purple text-white rounded-xl font-bold flex items-center gap-2 hover:bg-neon-purple/80 transition-all disabled:opacity-50 shadow-lg shadow-neon-purple/20"
-                                >
-                                    {covers[idx]?.loading ? (
-                                        <LoadingSpinner size="xs" message="Gerando..." />
-                                    ) : covers[idx]?.url ? (
-                                        <><RefreshCw className="w-5 h-5" /> Gerar Novamente</>
-                                    ) : (
-                                        <><Sparkles className="w-5 h-5" /> Gerar Capa com IA</>
-                                    )}
-                                </button>
+                                    {/* Distance Pills */}
+                                    <div className="space-y-2 lg:col-span-1">
+                                        <div className="flex items-center gap-2">
+                                            <Maximize className="w-3 h-3 text-gray-500" />
+                                            <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Enquadramento</label>
+                                        </div>
+                                        <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 h-11">
+                                            {[
+                                                { id: 'close', label: 'Perto', icon: MousePointer2 },
+                                                { id: 'wide', label: 'Longe', icon: Globe }
+                                            ].map(d => (
+                                                <button 
+                                                    key={d.id}
+                                                    onClick={() => setCoverPrefs(prev => ({ ...prev, [idx]: { ...prev[idx], distance: d.id } }))}
+                                                    className={`flex-1 flex flex-col items-center justify-center rounded-lg transition-all gap-0.5
+                                                        ${(coverPrefs[idx]?.distance || 'close') === d.id ? 'bg-neon-cyan text-dark shadow-lg' : 'text-gray-500 hover:text-gray-300'}
+                                                    `}
+                                                >
+                                                    <d.icon className="w-3 h-3" />
+                                                    <span className="text-[7px] font-black uppercase tracking-tighter">{d.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
 
-                                {covers[idx]?.url && !covers[idx]?.loading && (
-                                    <button
-                                        onClick={() => handleDownload(covers[idx].url, titleText)}
-                                        className="px-6 py-3 bg-neon-cyan/20 border border-neon-cyan/40 text-neon-cyan rounded-xl font-bold flex items-center gap-2 hover:bg-neon-cyan/30 hover:border-neon-cyan/70 transition-all shadow-lg"
+                                    {/* Main Magic Button */}
+                                    <button 
+                                        onClick={() => handleGenerateCover(idx, titleText)}
+                                        disabled={!titleText || covers[idx]?.loading}
+                                        className="h-11 bg-neon-purple text-white rounded-xl transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neon-purple/80 shadow-lg shadow-neon-purple/10 active:scale-95 disabled:opacity-30"
                                     >
-                                        <Download className="w-5 h-5" /> Baixar JPG
+                                        {covers[idx]?.loading ? <LoadingSpinner size="xs" message="" /> : <><Sparkles className="w-4 h-4" /> Criar Prompt</>}
                                     </button>
-                                )}
+                                </div>
                             </div>
+
+                            {/* Section 3: Prompt Master Output */}
+                            <AnimatePresence mode="wait">
+                                {covers[idx]?.prompt && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, scale: 0.98 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.98 }}
+                                        className="relative group/pbox"
+                                    >
+                                        <div className="p-5 bg-dark/80 border border-neon-cyan/20 rounded-2xl shadow-[inset_0_1px_10px_rgba(0,243,255,0.03)] overflow-hidden">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20">
+                                                        <Terminal className="w-4 h-4 text-neon-cyan" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Direct Prompt Output</h4>
+                                                        <p className="text-[8px] text-gray-500 font-mono uppercase tracking-widest italic">Optimized by Gemini Advanced</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                <button 
+                                                    onClick={() => { 
+                                                        navigator.clipboard.writeText(covers[idx].prompt);
+                                                        alert("Prompt copiado!");
+                                                    }}
+                                                    className="px-4 py-2 bg-neon-cyan text-dark rounded-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2 hover:brightness-110 active:scale-95"
+                                                >
+                                                    <Zap className="w-3 h-3" /> Copiar Prompt
+                                                </button>
+                                            </div>
+
+                                            <div className="bg-dark/40 p-5 rounded-xl border border-white/5 font-mono text-xs md:text-sm text-neon-cyan/80 leading-relaxed italic select-all scrollbar-hide overflow-y-auto max-h-[150px]">
+                                                {covers[idx].prompt}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
                             {covers[idx]?.error && (
-                                <div className="mt-3 p-3 bg-red-400/10 rounded-lg flex flex-col gap-2">
-                                    <p className="text-red-400 text-xs">
-                                        ❌ {covers[idx].error}
-                                    </p>
-                                    {covers[idx]?.isQuotaError && (
-                                        <button 
-                                            onClick={() => handleGenerateCover(idx, titleText, true)}
-                                            className="text-[10px] font-bold bg-neon-cyan/20 text-neon-cyan py-1.5 rounded border border-neon-cyan/40 hover:bg-neon-cyan/30 transition-all uppercase tracking-widest"
-                                        >
-                                            Tentar com Gemini (Fallback)
-                                        </button>
-                                    )}
+                                <div className="p-6 bg-red-400/5 rounded-2xl flex items-center gap-4 border border-red-500/10">
+                                    <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20 text-red-500">
+                                        <AlertTriangle className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-red-400 font-black text-xs uppercase tracking-widest mb-1">Módulo de IA Interrompido</h4>
+                                        <p className="text-red-400/70 text-xs font-medium">{covers[idx].error}</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
-
-                        {/* Right: Image Preview */}
-                        <div className="w-full lg:w-[520px] aspect-video bg-dark-lighter relative overflow-hidden flex items-center justify-center border-t lg:border-t-0 lg:border-l border-white/5 flex-shrink-0">
-                            <AnimatePresence mode="wait">
-                                {covers[idx]?.loading ? (
-                                    <motion.div
-                                        key="loading"
-                                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                        className="absolute inset-0 z-10 bg-dark/90 flex flex-col items-center justify-center text-neon-purple gap-4"
-                                    >
-                                        <LoadingSpinner size="lg" message="O Motor Gráfico está Trabalhando..." />
-                                        <div className="text-center">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mt-1">Isso pode levar alguns segundos dependendo da fila.</p>
-                                        </div>
-                                    </motion.div>
-                                ) : covers[idx]?.isPromptOnly && covers[idx]?.prompt ? (
-                                    <motion.div
-                                        key="prompt_only"
-                                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                                        className="absolute inset-0 z-10 bg-dark/20 flex flex-col items-center justify-center p-8 text-center"
-                                    >
-                                        <div className="w-16 h-16 rounded-2xl bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20 mb-4">
-                                           <Type className="w-8 h-8 text-neon-purple" />
-                                        </div>
-                                        <h3 className="text-white font-black text-sm uppercase tracking-[0.2em] mb-2">Apenas Prompt Gerado</h3>
-                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest max-w-[280px]">Copie o texto no painel à esquerda para renderizar sua arte no Whisk ou Midjourney.</p>
-                                    </motion.div>
-                                ) : covers[idx]?.url ? (
-                                    <motion.div
-                                        key="image"
-                                        initial={{ filter: 'blur(20px)', scale: 1.1 }}
-                                        animate={{ filter: 'blur(0px)', scale: 1 }}
-                                        transition={{ duration: 0.6 }}
-                                        className="h-full w-full relative group/img"
-                                    >
-                                            <img
-                                                src={covers[idx].url}
-                                                alt={titleText}
-                                                className="w-full h-full object-cover transition-transform duration-700 group-hover/img:scale-105"
-                                            />
-                                            {/* Hover overlay */}
-                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                                                <button
-                                                    onClick={() => handleDownload(covers[idx].url, titleText)}
-                                                    className="p-4 bg-white text-dark rounded-full hover:scale-110 transition-transform shadow-2xl"
-                                                    title="Baixar JPG"
-                                                >
-                                                    <Download className="w-6 h-6" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleGenerateCover(idx, titleText)}
-                                                    className="p-4 bg-neon-purple text-white rounded-full hover:scale-110 transition-transform shadow-2xl"
-                                                    title="Gerar Novamente"
-                                                >
-                                                    <RefreshCw className="w-6 h-6" />
-                                                </button>
-                                            </div>
-                                        </motion.div>
-                                    ) : (
-                                        <div className="text-gray-600 flex flex-col items-center gap-3 p-8 text-center">
-                                            <ImageIcon className="w-16 h-16 opacity-10" />
-                                            <p className="text-sm font-medium">Prévia da Capa (1280×720)</p>
-                                            <p className="text-xs text-gray-600">Clique em "Gerar Capa com IA" para criar</p>
-                                        </div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        </motion.div>
+                    </motion.div>
                     );
                 })}
             </div>
@@ -612,13 +615,13 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este:
                     <Type className="text-neon-purple w-6 h-6" />
                 </div>
                 <div>
-                    <h4 className="text-white font-bold mb-1">Como funciona a geração por IA</h4>
+                    <h4 className="text-white font-bold mb-1">Como funciona a geração de Prompts</h4>
                     <p className="text-sm text-gray-400 leading-relaxed">
-                        <strong className="text-neon-cyan">Etapa 1:</strong> A IA (Gemini) analisa o título do vídeo e cria um prompt visual detalhado em inglês.
+                        <strong className="text-neon-cyan">Etapa 1:</strong> O Gemini analisa o título viral e cria uma descrição visual cinematográfica em inglês.
                         <br />
-                        <strong className="text-neon-purple">Etapa 2:</strong> Uma IA de geração de imagens converte esse prompt em uma capa 16:9 profissional.
+                        <strong className="text-neon-purple">Etapa 2:</strong> Copie o prompt gerado e use no **Auto Flow** ou **Midjourney** para criar sua arte final.
                         <br />
-                        Use <strong>"Gerar Novamente"</strong> para criar variações diferentes mantendo o mesmo título.
+                        Use o **Centro de Customização** para ajustar o estilo antes de gerar um novo prompt.
                     </p>
                 </div>
             </motion.div>

@@ -18,6 +18,7 @@ export const SystemStatusProvider = ({ children }) => {
     leonardo: 'checking...',
     smtp: 'checking...',
     youtube: 'checking...',
+    autoFlow: 'offline',
     details: { ffmpeg: '', error: '', youtube_error: '' }
   });
   const [configs, setConfigs] = useState({
@@ -151,8 +152,15 @@ export const SystemStatusProvider = ({ children }) => {
                     ffmpeg: data.ffmpeg !== 'Not found' ? 'online' : 'offline'
                 }));
             }
+            
+            // Pulse for Auto Flow extension
+            const whiskRes = await fetch(resolveApiUrl('/api/whisk/heartbeat'));
+            if (whiskRes.ok) {
+                const whiskData = await whiskRes.json();
+                setStatus(prev => ({ ...prev, autoFlow: whiskData.active ? 'online' : 'offline' }));
+            }
         } catch (e) {}
-    }, 15000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [checkConnectivity]);

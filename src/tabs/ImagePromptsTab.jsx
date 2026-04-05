@@ -70,6 +70,7 @@ export const ImagePromptsTab = ({ setActiveTab }) => {
   const [subtitleCount, setSubtitleCount] = useState(subtitleBlocks.length);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const fileInputRef = useRef(null);
   const [generationProgress, setGenerationProgress] = useState({ step: '', current: 0, total: 0 });
 
@@ -292,10 +293,14 @@ ${formattedInput}
         previousContext = `Keep visual consistency with the previous scene: ${lastThreePrompts.slice(-3).join(" | ")}`;
       }
 
+      // Determine the best title for this pool (Script Name > Filename > Default)
+      const selectedScript = availableScripts.find(s => s.id === selectedScriptId);
+      const poolTitle = (selectedScript ? selectedScript.title : (file?.name || 'Projeto SRM')).toUpperCase();
+
       // Add to prompt pool history
       const newPool = {
         id: Date.now().toString(),
-        title: file?.name || 'Projeto SRM',
+        title: poolTitle,
         context: visualDNA,
         content: allGeneratedPrompts,
         count: (allGeneratedPrompts || "").split('\n\n').filter(p => p.trim()).length,
@@ -378,7 +383,7 @@ ${formattedInput}
       
       const newPool = {
         id: Date.now().toString(),
-        title: script.title,
+        title: script.title.toUpperCase(),
         context: visualDNA,
         content: allPrompts,
         count: (allPrompts || "").split('\n\n').filter(p => p.trim()).length,
@@ -395,7 +400,13 @@ ${formattedInput}
     }
   };
 
-  const handleCopy = () => { if (prompts) navigator.clipboard.writeText(prompts); };
+  const handleCopyPrompts = () => { 
+    if (prompts) {
+      navigator.clipboard.writeText(prompts);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
 
   const handleDownload = () => {
     if (!prompts) return;
@@ -408,9 +419,9 @@ ${formattedInput}
     URL.revokeObjectURL(url);
   };
 
-  const handleTransferToWhisk = () => {
+  const handleTransferToFlow = () => {
     if (!prompts) return;
-    localStorage.setItem('guru_whisk_transfer', prompts);
+    localStorage.setItem('guru_flow_transfer', prompts);
     if (setActiveTab) setActiveTab('whisk');
   };
 
@@ -659,7 +670,7 @@ ${formattedInput}
             </div>
 
             <button
-              onClick={handleTransferToWhisk}
+              onClick={handleTransferToFlow}
               disabled={!prompts || isGenerating}
               className={`w-full py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 ${
                 !prompts || isGenerating
@@ -667,7 +678,7 @@ ${formattedInput}
                   : 'bg-gradient-to-r from-neon-cyan to-blue-600 text-white shadow-[0_0_20px_rgba(0,243,255,0.2)] hover:scale-[1.02]'
               }`}
             >
-              <Zap className="w-5 h-5 fill-current" /> Enviar para Whisk e Gerar Imagens
+              <Zap className="w-5 h-5 fill-current" /> Enviar para Auto Flow e Gerar Imagens
             </button>
           </div>
         </div>
@@ -686,6 +697,19 @@ ${formattedInput}
                   className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-500 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
                 >
                   Limpar
+                </button>
+              )}
+              {prompts && !isGenerating && (
+                <button 
+                  onClick={handleCopyPrompts}
+                  className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${
+                    isCopied 
+                      ? 'bg-green-500/20 border-green-500 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
+                      : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/30'
+                  }`}
+                >
+                   {isCopied ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                   {isCopied ? 'Copiado!' : 'Copiar'}
                 </button>
               )}
               <button 
@@ -757,10 +781,14 @@ ${formattedInput}
                   </div>
                   <div className="flex items-center gap-4">
                      <button 
-                       onClick={handleCopy}
-                       className="px-6 py-3 bg-white text-dark rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-neon-pink hover:text-white transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-3"
+                       onClick={handleCopyPrompts}
+                       className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-3 ${
+                         isCopied 
+                           ? 'bg-green-500 text-white' 
+                           : 'bg-white text-dark hover:bg-neon-pink hover:text-white'
+                       }`}
                      >
-                        <Copy className="w-4 h-4" /> Copiar Tudo
+                        {isCopied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {isCopied ? 'Copiado com Sucesso!' : 'Copiar Tudo'}
                      </button>
                      <button 
                        onClick={() => setShowFullOutput(false)}
@@ -793,7 +821,7 @@ ${formattedInput}
                      </button>
                      <button 
                        onClick={() => {
-                          handleTransferToWhisk();
+                          handleTransferToFlow();
                           setShowFullOutput(false);
                        }}
                        className="px-10 py-5 bg-gradient-to-r from-neon-pink to-neon-purple rounded-2xl text-white font-black text-xs uppercase tracking-widest shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-3"
@@ -855,15 +883,13 @@ ${formattedInput}
                         </button>
                      </div>
 
-                     <div className="p-3 bg-dark/60 rounded-xl border border-white/5 space-y-2">
+                     <div className="p-3 bg-dark/60 rounded-xl border border-white/5 space-y-2 h-[80px]">
                         <div className="flex items-center gap-2">
                            <Sparkles className="w-3 h-3 text-neon-pink" />
-                           <span className="text-[9px] font-black text-neon-pink uppercase tracking-widest">CONTEXTO VISUAL</span>
+                           <span className="text-[9px] font-black text-neon-pink uppercase tracking-widest">PROMPTS GERADOS</span>
                         </div>
-                        <p className="text-[10px] text-gray-400 italic line-clamp-2 leading-relaxed">
-                           {typeof pool.context === 'object' && pool.context !== null
-                             ? `${pool.context.scenario || 'Cenário default'} — ${pool.context.mood || 'Atmosfera base'}`
-                             : (pool.context || 'Identidade visual padrão')}
+                        <p className="text-[10px] text-gray-400 italic line-clamp-3 leading-[1.4] overflow-hidden">
+                           {(pool.content || "").substring(0, 200).replace(/\n/g, ' ')}...
                         </p>
                      </div>
 

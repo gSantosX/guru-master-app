@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Video, Settings2, Play, Music, Mic, Layers, Image as ImageIcon, CheckCircle, Captions, RefreshCw, Trash2 } from 'lucide-react';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { ActiveRenderMonitor } from '../components/ActiveRenderMonitor';
@@ -9,7 +9,7 @@ import { stackRead, stackPush, MAX_STACK } from '../utils/stackUtils';
 
 export const VideoTab = () => {
   const { videoState, setVideoState, updateVideoSettings, clearVideoState } = usePersistence();
-  const { resolution, fps, transitionStyle, zoomStyle, zoomSpeed, filterStyle, outputDir, narrationVolume, videoVolume, musicVolume } = videoState.settings;
+  const { resolution, fps, transitionStyle, zoomStyle, zoomSpeed, filterStyle, outputDir, narrationVolume, videoVolume, musicVolume, encoder, renderPreset } = videoState.settings;
   const { audioFile, musicFile, imageFiles, videoFiles, subtitleFile } = videoState;
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -18,7 +18,14 @@ export const VideoTab = () => {
   const [activeJobId, setActiveJobId] = useState(null);
   const [renderSuccess, setRenderSuccess] = useState(false);
   const [formKey, setFormKey] = useState(Date.now()); 
+  const [selectedScriptId, setSelectedScriptId] = useState('');
+  const [availableScripts, setAvailableScripts] = useState([]);
 
+  // Load scripts from localStorage on mount
+  useEffect(() => {
+    const savedScripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+    setAvailableScripts(Array.isArray(savedScripts) ? savedScripts : []);
+  }, []);
   const setAudioFile = (file) => setVideoState(prev => ({ ...prev, audioFile: file }));
   const setMusicFile = (file) => setVideoState(prev => ({ ...prev, musicFile: file }));
   const setImageFiles = (updater) => {
@@ -98,7 +105,11 @@ export const VideoTab = () => {
 
     setIsGenerating(true);
     const cleanFileName = (name) => name ? name.split('.').slice(0, -1).join('.') || name : null;
-    let projNameSkeleton = cleanFileName(audioFile?.name);
+    
+    // Choose project name: Selected Script Title > Audio Name > Video Name > Default
+    const selectedScript = availableScripts.find(s => s.id === selectedScriptId);
+    let projNameSkeleton = selectedScript ? selectedScript.title : cleanFileName(audioFile?.name);
+    
     if (!projNameSkeleton && videoFiles.length > 0) projNameSkeleton = `Vídeo ${cleanFileName(videoFiles[0].name)}`;
     if (!projNameSkeleton && imageFiles.length > 0) projNameSkeleton = `Vídeo ${cleanFileName(imageFiles[0].name)}`;
     if (!projNameSkeleton) projNameSkeleton = 'Projeto ' + new Date().getTime().toString().slice(-4);
@@ -228,6 +239,22 @@ export const VideoTab = () => {
             </div>
             
             <div className="space-y-4">
+              {/* Vínculo de Roteiro */}
+              <div className="p-3 bg-neon-purple/5 border border-neon-purple/20 rounded-xl mb-4">
+                <label className="text-[10px] font-black text-neon-purple uppercase tracking-widest block mb-2">Vincular ao Roteiro (Auto-Nomear)</label>
+                <select 
+                  value={selectedScriptId}
+                  onChange={(e) => setSelectedScriptId(e.target.value)}
+                  className="w-full bg-dark/60 border border-white/10 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-neon-purple/50"
+                >
+                  <option value="">Selecione um roteiro para nomear o vídeo...</option>
+                  {availableScripts.map(script => (
+                    <option key={script.id} value={script.id}>{script.title}</option>
+                  ))}
+                </select>
+                <p className="text-[9px] text-gray-500 mt-2 font-bold italic uppercase tracking-tighter">* O vídeo e o arquivo final serão salvos com este título.</p>
+              </div>
+
               {/* Narração */}
               <div className="p-3 bg-dark/50 border border-white/5 rounded-xl flex items-center justify-between group hover:border-white/20 transition-colors">
                 <div className="flex items-center gap-3 overflow-hidden">
@@ -396,6 +423,38 @@ export const VideoTab = () => {
                     <option>60 FPS</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Aceleração de Hardware */}
+              <div>
+                <label className="text-xs text-neon-cyan font-bold uppercase tracking-wider block mb-2">Aceleração de Hardware</label>
+                <select 
+                  className="w-full bg-dark/60 border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-neon-cyan/50 text-xs shadow-inner" 
+                  value={encoder} 
+                  onChange={e => updateVideoSettings({ encoder: e.target.value })}
+                >
+                  <option value="libx264">Apenas CPU (Padrão)</option>
+                  <option value="h264_nvenc">NVIDIA (NVENC)</option>
+                  <option value="h264_qsv">Intel (QuickSync)</option>
+                  <option value="h264_amf">AMD (AMF)</option>
+                </select>
+                <p className="text-[9px] text-gray-500 mt-1 italic">* Escolha de acordo com sua placa de vídeo.</p>
+              </div>
+
+              {/* Velocidade de Renderização */}
+              <div>
+                <label className="text-xs text-neon-pink font-bold uppercase tracking-wider block mb-2">Velocidade de Encode</label>
+                <select 
+                  className="w-full bg-dark/60 border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-neon-pink/50 text-xs shadow-inner" 
+                  value={renderPreset} 
+                  onChange={e => updateVideoSettings({ renderPreset: e.target.value })}
+                >
+                  <option value="ultrafast">🚀 Ultra Rápido (Menor Qualidade)</option>
+                  <option value="veryfast">⚡ Muito Rápido</option>
+                  <option value="faster">🚄 Rápido</option>
+                  <option value="medium">⚖️ Equilibrado (Padrão)</option>
+                  <option value="slow">💎 Alta Qualidade (Lento)</option>
+                </select>
               </div>
 
               {/* Transição */}
