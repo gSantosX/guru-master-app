@@ -31,16 +31,27 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password })
       });
       
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro no login');
-      
-      setUser(data.user);
-      localStorage.setItem('guru_user', JSON.stringify(data.user));
-      localStorage.setItem('guru_remember', remember ? 'true' : 'false');
-      sessionStorage.setItem('guru_active_session', 'true');
-      return { success: true };
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Erro ${res.status}: Login falhou`);
+        
+        setUser(data.user);
+        localStorage.setItem('guru_user', JSON.stringify(data.user));
+        localStorage.setItem('guru_remember', remember ? 'true' : 'false');
+        sessionStorage.setItem('guru_active_session', 'true');
+        return { success: true };
+      } else {
+        const text = await res.text();
+        if (res.status === 404) throw new Error("Motor Backend Offline (404)! Verifique se o servidor Flask está rodando.");
+        if (res.status === 504 || res.status === 502) throw new Error("Tempo limite de conexão esgotado (Gateway Error). O backend pode estar travado.");
+        throw new Error(`Erro ${res.status} no servidor: O Motor não enviou uma resposta válida.`);
+      }
     } catch (error) {
       console.error('Login error:', error);
+      if (error.message.includes('Unexpected end of JSON input') || error.message.includes('fetch')) {
+         return { success: false, error: "Falha Crítica de Conexão! O Motor Backend (Porta 5000) não respondeu." };
+      }
       return { success: false, error: error.message };
     }
   };

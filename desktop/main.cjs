@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
-const { app, BrowserWindow, ipcMain } = electron;
+const { app, BrowserWindow, ipcMain, Tray, Menu, shell } = electron;
 
 if (typeof electron === 'string') {
     console.error('ERROR: require("electron") returned a string path instead of the API.');
@@ -11,6 +11,8 @@ if (typeof electron === 'string') {
 
 let mainWindow;
 let backendProcess;
+let tray = null;
+let isQuitting = false;
 
 // --- SINGLE INSTANCE LOCK ---
 const gotTheLock = app.requestSingleInstanceLock();
@@ -73,6 +75,7 @@ if (!gotTheLock) {
     });
 
     startBackend();
+    createTray();
     createWindow();
 
     app.on('activate', () => {
@@ -81,13 +84,14 @@ if (!gotTheLock) {
   });
 
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-      if (backendProcess) backendProcess.kill();
+    // No Windows/Linux, não fechamos o app para manter os serviços (Vite/Backend) rodando
+    if (process.platform === 'darwin') {
       app.quit();
     }
   });
 
-  app.on('quit', () => {
+  app.on('before-quit', () => {
+      isQuitting = true;
       if (backendProcess) backendProcess.kill();
   });
 }
@@ -111,8 +115,62 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+    return false;
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+}
+
+function createTray() {
+  const iconPath = path.join(__dirname, '../icon.ico');
+  if (!fs.existsSync(iconPath)) {
+    console.error("Tray icon not found at:", iconPath);
+  }
+  
+  tray = new Tray(iconPath);
+  const contextMenu = Menu.buildFromTemplate([
+    { 
+      label: 'Abrir App', 
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+        } else {
+          createWindow();
+        }
+      } 
+    },
+    {
+      label: 'Abrir no Navegador (5173)',
+      click: () => {
+        shell.openExternal('http://localhost:5173');
+      }
+    },
+    { type: 'separator' },
+    { 
+      label: 'Sair do Guru Master', 
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      } 
+    }
+  ]);
+
+  tray.setToolTip('GURU MASTER - AI Video Pipeline');
+  tray.setContextMenu(contextMenu);
+  
+  tray.on('double-click', () => {
+    if (mainWindow) {
+      mainWindow.show();
+    } else {
+      createWindow();
+    }
   });
 }
 

@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { ScriptTab } from './tabs/ScriptTab';
-import { ReadyScriptsTab } from './tabs/ReadyScriptsTab';
-import { ImagePromptsTab } from './tabs/ImagePromptsTab';
-import { VideoCoverTab } from './tabs/VideoCoverTab';
-import { VideoTab } from './tabs/VideoTab';
-import { ProgressTab } from './tabs/ProgressTab';
-import { CompletedTab } from './tabs/CompletedTab';
-import { SettingsTab } from './tabs/SettingsTab';
-import { ProfileTab } from './tabs/ProfileTab';
-import { WhiskTab } from './tabs/WhiskTab';
-import { ChannelMonitoringTab } from './tabs/ChannelMonitoringTab';
-import { ChannelModelerTab } from './tabs/ChannelModelerTab';
-import { ChannelMiningTab } from './tabs/ChannelMiningTab';
+const ScriptTab = React.lazy(() => import('./tabs/ScriptTab').then(m => ({ default: m.ScriptTab })));
+const ReadyScriptsTab = React.lazy(() => import('./tabs/ReadyScriptsTab').then(m => ({ default: m.ReadyScriptsTab })));
+const ImagePromptsTab = React.lazy(() => import('./tabs/ImagePromptsTab').then(m => ({ default: m.ImagePromptsTab })));
+const VideoCoverTab = React.lazy(() => import('./tabs/VideoCoverTab').then(m => ({ default: m.VideoCoverTab })));
+const VideoTab = React.lazy(() => import('./tabs/VideoTab').then(m => ({ default: m.VideoTab })));
+const ProgressTab = React.lazy(() => import('./tabs/ProgressTab').then(m => ({ default: m.ProgressTab })));
+const CompletedTab = React.lazy(() => import('./tabs/CompletedTab').then(m => ({ default: m.CompletedTab })));
+const SettingsTab = React.lazy(() => import('./tabs/SettingsTab').then(m => ({ default: m.SettingsTab })));
+const ProfileTab = React.lazy(() => import('./tabs/ProfileTab').then(m => ({ default: m.ProfileTab })));
+const WhiskTab = React.lazy(() => import('./tabs/WhiskTab').then(m => ({ default: m.WhiskTab })));
+const ChannelMonitoringTab = React.lazy(() => import('./tabs/ChannelMonitoringTab').then(m => ({ default: m.ChannelMonitoringTab })));
+const ChannelModelerTab = React.lazy(() => import('./tabs/ChannelModelerTab').then(m => ({ default: m.ChannelModelerTab })));
+const ChannelMiningTab = React.lazy(() => import('./tabs/ChannelMiningTab').then(m => ({ default: m.ChannelMiningTab })));
+const NicheIdentifierTab = React.lazy(() => import('./tabs/NicheIdentifierTab').then(m => ({ default: m.NicheIdentifierTab })));
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { SystemStatusProvider, useSystemStatus } from './contexts/SystemStatusContext';
 import { Cpu, Zap, Shield, Wand2 } from 'lucide-react';
@@ -34,6 +35,7 @@ const tabComponents = {
   'whisk': WhiskTab,
   'channel-monitoring': ChannelMonitoringTab,
   'channel-mining': ChannelMiningTab,
+  'niche-identifier': NicheIdentifierTab,
   'channel-modeler': ChannelModelerTab,
   'settings': SettingsTab
 };
@@ -152,10 +154,12 @@ function AppContent() {
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                   className="absolute inset-0 p-6 md:p-10 lg:p-12 overflow-y-auto custom-scrollbar"
                 >
-                  {React.createElement(tabComponents[activeTab], { 
-                    setActiveTab, 
-                    isActive: true 
-                  })}
+                  <React.Suspense fallback={<div className="flex items-center justify-center h-full w-full"><div className="w-8 h-8 rounded-full border-b-2 border-neon-cyan animate-spin"></div></div>}>
+                    {React.createElement(tabComponents[activeTab], { 
+                      setActiveTab, 
+                      isActive: true 
+                    })}
+                  </React.Suspense>
                 </motion.div>
               </AnimatePresence>
             </main>

@@ -15,16 +15,28 @@ const DNA_OPTIONS = [
   "A Grande Mentira", "Problema e Solução", "Antes e Depois", "O Método Científico",
   "Narrativa Imersiva (Você)", "Análise de Caso Real", "Círculo Narrativo", 
   "Fatos Curiosos em Cadeia", "Perspectiva em Primeira Pessoa", "Análise de Portfólio Real",
-  "O Caminho da Liberdade Financeira", "Raio-X do Mercado", "Ensinamento Financeiro Estruturado"
+  "O Caminho da Liberdade Financeira", "Raio-X do Mercado", "Ensinamento Financeiro Estruturado",
+  "Teoria da Conspiração", "Desconstrução de Mitos", "Revelação em Camadas (Iceberg)", 
+  "A Receita do Desastre", "Efeito Borboleta (Causas)", "Dossiê Investigativo", 
+  "Verdade Chocante de Início", "Choque de Expectativas", "A Queda do Império", 
+  "Desabafo Visceral", "Guia Definitivo Passo-a-passo", "Futuro e Previsões", 
+  "Ponto de Inflexão (A Virada)", "Debate Múltiplas Visões", "Micro-Histórias Conectadas",
+  "Investigação Cinematográfica", "Reconstrução Histórica (Timeline)", "O Lado Oculto (Deep Dive)"
 ];
 
 const ALMA_OPTIONS = [
   "Amigável e Casual", "Sarcástica e Ácida", "Acolhedora e Empática", "Épica e Cinematográfica",
   "Misteriosa e Sombria", "Didática e Leve", "Autoritária e Confiante", "Inspiradora e Poética",
   "Cética e Provocadora", "Entusiasta e Vibrante", "Zen e Relaxante", "Confessional e Íntima",
-  "Reflexão Bíblica Profunda", "Análise Teológica Contemplativa", "Ensinamentos Bíblicos Aprofundados",
+  "Reflexão Bíblica Profunda", "Análise Teológica Contempl.", "Ensinamentos Bíblicos Aprof.",
   "Estudo Devocional Narrado", "Educacional Espiritual", "Pragmática e Analítica",
-  "Visionária e Estratégica", "Paternalista e Educativa"
+  "Visionária e Estratégica", "Paternalista e Educativa", "Investigadora Obcecada", 
+  "Jornalística e Urgente", "Sombria e Macabra (Dark)", "Fria e Calculista",
+  "Mentora Severa (Hard Truth)", "Sátira e Cinismo", "Altamente Eufórica", 
+  "Questionadora Inquisitiva", "Melancólica e Nostálgica", "Especialista Tech", 
+  "Conselheiro Sussurrado", "Persuasão Magnética", "Transformacional Raiz",
+  "Sabedoria Anciã", "Razão Minimalista", "Documental Frio e Analítico", 
+  "Autoridade Histórica Clássica", "Reportagem Investigativa Densa"
 ];
 
 const CTA_OPTIONS = [
@@ -47,6 +59,10 @@ const FORMATO_OPTIONS = ["Por Partes", "Texto Corrido", "Lista"];
 
 const NATUREZA_OPTIONS = ["Dados Reais (usar pesquisa web)", "Ficção (criatividade pura)"];
 
+const SAFETY_OPTIONS = ["Formato Seguro (Safety)", "Formato Meio Seguro (Médio Risco)", "Formato Livre (Sem Filtro)"];
+const INTELLECT_OPTIONS = ["Pouco Intelectual", "Médio Intelectual", "Intelectual Alto"];
+const FORMALITY_OPTIONS = ["Baixo", "Médio", "Alto"];
+
 export const ScriptTab = ({ setActiveTab }) => {
   const { configs } = useSystemStatus();
   const [titulo, setTitulo] = useState('');
@@ -58,6 +74,9 @@ export const ScriptTab = ({ setActiveTab }) => {
   const [idioma, setIdioma] = useState('Português (BR)');
   const [formato, setFormato] = useState('Texto Corrido');
   const [natureza, setNatureza] = useState('Dados Reais (usar pesquisa web)');
+  const [safety, setSafety] = useState('Formato Seguro (Safety)');
+  const [intellect, setIntellect] = useState('Médio Intelectual');
+  const [formality, setFormality] = useState('Médio');
   const [tamanho, setTamanho] = useState(5000);
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -81,44 +100,137 @@ export const ScriptTab = ({ setActiveTab }) => {
     
     setTimeout(async () => {
       try {
-        const promptParam = `Você é um roteirista profissional especialista em vídeos virais e storytelling.
-Sua missão é criar um roteiro altamente envolvente, focado 100% na locução, como se fosse o texto exato para um narrador gravar.
+        const promptParam = `Você é um MESTRE ROTEIRISTA DE ELITE — um sistema especializado na criação de roteiros para vídeos que dominam o algoritmo, prendem a atenção e emocionam profundamente. Você escreve como os maiores criadores de conteúdo do mundo: com precisão cirúrgica, ritmo magnético e impacto emocional devastador.
 
-!!! IMPORTANTE: O ROTEIRO DEVE SER ESCRITO 100% NO IDIOMA: ${idioma.toUpperCase()} !!!
+MISSÃO ABSOLUTA: Criar um roteiro de locução que seja tão poderoso que o ouvinte seja incapaz de parar de escutar. Cada frase deve puxar a próxima. Cada parágrafo deve criar uma micro-tensão que exige resolução.
 
+!!! IDIOMA INVIOLÁVEL: TODO O ROTEIRO DEVE SER ESCRITO EXCLUSIVAMENTE EM ${idioma.toUpperCase()}. ZERO EXCEÇÕES. !!!
+
+--- PARÂMETROS DO ROTEIRO ---
 Tema/Assunto: ${titulo || 'Vídeo Viral'}
-Estrutura narrativa ("DNA"): ${dna}
-Tom narrativo ("Alma"): ${alma}
-Tipo de chamada para ação (CTA): ${cta}
-Idioma: ${idioma}
-Natureza: ${natureza}
-Formato do Roteiro: ${formato}
-Tamanho aproximado e complexidade: Roteiro adequado para ${tamanho} caracteres.
+DNA Narrativo: ${dna}
+Alma/Tom: ${alma}
+CTA: ${cta}
+Nicho: ${nicho}
+Natureza do Conteúdo: ${natureza}
+Filtro de Segurança: ${safety}
+Nível de Intelectualidade: ${intellect}
+Formalidade: ${formality}
+Formato: ${formato}
+Tamanho-alvo: ${tamanho} caracteres
 
-REGRAS DE FORMATAÇÃO DO FORMATO "${formato.toUpperCase()}":
-${formato === 'Por Partes' ? `
-- O ROTEIRO DEVE SER PENSADO EM BLOCOS LÓGICOS PARA MANTER A COESÃO, MAS NÃO DEVE CONTER NENHUMA MARCAÇÃO DE TEXTO.
-- NÃO USE: Títulos, Identificação de Partes, "Parte 1", "Bloco A", ou qualquer tipo de Numeração.
-- ENTREGUE SOMENTE O TEXTO DA LOCUÇÃO, 100% CORRIDO, COM TODAS AS PARTES JUNTAS E PRONTAS PARA NARRAR.` : formato === 'Lista' ? `
-- O ROTEIRO DEVE SER ESTRUTURADO COMO UMA LISTA DINÂMICA E ENGAJANTE (1., 2., 3., etc).
-- MANTENHA UM TEMA CENTRAL UNIFICADO ENTRE OS ITENS.` : `
-- O TEXTO DEVE SER 100% CORRIDO, PRONTO PARA O NARRADOR LER IMEDIATAMENTE.
-- NÃO ADICIONE DIVISÕES POR PARTES.`}
-- NÃO ADICIONE TÍTULO ALGUM NO INÍCIO OU FINAL.
-- NÃO ADICIONE MARCAÇÕES CÊNICAS COMO [Texto na tela], [Música sobe], [Locutor], [Cena 1], [Pausa], [Transição].
-- NÃO USE MARKDOWN: SEM NEGRITO (**), SEM ITÁLICO (*), SEM LISTAS COM BULLETS. ZERO FORMATAÇÃO.
-- O SEU RETORNO DEVE CONTER APENAS AS PALAVRAS EXATAS QUE SERÃO FALADAS PELO NARRADOR, MAIS NADA.
-- TODO O TEXTO DEVE SER GERADO COM COESÃO NARRATIVA TOTAL, COMO UMA ÚNICA HISTÓRIA MAGISTRAL.
+---
+## LEI 1 — O GANCHO DE ABERTURA (OBRIGATÓRIO E IMPLACÁVEL)
+As primeiras 3 frases determinam se o vídeo vive ou morre. O gancho deve:
+- Começar no MEIO DA AÇÃO, de uma revelação, de uma contradição ou de uma pergunta que cria vazio cognitivo imediato
+- NUNCA começar com apresentação, saudação ou contexto genérico
+- Usar uma das técnicas: [Verdade Chocante | Paradoxo Impossível | Promessa Específica | Cena In Medias Res | Pergunta que Machuca]
+- Ser curto e violento: máximo 3 frases. Depois disso, o ouvinte já deve estar completamente dentro da história.
 
-Regras de escrita:
-- Alternar frases curtas e longas para ritmo
-- Criar suspense e retenção profunda
-- Evitar clichês de IA (ex: "Bem-vindo ao canal", "Você sabia?", "Em conclusão")
-- Usar linguagem natural, emocional e fluida
-- Inserir a CTA de forma 100% orgânica
-- Foco absoluto em manter quem está ouvindo preso à história
+EXEMPLOS DO QUE NÃO FAZER (proibido):
+❌ "Você sabia que..." / "Hoje vou te falar sobre..." / "Bem-vindo ao canal" / "Neste vídeo" / "Vamos descobrir juntos" / "Imagine por um momento" / "Em um mundo onde" / "Prepare-se para" / "O que você está prestes a ouvir" / "Isso vai te surpreender" / "Nunca vi nada igual" / "Incrível" / "Fascinante" / "Surpreendente" / "Chocante" (como adjetivo genérico) / "Mergulhe conosco" / "Venha comigo nessa jornada"
 
-Escreva o roteiro exatamente abaixo:
+---
+## LEI 2 — APLICAÇÃO CONCRETA DO DNA: "${dna}"
+${dna === 'Jornada do Herói' ? `Estruture como: Mundo Comum → Chamado → Recusa → Travessia → Provas → Transformação → Retorno. O ouvinte DEVE se identificar como o herói da história.` :
+dna === 'O Grande Mistério' ? `Abra com um mistério irresistível. Cada parágrafo revela UMA camada, mas cria DUAS novas perguntas. A resolução só chega nos últimos 15% do roteiro.` :
+dna === 'Pirâmide Invertida' ? `Comece pela conclusão mais impactante. Depois justifique em ordem decrescente de impacto. O ouvinte sabe o fim mas precisa entender o "por quê".` :
+dna === 'Verdade Chocante de Início' ? `Abra com um fato ou declaração que viola completamente a crença do ouvinte. Construa provas ao longo do roteiro. Termine com a implicação pessoal dessa verdade.` :
+dna === 'Problema e Solução' ? `Descreva o problema com intensidade emocional máxima — o ouvinte deve sentir dor. A solução só aparece após construir tensão suficiente. Termine com transformação concreta.` :
+dna === 'Dossiê Investigativo' ? `Fale como um detetive montando um caso. Cite evidências, fontes, datas. Construa uma linha do tempo até a revelação final que conecta todos os pontos.` :
+dna === 'Revelação em Camadas (Iceberg)' ? `Mostre apenas a ponta do iceberg no início. A cada parágrafo, mergulhe mais fundo. O roteiro termina na camada mais profunda e perturbadora da verdade.` :
+dna === 'Teoria da Conspiração' ? `Conecte pontos que parecem não relacionados. Use "e se?" estrategicamente. Crie paranoia intelectual sem afirmar like verdade — insinue, questione, provoque.` :
+dna === 'Narrativa Imersiva (Você)' ? `Use "você" em vez de "eles". O ouvinte É o protagonista. Cada evento acontece COM ele. Isso cria empatia e retenção máximas.` :
+dna === 'Choque de Expectativas' ? `Estabeleça uma premissa clara nos primeiros 20%. Quebre essa premissa completamente no meio. Termine com uma reviravolta que recontextualiza tudo.` :
+dna === 'Lista em Contagem Regressiva' ? `Use tensão crescente: a contagem vai do item menos ao mais impactante. Cada item deve ser mais revelador que o anterior. O número 1 deve ser inesquecível.` :
+dna === 'Círculo Narrativo' ? `Comece e termine no mesmo ponto — mas após a jornada, aquele ponto inicial tem significado completamente diferente. O ouvinte deve perceber a transformação ao chegar ao fim.` :
+`Aplique a estrutura "${dna}" com maestria. Cada parágrafo deve ter uma função narrativa clara: criar tensão, revelação ou transformação emocional.`}
+
+---
+## LEI 3 — CONTROLE DE RITMO OBRIGATÓRIO
+Alterne sistematicamente entre frases curtas e longas para criar cadência hipnótica:
+- Frase curta (impacto): 3 a 8 palavras — para choque, pausa dramática, revelação
+- Frase longa (imersão): 20 a 40 palavras — para construção de atmosphera, contexto, emoção
+- NUNCA coloque mais de 3 frases longas seguidas
+- NUNCA coloque mais de 4 frases curtas seguidas sem uma transição
+- Use ponto final como arma — não como convenção gramatical
+
+---
+## LEI 4 — ARCO EMOCIONAL ESTRUTURADO
+O roteiro deve ter picos emocionais calculados:
+- 0–15%: Gancho + tensão inicial (curiosidade/choque)
+- 15–40%: Aprofundamento + dor/identificação emocional
+- 40–70%: Revelação progressiva + escalada de intensidade
+- 70–85%: Clímax emocional ou revelação principal
+- 85–100%: Resolução + CTA orgânica + fechamento memorável
+Não deixe o ritmo emocional ficar plano. Se passou 3 parágrafos sem uma micro-revelação ou virada, adicione uma.
+
+---
+## LEI 5 — TOM E ALMA: "${alma}"
+${alma === 'Épica e Cinematográfica' ? `Escreva como se fosse a narração de um trailer de filme épico. Linguagem grandiosa mas precisa. Imagens mentais poderosas. Frases que parecem gravadas em pedra.` :
+alma === 'Sarcástica e Ácida' ? `Usa ironia como bisturi, não como marreta. O sarcasmo deve ser inteligente, não agressivo. O ouvinte sorri e pensa ao mesmo tempo.` :
+alma === 'Misteriosa e Sombria' ? `Tom de sussurro. Cada palavra carrega peso. O silêncio entre as frases existe. Use linguagem que sugere mais do que explica.` :
+alma === 'Investigadora Obcecada' ? `Você está obcecado com a verdade. Cada detalhe importa. Fala rápido, com urgência. O ouvinte sente que está dentro de uma investigação real.` :
+alma === 'Jornalística e Urgente' ? `Direto ao ponto. Fatos concretos. Datas, números, nomes. O urgência está na estrutura, não nas palavras. Cada frase é uma notícia.` :
+alma === 'Confessional e Íntima' ? `Fala baixinho. Como se contasse um segredo. Primeira pessoa. Vulnerabilidade real. O ouvinte sente que está dentro da sua cabeça.` :
+alma === 'Inspiradora e Poética' ? `Linguagem que eleva. Metáforas precisas. Ritmo que soa como música. O ouvinte deve se sentir maior após ouvir.` :
+alma === 'Autoritária e Confiante' ? `Sem hedges, sem "talvez", sem "pode ser". Você sabe. E o ouvinte precisa saber que você sabe. Cada frase é uma afirmação.` :
+`Aplique o tom "${alma}" de forma consistente e intensa em cada linha. O tom deve ser reconhecível na primeira frase.`}
+
+---
+## LEI 6 — CTA: "${cta}"
+${cta === 'Sem CTA' ? `Não inclua nenhuma chamada para ação. O roteiro termina organicamente com a conclusão narrativa.` :
+cta === 'Sutil (Invisível)' ? `A CTA deve estar tão integrada na narrativa que o ouvinte não percebe que é uma CTA. Não use verbos de comando direto.` :
+cta === 'Viral (Engajamento)' ? `Insira a CTA entre 70–80% do roteiro (não no final). Deve fazer o ouvinte querer compartilhar por emoção, não por obrigação. Ex: "Se alguém que você ama precisa ouvir isso..."` :
+cta === 'Curiosidade (Próximo Vídeo)' ? `No final, crie uma pergunta ou revelação incompleta que só pode ser respondida no próximo conteúdo. Deixe o ouvinte com fome, não com saciedade.` :
+`Insira a CTA de forma completamente orgânica. Deve surgir da narrativa, não interrompê-la. Nunca use frases como "não se esqueça de curtir" ou "ativa o sininho".`}
+
+---
+## LEI 7 — NÍVEL INTELECTUAL: "${intellect}"
+${intellect === 'Pouco Intelectual' ? `Vocabulário simples. Analogias do cotidiano. Sem jargões. O mais complexo possível dentro da clareza absoluta. O ouvinte de 15 anos deve entender.` :
+intellect === 'Médio Intelectual' ? `Vocabulário rico mas acessível. Analogias elaboradas. Alguns conceitos técnicos explicados brevemente. Referências culturais reconhecíveis.` :
+`Vocabulário denso e preciso. Conceitos complexos tratados com profundidade. Referências intelectuais, históricas ou científicas. O ouvinte deve sentir que aprendeu algo genuinamente novo.`}
+
+---
+## LEI 8 — NATUREZA DO CONTEÚDO: "${natureza}"
+${natureza === 'Dados Reais (usar pesquisa web)' ? `Use dados, fatos, datas, nomes e estatísticas VEROSSÍMEIS e plausíveis. Nunca invente dados impossíveis. Os fatos devem ser específicos o suficiente para parecerem verificados.` :
+`Universo totalmente ficcional. Liberdade criativa máxima. Crie personagens, situações e universos que nunca existiram mas que parecem absolutamente reais e viscerais.`}
+
+---
+## LEI 9 — FILTRO DE SEGURANÇA: "${safety}"
+${safety === 'Formato Seguro (Safety)' ? `Linguagem completamente adequada para todas as idades e plataformas. Sem violência, sem temas sensíveis, sem conteúdo que possa gerar demonetização.` :
+safety === 'Formato Meio Seguro (Médio Risco)' ? `Pode abordar temas adultos, morte, crime, trauma — mas com linguagem controlada. Sem explícito. Pode gerar tensão sem ser gráfico.` :
+`Sem censura narrativa. Pode ser visceral, perturbador, provocativo. A verdade nua e crua, sem suavização.`}
+
+---
+## FORMATO DE ENTREGA: "${formato.toUpperCase()}"
+${formato === 'Por Partes' ? `Pense em blocos narrativos internos para manter a coesão, mas entregue TODO o texto corrido, sem qualquer marcação, título ou divisão visível.` :
+formato === 'Lista' ? `Estrutura numerada dinâmica (1., 2., 3...). Cada item deve ter abertura impactante, desenvolvimento e mini-fechamento. O tema central une todos.` :
+`Texto 100% corrido e fluido, pronto para o narrador ler sem pausas não-planejadas.`}
+
+---
+## PROIBIÇÕES ABSOLUTAS (violação = reescrever tudo)
+- ZERO marcações: sem [Cena], sem [Música], sem [Narrador], sem títulos, sem negrito, sem itálico
+- ZERO clichês de IA: "Você sabia que", "Hoje vou te falar", "Bem-vindo", "Neste vídeo", "Vamos explorar", "Imagine por um momento", "Em um mundo onde", "Prepare-se para", "O que você está prestes a ouvir", "Venha comigo nessa jornada", "Mergulhe", "Fascinante", "Incrível", "Surpreendente" (como adjetivo vazio), "Chocante" (sem substância), "Em conclusão", "Em resumo", "Para finalizar"
+- ZERO apresentações de canal ou criador
+- ZERO linguagem passiva quando a ativa é possível
+- ZERO metáforas clichê: "viagem no tempo", "luz no fim do túnel", "dois lados da moeda"
+
+---
+## AUTORREVISÃO ANTES DE ENTREGAR
+Antes de finalizar, verifique internamente:
+1. ✅ O gancho das primeiras 3 frases prende sem apresentação?
+2. ✅ O DNA "${dna}" está aplicado estruturalmente, não apenas mencionado?
+3. ✅ O ritmo varia entre frases curtas e longas sistematicamente?
+4. ✅ Existem pelo menos 3 picos emocionais distintos ao longo do texto?
+5. ✅ A CTA está orgânica e no momento certo?
+6. ✅ Nenhum clichê da lista proibida foi usado?
+7. ✅ O tom "${alma}" é reconhecível e consistente do início ao fim?
+Se alguma verificação falhar, reescreva esse trecho antes de entregar.
+
+---
+## ENTREGA FINAL
+Escreva APENAS o texto da locução em ${idioma.toUpperCase()}, pronto para gravar. Sem introduções, sem explicações, sem comentários. Comece IMEDIATAMENTE com o gancho.
 `;
 
         const activeAi = configs.active_ai;
@@ -392,6 +504,24 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI EM ${idioma.toUpperCase()} (apenas texto n
                   {NATUREZA_OPTIONS.map(o => <option key={o}>{o}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="text-[10px] font-black text-neon-cyan uppercase tracking-widest block mb-2">Filtro de Segurança</label>
+                <select className="w-full bg-dark/40 border border-neon-cyan/20 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-neon-cyan/50" value={safety} onChange={e=>setSafety(e.target.value)}>
+                  {SAFETY_OPTIONS.map(o => <option key={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-neon-purple uppercase tracking-widest block mb-2">Intelectualidade</label>
+                <select className="w-full bg-dark/40 border border-neon-purple/20 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-neon-purple/50" value={intellect} onChange={e=>setIntellect(e.target.value)}>
+                  {INTELLECT_OPTIONS.map(o => <option key={o}>{o}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-green-400 uppercase tracking-widest block mb-2">Formalidade</label>
+                <select className="w-full bg-dark/40 border border-green-500/20 rounded-lg p-3 text-white text-sm focus:outline-none focus:border-green-500/50" value={formality} onChange={e=>setFormality(e.target.value)}>
+                  {FORMALITY_OPTIONS.map(o => <option key={o}>{o}</option>)}
+                </select>
+              </div>
             </div>
 
             {/* SLIDER TAMANHO */}
@@ -523,10 +653,10 @@ CONTINUE IMEDIATAMENTE A PARTIR DAQUI EM ${idioma.toUpperCase()} (apenas texto n
               {generatedScript && (
                 <button 
                   onClick={handleCopy}
-                  className={`w-full py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all relative overflow-hidden text-[10px]
+                  className={`w-full py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all relative overflow-hidden text-[10px] active:scale-95
                     ${isCopied 
                     ? 'bg-green-500/20 border border-green-500 text-green-400' 
-                    : 'bg-white text-dark shadow-xl hover:-translate-y-0.5 active:translate-y-0'
+                    : 'bg-white text-dark shadow-xl hover:bg-white/90'
                   }`}
                 >
                   {isCopied ? (

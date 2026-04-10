@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Trash2, ExternalLink, TrendingUp, BarChart2, Sparkles, Brain, Youtube, Clock, Eye, Video, Activity, Copy, Check, ChevronLeft, RefreshCw } from 'lucide-react';
+import { Search, Plus, Trash2, ExternalLink, TrendingUp, BarChart2, Sparkles, Brain, Youtube, Clock, Eye, Video, Activity, Copy, Check, ChevronLeft, RefreshCw, Globe, Loader2 } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -21,6 +21,88 @@ export const ChannelMonitoringTab = ({ isActive }) => {
   const [analysisType, setAnalysisType] = useState(null); // 'titles' or 'niche'
   const [showCountSelector, setShowCountSelector] = useState(false);
   const [requestedTitleCount, setRequestedTitleCount] = useState(10);
+  const [isCopied, setIsCopied] = useState(false);
+  const [copiedTitleIndex, setCopiedTitleIndex] = useState(null);
+  const [translations, setTranslations] = useState({}); // { [idx]: string }
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationLang, setTranslationLang] = useState('');
+
+  const copyToClipboard = (text, index = null) => {
+    navigator.clipboard.writeText(text);
+    if (index !== null) {
+      setCopiedTitleIndex(index);
+      setTimeout(() => setCopiedTitleIndex(null), 2000);
+    } else {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
+
+  const translateTitles = async (titlesRaw) => {
+    if (isTranslating) return;
+    setIsTranslating(true);
+    setTranslations({});
+    setTranslationLang('');
+    try {
+      const activeAi = configs.active_ai;
+      const apiKey = activeAi === 'Gemini' ? configs.gemini_key : (activeAi === 'GPT' ? configs.gpt_key : configs.grok_key);
+      if (!apiKey) throw new Error('API key not configured');
+
+      const titleLines = titlesRaw
+        .split('\n')
+        .map(l => l.replace(/^[\d\-\*\•\)\.\s]+/, '').replace(/^["']+|["']+$/g, '').trim())
+        .filter(l => l.length > 3);
+
+      const prompt = `You are an expert multilingual translator.
+
+Task: Detect the language of the following titles.
+Rule: 
+- If the language is NOT Brazilian Portuguese, translate ALL titles to Brazilian Portuguese (PT-BR).
+- If the language IS Brazilian Portuguese, do NOT translate them (return an empty list for translations).
+
+Titles to translate:
+${titleLines.map((t, i) => `${i + 1}. ${t}`).join('\n')}
+
+Return a JSON object with exactly this structure:
+{
+  "detected_language": "[language name in Portuguese, e.g. Inglês, Espanhol, Português, etc.]",
+  "is_portuguese": [true/false],
+  "translations": [
+    "translated title 1",
+    "translated title 2",
+    ...
+  ]
+}
+
+Rules:
+- Keep the same meaning, emotional impact and CTR power
+- Adapt idioms naturally — do NOT translate literally if it sounds unnatural
+- Return ONLY the JSON object, no markdown, no explanations`;
+
+      let result = '';
+      if (activeAi === 'Gemini') result = await callGemini(apiKey, prompt);
+      else if (activeAi === 'GPT') result = await callGPT(apiKey, prompt);
+      else result = await callGrok(apiKey, prompt);
+
+      const clean = result.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      if (parsed.is_portuguese) {
+        setTranslationLang('Títulos já estão em Português.');
+        setTranslations({});
+      } else {
+        const map = {};
+        (parsed.translations || []).forEach((tr, i) => { map[i] = tr; });
+        setTranslations(map);
+        setTranslationLang(`${parsed.detected_language || '?'} → Português`);
+      }
+    } catch (err) {
+      console.error('Translation error:', err);
+      setTranslationLang('Erro ao traduzir. Tente novamente.');
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   // Automatic search logic
   useEffect(() => {
@@ -269,39 +351,104 @@ export const ChannelMonitoringTab = ({ isActive }) => {
     let prompt = '';
 
     if (type === 'titles') {
-      prompt = `Use sua MEMÓRIA DE GURU e EXPERIÊNCIA ACUMULADA para esta análise:\n\n${brainContext}\n\nAja como um especialista em SEO e viralização de vídeos no YouTube.\n\nAnalise os vídeos do canal "${selectedChannel.title}":
-POPULARES: ${viralText}
-RECENTES: ${latestText}
+      prompt = `Você é um ESPECIALISTA ELITE em CTR, Algoritmos do YouTube e Psicologia do Clique.
 
-Sua tarefa:
-Gere ${count} NOVOS títulos de vídeos altamente otimizados. Use "Clickbait Ético", curiosidade e urgência.
-IMPORTANTE: 
-1. Não repita a estrutura entre os títulos. 
-2. Varie as abordagens e temas baseados no tema central do canal.
-3. Use novos ângulos e ganchos que o canal ainda não explorou.
+CANAL EM ANÁLISE: "${selectedChannel.title}"
 
-Retorne APENAS a lista numerada (1. Título, 2. Título...). Sem texto antes ou depois.`;
+VÍDEOS MAIS POPULARES DO CANAL (os que já provaram funcionar):
+${viralText || 'Dados não disponíveis'}
+
+VÍDEOS MAIS RECENTES DO CANAL:
+${latestText || 'Dados não disponíveis'}
+
+${brainContext ? `INTELIGÊNCIA TÁTICA ACUMULADA (memória de análises anteriores):
+${brainContext}
+` : ''}
+---
+## MISSÃO: Gerar ${count} títulos NOVOS de altíssimo CTR para este canal
+
+## IDIOMA OBRIGATÓRIO (CRÍTICO)
+Gere os títulos EXATAMENTE no mesmo idioma que o canal utiliza predominantemente nos vídeos listados acima (se o canal é em Inglês, gere em Inglês; se é Espanhol, gere em Espanhol; se é Português, gere em Português).
+
+## ANATOMIA OBRIGATÓRIA DE CADA TÍTULO
+Cada título deve conter TODOS os elementos:
+1. ESPECIFICIDADE: Número, dado concreto, nome ou contexto preciso — nunca genérico
+2. LACUNA COGNITIVA: Informação suficiente para criar curiosidade, insuficiente para satisfazê-la
+3. EMOÇÃO PRIMÁRIA: Uma por título — medo de perda, curiosidade, esperança, indignação ou surpresa
+4. COMPRIMENTO: Entre 40 e 75 caracteres — ideal para feed do YouTube e Shorts
+5. PALAVRA DE ABERTURA FORTE: A primeira palavra deve ser a mais impactante da frase
+
+## VARIAÇÃO OBRIGATÓRIA DE GANCHOS
+Distribua os ${count} títulos usando obrigatoriamente estas estruturas (varie entre elas):
+- REVELAÇÃO: [O que estava oculto] + [Quem escondia] + [Implicação]
+- NÚMERO/DADO: [Quantidade específica] + [Resultado] + [Contexto surpreendente]
+- CONFLITO: [Crença comum] vs [Verdade contrária]
+- URGÊNCIA PESSOAL: [Você] + [Situação atual] + [Consequência]
+- TRANSFORMAÇÃO: [Ponto A específico] → [Ponto B surpreendente] + [Tempo]
+- INVESTIGAÇÃO: [Pergunta perturbadora] + [Promessa de resposta inesperada]
+
+## ANÁLISE DO CANAL PARA PERSONALIZAÇÃO
+Baseado nos títulos que já performaram neste canal:
+- Identifique o padrão de LINGUAGEM que funciona (formal/informal, técnica/popular)
+- Identifique os TEMAS que mais engajam neste nicho
+- Crie títulos que exploram ÂNGULOS que o canal AINDA NÃO usou
+- NUNCA repita estruturas já usadas nos vídeos populares listados acima
+
+## BLACKLIST — PROIBIDO
+❌ Estruturas gastas: "A verdade que ninguém te conta", "O segredo que escondem", "Você não vai acreditar"
+❌ Adjetivos vazios: "incrível", "surpreendente", "chocante" (sem substância)
+❌ Títulos com mais de 80 caracteres
+❌ Títulos genéricos que servem para qualquer canal
+❌ Repetir palavras ou estruturas entre os ${count} títulos gerados
+
+## AUTORREVISÃO
+Antes de entregar, verifique cada título:
+✅ Tem especificidade concreta?
+✅ Cria lacuna cognitiva?
+✅ É específico para o nicho deste canal?
+✅ É diferente de todos os outros títulos da lista?
+✅ Tem entre 40-75 caracteres?
+
+Retorne APENAS a lista numerada (1. Título\n2. Título...). Sem texto antes ou depois. Sem explicações.`;
+
     } else {
-      prompt = `Use sua MEMÓRIA DE GURU e EXPERIÊNCIA ACUMULADA para esta análise:\n\n${brainContext}\n\nAja como um mentor experiente de YouTube explicando para um TOTAL INICIANTE.\n\nAnalise a estratégia do canal "${selectedChannel.title}".
+      prompt = `Você é um MENTOR ESTRATÉGICO SÊNIOR de YouTube — especialista em análise de canais, crescimento orgânico e replicação de estratégias virais.
 
-DADOS DO CANAL:
-Vídeos Populares:
-${viralText || 'Não disponível'}
+CANAL EM ANÁLISE: "${selectedChannel.title}"
 
-Vídeos Recentes:
-${latestText || 'Não disponível'}
+VÍDEOS MAIS POPULARES (o que já provou funcionar):
+${viralText || 'Dados não disponíveis'}
 
-Seja extremamente DIRETO e RESUMIDO. Use linguagem simples (sem termos técnicos complexos).
-Sua resposta deve ter 4 partes:
-1. FOCO PRINCIPAL: O que esse canal faz de melhor? (1 frase)
-2. SEGREDO DO SUCESSO: Por que as pessoas clicam? (2 tópicos curtos)
-3. DICA DE OURO: Como o usuário pode aplicar isso no próprio canal? (1 frase curta)
-4. O QUE EVITAR: Um erro comum nesse nicho.
+VÍDEOS MAIS RECENTES:
+${latestText || 'Dados não disponíveis'}
 
-IMPORTANTE: 
-- Use **NEGRITO** nas frases e palavras mais importantes.
-- Use no MÁXIMO 2 emojis em toda a resposta.
-- Não use introduções ou conclusões. Vá direto ao ponto.`;
+${brainContext ? `CONTEXTO ESTRATÉGICO ACUMULADO:
+${brainContext}
+` : ''}
+---
+Sua resposta deve ter EXATAMENTE estas 5 partes — sem introdução, sem conclusão:
+
+**1. DIAGNÓSTICO DO NICHO**
+Em 1-2 frases: Qual é o posicionamento real deste canal? O que ele vende emocionalmente para o espectador?
+
+**2. FÓRMULA DE SUCESSO**
+O que os vídeos mais populares têm em comum? Identifique 2-3 padrões específicos de título, tema ou abordagem.
+
+**3. LACUNA DE OPORTUNIDADE**
+Que ângulos ou temas este canal AINDA NÃO explorou, mas que têm alto potencial no nicho?
+
+**4. DICA DE OURO REPLICÁVEL**
+Uma estratégia concreta e específica — não genérica — que o usuário pode aplicar no próprio canal baseado neste case.
+
+**5. ARMADILHA A EVITAR**
+O erro mais comum de quem tenta replicar este tipo de canal e como evitá-lo.
+
+REGRAS DE FORMATO:
+- Use **NEGRITO** apenas para os títulos das seções e termos-chave
+- Máximo 2 emojis em toda a resposta
+- Linguagem direta e objetiva — sem rodeios, sem clichês motivacionais
+- Cada seção máximo 3 linhas`;
+
     }
 
     try {
@@ -333,20 +480,6 @@ IMPORTANTE:
     }
   };
 
-  const [isCopied, setIsCopied] = useState(false);
-  const [copiedTitleIndex, setCopiedTitleIndex] = useState(null);
-
-  const copyToClipboard = (text, index = null) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    if (index !== null) {
-      setCopiedTitleIndex(index);
-      setTimeout(() => setCopiedTitleIndex(null), 2000);
-    } else {
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    }
-  };
 
   const formatNumber = (num) => {
     if (!num) return '0';
@@ -670,21 +803,43 @@ IMPORTANTE:
                                <Sparkles className="w-5 h-5 text-neon-cyan" /> 
                                {analysisType === 'titles' ? 'Títulos Sugeridos' : 'Plano Estratégico'}
                             </h4>
-                            <button 
-                              onClick={() => {
-                                const text = String(analysisResult || "");
-                                navigator.clipboard.writeText(text);
-                                setIsCopied(true);
-                                setTimeout(() => setIsCopied(false), 2000);
-                              }}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                                isCopied ? 'bg-green-500 text-dark' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-                              }`}
-                            >
-                              {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                              {isCopied ? 'Copiado!' : 'Copiar'}
-                            </button>
+                            <div className="flex items-center gap-2">
+                              {analysisType === 'titles' && (
+                                <button
+                                  onClick={() => translateTitles(String(analysisResult || ''))}
+                                  disabled={isTranslating}
+                                  title="Traduzir todos os títulos"
+                                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border ${
+                                    isTranslating
+                                      ? 'bg-neon-purple/10 border-neon-purple/40 text-neon-purple'
+                                      : Object.keys(translations).length > 0
+                                        ? 'bg-neon-purple/20 border-neon-purple text-neon-purple'
+                                        : 'bg-white/5 border-white/10 text-gray-400 hover:text-neon-purple hover:border-neon-purple/40 hover:bg-neon-purple/5'
+                                  }`}
+                                >
+                                  {isTranslating
+                                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                                    : <Globe className="w-3 h-3" />}
+                                  {isTranslating ? 'Traduzindo...' : Object.keys(translations).length > 0 ? 'Traduzido' : 'Traduzir'}
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => copyToClipboard(String(analysisResult || ""))}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                                  isCopied ? 'bg-green-500 text-dark' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                                }`}
+                              >
+                                {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                {isCopied ? 'Copiado!' : 'Copiar'}
+                              </button>
+                            </div>
                           </div>
+                          {translationLang && analysisType === 'titles' && (
+                            <div className="mb-4 flex items-center gap-2 text-[9px] font-black uppercase tracking-widest">
+                              <Globe className="w-3 h-3 text-neon-purple" />
+                              <span className="text-neon-purple">{translationLang}</span>
+                            </div>
+                          )}
                           
                           {analysisType === 'titles' ? (
                             <div className="space-y-4">
@@ -692,24 +847,45 @@ IMPORTANTE:
                                 const titleText = title.replace(/^[\d\-\*\•\)\.\s]+/, '').replace(/^["']+|["']+$/g, '').trim();
                                 if (!titleText) return null;
                                 return (
-                                  <div key={idx} className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl group hover:border-neon-cyan/40 transition-all">
-                                    <p className="text-base font-bold text-gray-200 pr-6 leading-relaxed">
-                                      <span className="text-neon-cyan font-black mr-4 text-lg">{idx + 1}</span>
-                                      {titleText}
-                                    </p>
-                                    <button 
-                                      onClick={() => copyToClipboard(titleText, idx)}
-                                      className={`shrink-0 h-10 px-4 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest
-                                        ${copiedTitleIndex === idx 
-                                          ? 'bg-green-500 text-dark' 
-                                          : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-                                        }
-                                      `}
-                                    >
-                                      {copiedTitleIndex === idx ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                      {copiedTitleIndex === idx ? 'Copiado' : 'Copiar'}
-                                    </button>
-                                  </div>
+                                  <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: idx * 0.04 }}
+                                    className="flex flex-col p-4 bg-white/5 border border-white/10 rounded-xl group hover:border-neon-cyan/40 transition-all"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-base font-bold text-gray-200 pr-4 leading-relaxed flex-1">
+                                        <span className="text-neon-cyan font-black mr-4 text-lg">{idx + 1}</span>
+                                        {titleText}
+                                      </p>
+                                      <button 
+                                        onClick={() => copyToClipboard(titleText, idx)}
+                                        className={`shrink-0 h-10 px-4 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest
+                                          ${copiedTitleIndex === idx 
+                                            ? 'bg-green-500 text-dark' 
+                                            : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                                          }
+                                        `}
+                                      >
+                                        {copiedTitleIndex === idx ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                        {copiedTitleIndex === idx ? 'Copiado' : 'Copiar'}
+                                      </button>
+                                    </div>
+                                    <AnimatePresence>
+                                      {translations[idx] && (
+                                        <motion.div
+                                          initial={{ opacity: 0, height: 0 }}
+                                          animate={{ opacity: 1, height: 'auto' }}
+                                          exit={{ opacity: 0, height: 0 }}
+                                          className="mt-3 pt-3 border-t border-white/5 flex items-start gap-2 overflow-hidden"
+                                        >
+                                          <Globe className="w-3 h-3 text-neon-purple mt-0.5 shrink-0" />
+                                          <span className="text-sm text-neon-purple/80 font-medium italic leading-snug">{translations[idx]}</span>
+                                        </motion.div>
+                                      )}
+                                    </AnimatePresence>
+                                  </motion.div>
                                 );
                               })}
                             </div>

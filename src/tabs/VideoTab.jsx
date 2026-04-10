@@ -57,7 +57,7 @@ export const VideoTab = () => {
          localStorage.setItem('guru_output_dir', res.folderPath);
       }
     } else {
-      alert("A seleção de pastas só está disponível na versão Desktop.");
+      alert("⚠️ Seleção de pasta nativa disponível apenas no App Desktop.\n\nNo navegador, os vídeos serão salvos na pasta padrão: \n/backend/output/\n\nAbra o App Desktop para escolher outro local.");
     }
   };
 

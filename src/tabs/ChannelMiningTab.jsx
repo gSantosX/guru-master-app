@@ -428,8 +428,8 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                         }
                       `}
                     >
-                      {copiedId === channel.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copiedId === channel.id ? t('mining.copied') : t('mining.copy_btn')}
+                      {copiedId === channel.id ? <Check className="w-4 h-4 shadow-[0_0_10px_rgba(34,197,94,0.5)]" /> : <Copy className="w-4 h-4" />}
+                      {copiedId === channel.id ? (t('mining.copied') || 'Copiado!') : (t('mining.copy_btn') || 'Copiar Canal')}
                       {!copiedId && <Zap className="absolute right-4 w-4 h-4 opacity-30 group-hover/btn:opacity-100 group-hover/btn:scale-125 transition-all" />}
                     </button>
                   </div>

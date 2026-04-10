@@ -855,7 +855,7 @@ def render_video():
         print(f"DEBUG: Job {job_id} failed: No media provided.")
         return jsonify({"error": "Nenhuma mídia enviada para o vídeo."}), 400
 
-    def background_render(jid, files, config_settings):
+    def background_render(jid, files, config_settings, project_name, job_dir):
         try:
             # 1. Prepare output path
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -865,13 +865,14 @@ def render_video():
             # Default to the project name as requested by user
             output_filename = f"{safe_name}.mp4"
             
+            # Get custom output dir from settings
+            custom_output_dir = config_settings.get("outputDir")
+            
             # Check for conflict to avoid overwriting existing work
             check_dir = custom_output_dir if (custom_output_dir and os.path.exists(custom_output_dir)) else OUTPUT_FOLDER
             if os.path.exists(os.path.join(check_dir, output_filename)):
                 output_filename = f"{safe_name}_{timestamp}.mp4"
             
-            
-            custom_output_dir = config_settings.get("outputDir")
             if custom_output_dir and os.path.exists(custom_output_dir) and os.path.isdir(custom_output_dir):
                 output_path = os.path.join(custom_output_dir, output_filename)
             else:
@@ -944,7 +945,7 @@ def render_video():
                 render_jobs[jid]["status"] = f"Falha: {str(e)}"
                 render_jobs[jid]["progress"] = 0
                 
-    threading.Thread(target=background_render, args=(job_id, saved_files, settings)).start()
+    threading.Thread(target=background_render, args=(job_id, saved_files, settings, project_name, job_dir)).start()
     return jsonify({"job_id": job_id})
 
 @app.route('/api/status/<job_id>', methods=['GET'])

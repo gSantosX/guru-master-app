@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PenTool, FileText, Image as ImageIcon, Video, Activity, CheckCircle, Settings, RefreshCw, User, Zap, Youtube, Clock } from 'lucide-react';
+import { PenTool, FileText, Image as ImageIcon, Video, Activity, CheckCircle, Settings, RefreshCw, User, Zap, Youtube, Clock, Compass } from 'lucide-react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { motion } from 'framer-motion';
 import { resolveApiUrl } from '../utils/apiUtils';
@@ -15,9 +15,10 @@ const getNavItems = () => [
   { id: 'progress', label: t('sidebar.progress'), icon: Clock, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
   { id: 'completed', label: t('sidebar.completed'), icon: CheckCircle, color: 'text-neon-pink', shadow: 'shadow-neon-pink' },
   { id: 'capa-video', label: t('sidebar.capa_video'), icon: ImageIcon, color: 'text-neon-purple', shadow: 'shadow-neon-purple' },
-  { id: 'profile', label: t('sidebar.profile'), icon: User, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
   { id: 'channel-mining', label: t('sidebar.channel_mining'), icon: Youtube, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
+  { id: 'niche-identifier', label: t('sidebar.niche_identifier'), icon: Compass, color: 'text-neon-pink', shadow: 'shadow-neon-pink' },
   { id: 'channel-modeler', label: t('sidebar.modelador_canais'), icon: Youtube, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
+  { id: 'profile', label: t('sidebar.profile'), icon: User, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
   { id: 'settings', label: t('sidebar.settings'), icon: Settings, color: 'text-gray-400', shadow: '' },
 ];
 

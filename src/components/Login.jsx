@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
-import { User, Lock, Mail, ArrowRight, Sparkles, LogIn, UserPlus, Info, ShieldCheck, Key, Settings, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { User, Lock, Mail, ArrowRight, Sparkles, LogIn, UserPlus, Info, ShieldCheck, Key, Settings, AlertCircle, CheckCircle2, Activity } from 'lucide-react';
+import { resolveApiUrl } from '../utils/apiUtils';
 
 export const Login = () => {
   const { login, register, sendVerificationCode, verifyCode } = useAuth();
@@ -25,6 +26,23 @@ export const Login = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [backendStatus, setBackendStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
+
+  // Check backend status on mount
+  React.useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const res = await fetch(resolveApiUrl('/api/whisk/status'), { signal: AbortSignal.timeout(3000) });
+        if (res.ok) setBackendStatus('online');
+        else setBackendStatus('offline');
+      } catch (err) {
+        setBackendStatus('offline');
+      }
+    };
+    checkBackend();
+    const interval = setInterval(checkBackend, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -137,8 +155,30 @@ export const Login = () => {
           <div className="w-20 h-20 mb-8 relative group">
              <div className="absolute inset-0 bg-neon-cyan rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
              <div className="relative w-full h-full p-1 bg-gradient-to-br from-neon-cyan via-neon-purple to-neon-pink rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(0,243,255,0.3)] overflow-hidden border border-white/20">
-                <img src="/logo.jpg" alt="Guru Master Logo" className="w-full h-full object-cover rounded-full" />
-             </div>
+                 <img src="/logo.jpg" alt="Guru Master Logo" className="w-full h-full object-cover rounded-full" />
+              </div>
+              
+              {/* Backend Status Badge */}
+              <div className="absolute -bottom-2 -right-2 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 border backdrop-blur-md shadow-lg">
+                 {backendStatus === 'checking' && (
+                    <div className="flex items-center gap-1.5 text-gray-400">
+                       <div className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse" />
+                       Status: Sincronizando...
+                    </div>
+                 )}
+                 {backendStatus === 'online' && (
+                    <div className="flex items-center gap-1.5 text-neon-cyan">
+                       <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan shadow-[0_0_5px_rgba(0,243,255,1)]" />
+                       Motor Online
+                    </div>
+                 )}
+                 {backendStatus === 'offline' && (
+                    <div className="flex items-center gap-1.5 text-neon-pink">
+                       <div className="w-1.5 h-1.5 rounded-full bg-neon-pink shadow-[0_0_5px_rgba(255,0,243,1)] animate-pulse" />
+                       Motor Offline
+                    </div>
+                 )}
+              </div>
           </div>
 
           <AnimatePresence mode="wait">

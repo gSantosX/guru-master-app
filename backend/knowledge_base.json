@@ -2,6 +2,26 @@
     "Geral": {
         "patterns": [
             {
+                "date": "2026-04-10",
+                "context": "Verbotene Geschichten",
+                "snippet": "1.  Befehl 17: Stasi evakuierte Dorf, um Experiment zu verbergen.\n2.  7 Protokolle enthüllen: SED vertuschte 1973 Tod von Kindern.\n3.  Alle dachten die Mauer sei dicht: Doch 3 Gänge führten in den Westen.\n4.  Betrete nie Sektor D: Ein Gasleck tötete 1979 12 Arbeiter.\n5.  Dorf in Thüringen: 1968 verschwand es über Nacht im See.\n6.  Warum schweigt das Archiv? 1984 verschwanden 3 Forscher.\n7.  AKTE „Roter Schnee“: 1965 vertuschte die NVA 13 Todesfälle.\n8.  200 Meter unter Leipzig: Eine vergessene S"
+            },
+            {
+                "date": "2026-04-10",
+                "context": "Verbotene Geschichten",
+                "snippet": "1. O Dossiê Secreto da Stasi: Revelava 11 fugas que nunca chegaram ao Ocidente.\n2. 3 Operações da KGB em 1974 fracassaram e SUMIRAM com 20 cientistas.\n3. Todos Crêem que Berlim uniu em 89, mas a Fronteira Secreta permaneceu por anos.\n4. Sua Viagem pela B24 em 1980 tinha uma regra: 4 carros sumiam por semana.\n5. Em 1972, Dresden era pacata. 3 anos depois, 12 crianças sumiram após \"Operação Alfa\".\n6. Por Que 7 militares da Floresta Negra em 1968 entraram no bunker e NINGUÉM os viu?\n7. O Mapa Esque"
+            },
+            {
+                "date": "2026-04-10",
+                "context": "Verbotene Geschichten",
+                "snippet": "1. Akte 1984: Warum die Stasi das Verschwinden der 12 Kinder vertuschte\n2. 7 Bunker in Thüringen: Was die DDR dort bis zum Mauerfall versteckte\n3. Leipzig 1982: Was fanden Bauarbeiter unter dem Marktplatz wirklich?\n4. Selbstmord oder Mord? Der Fall des Majors im Kyffhäuser-Wald\n5. Projekt 404: Die künstliche Insel, die es laut DDR nie geben durfte\n6. Gefreiter Müller: Wie ein Soldat in 48 Stunden zum Greis wurde\n7. Sperrzone Rhön: Wer diese Koordinaten betrat, wurde nie registriert\n8. Signal 24:"
+            },
+            {
+                "date": "2026-04-05",
+                "context": "MISTÉRIOS DO SERTÃO",
+                "snippet": "1.  A Cidade Engolida Pelo Rio: Por Que o Governo Escondeu o Que Aconteceu COM OS MORADORES ANTES da água chegar?\n2.  A Pedra do Sacrifício no Sertão: Quem tentou REMOVÊ-LA NUNCA MAIS FOI VISTO!\n3.  A Sombra que Assombra o Pantanal: O Que Viram os Peões ANTES de Fugirem da Fazenda ABANDONADA?\n4.  NÃO ENTRE NESTE VALE no CERRADO: O Governo MANTÉM ESCONDIOS os Fatos Sobre os Desaparecimentos RECENTES!\n5.  O Loop Temporal da Chapada Diamantina: Quem Passa Por Ali Revive o MESMO MINUTO para SEMPRE?"
+            },
+            {
                 "date": "2026-04-04",
                 "context": "MISTÉRIOS DO SERTÃO",
                 "snippet": "1.  O Protocolo Secreto que ISOLOU uma Cidade inteira no Brasil: O QUE ELES NÃO QUEREM QUE VOCÊ SAIBA?\n2.  A Pedra Amaldiçoada do Sertão: Quem tocou nela, JAMAIS VOLTOU para contar a história.\n3.  Desvendando o Sumiço da BR-230: Onde está a Ponte que Ninguém ousa Procurar?\n4.  O Aviso Tupi Antigo que prevê o Próximo Grande Mistério na Amazônia... Está ACONTECENDO AGORA!\n5.  Testemunhas AFIRMAM ter visto... A Criatura que VAGA pelos Campos GERA Pânico no Interior.\n6.  O Rio na Serra do Mar que En"
@@ -17,7 +37,7 @@
                 "snippet": "1.  O MISTÉRIO da Serra do Roncador: Quem Protege O SEGREDO Enterrado no Centro do Brasil?\n2.  O Desaparecimento da BR-319: Milhares de Carros sumiram na BR mais PERIGOSA do BRASIL!\n3.  A VERDADE sobre a Maldição de Pedra Furada: Arqueólogos Fugiram do SÍTIO PROIBIDO!\n4.  A Mina ABANDONADA na Amazônia que NINGUÉM OUSA Visitar: O que Acha Lá Dentro?\n5.  O Objeto Alienígena Encontrado no Pantanal: O GOVERNO Esconde há mais de 40 Anos!\n6.  O Enigma da Vila dos Mortos na Bahia: Por que o TEMPO Parou"
             }
         ],
-        "total_analyses": 3,
-        "last_updated": "2026-04-04T11:45:20.651461"
+        "total_analyses": 7,
+        "last_updated": "2026-04-10T13:47:08.048973"
     }
 }

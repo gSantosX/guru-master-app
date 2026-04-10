@@ -43,18 +43,83 @@ export const ViralHacker = ({ result, configs, selectedLanguage, setSelectedLang
     const mainTopic = result.channelMeta?.title || 'este nicho';
     const langName = selectedLanguage?.name || 'Português';
 
-    const prompt = `Você é o MAIOR Estrategista de CTR e Viralização do Mundo.
-Use sua MEMÓRIA DE GURU e as táticas abaixo:
-${brainContext}
+    const hookInstructions = {
+      secret: `TÉCNICA "SEGREDO REVELADO": Use lacuna cognitiva máxima — o título deve criar um vazio informacional que o cérebro exige preencher. Fórmula: [O que foi escondido] + [Por quem/Quanto tempo] + [Implicação pessoal]. Exemplos de estrutura: "O método que [autoridade] proibiu de publicar", "O que ninguém no [nicho] te diz sobre [resultado]", "[X] anos escondendo isso de você".`,
+      error: `TÉCNICA "GRANDE ERRO": Ative o medo de perda (loss aversion) — o maior gatilho cognitivo existente. O título deve fazer o ouvinte sentir que está cometendo algo errado AGORA. Fórmula: [Erro específico] + [Consequência real] + [Urgência implícita]. Exemplos: "Se você ainda faz isso em [nicho], pare imediatamente", "O erro de [contexto] que custa [consequência] a cada dia", "[Ação comum] está destruindo seu [resultado]".`,
+      journey: `TÉCNICA "TRANSFORMAÇÃO REAL": Use especificidade brutal — números reais, tempo exato, resultado concreto. Genérico mata o CTR. Fórmula: [Ponto A específico] + [Tempo real] + [Ponto B específico e surpreendente]. Exemplos: "De [situação inicial específica] para [resultado surpreendente] em [tempo exato]", "[Número] dias fazendo [ação] — o que aconteceu me surpreendeu", "Como [pessoa comum] alcançou [resultado incomum] sem [obstáculo esperado]".`,
+      truth: `TÉCNICA "VERDADE CHOCANTE": Viole a crença mais comum do nicho. O título deve fazer o ouvinte pensar "isso não pode ser verdade" — e clicar para confirmar. Fórmula: [Crença popular] + [Contradição direta] + [Prova implícita]. Exemplos: "Por que [conselho comum] está completamente errado", "[Fato aceito] é mentira — e os dados provam", "A indústria de [nicho] não quer que você saiba disso".`,
+      fast: `TÉCNICA "CAMINHO RÁPIDO": Combine velocidade + especificidade + ceticismo resolvido. O título deve parecer um hack legítimo, não clickbait. Fórmula: [Resultado] + [Tempo específico] + [Método inesperado]. Exemplos: "[Resultado] em [tempo surpreendentemente curto] com [método incomum]", "O método de [X minutos] que substitui [semanas de esforço]", "Como conseguir [resultado] sem [esforço esperado] — o atalho que funciona".`,
+      proof: `TÉCNICA "PROVA SOCIAL": Use especificidade numérica e autoridade verificável. Números precisos convertem mais que números redondos. Fórmula: [Número específico] + [Resultado verificável] + [Contexto surpreendente]. Exemplos: "[Número exato] pessoas já fizeram isso e o resultado foi [dado específico]", "Estudei [quantidade] cases de [nicho] — o padrão me surpreendeu", "O que [número] experimentos em [contexto] revelaram sobre [tema]".`
+    };
 
-Sua tarefa: Criar 4 títulos virais numerados de 1 a 4 para um NOVO canal que vai dominar este nicho.
-Gatilho Tático: ${hook.name} (${hook.prompt}).
+    const prompt = `Você é um ESPECIALISTA ELITE EM CTR E VIRALIZAÇÃO — um sistema que domina a psicologia do clique, algoritmos de plataformas e neurociência da atenção.
 
-REGRAS CIRÚRGICAS:
-1. NÃO siga padrões prontos. Analise os nichos ${niche} e o canal ${mainTopic}.
-2. Identifique falhas de CTR do concorrente e crie algo MAIS ASSERTIVO.
-3. Se o tema em alta dele for X, crie o título com o gancho viral mais forte possível para X.
-4. Escreva em ${langName.toUpperCase()}. Responda apenas com os 4 títulos numerados.`;
+CONTEXTO DO CANAL MONITORADO:
+- Nicho: ${niche}
+- Canal/Tema em análise: ${mainTopic}
+- Mercado-alvo: ${langName}
+${brainContext ? `- Inteligência Tática Acumulada:\n${brainContext}` : ''}
+
+MISSÃO: Criar 4 títulos virais de ALTO CTR usando o gatilho "${hook.name}".
+
+---
+## ANATOMIA OBRIGATÓRIA DE TÍTULO VIRAL
+Todo título deve conter TODOS os elementos abaixo:
+1. ESPECIFICIDADE: Números, nomes, datas ou contextos concretos — nunca genérico
+2. LACUNA COGNITIVA: O título entrega informação suficiente para criar curiosidade, mas não o suficiente para satisfazê-la
+3. EMOÇÃO PRIMÁRIA: Medo, curiosidade, esperança, indignação ou surpresa — uma por título
+4. COMPRIMENTO IDEAL: Entre 40 e 70 caracteres (contando espaços) — ideal para YouTube e Shorts
+5. VERBO DE AÇÃO ou SUBSTANTIVO DE IMPACTO na posição de destaque
+
+---
+## TÉCNICA ESPECÍFICA PARA O GATILHO "${hook.name.toUpperCase()}"
+${hookInstructions[hook.id] || `Use o gatilho "${hook.name}" (${hook.prompt}) com máxima intensidade emocional e especificidade concreta para o nicho ${niche}.`}
+
+---
+## VARIAÇÃO FORÇADA ENTRE OS 4 TÍTULOS
+Cada título deve usar uma estrutura diferente dos demais:
+- Título 1: Estrutura de REVELAÇÃO (segredo, verdade oculta, descoberta)
+- Título 2: Estrutura de NÚMERO/DADO (quantidade específica, percentual, tempo)
+- Título 3: Estrutura de CONFLITO (erro vs. acerto, mito vs. realidade, antes vs. depois)
+- Título 4: Estrutura de URGÊNCIA PESSOAL (você + agora + consequência)
+
+---
+## ADAPTAÇÃO CULTURAL PARA ${langName.toUpperCase()}
+${langName === 'Português' || langName === 'Português (BR)' ? 'Use vocabulário direto e emocional do português brasileiro. Gírias moderadas funcionam. Evite formalidade excessiva.' :
+  langName === 'English' || langName === 'Inglês' ? 'Use punchy, direct English. Power words: secret, hidden, never, finally, exposed, banned, truth, fail, mistake. Contractions increase CTR.' :
+  langName === 'Español' || langName === 'Espanhol' ? 'Use español directo y emocional. Palabras de poder: secreto, revelado, prohibido, nunca, verdad, error, descubierto. Evite tecnicismos.' :
+  `Adapte o vocabulário para o mercado ${langName} usando palavras de alto impacto emocional nativas desse idioma e cultura.`}
+
+---
+## BLACKLIST — TÍTULOS PROIBIDOS (não use essas estruturas)
+❌ "A Verdade que Ninguém Te Conta Sobre..." (overused)
+❌ "O Segredo Que Todo Mundo Esconde..." (vago)
+❌ "Como Fazer [X] do Zero" (sem especificidade)
+❌ "Tudo que Você Sabe Sobre [X] está Errado" (clickbait sem substância)
+❌ Qualquer título com mais de 80 caracteres
+❌ Títulos sem pelo menos um elemento de especificidade/concretude
+❌ Títulos que funcionariam para QUALQUER nicho (devem ser específicos para ${niche})
+
+---
+## AUTORREVISÃO ANTES DE ENTREGAR
+Para cada título, verifique internamente:
+✅ Tem entre 40-70 caracteres?
+✅ Contém especificidade (número, nome, contexto)?
+✅ Cria lacuna cognitiva sem entregar tudo?
+✅ É específico para o nicho "${niche}"?
+✅ Está na estrutura variada correta (Revelação/Número/Conflito/Urgência)?
+✅ Não está na blacklist?
+Se falhar em qualquer ponto, reescreva antes de entregar.
+
+---
+## FORMATO DE ENTREGA
+Responda APENAS com os 4 títulos numerados. Sem explicações, sem comentários, sem subtítulos.
+Idioma: ${langName.toUpperCase()}
+
+1.
+2.
+3.
+4.`;
 
     try {
       const gptKey = configs.gpt_key?.trim();
@@ -274,7 +339,7 @@ REGRAS CIRÚRGICAS:
                                 : 'bg-neon-cyan/5 border-white/10 text-neon-cyan hover:bg-neon-cyan/20 hover:border-white/30 hover:shadow-neon-cyan'
                               }`}
                           >
-                             {copiedIndex === i ? <CheckCircle className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                             {copiedIndex === i ? <Check className="w-5 h-5 shadow-[0_0_10px_rgba(34,197,94,0.5)]" /> : <Copy className="w-5 h-5" />}
                           </button>
                         )}
                       </>

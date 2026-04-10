@@ -25,7 +25,19 @@ export const ChannelModelerTab = () => {
   const [localizedChannelNames, setLocalizedChannelNames] = useState([]);
   const [isTranslatingNames, setIsTranslatingNames] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [copiedSection, setCopiedSection] = useState(null);
+  const [isCopied, setIsCopied] = useState(false);
   const workspaceRef = React.useRef(null);
+
+  const copyToClipboard = (text, sectionId) => {
+    navigator.clipboard.writeText(text);
+    setCopiedSection(sectionId);
+    if (sectionId === 'general') setIsCopied(true);
+    setTimeout(() => {
+      setCopiedSection(null);
+      setIsCopied(false);
+    }, 2000);
+  };
 
   useEffect(() => {
     setHistory(stackRead('guru_channel_modeling'));
@@ -329,12 +341,26 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
     </div>
   );
 
-  const DashboardCard = ({ title, icon: Icon, color, children, className }) => (
+  const DashboardCard = ({ title, icon: Icon, color, children, className, onCopy, sectionId }) => (
     <div className={`glass-card p-6 border border-white/5 relative overflow-hidden group ${className}`}>
       <div className={`absolute top-0 right-0 w-32 h-32 bg-${color}/5 rounded-full blur-[50px] pointer-events-none group-hover:bg-${color}/10 transition-colors pointer-events-none`} />
-      <h4 className="text-[10px] font-black text-gray-500 mb-4 flex items-center gap-2 uppercase tracking-[0.2em] border-b border-white/5 pb-3">
-        <Icon className={`w-3.5 h-3.5 text-${color}`} /> {title}
-      </h4>
+      <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+        <h4 className="text-[10px] font-black text-gray-500 flex items-center gap-2 uppercase tracking-[0.2em]">
+          <Icon className={`w-3.5 h-3.5 text-${color}`} /> {title}
+        </h4>
+        {onCopy && (
+          <button 
+            onClick={onCopy}
+            className={`p-2 rounded-lg transition-all ${
+              copiedSection === sectionId 
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.3)]' 
+                : 'bg-white/5 text-gray-500 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            {copiedSection === sectionId ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+          </button>
+        )}
+      </div>
       <div className="text-gray-300 text-xs leading-relaxed font-sans whitespace-pre-wrap">{children}</div>
     </div>
   );
@@ -461,10 +487,10 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
                     className="space-y-10 pb-16"
                   >
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                       <DashboardCard title="1. Métricas de Performance" icon={BarChart4} color="neon-cyan">{result.sections?.[1]}</DashboardCard>
-                       <DashboardCard title="2. DNA do Canal" icon={Dna} color="neon-purple">{result.sections?.[2]}</DashboardCard>
-                       <DashboardCard title="3. Copyright & Storytelling" icon={Lightbulb} color="neon-cyan">{result.sections?.[3]}</DashboardCard>
-                        <DashboardCard title="4. Design Visionário" icon={Palette} color="neon-pink">
+                       <DashboardCard title="1. Métricas de Performance" icon={BarChart4} color="neon-cyan" onCopy={() => copyToClipboard(result.sections?.[1], 's1')} sectionId="s1">{result.sections?.[1]}</DashboardCard>
+                       <DashboardCard title="2. DNA do Canal" icon={Dna} color="neon-purple" onCopy={() => copyToClipboard(result.sections?.[2], 's2')} sectionId="s2">{result.sections?.[2]}</DashboardCard>
+                       <DashboardCard title="3. Copyright & Storytelling" icon={Lightbulb} color="neon-cyan" onCopy={() => copyToClipboard(result.sections?.[3], 's3')} sectionId="s3">{result.sections?.[3]}</DashboardCard>
+                        <DashboardCard title="4. Design Visionário" icon={Palette} color="neon-pink" onCopy={() => copyToClipboard(result.sections?.[4], 's4')} sectionId="s4">
                            {result.channelMeta?.viralVideos && (
                              <div className="mb-4 grid grid-cols-2 gap-2">
                                {result.channelMeta.viralVideos.slice(0, 4).map((v, idx) => (
@@ -479,27 +505,36 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
                            )}
                            <div className="opacity-80">{result.sections?.[4]}</div>
                         </DashboardCard>
-                       <DashboardCard title="5. Fatores do Viral" icon={Flame} color="orange-400">{result.sections?.[5]}</DashboardCard>
-                       <DashboardCard title="6. Brechas Estratégicas" icon={AlertCircle} color="green-400">{result.sections?.[6]}</DashboardCard>
+                       <DashboardCard title="5. Fatores do Viral" icon={Flame} color="orange-400" onCopy={() => copyToClipboard(result.sections?.[5], 's5')} sectionId="s5">{result.sections?.[5]}</DashboardCard>
+                       <DashboardCard title="6. Brechas Estratégicas" icon={AlertCircle} color="green-400" onCopy={() => copyToClipboard(result.sections?.[6], 's6')} sectionId="s6">{result.sections?.[6]}</DashboardCard>
                        
-                       <DashboardCard title="9. Expansão Geográfica" icon={MapPin} color="indigo-400" className="xl:col-span-1 border-indigo-500/10">
+                       <DashboardCard title="9. Expansão Geográfica" icon={MapPin} color="indigo-400" className="xl:col-span-1 border-indigo-500/10" onCopy={() => copyToClipboard(result.sections?.[9]?.split('ESTRATÉGIA_PAISES:')[0], 's9')} sectionId="s9">
                           <div className="opacity-80">{result.sections?.[9]?.split('ESTRATÉGIA_PAISES:')[0]}</div>
                        </DashboardCard>
 
-                       <DashboardCard title="7. Modelagem & Editorial" icon={Layers} color="neon-cyan" className="xl:col-span-2">
+                       <DashboardCard title="7. Modelagem & Editorial" icon={Layers} color="neon-cyan" className="xl:col-span-2" onCopy={() => copyToClipboard(result.sections?.[7], 's7')} sectionId="s7">
                           {localizedChannelNames.length > 0 && (
                             <div className="mb-6 animate-fade-in">
                                <p className="text-[10px] font-black text-neon-cyan uppercase tracking-widest mb-3 flex items-center gap-2">
                                  <Brain className="w-3 h-3" /> Nomes Sugeridos para {selectedLanguage.name}:
                                </p>
-                               <div className="flex flex-wrap gap-2">
-                                 {localizedChannelNames.map((name, i) => (
-                                   <div key={i} className="px-4 py-2 bg-neon-cyan/10 border border-neon-cyan/20 rounded-lg text-white font-black text-xs shadow-[0_0_15px_rgba(34,211,238,0.15)] flex items-center gap-2 group">
-                                      <CheckCircle className="w-3 h-3 text-neon-cyan" />
-                                      {name}
-                                   </div>
-                                 ))}
-                               </div>
+                                 <div className="flex flex-wrap gap-2">
+                                  {localizedChannelNames.map((name, i) => (
+                                    <button 
+                                      key={i} 
+                                      onClick={() => copyToClipboard(name, `name-${i}`)}
+                                      className={`px-4 py-2 border rounded-lg text-white font-black text-xs shadow-xl flex items-center gap-2 group transition-all active:scale-95
+                                        ${copiedSection === `name-${i}`
+                                          ? 'bg-green-500/20 border-green-500/50 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.3)]'
+                                          : 'bg-neon-cyan/10 border-neon-cyan/20 hover:border-neon-cyan/50 hover:bg-neon-cyan/20'
+                                        }
+                                      `}
+                                    >
+                                       {copiedSection === `name-${i}` ? <Check className="w-3 h-3 shadow-[0_0_10px_rgba(34,197,94,0.5)]" /> : <CheckCircle className="w-3 h-3 text-neon-cyan" />}
+                                       {name}
+                                    </button>
+                                  ))}
+                                </div>
                             </div>
                           )}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -511,7 +546,7 @@ Retorne APENAS os 3 nomes separados por vírgula, nada mais.`;
                           </div>
                        </DashboardCard>
 
-                       <DashboardCard title="8. Conclusão Guru" icon={ShieldCheck} color="green-400" className="xl:col-span-1 border-green-500/20 bg-green-500/5">
+                       <DashboardCard title="8. Conclusão Guru" icon={ShieldCheck} color="green-400" className="xl:col-span-1 border-green-500/20 bg-green-500/5" onCopy={() => copyToClipboard(result.sections?.[8], 's8')} sectionId="s8">
                           <div className="text-center space-y-4">
                              <div className="p-4 rounded-2xl bg-black/40 border border-white/5">
                                 <p className="text-xs font-black text-white uppercase">{result.sections?.[8]?.includes('IDEAL') ? 'CANAL IDEAL' : 'ANÁLISE FINAL'}</p>

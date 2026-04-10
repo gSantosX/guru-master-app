@@ -143,16 +143,16 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
               className={`flex-1 py-3 md:py-4 rounded-lg font-bold flex items-center justify-center gap-2 transition-all group overflow-hidden relative shadow-lg text-sm md:text-base ${
                 copyingId === activeScript.id 
                 ? 'bg-green-500/20 border border-green-500 text-green-400' 
-                : 'bg-white text-dark hover:bg-gray-100'
+                : 'bg-white text-dark hover:bg-gray-100 hover:border-white/30'
               }`}
             >
               {copyingId === activeScript.id ? (
                 <>
-                  <Check className="w-5 h-5 animate-bounce" /> Copiado!
+                  <Check className="w-5 h-5" /> Copiado!
                 </>
               ) : (
                 <>
-                  <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" /> Copiar Texto
+                  <Copy className="w-5 h-5 transition-transform" /> Copiar Texto
                 </>
               )}
             </button>
@@ -262,15 +262,15 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
                           e.stopPropagation();
                           handleCopy(script);
                       }}
-                      className={`flex-1 py-2.5 rounded-xl border font-black text-[10px] transition-all flex flex-col items-center gap-1 shadow-lg ${
+                      className={`flex-1 py-2.5 rounded-xl border font-black text-[10px] transition-all flex flex-col items-center gap-1 shadow-lg active:scale-95 ${
                         copyingId === script.id
-                        ? 'bg-green-500/20 border-green-500 text-green-400'
-                        : 'bg-white/5 border-white/10 hover:border-neon-cyan hover:text-neon-cyan text-gray-400 hover:scale-[1.02]'
+                        ? 'bg-green-500/20 border-green-500 text-green-400 font-bold'
+                        : 'bg-white/5 border-white/10 hover:border-neon-cyan hover:text-neon-cyan text-gray-400'
                       }`}
                     >
                       {copyingId === script.id ? (
                         <>
-                          <Check className="w-4 h-4 animate-bounce" /> COPIADO
+                          <Check className="w-4 h-4" /> COPIADO
                         </>
                       ) : (
                         <>

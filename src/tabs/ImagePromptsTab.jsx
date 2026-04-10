@@ -12,10 +12,13 @@ import {
   Sparkles, 
   FileText, 
   Trash2,
+  Check,
   X,
   ChevronRight,
   Eye,
-  ArrowRight
+  ArrowRight,
+  Loader2,
+  Video
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -43,6 +46,8 @@ const VISUAL_STYLES = [
   { id: 'pintura-oleo',      label: '🖼️ Pintura a Óleo',       desc: 'Pinceladas visíveis, texturas ricas, estilo renascentista clássico' },
   { id: 'neon-glow',         label: '💜 Neon Glow',            desc: 'Luzes neon vibrantes brilhando no escuro, estética synthwave/cyberpunk' },
   { id: 'flat-design',       label: '📱 Flat Design',           desc: 'Ilustração vetorial plana, sem sombras 3D, paleta de cores limpa' },
+  { id: 'documentario',      label: '🎥 Documentário',          desc: 'Documentário ultra realista, extremamente polido, rico em detalhes minuciosos e sem contradições visuais, com iluminação cinematográfica autêntica' },
+  { id: 'religioso',         label: '🕊️ Religioso / Espiritual', desc: 'Crença cristã focada em pureza extrema, obrigatoriamente exibindo Jesus, anjos ou estética bíblica, com forte iluminação divina' },
 ];
 export const ImagePromptsTab = ({ setActiveTab }) => {
   const { promptState, setPromptState } = usePersistence();
@@ -71,6 +76,8 @@ export const ImagePromptsTab = ({ setActiveTab }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [promptType, setPromptType] = useState('image'); // 'image' or 'video'
+  const [outputFormat, setOutputFormat] = useState('text'); // 'text' or 'json'
   const fileInputRef = useRef(null);
   const [generationProgress, setGenerationProgress] = useState({ step: '', current: 0, total: 0 });
 
@@ -81,6 +88,13 @@ export const ImagePromptsTab = ({ setActiveTab }) => {
   }, []);
 
   const [showFullOutput, setShowFullOutput] = useState(false);
+  const [copyingId, setCopyingId] = useState(null);
+
+  const handleCopyHistory = (text, id) => {
+    navigator.clipboard.writeText(text);
+    setCopyingId(id);
+    setTimeout(() => setCopyingId(null), 2000);
+  };
   const [copyingPoolId, setCopyingPoolId] = useState(null);
 
   const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
@@ -208,48 +222,113 @@ export const ImagePromptsTab = ({ setActiveTab }) => {
         const chunkSubtitleCount = currentChunk.length;
         const formattedInput = currentChunk.map((b, idx) => `[ID ${startIdx + idx + 1}] ${b}`).join('\n');
 
-        const promptParam = `You are a world-class Visual Director and AI Video Prompt Engineer.
-YOUR MISSION: Transform script fragments into EXTREMELY DETAILED, CINEMATIC video prompts in English.
+        const isJson = outputFormat === 'json';
+        const promptParam = promptType === 'video' ? `You are an ELITE Cinematic AI Director and world-class Video Prompt Engineer — an expert-level system operating at the frontier of AI-driven visual storytelling.
 
-## VISUAL DNA (Mandatory - Use this for EVERY scene):
-Scenario: ${visualDNA.scenario}
-Era/Time: ${visualDNA.era}
-Mood/Atmosphere: ${visualDNA.mood}
-Lighting: ${visualDNA.lighting}
-Color Palette: ${visualDNA.palette}
-Camera Language: ${visualDNA.camera}
+## CORE MISSION
+Transform raw script fragments into ULTRA-DETAILED, PRODUCTION-READY video prompts in English. Every output must feel like a professional storyboard entry from a $50M film production.
 
-## UNIFIED DIRECTION:
-You must strictly follow the Visual DNA above. Every prompt must feel part of the same cinematic universe.
+## VISUAL DNA — INVIOLABLE LAWS (Apply to EVERY single prompt without exception)
+- Scenario: ${visualDNA.scenario}
+- Era/Time: ${visualDNA.era}
+- Mood/Atmosphere: ${visualDNA.mood}
+- Master Lighting: ${visualDNA.lighting}
+- Color Palette: ${visualDNA.palette}
+- Camera Language: ${visualDNA.camera}
+- Visual Style: ${styleInfo.label} — ${styleInfo.desc}
 
-## BLOCK CONTEXT:
-You are processing block ${i + 1} of ${totalChunks}.
-${previousContext ? `## VISUAL COHESION (Context from previous block):\n${previousContext}` : ""}
+## BLOCK CONTINUITY
+Processing block ${i + 1} of ${totalChunks}.
+${previousContext ? `Maintain strict visual and narrative continuity with the previous block:\n${previousContext}` : 'First block — establish the cinematic universe.'}
 
-## THE CORE OBJECTIVE: HYPER-REALISM & MOTION
-Each prompt MUST feel like a professional film scene. It must be so detailed that the AI knows exactly what is moving, how the camera behaves, and the precise atmosphere of the shot.
+## MANDATORY ELEMENTS FOR EVERY PROMPT (all 5 must be present)
+1. SUBJECT & MICRO-MOTION: Full physical description, emotional state, subtle body language (trembling hands, shallow breath, eyes darting). Give them undeniable human presence.
+2. CAMERA CHOREOGRAPHY: One specific operator movement per prompt — choose from: slow dolly-in, sweeping crane shot, handheld urgency, whip-pan reveal, low-angle creep, dutch-angle tension, POV immersion, smooth tracking orbit.
+3. LIGHT ARCHITECTURE: Describe light source, quality, direction, color temperature, and environmental particles (dust motes, smoke tendrils, rain droplets, heat shimmer, lens flares).
+4. ENVIRONMENTAL DEPTH: Layer background, midground, and foreground. Add imperfections (peeling paint, worn textures, ambient noise implied by visual cues).
+5. MOTION PHYSICS: At least 2 dynamic verbs per prompt. Objects must interact with physics (fabric billowing, water rippling, debris scattering, shadows stretching).
 
-## MANDATORY VISUAL ELEMENTS (For every prompt):
-1. **The Subject & Action**: Describe the subject in high detail. What are they doing? Give them life, emotion, and subtle micro-movements.
-2. **Camera Movement**: Mandatory. Specify if it is a "Slow tracking shot", "Dynamic dolly-in", "Dramatic low-angle pan", "Handheld shaky cam", or "Smooth cinematic crane shot".
-3. **Lighting & Atmosphere**: Mandatory. Describe the light (volumetric, golden hour, neon flicker, soft studio diffusal) and environmental details (dust motes, rain, steam, reflections).
-4. **Cinematic Style**: Always apply the chosen visual style: "${styleInfo.label}" — ${styleInfo.desc}.
-5. **Text-to-Video Optimization**: Use descriptive verbs (whispering, sprinting, glistening, drifting) to trigger high-quality motion in the video model.
+## ANTI-LOW-QUALITY SYSTEM (enforce internally before output)
+- NEVER use: beautiful, amazing, nice, good, great, stunning (use precise sensory language instead)
+- NEVER repeat the same camera movement across consecutive prompts
+- NEVER produce generic backgrounds — every environment must be uniquely detailed
+- NEVER produce vague subjects — every subject must have age, posture, texture, weight
+- INTERNAL SELF-CHECK: Before finalizing each prompt, verify it passes: specificity, motion, atmosphere, style-fidelity, and narrative-fidelity
 
-## STRICT RULES:
-- **Absolute Cohesion**: Ensure that if a character or setting appears in multiple consecutive fragments, they remain visually consistent.
-- **Literal Fidelity**: While adding cinematic detail, NEVER invent new story elements not present in the text.
-- **Word Count**: Be extremely descriptive. Aim for 80 to 200 words per prompt.
-- **No Formatting**: Return only the raw text in the specified format. No markdown, no bold.
-- **Language**: English only.
+## STRICT RULES
+- Maximum scene duration implied: 8 seconds of motion
+- Word count target: 100-200 words per prompt (rich, dense, purposeful)
+- Language: English only
+- Literal fidelity: NEVER invent story elements not present in the source text
+- Variation control: Systematically rotate camera types and light moods across all 10 prompts in the batch
 
-## FORMAT (MANDATORY):
-[ID]|[PROMPT]
+${isJson ? `## OUTPUT FORMAT: STRICT JSON ARRAY
+Return a JSON array of exactly ${chunkSubtitleCount} objects. No markdown, no code fences. Start directly with [
+[
+  { "id": 1, "type": "video", "style": "${styleInfo.id}", "prompt": "...", "camera": "...", "mood": "...", "duration": "8s" },
+  ...
+]` : `## OUTPUT FORMAT: PIPE-DELIMITED TEXT
+Return EXACTLY ${chunkSubtitleCount} lines, one per fragment, in the format:
+ID|PROMPT
 
-## INPUT (Script fragments to convert):
+No extra lines, no markdown, no explanations.`}
+
+## INPUT — SCRIPT FRAGMENTS TO TRANSFORM
 ${formattedInput}
 
-## OUTPUT: Return EXACTLY ${chunkSubtitleCount} prompts, one per line, in the format ID|PROMPT:`;
+## GENERATE NOW: Produce ${chunkSubtitleCount} world-class ${promptType} prompts:` : `You are an ELITE Cinematic AI Director and world-class Image Prompt Engineer — an expert-level system operating at the frontier of AI-driven visual storytelling.
+
+## CORE MISSION
+Transform raw script fragments into ULTRA-DETAILED, PRODUCTION-READY image prompts in English. Every output must feel like a production still from a $50M cinematic project — each prompt so precise that a diffusion model renders the exact scene with zero ambiguity.
+
+## VISUAL DNA — INVIOLABLE LAWS (Apply to EVERY single prompt without exception)
+- Scenario: ${visualDNA.scenario}
+- Era/Time: ${visualDNA.era}
+- Mood/Atmosphere: ${visualDNA.mood}
+- Master Lighting: ${visualDNA.lighting}
+- Color Palette: ${visualDNA.palette}
+- Camera Framing: ${visualDNA.camera}
+- Visual Style: ${styleInfo.label} — ${styleInfo.desc}
+
+## BLOCK CONTINUITY
+Processing block ${i + 1} of ${totalChunks}.
+${previousContext ? `Maintain strict visual and narrative continuity with the previous block:\n${previousContext}` : 'First block — establish the cinematic universe.'}
+
+## MANDATORY ELEMENTS FOR EVERY PROMPT (all 5 must be present)
+1. SUBJECT & PHYSICALITY: Full physical description — age, build, clothing texture, skin quality, emotional expression, micro-expression (furrowed brow, parted lips, distant gaze, clenched jaw).
+2. CAMERA ARCHITECTURE: One precise framing per prompt — extreme close-up on eye detail, low-angle wide establishing, dutch-angle medium, bird's-eye overhead, worm's-eye heroic, tight over-the-shoulder.
+3. LIGHT SCULPTURE: Define light source (practical lamp, god rays, neon backlight, window spill), quality (hard/soft), temperature (warm tungsten 2800K, cold moonlight 5500K), and fall-off on subject's face/body.
+4. ENVIRONMENTAL TEXTURE: Layer every spatial plane. Background must have depth and story. Surface textures (cracked concrete, aged leather, fog-softened glass, rust-stained metal).
+5. TECHNICAL QUALITY SUFFIXES: End every prompt with a quality booster cluster: "photorealistic, hyperdetailed, 8K resolution, RAW capture, cinematic color grade, film grain, Arri Alexa aesthetic".
+
+## ANTI-LOW-QUALITY SYSTEM (enforce internally before output)
+- NEVER use: beautiful, amazing, nice, good, great, stunning (replace with precise sensory language)
+- NEVER produce flat or gradient backgrounds — every scene must have spatial depth
+- NEVER produce faceless subjects — always define the person in full physical and emotional detail
+- NEVER repeat the same framing twice in a batch — systematically vary all camera angles
+- INTERNAL SELF-CHECK: Before finalizing each prompt, verify: specificity, light quality, depth, style-fidelity, and narrative-fidelity
+
+## STRICT RULES
+- Word count target: 100-200 words per prompt (rich, precise, purposeful)
+- Language: English only
+- Literal fidelity: NEVER invent story elements not present in the source text
+- Variation control: Systematically rotate camera framings and lighting setups across the batch
+
+${isJson ? `## OUTPUT FORMAT: STRICT JSON ARRAY
+Return a JSON array of exactly ${chunkSubtitleCount} objects. No markdown, no code fences. Start directly with [
+[
+  { "id": 1, "type": "image", "style": "${styleInfo.id}", "prompt": "...", "framing": "...", "lighting": "...", "mood": "..." },
+  ...
+]` : `## OUTPUT FORMAT: PIPE-DELIMITED TEXT
+Return EXACTLY ${chunkSubtitleCount} lines, one per fragment, in the format:
+ID|PROMPT
+
+No extra lines, no markdown, no explanations.`}
+
+## INPUT — SCRIPT FRAGMENTS TO TRANSFORM
+${formattedInput}
+
+## GENERATE NOW: Produce ${chunkSubtitleCount} world-class ${promptType} prompts:`;
 
         let responseText = "";
         try {
@@ -265,29 +344,61 @@ ${formattedInput}
 
         if (!responseText) throw new Error(`A IA não retornou conteúdo no Bloco ${i + 1}.`);
 
-        const rawLines = responseText.split('\n').filter(l => /^\d+\s*\|/.test(l.trim()));
         let chunkOutput = "";
         let lastThreePrompts = [];
 
-        currentChunk.forEach((block, idx) => {
-          const expectedId = startIdx + idx + 1;
-          const matchedLine = rawLines.find(l => {
-            const idPart = parseInt(l.trim().split('|')[0].trim());
-            return idPart === expectedId;
-          });
-
-          if (matchedLine) {
-            const promptOnly = matchedLine.substring(matchedLine.indexOf('|') + 1).trim();
-            chunkOutput += `${promptOnly}\n\n`;
-            lastThreePrompts.push(`ID ${expectedId}: ${promptOnly.substring(0, 150)}...`);
-          } else {
-            chunkOutput += `${styleInfo.desc}, cinematic scene illustrating: ${block.substring(0, 50)}...\n\n`;
+        if (outputFormat === 'json') {
+          // Parse JSON response
+          try {
+            const cleanJson = responseText.replace(/```json|```/g, '').trim();
+            const jsonStart = cleanJson.indexOf('[');
+            const jsonEnd = cleanJson.lastIndexOf(']');
+            const jsonArr = JSON.parse(cleanJson.substring(jsonStart, jsonEnd + 1));
+            const jsonFormatted = JSON.stringify(jsonArr, null, 2);
+            chunkOutput = jsonFormatted;
+            lastThreePrompts = jsonArr.slice(-3).map((item, idx) => `ID ${item.id || idx}: ${(item.prompt || '').substring(0, 150)}...`);
+          } catch (jsonErr) {
+            // Fallback: store raw response
+            chunkOutput = responseText.trim();
+            lastThreePrompts = [responseText.substring(0, 150)];
           }
-        });
+          if (chunkOutput) {
+            if (allGeneratedPrompts) {
+              // Merge JSON arrays
+              try {
+                const prev = JSON.parse(allGeneratedPrompts);
+                const curr = JSON.parse(chunkOutput);
+                const merged = [...prev, ...curr];
+                allGeneratedPrompts = JSON.stringify(merged, null, 2);
+              } catch { allGeneratedPrompts += '\n' + chunkOutput; }
+            } else {
+              allGeneratedPrompts = chunkOutput;
+            }
+            setPrompts(allGeneratedPrompts);
+          }
+        } else {
+          const rawLines = responseText.split('\n').filter(l => /^\d+\s*\|/.test(l.trim()));
+          currentChunk.forEach((block, idx) => {
+            const expectedId = startIdx + idx + 1;
+            const matchedLine = rawLines.find(l => {
+              const idPart = parseInt(l.trim().split('|')[0].trim());
+              return idPart === expectedId;
+            });
+            if (matchedLine) {
+              const promptOnly = matchedLine.substring(matchedLine.indexOf('|') + 1).trim();
+              chunkOutput += `${promptOnly}\n\n`;
+              lastThreePrompts.push(`ID ${expectedId}: ${promptOnly.substring(0, 150)}...`);
+            } else {
+              chunkOutput += `${styleInfo.desc}, cinematic scene illustrating: ${block.substring(0, 50)}...\n\n`;
+            }
+          });
+          if (chunkOutput) {
+            allGeneratedPrompts += (allGeneratedPrompts ? '\n\n' : '') + chunkOutput;
+            setPrompts(prev => (prev ? prev + '\n\n' : '') + chunkOutput);
+          }
+        }
 
         if (chunkOutput) {
-          allGeneratedPrompts += (allGeneratedPrompts ? '\n\n' : '') + chunkOutput;
-          setPrompts(prev => (prev ? prev + '\n\n' : '') + chunkOutput);
           setGenerationProgress(prev => ({ ...prev, step: `Bloco ${i + 1} de ${totalChunks} Processado` }));
         }
         previousContext = `Keep visual consistency with the previous scene: ${lastThreePrompts.slice(-3).join(" | ")}`;
@@ -355,21 +466,62 @@ ${formattedInput}
         const startIdx = i * batchSize;
         const segment = scriptSegments.slice(startIdx, startIdx + batchSize).join(' ');
 
-        const promptBatchQuery = `You are a world-class Visual Director and AI Video Prompt Engineer.
-        Based on the VISUAL DNA below, create EXACTLY one ultra-realistic image prompt in ENGLISH for each sentence of the provided script.
-        
-        VISUAL DNA (Mandatory - Every prompt must strictly follow this): 
-        ${dnaText}
-        
-        SCRIPT:
-        "${segment}"
-        
-        RULES:
-        - HYPER-REALISM: Use "8k, photorealistic, cinematic shot, raw film, high detail".
-        - MOTION: Describe camera movement (tracking, pan, tilt) and subject action.
-        - STYLE: Apply the visual identity from the DNA at all times.
-        - FORMAT: Return only the prompts, one per line. No labels.
-        - LANGUAGE: English only.`;
+        const isJsonScript = outputFormat === 'json';
+        const promptBatchQuery = promptType === 'video' ? `You are an ELITE Cinematic AI Director and world-class Video Prompt Engineer.
+
+CORE MISSION: Transform each sentence of the provided script into one ULTRA-DETAILED, PRODUCTION-READY video prompt in English. Operate at $50M feature film production standards.
+
+VISUAL DNA — INVIOLABLE LAWS (Apply without exception to every prompt):
+${dnaText}
+Visual Style: ${styleInfo.label} — ${styleInfo.desc}
+
+MANDATORY ELEMENTS PER PROMPT:
+1. SUBJECT & MICRO-MOTION: Full physical presence — emotion, posture, micro-movements (trembling, shallow breath, eyes darting)
+2. CAMERA CHOREOGRAPHY: One operator-specific move — dolly-in, crane sweep, handheld urgency, whip-pan, low-angle creep, POV immersion
+3. LIGHT ARCHITECTURE: Source, quality, color temperature, and particles (dust motes, smoke, rain, lens flare)
+4. ENVIRONMENTAL DEPTH: Layered background/midground/foreground with surface imperfections and textures
+5. MOTION PHYSICS: Minimum 2 dynamic verbs — fabric billowing, water rippling, debris scattering
+
+ANTI-LOW-QUALITY RULES:
+- NEVER use: beautiful, amazing, nice, good, great, stunning
+- NEVER repeat the same camera movement twice consecutively
+- NEVER produce generic environments — every background must have unique detail
+- Maximum implied scene duration: 8 seconds
+- Internally self-check each prompt for: specificity, motion, atmosphere, style-fidelity
+
+SCRIPT INPUT:
+"${segment}"
+
+${isJsonScript ? `OUTPUT FORMAT: Return a JSON array. No markdown, no code fences. Start directly with [\n[\n  { "id": 1, "type": "video", "style": "${styleInfo.id}", "prompt": "...", "camera": "...", "mood": "...", "duration": "8s" },\n  ...\n]` : `OUTPUT FORMAT: Return ONLY the prompts, one per line, in plain text. No labels, no numbering, no markdown.`}
+
+LANGUAGE: English only. GENERATE NOW:` : `You are an ELITE Cinematic AI Director and world-class Image Prompt Engineer.
+
+CORE MISSION: Transform each sentence of the provided script into one ULTRA-DETAILED, PRODUCTION-READY image prompt in English. Every output must be so precise that a diffusion model renders the exact scene with zero ambiguity.
+
+VISUAL DNA — INVIOLABLE LAWS (Apply without exception to every prompt):
+${dnaText}
+Visual Style: ${styleInfo.label} — ${styleInfo.desc}
+
+MANDATORY ELEMENTS PER PROMPT:
+1. SUBJECT & PHYSICALITY: Age, build, clothing texture, skin quality, micro-expression (furrowed brow, parted lips, clenched jaw, distant gaze)
+2. CAMERA ARCHITECTURE: One precise framing — extreme close-up, low-angle wide, dutch-angle medium, bird's-eye, worm's-eye heroic, tight over-the-shoulder
+3. LIGHT SCULPTURE: Source, quality (hard/soft), temperature (2800K tungsten / 5500K moonlight), and fall-off on subject
+4. ENVIRONMENTAL TEXTURE: Layered spatial planes, background story elements, surface textures (cracked concrete, aged leather, fog-softened glass)
+5. TECHNICAL QUALITY SUFFIX: End every prompt with: "photorealistic, hyperdetailed, 8K resolution, RAW capture, cinematic color grade, film grain, Arri Alexa aesthetic"
+
+ANTI-LOW-QUALITY RULES:
+- NEVER use: beautiful, amazing, nice, good, great, stunning
+- NEVER produce flat or gradient backgrounds
+- NEVER produce faceless or undefined subjects
+- NEVER repeat the same framing in consecutive prompts
+- Internally self-check each prompt for: specificity, light quality, depth, style-fidelity
+
+SCRIPT INPUT:
+"${segment}"
+
+${isJsonScript ? `OUTPUT FORMAT: Return a JSON array. No markdown, no code fences. Start directly with [\n[\n  { "id": 1, "type": "image", "style": "${styleInfo.id}", "prompt": "...", "framing": "...", "lighting": "...", "mood": "..." },\n  ...\n]` : `OUTPUT FORMAT: Return ONLY the prompts, one per line, in plain text. No labels, no numbering, no markdown.`}
+
+LANGUAGE: English only. GENERATE NOW:`;
 
         const batchResult = await callGemini(geminiKey, promptBatchQuery);
         const batchPrompts = (batchResult || "").split('\n').map(p => p.trim()).filter(p => p.length > 20).join('\n\n');
@@ -410,11 +562,13 @@ ${formattedInput}
 
   const handleDownload = () => {
     if (!prompts) return;
-    const blob = new Blob([prompts], { type: 'text/plain' });
+    const ext = outputFormat === 'json' ? 'json' : 'txt';
+    const mimeType = outputFormat === 'json' ? 'application/json' : 'text/plain';
+    const blob = new Blob([prompts], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Prompts_${getActiveStyle().id}_${file?.name || 'project'}.txt`;
+    a.download = `Prompts_${getActiveStyle().id}_${file?.name || 'project'}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -433,7 +587,7 @@ ${formattedInput}
             <div className="w-12 h-12 rounded-full p-0.5 bg-gradient-to-br from-neon-pink to-neon-purple shadow-[0_0_20px_rgba(255,44,182,0.3)] overflow-hidden border border-white/10 shrink-0">
               <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-full" />
             </div>
-            Gerar Prompts de Imagem
+            Gerador de Prompts
           </h2>
           <p className="text-gray-400 mt-2 flex items-center gap-2">
             Faça o upload do seu SRT, escolha um estilo visual e gere os prompts perfeitos.
@@ -466,26 +620,21 @@ ${formattedInput}
            <button 
               onClick={analyzeVisualIdentity}
               disabled={isAnalyzing || (!selectedScriptId && subtitleBlocks.length === 0)}
-              className="px-6 py-3 bg-white/5 border border-white/20 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2 group"
+              className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 group border ${
+                visualDNA.scenario && !isAnalyzing
+                  ? 'bg-green-500/20 border-green-500 text-green-500 shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:bg-green-500/30'
+                  : 'bg-white/5 border-white/20 text-white hover:bg-white/10'
+              }`}
             >
-              {isAnalyzing ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-neon-pink" /> : <Eye className="w-3.5 h-3.5 group-hover:text-neon-pink transition-colors" />}
-              Analisar Identidade Visual
-            </button>
-
-           <button 
-              onClick={handleGenerateFromScript}
-              disabled={!selectedScriptId || isGenerating || !visualDNA.scenario}
-              className="px-8 py-3 bg-neon-purple/20 border border-neon-purple/40 text-neon-purple rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-2 shadow-[0_0_20px_rgba(191,64,255,0.1)]"
-           >
-              {isGenerating && generationProgress.total > 0 ? (
-                <LoadingSpinner message={generationProgress.step} size="sm" />
+              {isAnalyzing ? (
+                <Loader2 className="w-4 h-4 animate-spin text-neon-pink" />
+              ) : visualDNA.scenario ? (
+                <CheckCircle className="w-4 h-4 text-green-500" />
               ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Gerar em Bloco (20/Lote)
-                </>
+                <Eye className="w-4 h-4 group-hover:text-neon-pink transition-colors" />
               )}
-           </button>
+              {isAnalyzing ? "Analisando..." : visualDNA.scenario ? "Analisado" : "Analisar Identidade Visual"}
+            </button>
         </div>
 
         {/* Visual DNA Pre-Production Panel */}
@@ -545,6 +694,63 @@ ${formattedInput}
 
       {/* Style Selector */}
       <div className="glass-card p-6 space-y-6">
+        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-white/10 pb-4">
+          <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-neon-pink" /> 
+            Formato de Saída
+          </h3>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Prompt Type: Image / Video */}
+            <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10">
+              <button
+                onClick={() => setPromptType('image')}
+                className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  promptType === 'image' 
+                    ? 'bg-neon-pink text-white shadow-[0_0_15px_rgba(255,44,182,0.3)]' 
+                    : 'text-gray-500 hover:text-white'
+                }`}
+              >
+                <ImageIcon className="w-4 h-4" /> Imagem
+              </button>
+              <button
+                onClick={() => setPromptType('video')}
+                className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  promptType === 'video' 
+                    ? 'bg-neon-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.3)]' 
+                    : 'text-gray-500 hover:text-white'
+                }`}
+              >
+                <Video className="w-4 h-4" /> Vídeo
+              </button>
+            </div>
+
+            {/* Output Format: Normal / JSON */}
+            <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10">
+              <button
+                onClick={() => setOutputFormat('text')}
+                className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  outputFormat === 'text'
+                    ? 'bg-neon-cyan/80 text-dark shadow-[0_0_15px_rgba(0,243,255,0.3)]'
+                    : 'text-gray-500 hover:text-white'
+                }`}
+              >
+                <FileText className="w-4 h-4" /> Normal
+              </button>
+              <button
+                onClick={() => setOutputFormat('json')}
+                className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  outputFormat === 'json'
+                    ? 'bg-amber-500/80 text-dark shadow-[0_0_15px_rgba(251,191,36,0.3)]'
+                    : 'text-gray-500 hover:text-white'
+                }`}
+              >
+                <Zap className="w-4 h-4" /> JSON
+              </button>
+            </div>
+          </div>
+        </div>
+
         <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-neon-pink" /> 
           Estilo Visual — <span className="text-neon-pink">{getActiveStyle().label}</span>
@@ -640,9 +846,9 @@ ${formattedInput}
             <div className="flex gap-4">
               <button
                 onClick={handleGenerate}
-                disabled={!file || isGenerating}
+                disabled={!file || isGenerating || !visualDNA.scenario}
                 className={`flex-1 py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 ${
-                  !file || isGenerating
+                  (!file || isGenerating || !visualDNA.scenario)
                     ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                     : 'bg-gradient-to-r from-pink-600 to-neon-purple text-white hover:shadow-neon-pink hover:scale-[1.02]'
                 }`}
@@ -654,7 +860,7 @@ ${formattedInput}
                   />
                 ) : (
                   <>
-                    <Wand2 className="w-5 h-5" /> Gerar {subtitleCount > 0 ? subtitleCount : ''} Prompts
+                    <Wand2 className="w-5 h-5" /> {(!visualDNA.scenario && file) ? "Analise a Identidade Primeiro" : `Gerar ${subtitleCount > 0 ? subtitleCount : ''} Prompts`}
                   </>
                 )}
               </button>
@@ -712,10 +918,18 @@ ${formattedInput}
                    {isCopied ? 'Copiado!' : 'Copiar'}
                 </button>
               )}
+              {prompts && !isGenerating && (
+                <button 
+                  onClick={handleDownload}
+                  className="px-3 py-1 bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-neon-cyan/20 transition-all flex items-center gap-1.5"
+                >
+                  <Download className="w-3 h-3" /> .{outputFormat === 'json' ? 'JSON' : 'TXT'}
+                </button>
+              )}
               <button 
                 onClick={() => prompts && setShowFullOutput(true)}
                 disabled={!prompts}
-                className="px-3 py-1 bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-neon-cyan/20 transition-all disabled:opacity-30"
+                className="px-3 py-1 bg-white/5 border border-white/10 text-gray-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:text-white hover:border-white/30 transition-all disabled:opacity-30"
               >
                 Visualizar
               </button>
@@ -782,13 +996,13 @@ ${formattedInput}
                   <div className="flex items-center gap-4">
                      <button 
                        onClick={handleCopyPrompts}
-                       className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-3 ${
+                       className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all transform active:scale-95 shadow-lg flex items-center gap-3 ${
                          isCopied 
                            ? 'bg-green-500 text-white' 
-                           : 'bg-white text-dark hover:bg-neon-pink hover:text-white'
+                           : 'bg-white text-dark hover:bg-white/90'
                        }`}
                      >
-                        {isCopied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {isCopied ? 'Copiado com Sucesso!' : 'Copiar Tudo'}
+                        {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {isCopied ? 'Copiado com Sucesso!' : 'Copiar Tudo'}
                      </button>
                      <button 
                        onClick={() => setShowFullOutput(false)}
@@ -899,10 +1113,14 @@ ${formattedInput}
                         </div>
                         <div className="flex gap-2">
                            <button 
-                              onClick={() => { navigator.clipboard.writeText(pool.content); alert("Copiado!"); }}
-                              className="p-2 bg-white/5 hover:bg-white/10 rounded-lg border border-white/10"
+                              onClick={() => handleCopyHistory(pool.content, pool.id)}
+                              className={`p-2 rounded-lg border transition-all active:scale-95 flex items-center justify-center
+                                ${copyingId === pool.id 
+                                  ? 'bg-green-500/20 border-green-500 text-green-400' 
+                                  : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/30'}
+                              `}
                            >
-                              <Copy className="w-3.5 h-3.5 text-gray-400" />
+                              {copyingId === pool.id ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                            </button>
                            <button 
                               onClick={() => { setPrompts(pool.content); window.scrollTo({ top: 0, behavior: 'smooth' }); }}

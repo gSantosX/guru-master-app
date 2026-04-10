@@ -91,19 +91,30 @@ export const CompletedTab = () => {
                        </div>
                     </div>
                     
-                    <div className="mt-auto flex gap-2">
-                      <button 
-                         onClick={() => handleOpenLocation(project)}
-                         className="flex-1 py-2 bg-gradient-to-r from-neon-cyan/20 to-blue-500/20 hover:from-neon-cyan/40 hover:to-blue-500/40 text-white rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-all"
-                      >
-                         <FolderOpen className="w-4 h-4" /> Abrir Local
-                      </button>
+                    <div className="mt-auto flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <button 
+                           onClick={() => handleOpenLocation(project)}
+                           className="flex-1 py-2 bg-gradient-to-r from-neon-cyan/10 to-blue-500/10 hover:from-neon-cyan/30 hover:to-blue-500/30 text-white rounded-lg flex items-center justify-center gap-2 text-xs font-medium transition-all border border-white/5"
+                        >
+                           <FolderOpen className="w-3.5 h-3.5" /> Abrir Local
+                        </button>
+                        <button 
+                           onClick={() => {
+                             const url = resolveApiUrl(`/api/download/${project.id}`);
+                             window.open(url, '_blank');
+                           }}
+                           className="flex-1 py-2 bg-gradient-to-r from-neon-purple/20 to-purple-500/20 hover:from-neon-purple/40 hover:to-purple-500/40 text-white rounded-lg flex items-center justify-center gap-2 text-xs font-medium transition-all border border-neon-purple/20"
+                        >
+                           <Download className="w-3.5 h-3.5" /> Baixar
+                        </button>
+                      </div>
                       <button 
                          onClick={() => handleDelete(project.id)}
-                         className="p-2 bg-dark-lighter border border-white/10 hover:border-red-500/50 hover:bg-red-500/10 text-gray-400 hover:text-red-400 rounded-lg transition-all"
-                         title="Excluir Projeto"
+                         className="w-full py-1.5 bg-dark-lighter border border-white/5 hover:border-red-500/50 hover:bg-red-500/10 text-gray-500 hover:text-red-400 rounded-lg transition-all flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest font-bold"
+                         title="Remover da lista local"
                       >
-                         <Trash2 className="w-4 h-4" />
+                         <Trash2 className="w-3 h-3" /> Remover da Lista
                       </button>
                     </div>
                   </div>

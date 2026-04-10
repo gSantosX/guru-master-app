@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap, Box, Copy, Check, Palette, CloudMoon, Target, Maximize, MousePointer2, Globe, Terminal, AlertTriangle } from 'lucide-react';
+import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap, Box, Copy, Check, Palette, CloudMoon, Target, Maximize, MousePointer2, Globe, Terminal, AlertTriangle, Loader2 } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -9,18 +9,32 @@ import { callGemini, callGPT } from '../utils/aiUtils';
 // Helper: use GPT to build a detailed visual prompt for the cover
 async function buildCoverPromptWithGPT(title, apiKey, prefs = {}) {
     const { includeText, colorStyle, distance } = prefs;
-    const instruction = `You are an expert YouTube thumbnail art director. 
-Given the video title: "${title}"
-Generate a detailed, vivid image generation prompt (in English) for a professional YouTube thumbnail.
+    const instruction = `You are an ELITE YouTube Thumbnail Art Director with deep knowledge of CTR psychology, viral visual design, and platform algorithms.
 
-User Preferences:
-- Include Text: ${includeText ? `YES (Detect the language of "${title}" and add the text overlay in that SAME language)` : 'NO'}
-- Color Style: ${colorStyle === 'bw' ? 'Black and White / Grisaille' : colorStyle === 'selective' ? 'Selective Color (Main objects in color, background muted/classic)' : 'Vibrant Colors'}
-- Shot Type: ${distance === 'wide' ? 'Wide Cinema Shot / Far' : 'Close-Up / Focused'}
+VIDEO TITLE: "${title}"
 
-The prompt must describe: main subject, background, lighting, colors, mood, composition, style.
-Example style: "cinematic wide shot of [subject], dramatic lighting, vibrant colors, ..."
-Return ONLY the raw image prompt, no explanations, no quotes, no markdown.`;
+MISSION: Create a hyper-detailed, production-ready image generation prompt for a YouTube thumbnail that achieves maximum CTR.
+
+USER PREFERENCES:
+- Text Overlay: ${includeText ? `YES — detect the language of "${title}" and add punchy overlay text in that SAME language. Text must be large, bold, and placed for maximum visual hierarchy.` : 'NO text overlay — pure visual storytelling only'}
+- Color Treatment: ${colorStyle === 'bw' ? 'MONOCHROME — high contrast black & white with deep shadows and bright highlights. Dramatic and cinematic.' : colorStyle === 'selective' ? 'COLOR POP — main subject in full vibrant color, background desaturated to near-black-and-white. Creates instant visual focus.' : 'CINEMATIC COLOR — rich, saturated, high-contrast color grading. Think blockbuster movie poster palette.'}
+- Shot Composition: ${distance === 'wide' ? 'WIDE EPIC SHOT — environmental storytelling. Subject small against vast backdrop. Creates scale and drama.' : 'EXTREME CLOSE-UP — tight on face or key detail. Maximum emotional impact and viewer connection.'}
+
+MANDATORY ELEMENTS IN THE PROMPT:
+1. SUBJECT: Describe the main subject with extreme specificity — age, expression, clothing detail, body language, emotional state
+2. FACIAL EXPRESSION: The expression is the most important CTR driver — describe it precisely (jaw slightly dropped, eyes wide with disbelief, intense focused stare, etc.)
+3. LIGHTING: Specify light source, direction, quality and color temperature (dramatic rim light, god rays, neon backlight, hard directional shadow)
+4. BACKGROUND: Specific, detailed environment — not just "office" but "dimly lit server room with blue neon rack lights"
+5. COMPOSITION: Where is the subject? Rule of thirds, leading lines, visual triangles
+6. MOOD/ATMOSPHERE: The emotional feeling the viewer should get in 0.5 seconds
+7. TECHNICAL SPECS: End with — "YouTube thumbnail, 16:9 aspect ratio, photorealistic, 8K, HDR, ultra-detailed"
+
+ANTI-GENERIC RULES:
+- NEVER describe a generic person — always specify distinctive visual characteristics
+- NEVER use vague lighting like "good lighting" — always specify the exact setup
+- NEVER use clichéd thumbnail tropes like "shocked face pointing at something" without adding unique specificity
+
+Return ONLY the raw image prompt in English. No explanation, no quotes, no markdown.`;
 
     return await callGPT(apiKey, instruction);
 }
@@ -28,18 +42,32 @@ Return ONLY the raw image prompt, no explanations, no quotes, no markdown.`;
 // Helper: use Gemini to build a detailed visual prompt for the cover (fallback)
 async function buildCoverPromptWithGemini(title, apiKey, prefs = {}) {
     const { includeText, colorStyle, distance } = prefs;
-    const instruction = `You are an expert YouTube thumbnail art director. 
-Given the video title: "${title}"
-Generate a detailed, vivid image generation prompt (in English) for a professional YouTube thumbnail.
+    const instruction = `You are an ELITE YouTube Thumbnail Art Director with deep knowledge of CTR psychology, viral visual design, and platform algorithms.
 
-User Preferences:
-- Include Text: ${includeText ? `YES (Detect the language of "${title}" and add the text overlay in that SAME language)` : 'NO'}
-- Color Style: ${colorStyle === 'bw' ? 'Black and White / Monochrome' : colorStyle === 'selective' ? 'Color Pop (Subject in color, background black and white)' : 'Cinematic Color Grading'}
-- Shot Type: ${distance === 'wide' ? 'Long Shot / Wide perspective' : 'Extreme Close-Up / Portrait style'}
+VIDEO TITLE: "${title}"
 
-The prompt must describe: main subject, background, lighting, colors, mood, composition, style.
-Example style: "cinematic wide shot of [subject], dramatic lighting, vibrant colors, ..."
-Return ONLY the raw image prompt, no explanations, no quotes, no markdown.`;
+MISSION: Create a hyper-detailed, production-ready image generation prompt for a YouTube thumbnail that achieves maximum CTR.
+
+USER PREFERENCES:
+- Text Overlay: ${includeText ? `YES — detect the language of "${title}" and add punchy overlay text in that SAME language. Text must be large, bold, and placed for maximum visual hierarchy.` : 'NO text overlay — pure visual storytelling only'}
+- Color Treatment: ${colorStyle === 'bw' ? 'MONOCHROME — high contrast black & white with deep shadows and bright highlights. Dramatic and cinematic.' : colorStyle === 'selective' ? 'COLOR POP — main subject in full vibrant color, background desaturated to near-black-and-white. Creates instant visual focus.' : 'CINEMATIC COLOR — rich, saturated, high-contrast color grading. Think blockbuster movie poster palette.'}
+- Shot Composition: ${distance === 'wide' ? 'WIDE EPIC SHOT — environmental storytelling. Subject small against vast backdrop. Creates scale and drama.' : 'EXTREME CLOSE-UP — tight on face or key detail. Maximum emotional impact and viewer connection.'}
+
+MANDATORY ELEMENTS IN THE PROMPT:
+1. SUBJECT: Describe the main subject with extreme specificity — age, expression, clothing detail, body language, emotional state
+2. FACIAL EXPRESSION: The expression is the most important CTR driver — describe it precisely (jaw slightly dropped, eyes wide with disbelief, intense focused stare, etc.)
+3. LIGHTING: Specify light source, direction, quality and color temperature (dramatic rim light, god rays, neon backlight, hard directional shadow)
+4. BACKGROUND: Specific, detailed environment — not just "office" but "dimly lit server room with blue neon rack lights"
+5. COMPOSITION: Where is the subject? Rule of thirds, leading lines, visual triangles
+6. MOOD/ATMOSPHERE: The emotional feeling the viewer should get in 0.5 seconds
+7. TECHNICAL SPECS: End with — "YouTube thumbnail, 16:9 aspect ratio, photorealistic, 8K, HDR, ultra-detailed"
+
+ANTI-GENERIC RULES:
+- NEVER describe a generic person — always specify distinctive visual characteristics
+- NEVER use vague lighting like "good lighting" — always specify the exact setup
+- NEVER use clichéd thumbnail tropes without adding unique visual specificity
+
+Return ONLY the raw image prompt in English. No explanation, no quotes, no markdown.`;
 
     return await callGemini(apiKey, instruction);
 }
@@ -58,6 +86,20 @@ export const VideoCoverTab = ({ isActive }) => {
     const [shockWords, setShockWords] = useState({ one: '', two: '', three: '' });
     const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
     const [copiedIndex, setCopiedIndex] = useState(null);
+    
+    // Description States
+    const [description, setDescription] = useState('');
+    const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+    const [withDisclaimer, setWithDisclaimer] = useState(false);
+    const [descCopied, setDescCopied] = useState(false);
+    const [lastSelectedTitle, setLastSelectedTitle] = useState('');
+    const [copiedSection, setCopiedSection] = useState(null);
+
+    const handleCopy = (text, section) => {
+        navigator.clipboard.writeText(text);
+        setCopiedSection(section);
+        setTimeout(() => setCopiedSection(null), 2000);
+    };
     
     const ENGINES = [
         { id: 'pollinations', name: 'Pollinations AI', icon: Zap, color: 'neon-cyan', desc: 'Geração rápida, ilimitada e gratuita.', focus: 'shadow-[0_0_20px_rgba(0,243,255,0.2)] border-neon-cyan bg-neon-cyan/5' },
@@ -80,6 +122,7 @@ export const VideoCoverTab = ({ isActive }) => {
 
     const handleSelectScript = (script) => {
         setSelectedScript(script);
+        setLastSelectedTitle(script.title);
         setTitles([
             { text: script.title, label: 'Titulo Original', isOriginal: true },
             { text: '', label: 'Carregando Oportunidades...', isOriginal: false },
@@ -88,6 +131,7 @@ export const VideoCoverTab = ({ isActive }) => {
         setShockWords({ one: '', two: '', three: '' });
         setCovers({});
         setCoverPrefs({});
+        setDescription('');
         generateTitleVariations(script.title);
     };
 
@@ -106,22 +150,58 @@ export const VideoCoverTab = ({ isActive }) => {
             const apiKey = configs?.gemini_key || localStorage.getItem('guru_gemini_key');
             if (!apiKey) throw new Error('Chave Gemini não configurada.');
 
-            const prompt = `Analise o título de vídeo original: "${originalTitle}".
-Crie 2 novas opções de títulos com altíssimo potencial de viralização no YouTube, na mesma língua do original.
-IMPORTANTE: Os títulos devem ter no MÁXIMO 100 caracteres cada. Seja direto e impactante.
-As variações NÃO devem ser iguais entre si. Use gatilhos mentais diferentes (ex: uma focada em Curiosidade extrema, e a outra focada em Uma Promessa Irresistível/Urgência).
-Identifique qual das duas tem o MAIOR potencial viral para se tornar a principal.
+            const prompt = `Você é um ESPECIALISTA ELITE em CTR, Copywriting e Algoritmos do YouTube.
 
-Além disso, identifique 3 "Palavras Choque" (palavras curtas e impactantes para usar na CAPA/THUMBNAIL):
-1. Uma única palavra (ex: "REVELADO", "CHOQUE", "ERROU")
-2. Duas palavras (ex: "SÓ ISSO?", "POR QUE?")
-3. Três palavras (ex: "TOTALMENTE DE GRAÇA", "VAI ACABAR HOJE")
+TÍTULO ORIGINAL DO VÍDEO: "${originalTitle}"
 
-Retorne ESTRITAMENTE um objeto JSON exatamente como este:
+MISSÃO: Criar 2 variações de título com altíssimo potencial de viralização, MAIS 3 Palavras Choque para a thumbnail.
+
+---
+## ANATOMIA DE TÍTULO VIRAL (aplique em AMBAS as variações)
+Todo título deve ter simultaneamente:
+1. ESPECIFICIDADE: Número, nome, dado concreto ou contexto preciso (nunca genérico)
+2. LACUNA COGNITIVA: Entrega informação suficiente para criar curiosidade, mas não resolve — o cérebro exige clicar
+3. EMOÇÃO PRIMÁRIA: Escolha UMA — medo, curiosidade, esperança, indignação ou surpresa
+4. COMPRIMENTO: Entre 40 e 80 caracteres (ideal para YouTube feed e Shorts)
+5. PALAVRA DE ABERTURA DE IMPACTO: A primeira palavra deve ser a mais forte da frase
+
+---
+## VARIAÇÃO 1 — GATILHO: CURIOSIDADE EXTREMA
+Estrutura obrigatória: [Revelação inesperada] + [Contexto específico] + [Implicação pessoal implícita]
+- Use a lacuna cognitiva máxima — o ouvinte deve pensar "isso não pode ser verdade"
+- Evite explicar demais — o mistério é o gancho
+- A variação NÃO deve repetir palavras do título original
+- is_best: false
+
+## VARIAÇÃO 2 — GATILHO: PROMESSA IRRESISTÍVEL + URGÊNCIA
+Estrutura obrigatória: [Resultado específico e concreto] + [Tempo ou condição] + [Elemento de exclusividade ou urgência]
+- Use números quando possível (aumentam CTR em até 36%)
+- A promessa deve parecer alcançável mas surpreendente
+- A variação NÃO deve repetir palavras da Variação 1
+- is_best: true (esta é a mais viral)
+
+---
+## PALAVRAS CHOQUE PARA THUMBNAIL
+Palavras de impacto visual máximo para usar em sobreposição de texto na capa:
+- "one": UMA palavra só — de impacto emocional brutal (máx 8 letras). Exemplos de referência: REVELADO, ERROU, JAMAIS, NUNCA, CAIU
+- "two": DUAS palavras — cria contradição ou promessa (máx 12 letras cada). Exemplos: SÓ ISSO?, POR QUÊ?, FOI TARDE
+- "three": TRÊS palavras — frase de impacto completa. Exemplos: VAI MUDAR TUDO, NÃO ERA ASSIM, SABIA DESDE SEMPRE
+IMPORTANTE: Use o MESMO IDIOMA do título original. Letras maiúsculas.
+
+---
+## BLACKLIST — NÃO USE
+❌ Palavras genéricas: "incrível", "surpreendente", "chocante" sem substância
+❌ Estruturas batidas: "A verdade que ninguém conta", "O segredo que escondem"
+❌ Títulos com mais de 85 caracteres
+❌ Títulos que serviriam para qualquer vídeo
+
+---
+## FORMATO DE RETORNO
+Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem explicações):
 {
   "variations": [
-    { "text": "...", "label": "Variação ...", "is_best": false },
-    { "text": "...", "label": "Mais Viral ...", "is_best": true }
+    { "text": "...", "label": "Variação de Curiosidade", "is_best": false },
+    { "text": "...", "label": "Promessa Viral ⭐", "is_best": true }
   ],
   "shockWords": {
     "one": "...",
@@ -169,6 +249,64 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este:
             ]);
         } finally {
             setIsGeneratingTitles(false);
+        }
+    };
+
+    const handleGenerateDescription = async () => {
+        if (!selectedScript || !lastSelectedTitle) return;
+        setIsGeneratingDescription(true);
+        try {
+            const apiKey = configs?.gemini_key || localStorage.getItem('guru_gemini_key');
+            if (!apiKey) throw new Error('Chave Gemini não configurada.');
+
+            const prompt = `Você é um ESPECIALISTA ELITE em SEO para YouTube, Copywriting e Storytelling Digital.
+
+CONTEXTO:
+- Título do Vídeo: "${lastSelectedTitle}"
+- Trecho do Roteiro: """${selectedScript.content?.substring(0, 1500) || 'Use apenas o título como base'}"""
+
+---
+## ESTRUTURA OBRIGATÓRIA DA DESCRIÇÃO
+A descrição deve seguir exatamente esta arquitetura em ordem:
+
+**BLOCO 1 — GANCHO INICIAL (primeiras 2 linhas)**
+As primeiras 2 linhas aparecem no feed ANTES do "Ver mais". São o único texto que o algoritmo e o usuário veem primeiro. Devem:
+- Criar curiosidade imediata ou fazer uma afirmação impactante
+- Conter a palavra-chave principal do vídeo naturalmente
+- NUNCA começar com "Neste vídeo" ou "Olá pessoal"
+
+**BLOCO 2 — SOBRE O VÍDEO (3-4 linhas)**
+- Descreva o que o espectador vai descobrir/aprender/sentir
+- Use bullet points implícitos com linguagem dinâmica
+- Inclua 2-3 variações semânticas da palavra-chave principal
+
+**BLOCO 3 — CTA (1-2 linhas)**
+- Peça uma ação específica (se inscrever, comentar com uma palavra, ativar notificações)
+- A CTA deve surgir naturalmente da narrativa, não como obrigação
+- NUNCA use: "não se esqueça de curtir", "ativa o sininho"
+
+**BLOCO 4 — HASHTAGS (última linha)**
+- Exatamente 5 hashtags estratégicas
+- Mix: 1 hashtag ampla (nicho), 2 hashtags médias (subtópico), 2 hashtags específicas (tema do vídeo)
+- Format: #HashtagSemEspaço
+
+---
+## REQUISITOS TÉCNICOS
+- IDIOMA: Obrigatoriamente o MESMO IDIOMA do título "${lastSelectedTitle}"
+- COMPRIMENTO: Entre 600 e 800 caracteres TOTAIS (incluindo hashtags)
+- DISCLAIMER: ${withDisclaimer ? 'OBRIGATÓRIO: Adicione antes das hashtags: "⚠️ Este vídeo é uma obra de ficção/entretenimento. Qualquer semelhança com pessoas ou eventos reais é mera coincidência."' : 'NÃO inclua avisos de ficção.'}
+- COERÊNCIA: Seja fiel ao título e ao espírito do roteiro
+- ZERO marketing genérico: Cada frase deve ser específica para ESTE vídeo
+
+Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem aspas, sem markdown.`;
+
+            const result = await callGemini(apiKey, prompt);
+            setDescription(result.replace(/```markdown/g, '').replace(/```/g, '').trim());
+        } catch (error) {
+            console.error('Erro ao gerar descrição:', error);
+            alert("Falha ao gerar descrição: " + error.message);
+        } finally {
+            setIsGeneratingDescription(false);
         }
     };
 
@@ -372,14 +510,15 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este:
                                     <div className="flex justify-between items-center relative z-10">
                                         <span className={`text-[9px] font-black uppercase tracking-[0.2em] text-${card.color}`}>{card.title}</span>
                                         <button 
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(card.text);
-                                                // Optional: alert or toast
-                                            }}
-                                            className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all border border-white/5"
+                                            onClick={() => handleCopy(card.text, `shock-${card.id}`)}
+                                            className={`p-2 rounded-lg border transition-all active:scale-95
+                                                ${copiedSection === `shock-${card.id}` 
+                                                    ? 'bg-green-500/20 border-green-500 text-green-400' 
+                                                    : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/30'}
+                                            `}
                                             title="Copiar"
                                         >
-                                            <Download className="w-3.5 h-3.5" />
+                                            {copiedSection === `shock-${card.id}` ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                                         </button>
                                     </div>
                                     <div className="relative z-10">
@@ -440,20 +579,25 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este:
                                     {isGeneratingTitles && !isOriginal && <LoadingSpinner size="xs" message="" />}
                                 </div>
                                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                    <h3 className={`text-xl md:text-2xl font-black leading-[1.2] transition-colors max-w-4xl ${isBest ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(234,179,8,0.2)]' : 'text-white'}`}>
+                                    <h3 
+                                        onClick={() => setLastSelectedTitle(titleText)}
+                                        className={`text-xl md:text-2xl font-black leading-[1.2] transition-colors max-w-4xl cursor-pointer hover:opacity-80
+                                            ${lastSelectedTitle === titleText ? 'bg-white/10 p-2 rounded-lg' : ''}
+                                            ${isBest ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(234,179,8,0.2)]' : 'text-white'}
+                                        `}
+                                    >
                                         {titleText || (isGeneratingTitles ? 'Projetando o melhor ângulo...' : 'Aguardando...')}
                                     </h3>
                                     <button 
-                                        onClick={() => {
-                                            if (!titleText) return;
-                                            navigator.clipboard.writeText(titleText);
-                                            setCopiedIndex(idx);
-                                            setTimeout(() => setCopiedIndex(null), 2000);
-                                        }}
-                                        className="shrink-0 h-10 w-10 lg:w-36 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-all border border-white/10 flex items-center justify-center gap-2 group/copy active:scale-95"
+                                        onClick={() => handleCopy(titleText, `title-${idx}`)}
+                                        className={`shrink-0 h-11 w-11 lg:w-40 rounded-xl border transition-all flex items-center justify-center gap-2 group/copy active:scale-95
+                                            ${copiedSection === `title-${idx}` 
+                                                ? 'bg-green-500/20 border-green-500 text-green-400' 
+                                                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/30'}
+                                        `}
                                     >
-                                        {copiedIndex === idx ? <Check className="w-4 h-4 text-neon-cyan" /> : <Copy className="w-4 h-4" />}
-                                        <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">{copiedIndex === idx ? 'Copiado!' : 'Copiar Título'}</span>
+                                        {copiedSection === `title-${idx}` ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                        <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">{copiedSection === `title-${idx}` ? 'Copiado!' : 'Copiar Título'}</span>
                                     </button>
                                 </div>
                             </div>
@@ -571,13 +715,15 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este:
                                                 </div>
                                                 
                                                 <button 
-                                                    onClick={() => { 
-                                                        navigator.clipboard.writeText(covers[idx].prompt);
-                                                        alert("Prompt copiado!");
-                                                    }}
-                                                    className="px-4 py-2 bg-neon-cyan text-dark rounded-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2 hover:brightness-110 active:scale-95"
+                                                    onClick={() => handleCopy(covers[idx].prompt, `prompt-${idx}`)}
+                                                    className={`px-4 py-2 rounded-lg border transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2 active:scale-95
+                                                        ${copiedSection === `prompt-${idx}` 
+                                                            ? 'bg-green-500/20 border-green-500 text-green-400' 
+                                                            : 'bg-neon-cyan/10 border-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/20 hover:border-neon-cyan/40'}
+                                                    `}
                                                 >
-                                                    <Zap className="w-3 h-3" /> Copiar Prompt
+                                                    {copiedSection === `prompt-${idx}` ? <Check className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
+                                                    {copiedSection === `prompt-${idx}` ? 'Copiado!' : 'Copiar Prompt'}
                                                 </button>
                                             </div>
 
@@ -605,6 +751,98 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este:
                     );
                 })}
             </div>
+
+            {/* Description Optimizer Section */}
+            <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-12 glass-card p-8 border border-neon-cyan/20 relative shrink-0 min-h-[140px]"
+            >
+                <div className="absolute top-0 right-0 w-64 h-64 bg-neon-cyan/5 rounded-full blur-[80px] pointer-events-none" />
+                
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 relative z-10">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <Sparkles className="w-6 h-6 text-neon-cyan" />
+                            <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter italic">Otimizador de Descrição Apex</h3>
+                        </div>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-l-2 border-neon-cyan pl-3">
+                            Gerando para: <span className="text-neon-cyan">{lastSelectedTitle || 'Selecione um título acima'}</span>
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3">
+                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest cursor-pointer" htmlFor="disclaimer-toggle">
+                                Aviso de Ficção
+                            </label>
+                            <button 
+                                id="disclaimer-toggle"
+                                onClick={() => setWithDisclaimer(!withDisclaimer)}
+                                className={`w-12 h-6 rounded-full p-1 transition-all flex items-center ${withDisclaimer ? 'bg-neon-cyan' : 'bg-white/10'}`}
+                            >
+                                <div className={`w-4 h-4 bg-white rounded-full transition-all ${withDisclaimer ? 'translate-x-6' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+
+                        <button 
+                            onClick={handleGenerateDescription}
+                            disabled={isGeneratingDescription || !lastSelectedTitle}
+                            className="px-8 py-3 bg-gradient-to-r from-neon-cyan to-blue-600 text-dark font-black text-[10px] uppercase tracking-[0.2em] rounded-xl shadow-[0_0_20px_rgba(0,243,255,0.3)] hover:shadow-[0_0_30px_rgba(0,243,255,0.5)] transition-all active:scale-95 disabled:opacity-30 disabled:pointer-events-none flex items-center gap-2"
+                        >
+                            {isGeneratingDescription ? <Loader2 className="w-4 h-4 animate-spin text-dark" /> : <RefreshCw className="w-4 h-4 text-dark" />}
+                            Gerar Descrição
+                        </button>
+                    </div>
+                </div>
+
+                <AnimatePresence mode="wait">
+                    {description ? (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="relative group/desc"
+                        >
+                            <div className="bg-dark/60 border border-white/5 rounded-2xl p-8 font-medium text-gray-300 leading-relaxed text-sm md:text-base whitespace-pre-line shadow-inner">
+                                {description}
+                            </div>
+                            
+                            <div className="absolute top-4 right-4 group-hover/desc:opacity-100 transition-opacity">
+                                <button 
+                                    onClick={() => handleCopy(description, 'final-desc')}
+                                    className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all border shadow-lg active:scale-95
+                                        ${copiedSection === 'final-desc' 
+                                            ? 'bg-green-500/20 border-green-500 text-green-400' 
+                                            : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-neon-cyan'}
+                                    `}
+                                >
+                                    {copiedSection === 'final-desc' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                    {copiedSection === 'final-desc' ? 'Copiado!' : 'Copiar Descrição'}
+                                </button>
+                            </div>
+
+                            <div className="mt-4 flex justify-between items-center px-2">
+                                <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">
+                                    Contagem: <span className={description.length < 600 || description.length > 800 ? 'text-red-500' : 'text-neon-cyan'}>{description.length}</span> caracteres
+                                </span>
+                                <div className="text-[9px] font-black text-gray-600 uppercase tracking-widest flex gap-4">
+                                    <span>Resumo ✓</span>
+                                    <span>Sobre ✓</span>
+                                    <span>CTA ✓</span>
+                                    <span>5 Hashtags ✓</span>
+                                </div>
+                            </div>
+                        </motion.div>
+                    ) : (
+                        <div className="h-32 flex items-center justify-center border border-dashed border-white/5 rounded-2xl opacity-30">
+                            <p className="text-xs font-black uppercase tracking-widest text-gray-400 italic">
+                                {lastSelectedTitle ? 'Pronto para otimizar. Clique em "Gerar".' : 'Aguardando seleção de título acima...'}
+                            </p>
+                        </div>
+                    )}
+                </AnimatePresence>
+            </motion.div>
 
             {/* Info Box */}
             <motion.div
