@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Video, Settings2, Play, Music, Mic, Layers, Image as ImageIcon, CheckCircle, Captions, RefreshCw, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Video, Settings2, Play, Music, Mic, Layers, Image as ImageIcon, CheckCircle, Captions, RefreshCw, Trash2, Wifi, WifiOff, RotateCcw, AlertTriangle } from 'lucide-react';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { ActiveRenderMonitor } from '../components/ActiveRenderMonitor';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -20,6 +20,50 @@ export const VideoTab = () => {
   const [formKey, setFormKey] = useState(Date.now()); 
   const [selectedScriptId, setSelectedScriptId] = useState('');
   const [availableScripts, setAvailableScripts] = useState([]);
+
+  // ── Backend health state ────────────────────────────────────
+  const [backendStatus, setBackendStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  const checkBackend = useCallback(async () => {
+    try {
+      const res = await fetch(resolveApiUrl('/api/check'), { signal: AbortSignal.timeout(4000) });
+      setBackendStatus(res.ok ? 'online' : 'offline');
+    } catch {
+      setBackendStatus('offline');
+    }
+  }, []);
+
+  // Poll backend health every 12 seconds
+  useEffect(() => {
+    checkBackend();
+    const id = setInterval(checkBackend, 12000);
+    return () => clearInterval(id);
+  }, [checkBackend]);
+
+  // Listen for Electron IPC backend-status events
+  useEffect(() => {
+    if (window.electronAPI?.onBackendStatus) {
+      window.electronAPI.onBackendStatus(({ online }) => {
+        setBackendStatus(online ? 'online' : 'offline');
+      });
+      return () => window.electronAPI.removeAllListeners?.('backend-status');
+    }
+  }, []);
+
+  const handleRestartBackend = async () => {
+    setIsRestarting(true);
+    setBackendStatus('checking');
+    try {
+      if (window.electronAPI?.restartBackend) {
+        await window.electronAPI.restartBackend();
+      }
+      await checkBackend();
+    } finally {
+      setIsRestarting(false);
+    }
+  };
+
 
   // Load scripts from localStorage on mount
   useEffect(() => {
@@ -206,6 +250,9 @@ export const VideoTab = () => {
      setFormKey(Date.now());
   }
 
+  const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+  const GITHUB_RELEASE_URL = 'https://github.com/gSantosX/guru-master-app/releases/latest';
+
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto md:overflow-hidden custom-scrollbar">
       <header className="mb-6 md:mb-8 shrink-0">
@@ -215,6 +262,63 @@ export const VideoTab = () => {
         </h2>
         <p className="text-sm md:text-base text-gray-400 mt-2">Combine seu roteiro, voz e imagens em uma obra-prima final usando motor FFmpeg.</p>
       </header>
+
+      {/* ── Web Warning Banner ────────────────────────────────── */}
+      {!isElectron && (
+        <div className="shrink-0 mb-6 p-4 rounded-xl bg-gradient-to-r from-neon-purple/20 to-neon-cyan/20 border border-neon-cyan/30 shadow-[0_0_30px_rgba(0,243,255,0.1)] flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse">
+           <div className="flex items-center gap-4 text-center md:text-left">
+              <div className="w-12 h-12 rounded-full bg-neon-cyan/20 flex items-center justify-center shrink-0">
+                 <AlertTriangle className="w-6 h-6 text-neon-cyan" />
+              </div>
+              <div>
+                 <h4 className="font-bold text-white text-sm md:text-base uppercase tracking-tight">Motor de Renderização Indisponível no Browser</h4>
+                 <p className="text-xs text-gray-400 mt-1 max-w-md">Para garantir a máxima performance e privacidade, o processamento de vídeos pesados (FFmpeg) ocorre localmente no seu PC.</p>
+              </div>
+           </div>
+           <a 
+              href={GITHUB_RELEASE_URL}
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="px-6 py-2.5 bg-neon-cyan text-black font-black text-xs uppercase tracking-widest rounded-lg hover:shadow-[0_0_20px_#00f3ff] transition-all whitespace-nowrap"
+           >
+              Baixar App Desktop
+           </a>
+        </div>
+      )}
+
+      {/* ── Backend Status Banner ─────────────────────────────── */}
+      <div className={`shrink-0 mb-4 flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+        backendStatus === 'online'   ? 'bg-green-500/8 border-green-500/25 text-green-400' :
+        backendStatus === 'offline'  ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+                                       'bg-white/5 border-white/10 text-gray-500'
+      }`}>
+        <div className="flex items-center gap-2.5">
+          {backendStatus === 'online'  && <Wifi className="w-3.5 h-3.5 shrink-0" />}
+          {backendStatus === 'offline' && <WifiOff className="w-3.5 h-3.5 shrink-0" />}
+          {backendStatus === 'checking'&& <LoadingSpinner size="xs" message="" />}
+          <span className="uppercase tracking-widest text-[10px]">
+            {backendStatus === 'online'   && 'Motor de Renderização Online — FFmpeg pronto'}
+            {backendStatus === 'offline'  && 'Motor Offline — Renderização indisponível'}
+            {backendStatus === 'checking' && 'Verificando motor...'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {backendStatus === 'offline' && (
+            <div className="flex items-center gap-1.5 text-[9px] text-red-400/70 uppercase tracking-wider">
+              <AlertTriangle className="w-3 h-3" />
+              Verifique o antivírus
+            </div>
+          )}
+          <button
+            onClick={handleRestartBackend}
+            disabled={isRestarting || backendStatus === 'checking'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-all disabled:opacity-40 text-[10px] uppercase tracking-widest"
+          >
+            <RotateCcw className={`w-3 h-3 ${isRestarting ? 'animate-spin' : ''}`} />
+            {isRestarting ? 'Reiniciando...' : 'Reiniciar Motor'}
+          </button>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 flex-1 pb-10 md:pb-0 overflow-y-auto custom-scrollbar">
         

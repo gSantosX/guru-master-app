@@ -16,7 +16,7 @@ const ChannelMiningTab = React.lazy(() => import('./tabs/ChannelMiningTab').then
 const NicheIdentifierTab = React.lazy(() => import('./tabs/NicheIdentifierTab').then(m => ({ default: m.NicheIdentifierTab })));
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { SystemStatusProvider, useSystemStatus } from './contexts/SystemStatusContext';
-import { Cpu, Zap, Shield, Wand2 } from 'lucide-react';
+import { Cpu, Zap, Shield, Wand2, AlertTriangle, Check } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { PersistenceProvider } from './contexts/PersistenceContext';
@@ -41,7 +41,7 @@ const tabComponents = {
 };
 
 function AppContent() {
-  const { isInitialized } = useSystemStatus();
+  const { isInitialized, toast } = useSystemStatus();
   const { isAuthenticated, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('create-script');
   const [theme, setTheme] = useState(localStorage.getItem('guru_theme') || 'neon');
@@ -49,6 +49,21 @@ function AppContent() {
   const [zoom, setZoom] = useState(Number(localStorage.getItem('guru_app_zoom')) || 1);
   const [fontSize, setFontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);
   const [language, setLanguage] = useState(localStorage.getItem('guru_app_lang') || 'Português (BR)');
+  const [updateStatus, setUpdateStatus] = useState({ available: false, progress: 0, downloaded: false, version: '' });
+
+  useEffect(() => {
+    if (window.electronAPI) {
+      window.electronAPI.onUpdateAvailable((version) => {
+        setUpdateStatus(prev => ({ ...prev, available: true, version }));
+      });
+      window.electronAPI.onUpdateProgress((percent) => {
+        setUpdateStatus(prev => ({ ...prev, progress: percent }));
+      });
+      window.electronAPI.onUpdateDownloaded(() => {
+        setUpdateStatus(prev => ({ ...prev, available: false, downloaded: true }));
+      });
+    }
+  }, []);
 
   useEffect(() => {
     document.documentElement.style.fontSize = `${fontSize}px`;
@@ -113,7 +128,7 @@ function AppContent() {
             >
               <div className="relative mb-8">
                 <div className="w-32 h-32 rounded-full p-1 bg-gradient-to-br from-neon-purple via-neon-cyan to-blue-600 shadow-[0_0_40px_rgba(0,243,255,0.3)] flex items-center justify-center overflow-hidden border-2 border-white/20">
-                  <img src="/logo.jpg" alt="Guru Master Logo" className="w-full h-full object-cover rounded-full" />
+                  <img src="logo.jpg" alt="Guru Master Logo" className="w-full h-full object-cover rounded-full" />
                 </div>
               </div>
               <div className="flex gap-6 text-[10px] font-mono text-gray-500 uppercase tracking-[0.3em] font-black">
@@ -130,9 +145,8 @@ function AppContent() {
               </motion.p>
             </motion.div>
           )}
-
           {!isAuthenticated && isInitialized && (
-            <Login />
+             <Login isAppContext={true} /> 
           )}
         </AnimatePresence>
 
@@ -143,8 +157,57 @@ function AppContent() {
           <>
             <div className="premium-grain" />
             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-            
             <main className="flex-1 relative z-10 overflow-hidden bg-transparent">
+              {/* Notificação de Atualização Elite */}
+              <AnimatePresence>
+                {updateStatus.available && (
+                  <motion.div 
+                    initial={{ y: -100, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -100, opacity: 0 }}
+                    className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-dark/80 backdrop-blur-xl border border-neon-cyan/30 rounded-2xl px-6 py-4 flex items-center gap-4 shadow-[0_0_30px_rgba(0,243,255,0.15)]"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-neon-cyan/10 flex items-center justify-center animate-pulse">
+                      <Zap className="w-5 h-5 text-neon-cyan" />
+                    </div>
+                    <div>
+                      <h4 className="text-white text-xs font-black uppercase tracking-widest">Melhorando o App...</h4>
+                      <p className="text-gray-400 text-[10px] mt-0.5">Baixando versão {updateStatus.version}: {Math.round(updateStatus.progress)}%</p>
+                    </div>
+                    <div className="w-24 h-1.5 bg-white/5 rounded-full overflow-hidden ml-4">
+                      <motion.div 
+                        className="h-full bg-neon-cyan shadow-[0_0_10px_#00f3ff]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${updateStatus.progress}%` }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Toast Notification System */}
+              <AnimatePresence>
+                {toast.visible && (
+                  <motion.div 
+                    initial={{ y: -100, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -100, opacity: 0 }}
+                    className={`fixed top-6 left-1/2 -translate-x-1/2 z-[110] backdrop-blur-xl border rounded-2xl px-6 py-3 flex items-center gap-3 shadow-2xl transition-colors
+                      ${toast.type === 'success' ? 'bg-green-500/80 border-green-500/50 text-white' : 
+                        toast.type === 'warning' ? 'bg-yellow-600/80 border-yellow-500/50 text-white' : 
+                        'bg-neon-cyan/80 border-neon-cyan/50 text-dark'}
+                    `}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                      {toast.type === 'success' ? <Check className="w-4 h-4" /> : 
+                       toast.type === 'warning' ? <AlertTriangle className="w-4 h-4" /> : 
+                       <Zap className="w-4 h-4" />}
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-widest">{toast.message}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
@@ -154,11 +217,11 @@ function AppContent() {
                   transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                   className="absolute inset-0 p-6 md:p-10 lg:p-12 overflow-y-auto custom-scrollbar"
                 >
-                  <React.Suspense fallback={<div className="flex items-center justify-center h-full w-full"><div className="w-8 h-8 rounded-full border-b-2 border-neon-cyan animate-spin"></div></div>}>
-                    {React.createElement(tabComponents[activeTab], { 
-                      setActiveTab, 
-                      isActive: true 
-                    })}
+                  <React.Suspense fallback={<div className="flex h-full items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-neon-cyan border-t-transparent animate-spin" /></div>}>
+                     {React.createElement(tabComponents[activeTab], { 
+                       setActiveTab, 
+                       isActive: true 
+                     })}
                   </React.Suspense>
                 </motion.div>
               </AnimatePresence>

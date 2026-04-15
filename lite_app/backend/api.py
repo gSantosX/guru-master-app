@@ -54,9 +54,8 @@ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 import ssl
 ctx = ssl._create_unverified_context()
 
-# Electron injects these env vars pointing to bundled binaries
-FFMPEG_CMD  = os.environ.get('GURU_FFMPEG_PATH',  'ffmpeg')
-FFPROBE_CMD = os.environ.get('GURU_FFPROBE_PATH', 'ffprobe')
+FFMPEG_CMD = 'ffmpeg'
+FFPROBE_CMD = 'ffprobe'
 
 WHISK_DOWNLOADS = os.path.join(os.path.expanduser("~"), "Whisk Downloads")
 
@@ -139,9 +138,6 @@ def load_config():
         "ffmpeg_path": "ffmpeg",
         "ffprobe_path": "ffprobe",
         "active_ai": "Gemini",
-        "gemini_active_idx": 0,
-        "gpt_active_idx": 0,
-        "grok_active_idx": 0,
         "theme": "neon",
         "reduce_motion": False,
         "whisk_downloads_path": os.path.join(os.path.expanduser("~"), "Whisk Downloads")
@@ -154,9 +150,8 @@ def load_config():
         except Exception as e:
             logger.error(f"Error loading config: {e}")
     
-    # Env vars from Electron always take priority over config.json
-    FFMPEG_CMD  = os.environ.get('GURU_FFMPEG_PATH',  config.get("ffmpeg_path",  "ffmpeg"))
-    FFPROBE_CMD = os.environ.get('GURU_FFPROBE_PATH', config.get("ffprobe_path", "ffprobe"))
+    FFMPEG_CMD = config.get("ffmpeg_path", "ffmpeg")
+    FFPROBE_CMD = config.get("ffprobe_path", "ffprobe")
     return config
 
 def save_config(config):
@@ -367,48 +362,43 @@ def check_system():
              youtube_error = str(e)
              youtube_status = False
 
-     # 2. Gemini Check (Real request - check all keys)
-    gemini_key_raw = config.get('gemini_key', '')
-    gemini_keys = [k.strip() for k in gemini_key_raw.split(',') if k.strip()]
+    # 2. Gemini Check (Real request)
+    gemini_key = config.get('gemini_key')
     gemini_status = "offline"
-    
-    if gemini_keys:
-        for current_key in gemini_keys:
+    if gemini_key and len(gemini_key) > 5:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}"
             try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models?key={current_key}"
-                with urlopen(url, timeout=4, context=ctx) as response:
-                    if response.status == 200: 
-                        gemini_status = "online"
-                        break # Found a working one
+                with urlopen(url, timeout=5, context=ctx) as response:
+                    if response.status == 200: gemini_status = "online"
             except HTTPError as e:
-                error_body = ""
-                try: error_body = e.read().decode().lower()
-                except: pass
-                # Detect REAL quota errors vs other 403 errors (like disabled API)
-                if e.code == 429 or (e.code == 403 and ('quota' in error_body and 'exhausted' in error_body)):
-                    if gemini_status == "offline": gemini_status = "quota"
-                # Continue loop to see if there's an 'online' one
-            except Exception as e:
-                logger.error(f"Gemini Key Test Fail: {e}")
-                continue
+                if e.code == 429:
+                    gemini_status = "quota"
+                elif e.code == 404:
+                    # Fallback to v1
+                    v1_url = f"https://generativelanguage.googleapis.com/v1/models?key={gemini_key}"
+                    with urlopen(v1_url, timeout=5, context=ctx) as v1_res:
+                        if v1_res.status == 200: gemini_status = "online"
+                else:
+                    gemini_status = "offline"
+        except Exception as e:
+            logger.error(f"Gemini Check Fail: {e}")
+            gemini_status = "offline"
 
     # 3. OpenAI Check (Real request)
-    openai_key_raw = config.get('gpt_key', '')
-    openai_keys = [k.strip() for k in openai_key_raw.split(',') if k.strip()]
+    openai_key = config.get('gpt_key')
     openai_status = False
-    for k in openai_keys:
-        if len(k) < 5: continue
+    if openai_key and len(openai_key) > 5:
         try:
-            req = Request("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {k}"})
-            with urlopen(req, timeout=4, context=ctx) as response:
-                if response.status == 200: 
-                    openai_status = True
-                    break
-        except: continue
+            req = Request("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {openai_key}"})
+            with urlopen(req, timeout=5, context=ctx) as response:
+                if response.status == 200: openai_status = True
+        except Exception as e:
+            logger.error(f"OpenAI Check Fail: {e}")
+            openai_status = False
 
     # 4. Grok Check (Real request)
-    grok_key_raw = config.get('grok_key', '')
-    grok_key = grok_key_raw.split(',')[0].strip() if grok_key_raw else ""
+    grok_key = config.get('grok_key')
     grok_status = False
     if grok_key and len(grok_key) > 5:
         try:
@@ -696,63 +686,6 @@ def whisk_settings_api():
         whisk_settings.update(request.json)
         return jsonify(whisk_settings)
     return jsonify(whisk_settings)
-
-@app.route('/api/check/bulk', methods=['POST'])
-def check_bulk_keys():
-    data = request.json
-    provider = data.get('provider', '').lower()
-    keys = data.get('keys', [])
-    results = []
-    
-    logger.info(f"Bulk checking {len(keys)} keys for {provider}")
-    
-    for key in keys:
-        if not key or len(key) < 5:
-            results.append('offline')
-            continue
-            
-        status = 'offline'
-        error_msg = None
-        try:
-            if provider == 'gemini':
-                url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
-                try:
-                    with urlopen(url, timeout=5, context=ctx) as response:
-                        if response.status == 200: status = 'online'
-                except HTTPError as e:
-                    error_body = ""
-                    try: error_body = e.read().decode().lower()
-                    except: pass
-                    # Be strict: Only 429 or 403 with "quota exhausted" is quota
-                    if e.code == 429 or (e.code == 403 and ('quota' in error_body and 'exhausted' in error_body)):
-                        status = 'quota'
-                    else:
-                        # Otherwise it's probably auth/disabled/invalid key
-                        status = f'offline ({e.code})'
-                except Exception as e:
-                    status = f'offline (err)'
-                    error_msg = str(e)
-            
-            elif provider == 'openai':
-                req = Request("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {key}"})
-                try:
-                    with urlopen(req, timeout=5, context=ctx) as response:
-                        if response.status == 200: status = 'online'
-                except HTTPError as e:
-                    if e.code == 429: status = 'quota'
-                    else: status = f'offline ({e.code})'
-                except Exception as e:
-                    status = 'offline (err)'
-            
-            else:
-                status = 'online'
-                
-        except Exception:
-            status = 'offline'
-            
-        results.append(status)
-        
-    return jsonify({"statuses": results})
 
 @app.route('/api/config', methods=['GET', 'POST'])
 def handle_config():

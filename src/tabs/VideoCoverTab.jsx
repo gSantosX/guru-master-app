@@ -3,96 +3,96 @@ import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
+import { usePersistence } from '../contexts/PersistenceContext';
 import { resolveApiUrl } from '../utils/apiUtils';
-import { callGemini, callGPT } from '../utils/aiUtils';
+import { callAI } from '../utils/aiUtils';
 
-// Helper: use GPT to build a detailed visual prompt for the cover
-async function buildCoverPromptWithGPT(title, apiKey, prefs = {}) {
-    const { includeText, colorStyle, distance } = prefs;
-    const instruction = `You are an ELITE YouTube Thumbnail Art Director with deep knowledge of CTR psychology, viral visual design, and platform algorithms.
+const THUMBNAIL_STYLES = [
+    { id: 'cinematic', label: 'Cinematográfico', icon: Sparkles, prompt: 'Cinematic lighting, high contrast, shallow depth of field, blockbuster movie poster aesthetic, extremely detailed textures.' },
+    { id: 'documentary', label: 'Documentário', icon: Zap, prompt: 'Realistic documentary style, raw and authentic, natural lighting, gritty textures, high fidelity, 8k resolution.' },
+    { id: '3d_render', label: '3D Render', icon: Box, prompt: 'Stylized 3D render, Octane render, vibrant colors, expressive character design, high-end digital art aesthetic.' },
+    { id: 'anime', label: 'Anime/Manga', icon: Palette, prompt: 'Dynamic anime style, strong character outlines, vibrant cel-shaded colors, dramatic perspective.' },
+    { id: 'cyberpunk', label: 'Cyberpunk', icon: Zap, prompt: 'Retro-futuristic cyberpunk aesthetic, neon lights (cyan and magenta), high contrast, rainy atmosphere, foggy depth.' },
+    { id: 'suspense', label: 'Suspense/Horror', icon: AlertTriangle, prompt: 'Dark and atmospheric, high contrast shadows, moody lighting, ominous feeling, mysterious silhouette.' },
+    { id: 'minimalist', label: 'Minimalista', icon: Maximize, prompt: 'Clean minimalist composition, single focal point, soft neutral background, focus on essential details.' }
+];
 
-VIDEO TITLE: "${title}"
+// Helper: build a detailed visual prompt for the cover using universal callAI
+async function buildDetailedCoverPrompt(title, prefs = {}) {
+    const { includeText, colorStyle, distance, styleId } = prefs;
+    const selectedStyle = THUMBNAIL_STYLES.find(s => s.id === styleId) || THUMBNAIL_STYLES[0];
 
-MISSION: Create a hyper-detailed, production-ready image generation prompt for a YouTube thumbnail that achieves maximum CTR.
+    const textInstruction = includeText 
+        ? `MANDATORY: Detect the language of "${title}" and add punchy, viral overlay text in that SAME language. Use large, bold, high-contrast typography.`
+        : `ABSOLUTE RESTRICTION: Do NOT include ANY text, letters, subtitles, labels, watermarks, symbols, or alphabetic characters in the image. Pure visual storytelling ONLY.`;
 
-USER PREFERENCES:
-- Text Overlay: ${includeText ? `YES — detect the language of "${title}" and add punchy overlay text in that SAME language. Text must be large, bold, and placed for maximum visual hierarchy.` : 'NO text overlay — pure visual storytelling only'}
-- Color Treatment: ${colorStyle === 'bw' ? 'MONOCHROME — high contrast black & white with deep shadows and bright highlights. Dramatic and cinematic.' : colorStyle === 'selective' ? 'COLOR POP — main subject in full vibrant color, background desaturated to near-black-and-white. Creates instant visual focus.' : 'CINEMATIC COLOR — rich, saturated, high-contrast color grading. Think blockbuster movie poster palette.'}
-- Shot Composition: ${distance === 'wide' ? 'WIDE EPIC SHOT — environmental storytelling. Subject small against vast backdrop. Creates scale and drama.' : 'EXTREME CLOSE-UP — tight on face or key detail. Maximum emotional impact and viewer connection.'}
-
-MANDATORY ELEMENTS IN THE PROMPT:
-1. SUBJECT: Describe the main subject with extreme specificity — age, expression, clothing detail, body language, emotional state
-2. FACIAL EXPRESSION: The expression is the most important CTR driver — describe it precisely (jaw slightly dropped, eyes wide with disbelief, intense focused stare, etc.)
-3. LIGHTING: Specify light source, direction, quality and color temperature (dramatic rim light, god rays, neon backlight, hard directional shadow)
-4. BACKGROUND: Specific, detailed environment — not just "office" but "dimly lit server room with blue neon rack lights"
-5. COMPOSITION: Where is the subject? Rule of thirds, leading lines, visual triangles
-6. MOOD/ATMOSPHERE: The emotional feeling the viewer should get in 0.5 seconds
-7. TECHNICAL SPECS: End with — "YouTube thumbnail, 16:9 aspect ratio, photorealistic, 8K, HDR, ultra-detailed"
-
-ANTI-GENERIC RULES:
-- NEVER describe a generic person — always specify distinctive visual characteristics
-- NEVER use vague lighting like "good lighting" — always specify the exact setup
-- NEVER use clichéd thumbnail tropes like "shocked face pointing at something" without adding unique specificity
-
-Return ONLY the raw image prompt in English. No explanation, no quotes, no markdown.`;
-
-    return await callGPT(apiKey, instruction);
-}
-
-// Helper: use Gemini to build a detailed visual prompt for the cover (fallback)
-async function buildCoverPromptWithGemini(title, apiKey, prefs = {}) {
-    const { includeText, colorStyle, distance } = prefs;
-    const instruction = `You are an ELITE YouTube Thumbnail Art Director with deep knowledge of CTR psychology, viral visual design, and platform algorithms.
+    const instruction = `You are a WORLD-CLASS YouTube Thumbnail Art Director specialized in viral CTR and cinematic lighting.
 
 VIDEO TITLE: "${title}"
 
-MISSION: Create a hyper-detailed, production-ready image generation prompt for a YouTube thumbnail that achieves maximum CTR.
+MISSION: Create a hyper-detailed, production-ready "GOLD STANDARD" image generation prompt.
+
+VISUAL STYLE: ${selectedStyle.label}
+DIRECTIVES: ${selectedStyle.prompt}
 
 USER PREFERENCES:
-- Text Overlay: ${includeText ? `YES — detect the language of "${title}" and add punchy overlay text in that SAME language. Text must be large, bold, and placed for maximum visual hierarchy.` : 'NO text overlay — pure visual storytelling only'}
-- Color Treatment: ${colorStyle === 'bw' ? 'MONOCHROME — high contrast black & white with deep shadows and bright highlights. Dramatic and cinematic.' : colorStyle === 'selective' ? 'COLOR POP — main subject in full vibrant color, background desaturated to near-black-and-white. Creates instant visual focus.' : 'CINEMATIC COLOR — rich, saturated, high-contrast color grading. Think blockbuster movie poster palette.'}
-- Shot Composition: ${distance === 'wide' ? 'WIDE EPIC SHOT — environmental storytelling. Subject small against vast backdrop. Creates scale and drama.' : 'EXTREME CLOSE-UP — tight on face or key detail. Maximum emotional impact and viewer connection.'}
+- Text: ${textInstruction}
+- Colors: ${colorStyle === 'bw' ? 'MONOCHROME — high contrast black & white.' : colorStyle === 'selective' ? 'COLOR POP — subject in full color, background desaturated.' : 'CINEMATIC COLOR — rich, saturated grading.'}
+- Composition: ${distance === 'wide' ? 'WIDE EPIC SHOT.' : 'EXTREME CLOSE-UP.'}
 
-MANDATORY ELEMENTS IN THE PROMPT:
-1. SUBJECT: Describe the main subject with extreme specificity — age, expression, clothing detail, body language, emotional state
-2. FACIAL EXPRESSION: The expression is the most important CTR driver — describe it precisely (jaw slightly dropped, eyes wide with disbelief, intense focused stare, etc.)
-3. LIGHTING: Specify light source, direction, quality and color temperature (dramatic rim light, god rays, neon backlight, hard directional shadow)
-4. BACKGROUND: Specific, detailed environment — not just "office" but "dimly lit server room with blue neon rack lights"
-5. COMPOSITION: Where is the subject? Rule of thirds, leading lines, visual triangles
-6. MOOD/ATMOSPHERE: The emotional feeling the viewer should get in 0.5 seconds
-7. TECHNICAL SPECS: End with — "YouTube thumbnail, 16:9 aspect ratio, photorealistic, 8K, HDR, ultra-detailed"
+MANDATORY ELITE RULES:
+1. SUBJECT: Describe the main subject with microscopic detail (skin pores, sweating, hair follicles).
+2. EXPRESSION: Extreme intensity (fear, awe, shock) — descriptive and visceral.
+3. LIGHTING: Cinematic rim light, god rays, volumetric fog, and dramatic shadows.
+4. LENS: Specify professional gear like "Shot on 35mm Sigma Art lens, f/1.4, 8k resolution".
+5. NO CLICHÉS: Avoid "hyperrealistic" or "photorealistic". Use technical photography terms instead.
 
-ANTI-GENERIC RULES:
-- NEVER describe a generic person — always specify distinctive visual characteristics
-- NEVER use vague lighting like "good lighting" — always specify the exact setup
-- NEVER use clichéd thumbnail tropes without adding unique visual specificity
+OUTPUT FORMAT (MANDATORY):
+PROMPT: [Ultra-detailed visual description]
+NEGATIVE PROMPT: [Technical anti-quality tokens, blurry, low resolution, bad anatomy, text in image, artifacts, watermarks, cartoonish (unless specified)]
 
-Return ONLY the raw image prompt in English. No explanation, no quotes, no markdown.`;
+Return ONLY the prompt and negative prompt in English. No markdown, no quotes.`;
 
-    return await callGemini(apiKey, instruction);
+    return await callAI(instruction, { model: "gpt-4o-mini" });
 }
 
 // Helper: generate actual image via Pollinations.ai (free, no key)
-function buildPollinationsUrl(prompt, seed) {
-    const encoded = encodeURIComponent(prompt + ', youtube thumbnail, high quality, vibrant, 16:9');
+function buildPollinationsUrl(fullText, seed) {
+    // Extract only the positive prompt part to avoid breaking the image generator
+    let cleanPrompt = fullText;
+    if (fullText.includes('PROMPT:')) {
+        const parts = fullText.split('NEGATIVE PROMPT:');
+        cleanPrompt = parts[0].replace('PROMPT:', '').trim();
+    }
+    
+    const encoded = encodeURIComponent(cleanPrompt + ', youtube thumbnail, high quality, vibrant, 16:9');
     return `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=576&seed=${seed}&nologo=true&enhance=true`;
 }
 
 export const VideoCoverTab = ({ isActive }) => {
     const { configs } = useSystemStatus();
+    const { coverState, setCoverState } = usePersistence();
+    
+    // Destructuring global state for easier use
+    const { 
+        selectedScript, 
+        titles, 
+        shockWords, 
+        covers, 
+        coverPrefs, 
+        description, 
+        lastSelectedTitle 
+    } = coverState;
+
+    // Helper to update specific parts of the coverState
+    const updateCoverState = (updates) => setCoverState(prev => ({ ...prev, ...updates }));
+
     const [scripts, setScripts] = useState([]);
-    const [selectedScript, setSelectedScript] = useState(null);
-    const [titles, setTitles] = useState([]);
-    const [shockWords, setShockWords] = useState({ one: '', two: '', three: '' });
     const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
     const [copiedIndex, setCopiedIndex] = useState(null);
-    
-    // Description States
-    const [description, setDescription] = useState('');
     const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
     const [withDisclaimer, setWithDisclaimer] = useState(false);
     const [descCopied, setDescCopied] = useState(false);
-    const [lastSelectedTitle, setLastSelectedTitle] = useState('');
     const [copiedSection, setCopiedSection] = useState(null);
 
     const handleCopy = (text, section) => {
@@ -101,18 +101,7 @@ export const VideoCoverTab = ({ isActive }) => {
         setTimeout(() => setCopiedSection(null), 2000);
     };
     
-    const ENGINES = [
-        { id: 'pollinations', name: 'Pollinations AI', icon: Zap, color: 'neon-cyan', desc: 'Geração rápida, ilimitada e gratuita.', focus: 'shadow-[0_0_20px_rgba(0,243,255,0.2)] border-neon-cyan bg-neon-cyan/5' },
-        { id: 'dalle3', name: 'OpenAI DALL-E 3', icon: Sparkles, color: 'neon-pink', desc: 'Qualidade suprema. Requer API Key com saldo.', focus: 'shadow-[0_0_20px_rgba(255,0,110,0.2)] border-neon-pink bg-neon-pink/5' },
-        { id: 'prompt_only', name: 'Apenas Prompt', icon: Box, color: 'neon-purple', desc: 'Não gerar imagem. Cria texto para o Whisk/Discord.', focus: 'shadow-[0_0_20px_rgba(191,64,255,0.2)] border-neon-purple bg-neon-purple/5' }
-    ];
-    const [selectedEngine, setSelectedEngine] = useState('pollinations');
-
-    // covers: { [index]: { url, prompt, loading, error, isPromptOnly } }
-    const [covers, setCovers] = useState({});
-    
-    // coverPrefs: { [index]: { includeText, colorStyle, distance } }
-    const [coverPrefs, setCoverPrefs] = useState({});
+    const ENGINES = []; // Keep empty or just remove entirely. Let's just remove them.
 
     useEffect(() => {
         if (!isActive) return;
@@ -121,26 +110,32 @@ export const VideoCoverTab = ({ isActive }) => {
     }, [isActive]);
 
     const handleSelectScript = (script) => {
-        setSelectedScript(script);
-        setLastSelectedTitle(script.title);
-        setTitles([
-            { text: script.title, label: 'Titulo Original', isOriginal: true },
-            { text: '', label: 'Carregando Oportunidades...', isOriginal: false },
-            { text: '', label: 'Carregando Oportunidades...', isOriginal: false }
-        ]);
-        setShockWords({ one: '', two: '', three: '' });
-        setCovers({});
-        setCoverPrefs({});
-        setDescription('');
+        updateCoverState({
+            selectedScript: script,
+            lastSelectedTitle: script.title,
+            titles: [
+                { text: script.title, label: 'Titulo Original', isOriginal: true },
+                { text: '', label: 'Carregando Oportunidades...', isOriginal: false },
+                { text: '', label: 'Carregando Oportunidades...', isOriginal: false }
+            ],
+            shockWords: { one: '', two: '', three: '' },
+            covers: {},
+            coverPrefs: {},
+            description: ''
+        });
         generateTitleVariations(script.title);
     };
 
     const handleReset = () => {
-        setSelectedScript(null);
-        setTitles([]);
-        setShockWords({ one: '', two: '', three: '' });
-        setCovers({});
-        setCoverPrefs({});
+        updateCoverState({
+            selectedScript: null,
+            titles: [],
+            shockWords: { one: '', two: '', three: '' },
+            covers: {},
+            coverPrefs: {},
+            description: '',
+            lastSelectedTitle: ''
+        });
     };
 
     const generateTitleVariations = async (originalTitle) => {
@@ -210,7 +205,7 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
   }
 }`;
 
-            const result = await callGemini(apiKey, prompt);
+            const result = await callAI(prompt, { gptKey: configs.gpt_key });
 
             let parsed = { variations: [], shockWords: { one: '-', two: '-', three: '-' } };
             try {
@@ -228,17 +223,19 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
                 };
             }
 
-            setTitles([
-                { text: originalTitle.substring(0, 100), label: 'Título Original', isOriginal: true },
-                { text: (parsed.variations?.[0]?.text || 'Erro ao gerar').substring(0, 100), label: parsed.variations?.[0]?.label || 'Variação 1', is_best: Boolean(parsed.variations?.[0]?.is_best) },
-                { text: (parsed.variations?.[1]?.text || 'Erro ao gerar').substring(0, 100), label: parsed.variations?.[1]?.label || 'Variação 2', is_best: Boolean(parsed.variations?.[1]?.is_best) }
-            ]);
             // Robust parsing for shock words
             const sw = parsed.shockWords || parsed.shock_words || parsed.palavras_choque || {};
-            setShockWords({
-                one: sw.one || sw.palavra1 || sw.first || '-',
-                two: sw.two || sw.palavra2 || sw.second || '-',
-                three: sw.three || sw.palavra3 || sw.third || '-'
+            updateCoverState({
+                titles: [
+                    { text: originalTitle.substring(0, 100), label: 'Título Original', isOriginal: true },
+                    { text: (parsed.variations?.[0]?.text || 'Erro ao gerar').substring(0, 100), label: parsed.variations?.[0]?.label || 'Variação 1', is_best: Boolean(parsed.variations?.[0]?.is_best) },
+                    { text: (parsed.variations?.[1]?.text || 'Erro ao gerar').substring(0, 100), label: parsed.variations?.[1]?.label || 'Variação 2', is_best: Boolean(parsed.variations?.[1]?.is_best) }
+                ],
+                shockWords: {
+                    one: sw.one || sw.palavra1 || sw.first || '-',
+                    two: sw.two || sw.palavra2 || sw.second || '-',
+                    three: sw.three || sw.palavra3 || sw.third || '-'
+                }
             });
         } catch (error) {
             console.error('Erro ao gerar variações:', error);
@@ -300,8 +297,8 @@ As primeiras 2 linhas aparecem no feed ANTES do "Ver mais". São o único texto 
 
 Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem aspas, sem markdown.`;
 
-            const result = await callGemini(apiKey, prompt);
-            setDescription(result.replace(/```markdown/g, '').replace(/```/g, '').trim());
+            const result = await callAI(prompt, { gptKey: configs.gpt_key });
+            updateCoverState({ description: result.replace(/```markdown/g, '').replace(/```/g, '').trim() });
         } catch (error) {
             console.error('Erro ao gerar descrição:', error);
             alert("Falha ao gerar descrição: " + error.message);
@@ -310,43 +307,24 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
         }
     };
 
-    const handleGenerateCover = async (index, title) => {
-        setCovers(prev => ({ ...prev, [index]: { loading: true, prompt: null, error: null } }));
-
+    const handleGenerateCover = async (idx, title) => {
+        updateCoverState({ covers: { ...covers, [idx]: { loading: true, prompt: null, error: null } } });
         try {
-            const prefs = coverPrefs[index] || { includeText: false, colorStyle: 'standard', distance: 'close' };
-            let visualPrompt;
-            
-            const geminiKey = configs?.gemini_key || localStorage.getItem('guru_gemini_key');
-            const gptKey = configs?.gpt_key || localStorage.getItem('guru_gpt_key');
-
-            if (geminiKey) {
-                try {
-                    visualPrompt = await buildCoverPromptWithGemini(title, geminiKey, prefs);
-                } catch (e) {
-                    if (gptKey) {
-                        visualPrompt = await buildCoverPromptWithGPT(title, gptKey, prefs);
-                    } else {
-                        throw e;
-                    }
-                }
-            } else if (gptKey) {
-                visualPrompt = await buildCoverPromptWithGPT(title, gptKey, prefs);
-            } else {
-                throw new Error('Nenhuma chave de IA configurada (Gemini ou GPT) nas Configurações.');
-            }
-
-            setCovers(prev => ({ ...prev, [index]: { loading: false, prompt: visualPrompt, error: null } }));
+            const prefs = coverPrefs[idx] || { includeText: false, colorStyle: 'standard', distance: 'close', styleId: 'cinematic' };
+            const visualPrompt = await buildDetailedCoverPrompt(title, prefs);
+            updateCoverState({ covers: { ...covers, [idx]: { loading: false, prompt: visualPrompt, error: null } } });
         } catch (error) {
             console.error('Erro ao gerar prompt da capa:', error);
-            setCovers(prev => ({ 
-                ...prev, 
-                [index]: { 
-                    loading: false, 
-                    prompt: null, 
-                    error: error.message
+            updateCoverState({ 
+                covers: { 
+                    ...covers, 
+                    [idx]: { 
+                        loading: false, 
+                        prompt: null, 
+                        error: error.message
+                    } 
                 } 
-            }));
+            });
         }
     };
 
@@ -372,12 +350,18 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
     if (!selectedScript) {
         return (
             <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto custom-scrollbar">
-                <header className="mb-8">
-                    <h2 className="text-3xl md:text-5xl font-black text-glow-purple text-white flex items-center gap-4">
-                        <ImageIcon className="text-neon-purple w-12 h-12" />
-                        Gerar Capa de Vídeo
+                <header className="mb-12">
+                    <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(176,38,255,0.3)]">
+                            <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
+                                <ImageIcon className="w-8 h-8 text-white" />
+                            </div>
+                        </div>
+                        Gerar Capa
                     </h2>
-                    <p className="text-gray-400 mt-2 text-lg">Selecione um dos últimos roteiros para criar as variações de capa</p>
+                    <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-purple pl-4 ml-2 italic">
+                        DESIGN CENTER V3: Criação de Identidade Visual para Vídeos de Alta Conversão
+                    </p>
                 </header>
 
                 {scripts.length === 0 ? (
@@ -420,68 +404,34 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
 
     return (
         <div className="p-4 md:p-8 max-w-6xl mx-auto h-full flex flex-col overflow-y-auto custom-scrollbar pb-20">
-            <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
-                <div>
-                    <motion.h2
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="text-3xl md:text-5xl font-black text-glow-purple text-white flex items-center gap-4"
-                    >
-                        <ImageIcon className="text-neon-purple w-12 h-12" />
-                        Capa de Vídeo
-                    </motion.h2>
-                    <p className="text-gray-400 mt-3 text-lg">
-                        Gerando capas para: <strong className="text-neon-purple">{selectedScript.title}</strong>
-                    </p>
-                </div>
-                
-                <button 
-                    onClick={handleReset}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-white/10 text-gray-400 hover:text-white hover:border-neon-purple/50 bg-white/5 transition-all font-bold"
-                >
-                    <RefreshCw className="w-5 h-5" /> Selecionar Outro
-                </button>
-            </header>
-
-            {/* Engine Selector */}
-            <div className="mb-10">
-                <div className="flex items-center gap-3 mb-4">
-                    <Wand2 className="w-5 h-5 text-gray-500" />
-                    <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Selecione o Motor Gráfico da Capa</h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {ENGINES.map(eng => {
-                        const isSelected = selectedEngine === eng.id;
-                        return (
-                            <div 
-                                key={eng.id}
-                                onClick={() => setSelectedEngine(eng.id)}
-                                className={`p-5 rounded-2xl cursor-pointer transition-all duration-300 border flex flex-col gap-4 relative overflow-hidden group
-                                    ${isSelected ? eng.focus : 'bg-dark/40 border-white/5 hover:border-white/20 hover:bg-white/5'}
-                                `}
-                            >
-                                <div className="flex justify-between items-center relative z-10">
-                                    <div className={`p-2 rounded-xl bg-${eng.color}/10 border border-${eng.color}/20 flex items-center justify-center`}>
-                                        <eng.icon className={`w-5 h-5 text-${eng.color}`} />
-                                    </div>
-                                    <div className={`w-4 h-4 rounded-full border-2 ${isSelected ? `border-${eng.color} bg-${eng.color}` : 'border-gray-600'} flex items-center justify-center transition-colors`}>
-                                        {isSelected && <div className="w-1.5 h-1.5 bg-dark rounded-full" />}
-                                    </div>
-                                </div>
-                                <div className="relative z-10">
-                                    <h4 className="text-white font-black uppercase tracking-tight">{eng.name}</h4>
-                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-relaxed mt-1 line-clamp-2 md:line-clamp-none">{eng.desc}</p>
-                                </div>
-                                {isSelected && <div className={`absolute -right-8 -top-8 w-24 h-24 blur-[40px] bg-${eng.color}/20 pointer-events-none`} />}
+                <header className="mb-12">
+                    <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(176,38,255,0.3)]">
+                            <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
+                                <ImageIcon className="w-8 h-8 text-white" />
                             </div>
-                        )
-                    })}
+                        </div>
+                        Capa de Vídeo
+                    </h2>
+                    <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-purple pl-4 ml-2 italic">
+                        Gerando protocolos visuais para: <strong className="text-neon-purple">{selectedScript.title}</strong>
+                    </p>
+                </header>
+                
+                <div className="mb-10 flex">
+                    <button 
+                        onClick={handleReset}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:border-neon-purple/50 hover:bg-neon-purple/5 bg-white/5 transition-all text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-sm"
+                    >
+                        <RefreshCw className="w-4 h-4" /> Selecionar Outro Roteiro
+                    </button>
                 </div>
-            </div>
+
+            {/* Engine Selector removed */}
             
             {/* Shock Words Section */}
             <AnimatePresence>
-                {shockWords.one && (
+                {selectedScript && (
                     <motion.div 
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -489,47 +439,57 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                     >
                         <div className="flex items-center gap-3 mb-5">
                             <Zap className="w-5 h-5 text-neon-cyan" />
-                            <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Palavras Choque para a Capa</h3>
+                            <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em]">Centro de Controle de Variações</h3>
+                            <button 
+                                onClick={() => generateTitleVariations(selectedScript.title)}
+                                disabled={isGeneratingTitles}
+                                className="ml-4 px-3 py-1.5 rounded-lg border border-neon-cyan/20 bg-neon-cyan/5 text-[9px] font-black text-neon-cyan uppercase tracking-widest hover:bg-neon-cyan/20 transition-all flex items-center gap-2 active:scale-95 disabled:opacity-30"
+                            >
+                                <RefreshCw className={`w-3 h-3 ${isGeneratingTitles ? 'animate-spin' : ''}`} />
+                                Regenerar Variações
+                            </button>
                             <div className="h-px flex-1 bg-white/5 ml-2" />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {[
-                                { id: 'one', title: '1 Palavra', color: 'neon-cyan', text: shockWords.one },
-                                { id: 'two', title: '2 Palavras', color: 'neon-pink', text: shockWords.two },
-                                { id: 'three', title: '3 Palavras', color: 'neon-purple', text: shockWords.three }
-                            ].map((card) => (
-                                <div 
-                                    key={card.id}
-                                    className={`glass-card p-5 border flex flex-col gap-3 group relative overflow-hidden
-                                        ${card.id === 'one' ? 'border-neon-cyan/20 bg-neon-cyan/5' : ''}
-                                        ${card.id === 'two' ? 'border-neon-pink/20 bg-neon-pink/5' : ''}
-                                        ${card.id === 'three' ? 'border-neon-purple/20 bg-neon-purple/5' : ''}
-                                    `}
-                                >
-                                    <div className="flex justify-between items-center relative z-10">
-                                        <span className={`text-[9px] font-black uppercase tracking-[0.2em] text-${card.color}`}>{card.title}</span>
-                                        <button 
-                                            onClick={() => handleCopy(card.text, `shock-${card.id}`)}
-                                            className={`p-2 rounded-lg border transition-all active:scale-95
-                                                ${copiedSection === `shock-${card.id}` 
-                                                    ? 'bg-green-500/20 border-green-500 text-green-400' 
-                                                    : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/30'}
-                                            `}
-                                            title="Copiar"
-                                        >
-                                            {copiedSection === `shock-${card.id}` ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                        </button>
+                        {shockWords.one && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {[
+                                    { id: 'one', title: '1 Palavra', color: 'neon-cyan', text: shockWords.one },
+                                    { id: 'two', title: '2 Palavras', color: 'neon-pink', text: shockWords.two },
+                                    { id: 'three', title: '3 Palavras', color: 'neon-purple', text: shockWords.three }
+                                ].map((card) => (
+                                    <div 
+                                        key={card.id}
+                                        className={`glass-card p-5 border flex flex-col gap-3 group relative overflow-hidden
+                                            ${card.id === 'one' ? 'border-neon-cyan/20 bg-neon-cyan/5' : ''}
+                                            ${card.id === 'two' ? 'border-neon-pink/20 bg-neon-pink/5' : ''}
+                                            ${card.id === 'three' ? 'border-neon-purple/20 bg-neon-purple/5' : ''}
+                                        `}
+                                    >
+                                        <div className="flex justify-between items-center relative z-10">
+                                            <span className={`text-[9px] font-black uppercase tracking-[0.2em] text-${card.color}`}>{card.title}</span>
+                                            <button 
+                                                onClick={() => handleCopy(card.text, `shock-${card.id}`)}
+                                                className={`p-2 rounded-lg border transition-all active:scale-95
+                                                    ${copiedSection === `shock-${card.id}` 
+                                                        ? 'bg-green-500/20 border-green-500 text-green-400' 
+                                                        : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/30'}
+                                                `}
+                                                title="Copiar"
+                                            >
+                                                {copiedSection === `shock-${card.id}` ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                            </button>
+                                        </div>
+                                        <div className="relative z-10">
+                                            <h4 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] transition-all">
+                                                {card.text || '...'}
+                                            </h4>
+                                        </div>
+                                        <div className={`absolute -right-4 -bottom-4 w-16 h-16 blur-[30px] bg-${card.color}/10 pointer-events-none group-hover:bg-${card.color}/20 transition-all`} />
                                     </div>
-                                    <div className="relative z-10">
-                                        <h4 className="text-xl md:text-2xl font-black text-white uppercase tracking-tight group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] transition-all">
-                                            {card.text || '...'}
-                                        </h4>
-                                    </div>
-                                    <div className={`absolute -right-4 -bottom-4 w-16 h-16 blur-[30px] bg-${card.color}/10 pointer-events-none group-hover:bg-${card.color}/20 transition-all`} />
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -580,7 +540,7 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                                 </div>
                                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                     <h3 
-                                        onClick={() => setLastSelectedTitle(titleText)}
+                                        onClick={() => updateCoverState({ lastSelectedTitle: titleText })}
                                         className={`text-xl md:text-2xl font-black leading-[1.2] transition-colors max-w-4xl cursor-pointer hover:opacity-80
                                             ${lastSelectedTitle === titleText ? 'bg-white/10 p-2 rounded-lg' : ''}
                                             ${isBest ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(234,179,8,0.2)]' : 'text-white'}
@@ -590,9 +550,9 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                                     </h3>
                                     <button 
                                         onClick={() => handleCopy(titleText, `title-${idx}`)}
-                                        className={`shrink-0 h-11 w-11 lg:w-40 rounded-xl border transition-all flex items-center justify-center gap-2 group/copy active:scale-95
+                                        className={`shrink-0 h-11 w-11 lg:w-40 rounded-xl border transition-all flex items-center justify-center gap-2 group/copy transform active:scale-95 shadow-md
                                             ${copiedSection === `title-${idx}` 
-                                                ? 'bg-green-500/20 border-green-500 text-green-400' 
+                                                ? 'bg-green-500/20 border-green-500 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
                                                 : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/30'}
                                         `}
                                     >
@@ -603,93 +563,141 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                             </div>
 
                             {/* Section 2: Laboratory Control Center */}
-                            <div className="p-5 bg-dark/40 border border-white/5 rounded-2xl relative overflow-hidden group/lab">
-                                <div className="flex items-center gap-2 mb-4">
+                            <div className="p-6 bg-dark/40 border border-white/5 rounded-2xl relative overflow-hidden group/lab">
+                                <div className="flex items-center gap-2 mb-6">
                                     <div className="p-1.5 bg-neon-pink/10 rounded-lg">
                                         <Wand2 className="w-4 h-4 text-neon-pink" />
                                     </div>
-                                    <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Centro de Customização Visual</h3>
+                                    <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Direção de Arte e Customização</h3>
                                 </div>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
-                                    {/* Text Toggle Chip */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <Type className="w-3 h-3 text-gray-500" />
-                                            <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Incluir Texto</label>
-                                        </div>
-                                        <button 
-                                            onClick={() => setCoverPrefs(prev => ({ ...prev, [idx]: { ...prev[idx], includeText: !prev[idx]?.includeText } }))}
-                                            className={`w-full h-11 rounded-xl px-4 transition-all flex items-center justify-between border ${coverPrefs[idx]?.includeText ? 'bg-neon-cyan/10 border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.05)]' : 'bg-white/5 border-white/5'}`}
-                                        >
-                                            <span className={`text-[10px] font-black uppercase tracking-widest ${coverPrefs[idx]?.includeText ? 'text-neon-cyan' : 'text-gray-500'}`}>
-                                                {coverPrefs[idx]?.includeText ? 'Com Texto' : 'Sem Texto'}
-                                            </span>
-                                            <div className={`w-7 h-3.5 rounded-full p-0.5 transition-all flex items-center ${coverPrefs[idx]?.includeText ? 'bg-neon-cyan' : 'bg-gray-700'}`}>
-                                                <div className={`w-2.5 h-2.5 bg-white rounded-full transition-all ${coverPrefs[idx]?.includeText ? 'translate-x-3.5' : 'translate-x-0'}`} />
-                                            </div>
-                                        </button>
-                                    </div>
-                                    
-                                    {/* Color Style Pills */}
-                                    <div className="space-y-2 lg:col-span-1">
+                                <div className="space-y-8">
+                                    {/* Visual Style Cards */}
+                                    <div className="space-y-4">
                                         <div className="flex items-center gap-2">
                                             <Palette className="w-3 h-3 text-gray-500" />
-                                            <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Estilo Visual</label>
+                                            <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Estilos Visuais (Cartões)</label>
                                         </div>
-                                        <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 h-11">
-                                            {[
-                                                { id: 'standard', label: 'Color', icon: Zap },
-                                                { id: 'bw', label: 'P&B', icon: CloudMoon },
-                                                { id: 'selective', label: 'Foco', icon: Target }
-                                            ].map(c => (
-                                                <button 
-                                                    key={c.id}
-                                                    onClick={() => setCoverPrefs(prev => ({ ...prev, [idx]: { ...prev[idx], colorStyle: c.id } }))}
-                                                    className={`flex-1 flex flex-col items-center justify-center rounded-lg transition-all gap-0.5
-                                                        ${(coverPrefs[idx]?.colorStyle || 'standard') === c.id ? 'bg-neon-pink text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}
-                                                    `}
-                                                >
-                                                    <c.icon className="w-3 h-3" />
-                                                    <span className="text-[7px] font-black uppercase tracking-tighter">{c.label}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Distance Pills */}
-                                    <div className="space-y-2 lg:col-span-1">
-                                        <div className="flex items-center gap-2">
-                                            <Maximize className="w-3 h-3 text-gray-500" />
-                                            <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Enquadramento</label>
-                                        </div>
-                                        <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 h-11">
-                                            {[
-                                                { id: 'close', label: 'Perto', icon: MousePointer2 },
-                                                { id: 'wide', label: 'Longe', icon: Globe }
-                                            ].map(d => (
-                                                <button 
-                                                    key={d.id}
-                                                    onClick={() => setCoverPrefs(prev => ({ ...prev, [idx]: { ...prev[idx], distance: d.id } }))}
-                                                    className={`flex-1 flex flex-col items-center justify-center rounded-lg transition-all gap-0.5
-                                                        ${(coverPrefs[idx]?.distance || 'close') === d.id ? 'bg-neon-cyan text-dark shadow-lg' : 'text-gray-500 hover:text-gray-300'}
-                                                    `}
-                                                >
-                                                    <d.icon className="w-3 h-3" />
-                                                    <span className="text-[7px] font-black uppercase tracking-tighter">{d.label}</span>
-                                                </button>
-                                            ))}
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                                            {THUMBNAIL_STYLES.map(style => {
+                                                const isSelected = (coverPrefs[idx]?.styleId || 'cinematic') === style.id;
+                                                return (
+                                                    <button
+                                                        key={style.id}
+                                                        onClick={() => {
+                                                            const newPrefs = { ...coverPrefs[idx], styleId: style.id };
+                                                            updateCoverState({ coverPrefs: { ...coverPrefs, [idx]: newPrefs } });
+                                                        }}
+                                                        className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all group/card
+                                                            ${isSelected 
+                                                                ? 'bg-neon-purple/20 border-neon-purple shadow-[0_0_15px_rgba(176,38,255,0.2)]' 
+                                                                : 'bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10'}
+                                                        `}
+                                                    >
+                                                        <div className={`p-2 rounded-lg transition-transform group-hover/card:scale-110 ${isSelected ? 'text-neon-purple' : 'text-gray-500'}`}>
+                                                            <style.icon className="w-5 h-5" />
+                                                        </div>
+                                                        <span className={`text-[8px] font-black uppercase tracking-widest text-center ${isSelected ? 'text-white' : 'text-gray-500'}`}>
+                                                            {style.label}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
 
-                                    {/* Main Magic Button */}
-                                    <button 
-                                        onClick={() => handleGenerateCover(idx, titleText)}
-                                        disabled={!titleText || covers[idx]?.loading}
-                                        className="h-11 bg-neon-purple text-white rounded-xl transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neon-purple/80 shadow-lg shadow-neon-purple/10 active:scale-95 disabled:opacity-30"
-                                    >
-                                        {covers[idx]?.loading ? <LoadingSpinner size="xs" message="" /> : <><Sparkles className="w-4 h-4" /> Criar Prompt</>}
-                                    </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+                                        {/* Text Toggle Chip */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <Type className="w-3 h-3 text-gray-500" />
+                                                <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Modo de Texto</label>
+                                            </div>
+                                            <button 
+                                                onClick={() => {
+                                                    const newPrefs = { ...coverPrefs[idx], includeText: !coverPrefs[idx]?.includeText };
+                                                    updateCoverState({ coverPrefs: { ...coverPrefs, [idx]: newPrefs } });
+                                                }}
+                                                className={`w-full h-11 rounded-xl px-4 transition-all flex items-center justify-between border ${coverPrefs[idx]?.includeText ? 'bg-neon-cyan/10 border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.05)]' : 'bg-red-500/5 border-red-500/30'}`}
+                                            >
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${coverPrefs[idx]?.includeText ? 'text-neon-cyan' : 'text-red-400'}`}>
+                                                    {coverPrefs[idx]?.includeText ? 'Com Texto' : 'Sem Texto'}
+                                                </span>
+                                                <div className={`w-7 h-3.5 rounded-full p-0.5 transition-all flex items-center ${coverPrefs[idx]?.includeText ? 'bg-neon-cyan' : 'bg-gray-700'}`}>
+                                                    <div className={`w-2.5 h-2.5 bg-white rounded-full transition-all ${coverPrefs[idx]?.includeText ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                                                </div>
+                                            </button>
+                                            <p className="text-[7px] font-bold text-gray-600 uppercase tracking-tighter">
+                                                {coverPrefs[idx]?.includeText ? 'AI irá gerar frases de impacto.' : 'AI proibida de gerar letras.'}
+                                            </p>
+                                        </div>
+                                        
+                                        {/* Color Style Pills */}
+                                        <div className="space-y-2 lg:col-span-1">
+                                            <div className="flex items-center gap-2">
+                                                <Palette className="w-3 h-3 text-gray-500" />
+                                                <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Tratamento de Cor</label>
+                                            </div>
+                                            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 h-11">
+                                                {[
+                                                    { id: 'standard', label: 'Cores', icon: Zap },
+                                                    { id: 'bw', label: 'P&B', icon: CloudMoon },
+                                                    { id: 'selective', label: 'Selective', icon: Target }
+                                                ].map(c => (
+                                                    <button 
+                                                        key={c.id}
+                                                        onClick={() => {
+                                                            const newPrefs = { ...coverPrefs[idx], colorStyle: c.id };
+                                                            updateCoverState({ coverPrefs: { ...coverPrefs, [idx]: newPrefs } });
+                                                        }}
+                                                        className={`flex-1 flex flex-col items-center justify-center rounded-lg transition-all gap-0.5
+                                                            ${(coverPrefs[idx]?.colorStyle || 'standard') === c.id ? 'bg-neon-pink text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}
+                                                        `}
+                                                    >
+                                                        <c.icon className="w-3 h-3" />
+                                                        <span className="text-[7px] font-black uppercase tracking-tighter">{c.label}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Distance Pills */}
+                                        <div className="space-y-2 lg:col-span-1">
+                                            <div className="flex items-center gap-2">
+                                                <Maximize className="w-3 h-3 text-gray-500" />
+                                                <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Enquadramento</label>
+                                            </div>
+                                            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 h-11">
+                                                {[
+                                                    { id: 'close', label: 'Close', icon: MousePointer2 },
+                                                    { id: 'wide', label: 'Full', icon: Globe }
+                                                ].map(d => (
+                                                    <button 
+                                                        key={d.id}
+                                                        onClick={() => {
+                                                            const newPrefs = { ...coverPrefs[idx], distance: d.id };
+                                                            updateCoverState({ coverPrefs: { ...coverPrefs, [idx]: newPrefs } });
+                                                        }}
+                                                        className={`flex-1 flex flex-col items-center justify-center rounded-lg transition-all gap-0.5
+                                                            ${(coverPrefs[idx]?.distance || 'close') === d.id ? 'bg-neon-cyan text-dark shadow-lg' : 'text-gray-500 hover:text-gray-300'}
+                                                        `}
+                                                    >
+                                                        <d.icon className="w-3 h-3" />
+                                                        <span className="text-[7px] font-black uppercase tracking-tighter">{d.label}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Main Magic Button */}
+                                        <button 
+                                            onClick={() => handleGenerateCover(idx, titleText)}
+                                            disabled={!titleText || covers[idx]?.loading}
+                                            className="h-11 bg-neon-purple text-white rounded-xl transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neon-purple/80 shadow-lg shadow-neon-purple/20 active:scale-95 disabled:opacity-30"
+                                        >
+                                            {covers[idx]?.loading ? <LoadingSpinner size="xs" message="" /> : <><Sparkles className="w-4 h-4" /> Gerar Prompt Elite</>}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -709,16 +717,16 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                                                         <Terminal className="w-4 h-4 text-neon-cyan" />
                                                     </div>
                                                     <div>
-                                                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Direct Prompt Output</h4>
-                                                        <p className="text-[8px] text-gray-500 font-mono uppercase tracking-widest italic">Optimized by Gemini Advanced</p>
+                                                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">ELITE PROMPT GENERATOR</h4>
+                                                        <p className="text-[8px] text-neon-cyan font-mono uppercase tracking-widest italic animate-pulse">FIDELIDADE MÁXIMA ATIVADA</p>
                                                     </div>
                                                 </div>
                                                 
                                                 <button 
                                                     onClick={() => handleCopy(covers[idx].prompt, `prompt-${idx}`)}
-                                                    className={`px-4 py-2 rounded-lg border transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2 active:scale-95
+                                                    className={`px-4 py-2 rounded-lg border transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2 transform active:scale-95 shadow-md
                                                         ${copiedSection === `prompt-${idx}` 
-                                                            ? 'bg-green-500/20 border-green-500 text-green-400' 
+                                                            ? 'bg-green-500/20 border-green-500 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
                                                             : 'bg-neon-cyan/10 border-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/20 hover:border-neon-cyan/40'}
                                                     `}
                                                 >

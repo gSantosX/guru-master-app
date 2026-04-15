@@ -31,3 +31,10 @@ backend/test_gemini.*
 **/__pycache__/
 *.pyc
 inject.py
+
+# Binaries and Installer Artifacts
+release/
+installer/
+dist_backup/
+temp_app/
+bin/

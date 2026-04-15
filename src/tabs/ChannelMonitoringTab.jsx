@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Trash2, ExternalLink, TrendingUp, BarChart2, Sparkles, Brain, Youtube, Clock, Eye, Video, Activity, Copy, Check, ChevronLeft, RefreshCw, Globe, Loader2 } from 'lucide-react';
+import { Search, Plus, Trash2, ExternalLink, TrendingUp, BarChart2, Sparkles, Brain, Youtube, Clock, Eye, Video, Activity, Copy, Check, ChevronLeft, RefreshCw, Globe, Loader2, Wand2 } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { resolveApiUrl } from '../utils/apiUtils';
-import { callGemini, callGPT, callGrok } from '../utils/aiUtils';
+import { callAI } from '../utils/aiUtils';
 import { t } from '../utils/i18n';
+import { usePersistence } from '../contexts/PersistenceContext';
 
-export const ChannelMonitoringTab = ({ isActive }) => {
+export const ChannelMonitoringTab = ({ isActive, setActiveTab }) => {
   const { configs } = useSystemStatus();
   const [channels, setChannels] = useState(() => {
     const saved = localStorage.getItem('guru_monitored_channels');
@@ -26,6 +27,7 @@ export const ChannelMonitoringTab = ({ isActive }) => {
   const [translations, setTranslations] = useState({}); // { [idx]: string }
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationLang, setTranslationLang] = useState('');
+  const { setScriptState } = usePersistence();
 
   const copyToClipboard = (text, index = null) => {
     navigator.clipboard.writeText(text);
@@ -44,9 +46,11 @@ export const ChannelMonitoringTab = ({ isActive }) => {
     setTranslations({});
     setTranslationLang('');
     try {
-      const activeAi = configs.active_ai;
-      const apiKey = activeAi === 'Gemini' ? configs.gemini_key : (activeAi === 'GPT' ? configs.gpt_key : configs.grok_key);
-      if (!apiKey) throw new Error('API key not configured');
+      const gptKeys = configs.gpt_key;
+      const geminiKeys = configs.gemini_key;
+      const grokKeys = configs.grok_key || localStorage.getItem('guru_grok_key');
+
+      if (!gptKeys && !geminiKeys && !grokKeys) throw new Error('API key not configured');
 
       const titleLines = titlesRaw
         .split('\n')
@@ -79,11 +83,7 @@ Rules:
 - Adapt idioms naturally — do NOT translate literally if it sounds unnatural
 - Return ONLY the JSON object, no markdown, no explanations`;
 
-      let result = '';
-      if (activeAi === 'Gemini') result = await callGemini(apiKey, prompt);
-      else if (activeAi === 'GPT') result = await callGPT(apiKey, prompt);
-      else result = await callGrok(apiKey, prompt);
-
+      const result = await callAI(prompt);
       const clean = result.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(clean);
 
@@ -101,6 +101,24 @@ Rules:
       setTranslationLang('Erro ao traduzir. Tente novamente.');
     } finally {
       setIsTranslating(false);
+    }
+  };
+
+  const handleGenerateFromSuggestedTitle = (title) => {
+    // 1. Copy to clipboard for safety
+    copyToClipboard(title);
+    
+    // 2. Update persistent script state
+    setScriptState(prev => ({
+      ...prev,
+      titulo: title,
+      generatedScript: null, // Clear previous script if any
+      statusMessage: ''
+    }));
+    
+    // 3. Switch tab
+    if (setActiveTab) {
+      setActiveTab('create-script');
     }
   };
 
@@ -142,12 +160,12 @@ Rules:
     }
   };
 
-  // Refresh all channels on component mount
-  useEffect(() => {
-    if (isActive) {
-      refreshAllChannelsQuietly();
-    }
-  }, [isActive]); // Refresh when tab becomes active
+  // Refresh all channels on component mount removed to save quota
+  // useEffect(() => {
+  //   if (isActive) {
+  //     refreshAllChannelsQuietly();
+  //   }
+  // }, [isActive]);
 
   useEffect(() => {
     localStorage.setItem('guru_monitored_channels', JSON.stringify(channels));
@@ -191,9 +209,24 @@ Rules:
     return null;
   };
 
-  const fetchChannelData = async (info) => {
+  const fetchChannelData = async (info, force = false) => {
     try {
       let channelId = info.value;
+      
+      // Check Cache first (unless forced)
+      const cacheKey = `yt_channel_${info.value}`;
+      if (!force) {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (Date.now() - parsed.timestamp < 2 * 60 * 60 * 1000) {
+              console.log("Using cached YouTube data for", info.value);
+              return parsed.data;
+            }
+          } catch (e) {}
+        }
+      }
       
       // If handle, first find the channel ID
       if (info.type === 'handle') {
@@ -240,7 +273,38 @@ Rules:
         });
       }
 
-      return {
+      // --- AUDIENCE FEEDBACK SCAN (Nouveau) ---
+      let audienceFeedback = [];
+      try {
+        // Call 1: Global Channel Comments (most relevant)
+        const globalCommentsRes = await fetch(resolveApiUrl(`/api/youtube/commentThreads?allThreadsRelatedToChannelId=${channelId}&part=snippet&maxResults=20&order=relevance`));
+        const globalCommentsData = await globalCommentsRes.json();
+        (globalCommentsData.items || []).forEach(item => {
+          audienceFeedback.push({
+            text: item.snippet.topLevelComment.snippet.textDisplay,
+            likeCount: item.snippet.topLevelComment.snippet.likeCount,
+            type: 'global'
+          });
+        });
+
+        // Call 2: Viral Comments (surgical critique)
+        const topViralId = viralData.items?.[0]?.id?.videoId;
+        if (topViralId) {
+          const viralCommentsRes = await fetch(resolveApiUrl(`/api/youtube/commentThreads?videoId=${topViralId}&part=snippet&maxResults=20&order=relevance`));
+          const viralCommentsData = await viralCommentsRes.json();
+          (viralCommentsData.items || []).forEach(item => {
+            audienceFeedback.push({
+              text: item.snippet.topLevelComment.snippet.textDisplay,
+              likeCount: item.snippet.topLevelComment.snippet.likeCount,
+              type: 'viral_critique'
+            });
+          });
+        }
+      } catch (e) {
+        console.warn("Failed to fetch audience feedback:", e);
+      }
+
+      const result = {
         id: channelId,
         title: snippet.title,
         description: snippet.description,
@@ -262,8 +326,17 @@ Rules:
           publishedAt: v.snippet.publishedAt,
           thumbnail: v.snippet.thumbnails.medium.url,
           viewCount: videoStats[v.id.videoId] || 0
-        }))
+        })),
+        audienceFeedback: audienceFeedback
       };
+
+      // Save to cache
+      sessionStorage.setItem(`yt_channel_${info.value}`, JSON.stringify({
+        timestamp: Date.now(),
+        data: result
+      }));
+
+      return result;
     } catch (err) {
       console.error('Fetch error:', err);
       throw err;
@@ -293,11 +366,11 @@ Rules:
     }
   };
 
-  const handleRefreshChannel = async () => {
+  const handleRefreshChannel = async (force = true) => {
     if (!selectedChannel) return;
     setIsAnalyzing(true);
     try {
-      const data = await fetchChannelData({ type: 'id', value: selectedChannel.id });
+      const data = await fetchChannelData({ type: 'id', value: selectedChannel.id }, force);
       setChannels(prev => prev.map(c => c.id === data.id ? data : c));
       setSelectedChannel(data);
     } catch (err) {
@@ -337,21 +410,43 @@ Rules:
     setShowCountSelector(false);
 
     const activeAi = configs.active_ai;
-    const apiKey = activeAi === 'Gemini' ? configs.gemini_key : (activeAi === 'GPT' ? configs.gpt_key : configs.grok_key);
+    const gptKeys = configs.gpt_key;
+    const geminiKeys = configs.gemini_key;
+    const grokKeys = configs.grok_key;
 
-    if (!apiKey || apiKey.length < 5) {
-      alert(`Erro: A chave do ${activeAi} não está configurada. Vá em Configurações.`);
+    if (!gptKeys && !geminiKeys && !grokKeys) {
+      alert(`Erro: Nenhuma chave de API configurada. Vá em Configurações.`);
       setIsAnalyzing(false);
       return;
     }
 
     const viralText = (selectedChannel.viralVideos || []).map(v => `- ${v.title}`).join('\n');
     const latestText = (selectedChannel.latestVideos || []).map(v => `- ${v.title}`).join('\n');
+    const audienceText = (selectedChannel.audienceFeedback || [])
+      .sort((a, b) => b.likeCount - a.likeCount)
+      .slice(0, 30)
+      .map(c => `[${c.type.toUpperCase()}] (${c.likeCount} likes): ${c.text}`)
+      .join('\n');
     
     let prompt = '';
 
     if (type === 'titles') {
       prompt = `Você é um ESPECIALISTA ELITE em CTR, Algoritmos do YouTube e Psicologia do Clique.
+
+CANAL EM ANÁLISE: "${selectedChannel.title}"
+
+VÍDEOS MAIS POPULARES (Já provaram funcionar):
+${viralText || 'Dados não disponíveis'}
+
+VOZ DA AUDIÊNCIA (O que os inscritos estão comentando, pedindo e criticando):
+${audienceText || 'Sem comentários recentes disponíveis.'}
+
+---
+## MISSÃO: Gerar ${count} títulos NOVOS de altíssimo CTR para este canal
+
+## REGRA DE OURO (SITUAÇÃO DE MERCADO):
+Identifique as CRÍTICAS nos comentários dos vídeos virais. Se o público reclamou de algo, ou pediu uma abordagem diferente, USE ISSO como gancho. 
+Exemplo: Se criticaram que o vídeo viral foi "curto demais", crie um título focado em profundidade ("A análise completa que eles omitiram").
 
 CANAL EM ANÁLISE: "${selectedChannel.title}"
 
@@ -367,8 +462,8 @@ ${brainContext}
 ---
 ## MISSÃO: Gerar ${count} títulos NOVOS de altíssimo CTR para este canal
 
-## IDIOMA OBRIGATÓRIO (CRÍTICO)
-Gere os títulos EXATAMENTE no mesmo idioma que o canal utiliza predominantemente nos vídeos listados acima (se o canal é em Inglês, gere em Inglês; se é Espanhol, gere em Espanhol; se é Português, gere em Português).
+## IDIOMA OBRIGATÓRIO (REQUISITO CRÍTICO)
+Gere os títulos EXATAMENTE no mesmo idioma que o canal utiliza nos vídeos listados (se o canal é em Inglês, gere em Inglês; se é Alemão, em Alemão; se é Espanhol, em Espanhol, etc). NUNCA traduza os títulos para o Português se o canal original for estrangeiro.
 
 ## ANATOMIA OBRIGATÓRIA DE CADA TÍTULO
 Cada título deve conter TODOS os elementos:
@@ -395,21 +490,17 @@ Baseado nos títulos que já performaram neste canal:
 - NUNCA repita estruturas já usadas nos vídeos populares listados acima
 
 ## BLACKLIST — PROIBIDO
+❌ Marcação Markdown: Proibido o uso de asteriscos (**), negrito, itálico, aspas ou qualquer outra formatação especial nos títulos. Retorne 100% texto limpo.
 ❌ Estruturas gastas: "A verdade que ninguém te conta", "O segredo que escondem", "Você não vai acreditar"
 ❌ Adjetivos vazios: "incrível", "surpreendente", "chocante" (sem substância)
-❌ Títulos com mais de 80 caracteres
 ❌ Títulos genéricos que servem para qualquer canal
-❌ Repetir palavras ou estruturas entre os ${count} títulos gerados
 
-## AUTORREVISÃO
-Antes de entregar, verifique cada título:
-✅ Tem especificidade concreta?
-✅ Cria lacuna cognitiva?
-✅ É específico para o nicho deste canal?
-✅ É diferente de todos os outros títulos da lista?
-✅ Tem entre 40-75 caracteres?
+Identifique as CRÍTICAS nos comentários dos vídeos virais. Se o público reclamou de algo, ou pediu uma abordagem diferente, USE ISSO como combustível para o CTR.
+Exemplo: Se criticaram que o vídeo viral foi "curto demais", crie um título focado em profundidade ("A análise completa que eles omitiram").
+Se pediram por um tema específico, crie 2 títulos focados APENAS nessa solicitação.
 
-Retorne APENAS a lista numerada (1. Título\n2. Título...). Sem texto antes ou depois. Sem explicações.`;
+RETORNO ESPERADO:
+Retorne APENAS a lista numerada. Sem introduções. Sem asteriscos. Texto 100% limpo e pronto para uso (ex: 1. Como a Rota Proibida Esconde 14 Mortes).`;
 
     } else {
       prompt = `Você é um MENTOR ESTRATÉGICO SÊNIOR de YouTube — especialista em análise de canais, crescimento orgânico e replicação de estratégias virais.
@@ -426,36 +517,38 @@ ${brainContext ? `CONTEXTO ESTRATÉGICO ACUMULADO:
 ${brainContext}
 ` : ''}
 ---
-Sua resposta deve ter EXATAMENTE estas 5 partes — sem introdução, sem conclusão:
+Sua resposta deve ter EXATAMENTE estas 6 partes EM PORTUGUÊS (PT-BR) — sem introdução, sem conclusão:
 
 **1. DIAGNÓSTICO DO NICHO**
-Em 1-2 frases: Qual é o posicionamento real deste canal? O que ele vende emocionalmente para o espectador?
+Em 1-2 frases: Qual é o posicionamento real deste canal? O que ele vende emocionalmente?
 
 **2. FÓRMULA DE SUCESSO**
-O que os vídeos mais populares têm em comum? Identifique 2-3 padrões específicos de título, tema ou abordagem.
+Identifique 2-3 padrões específicos de título ou tema que os vídeos virais têm em comum.
 
-**3. LACUNA DE OPORTUNIDADE**
-Que ângulos ou temas este canal AINDA NÃO explorou, mas que têm alto potencial no nicho?
+**3. VOZ DA AUDIÊNCIA (CRÍTICAS & DESEJOS)**
+RESUMA em bullet points o que o público tanto comenta:
+- O que eles pediram para o próximo vídeo?
+- Do que eles reclamaram ou criticaram nos vídeos virais?
+- Quais dúvidas são recorrentes nos comentários?
 
-**4. DICA DE OURO REPLICÁVEL**
-Uma estratégia concreta e específica — não genérica — que o usuário pode aplicar no próprio canal baseado neste case.
+**4. LACUNA DE OPORTUNIDADE**
+Que ângulos este canal AINDA NÃO explorou, mas que a audiência está pedindo nos comentários?
 
-**5. ARMADILHA A EVITAR**
-O erro mais comum de quem tenta replicar este tipo de canal e como evitá-lo.
+**5. DICA DE OURO REPLICÁVEL**
+Uma estratégia concreta baseada no feedback da audiência para o usuário aplicar.
+
+**6. ARMADILHA A EVITAR**
+O erro que a audiência mais critica neste tipo de canal.
 
 REGRAS DE FORMATO:
-- Use **NEGRITO** apenas para os títulos das seções e termos-chave
-- Máximo 2 emojis em toda a resposta
-- Linguagem direta e objetiva — sem rodeios, sem clichês motivacionais
-- Cada seção máximo 3 linhas`;
+- TUDO EM PORTUGUÊS (PT-BR)
+- Use **NEGRITO** para títulos de seção
+- Cada seção máximo 3-4 linhas`;
 
     }
 
     try {
-      let result = '';
-      if (activeAi === 'Gemini') result = await callGemini(apiKey, prompt);
-      else if (activeAi === 'GPT') result = await callGPT(apiKey, prompt);
-      else if (activeAi === 'Grok') result = await callGrok(apiKey, prompt);
+      const result = await callAI(prompt);
       
       if (!result || result.trim().length === 0) {
         throw new Error('A IA retornou uma resposta vazia. Tente novamente ou verifique sua chave API.');
@@ -500,16 +593,19 @@ REGRAS DE FORMATO:
             exit={{ opacity: 0, y: -10 }}
             className="flex flex-col gap-8 h-full p-4"
           >
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div>
-                <h2 className="text-2xl md:text-4xl font-black text-white flex items-center gap-3 tracking-tight">
-                  <span className="p-2 bg-neon-cyan/10 rounded-2xl border border-neon-cyan/20">
-                    <Activity className="text-neon-cyan w-6 h-6 md:w-8 md:h-8" />
-                  </span>
-                  {t('sidebar.channel_monitoring')}
-                </h2>
-                <p className="text-gray-400 mt-2 font-medium text-sm md:text-base border-l-2 border-neon-cyan pl-3 ml-2">{t('channels.subtitle')}</p>
-              </div>
+            <header className="mb-12">
+              <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(34,211,238,0.3)]">
+                  <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
+                    <Activity className="w-8 h-8 text-white fill-current" />
+                  </div>
+                </div>
+                {t('sidebar.channel_monitoring') || 'Vigilância de Canais'}
+              </h2>
+              <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-cyan pl-4 ml-2 italic">
+                {t('channels.subtitle') || 'Monitoramento Tático e Engenharia Reversa de Concorrência'}
+              </p>
+            </header>
 
               <div className="flex gap-2 w-full md:w-auto">
                 <div className="relative flex-1 md:w-80 group">
@@ -531,7 +627,6 @@ REGRAS DE FORMATO:
                   <span className="hidden sm:inline">Adicionar</span>
                 </button>
               </div>
-            </header>
 
             {channels.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-10 bg-white/5 border border-white/5 rounded-[40px] border-dashed">
@@ -559,8 +654,8 @@ REGRAS DE FORMATO:
                       }}
                       className="bg-white/5 border border-white/5 rounded-2xl p-6 group hover:border-neon-cyan/40 transition-all cursor-pointer relative overflow-hidden shadow-xl hover:-translate-y-1"
                     >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10 shrink-0">
+                      <div className="flex items-start justify-between mb-6">
+                        <div className="w-16 h-16 rounded-2xl overflow-hidden border border-white/10 shrink-0 shadow-lg group-hover:border-neon-cyan/50 transition-all">
                           <img src={channel.thumbnail} alt="" className="w-full h-full object-cover" />
                         </div>
                         <button 
@@ -568,9 +663,9 @@ REGRAS DE FORMATO:
                             e.stopPropagation();
                             setChannels(channels.filter(c => c.id !== channel.id));
                           }}
-                          className="p-2 text-gray-600 hover:text-red-400 transition-colors"
+                          className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all active:scale-90"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                       
@@ -825,12 +920,14 @@ REGRAS DE FORMATO:
                               )}
                               <button 
                                 onClick={() => copyToClipboard(String(analysisResult || ""))}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                                  isCopied ? 'bg-green-500 text-dark' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-                                }`}
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border font-black text-[10px] uppercase tracking-widest transition-all transform active:scale-95
+                                  ${isCopied 
+                                    ? 'bg-green-500/20 border-green-500 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
+                                    : 'bg-white/10 border-white/10 text-white hover:bg-white hover:text-dark shadow-xl'
+                                  }`}
                               >
-                                {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                {isCopied ? 'Copiado!' : 'Copiar'}
+                                {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                {isCopied ? 'Copiado!' : 'Copiar Análise Completa'}
                               </button>
                             </div>
                           </div>
@@ -859,18 +956,28 @@ REGRAS DE FORMATO:
                                         <span className="text-neon-cyan font-black mr-4 text-lg">{idx + 1}</span>
                                         {titleText}
                                       </p>
-                                      <button 
-                                        onClick={() => copyToClipboard(titleText, idx)}
-                                        className={`shrink-0 h-10 px-4 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest
-                                          ${copiedTitleIndex === idx 
-                                            ? 'bg-green-500 text-dark' 
-                                            : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-                                          }
-                                        `}
-                                      >
-                                        {copiedTitleIndex === idx ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                        {copiedTitleIndex === idx ? 'Copiado' : 'Copiar'}
-                                      </button>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        <button 
+                                          onClick={() => handleGenerateFromSuggestedTitle(titleText)}
+                                          title="Gerar Roteiro com este título"
+                                          className="h-10 px-4 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-neon-purple/10 text-neon-purple hover:bg-neon-purple hover:text-white border border-neon-purple/20 transform active:scale-95"
+                                        >
+                                          <Wand2 className="w-3.5 h-3.5" />
+                                          <span className="hidden sm:inline">Gerar Roteiro</span>
+                                        </button>
+                                        <button 
+                                          onClick={() => copyToClipboard(titleText, idx)}
+                                          className={`h-10 px-4 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transform active:scale-95
+                                            ${copiedTitleIndex === idx 
+                                              ? 'bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
+                                              : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-transparent'
+                                            }
+                                          `}
+                                        >
+                                          {copiedTitleIndex === idx ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                          {copiedTitleIndex === idx ? 'Copiado' : 'Copiar'}
+                                        </button>
+                                      </div>
                                     </div>
                                     <AnimatePresence>
                                       {translations[idx] && (
@@ -894,13 +1001,22 @@ REGRAS DE FORMATO:
                               <div className="whitespace-pre-wrap">
                                 {String(analysisResult || "").split('\n').map((line, i) => {
                                   const parts = line.split(/(\*\*.*?\*\*)/g);
+                                  const isAudienceSection = line.includes('VOZ DA AUDIÊNCIA') || line.includes('CRÍTICAS IDENTIFICADAS');
                                   return (
-                                    <div key={i} className="mb-4">
+                                    <div key={i} className={`mb-4 ${isAudienceSection ? 'bg-neon-purple/5 p-4 rounded-xl border border-neon-purple/20' : ''}`}>
                                       {parts.map((part, j) => {
                                         if (part.startsWith('**') && part.endsWith('**')) {
-                                          return <strong key={j} className="text-neon-cyan font-black">{part.slice(2, -2)}</strong>;
+                                          const label = part.slice(2, -2);
+                                          return (
+                                            <div key={j} className="flex items-center gap-2 mb-2">
+                                              {isAudienceSection && <Activity className="w-4 h-4 text-neon-purple" />}
+                                              <strong className={`font-black uppercase tracking-widest text-[11px] ${isAudienceSection ? 'text-neon-purple' : 'text-neon-cyan'}`}>
+                                                {label}
+                                              </strong>
+                                            </div>
+                                          );
                                         }
-                                        return <span key={j}>{part}</span>;
+                                        return <span key={j} className={isAudienceSection ? 'text-gray-300' : ''}>{part}</span>;
                                       })}
                                     </div>
                                   );

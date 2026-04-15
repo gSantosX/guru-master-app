@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
-import { User, Lock, Mail, ArrowRight, Sparkles, LogIn, UserPlus, Info, ShieldCheck, Key, Settings, AlertCircle, CheckCircle2, Activity } from 'lucide-react';
+import { User, Lock, Mail, ArrowRight, Sparkles, LogIn, UserPlus, Info, ShieldCheck, Key, Settings, AlertCircle, CheckCircle2, Activity, X } from 'lucide-react';
 import { resolveApiUrl } from '../utils/apiUtils';
 
-export const Login = () => {
+export const Login = ({ onClose, isAppContext }) => {
   const { login, register, sendVerificationCode, verifyCode } = useAuth();
   const { isInitialized, checkConnectivity } = useSystemStatus();
   
@@ -132,6 +132,17 @@ export const Login = () => {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-neon-cyan/20 rounded-full blur-[120px] animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-neon-pink/20 rounded-full blur-[120px] animate-pulse delay-700" />
       
+      {/* Botão de Fechar / Voltar (Visível Apenas no Modo Web) */}
+      {onClose && (
+        <button 
+           onClick={onClose} 
+           className="absolute top-8 md:top-12 left-8 md:left-12 z-[250] flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white transition-all group shadow-lg"
+        >
+           <X className="w-4 h-4 text-neon-pink group-hover:scale-110 transition-transform" /> 
+           Voltar
+        </button>
+      )}
+
       {/* Main Glass Card */}
       <div className="relative w-full max-w-xl">
         <div className="absolute -inset-0.5 bg-gradient-to-r from-neon-cyan via-neon-purple to-neon-pink rounded-[2.5rem] opacity-30 blur-md"></div>
@@ -155,7 +166,7 @@ export const Login = () => {
           <div className="w-20 h-20 mb-8 relative group">
              <div className="absolute inset-0 bg-neon-cyan rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
              <div className="relative w-full h-full p-1 bg-gradient-to-br from-neon-cyan via-neon-purple to-neon-pink rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(0,243,255,0.3)] overflow-hidden border border-white/20">
-                 <img src="/logo.jpg" alt="Guru Master Logo" className="w-full h-full object-cover rounded-full" />
+                 <img src="logo.jpg" alt="Guru Master Logo" className="w-full h-full object-cover rounded-full" />
               </div>
               
               {/* Backend Status Badge */}
@@ -270,14 +281,26 @@ export const Login = () => {
             )}
           </AnimatePresence>
 
-          {/* Toggle Screen */}
-          <button 
-            onClick={() => { setIsLogin(!isLogin); setRegStep('details'); setError(''); setSuccess(''); }}
-            className="mt-10 text-xs text-gray-500 hover:text-neon-cyan transition-colors flex items-center gap-2 group"
-          >
-            {isLogin ? 'Não tem conta? Começar registro' : 'Já tem conta? Voltar ao Login'}
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
+          {/* Toggle Screen (Apenas Web) */}
+          {!isAppContext && (
+             <button 
+               onClick={() => { setIsLogin(!isLogin); setRegStep('details'); setError(''); setSuccess(''); }}
+               className="mt-10 text-xs text-gray-500 hover:text-neon-cyan transition-colors flex items-center gap-2 group"
+             >
+               {isLogin ? 'Não tem conta? Começar registro' : 'Já tem conta? Voltar ao Login'}
+               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+             </button>
+          )}
+
+          {/* Locked Registration Disclaimer (Apenas App) */}
+          {isAppContext && (
+             <div className="mt-10 pt-8 border-t border-white/5 w-full flex flex-col items-center">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-600 mb-2">Acesso Exclusivo para Membros</span>
+                <p className="text-xs text-gray-500 text-center font-bold">
+                   A criação de novas contas e assinatura do software Dark Master ocorre apenas através do <a href="#" className="text-neon-cyan hover:underline transition-all">site web oficial</a>.
+                </p>
+             </div>
+          )}
         </motion.div>
       </div>
       

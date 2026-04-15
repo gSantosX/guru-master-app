@@ -226,7 +226,7 @@ export const WhiskTab = ({ isActive }) => {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-neon-cyan via-blue-600 to-white p-[1px] shadow-[0_0_10px_rgba(0,243,255,0.2)] shrink-0">
             <div className="w-full h-full bg-dark rounded-full flex items-center justify-center overflow-hidden border border-white/10">
-              <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-full" />
+              <img src="logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-full" />
             </div>
           </div>
           <div>

@@ -1,23 +1,16 @@
 {
   "name": "guru-master-app",
-  "description": "Guru Master AI - automação de Canais de Sucesso",
-  "author": "Guru Master Team",
   "private": true,
-  "version": "3.1.0",
+  "version": "2.6.1",
   "type": "module",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/gSantosX/guru-master-app.git"
-  },
   "main": "desktop/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "setup:python": "node scripts/setup-python.js",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && npx electron .\"",
-    "electron:build": "npm run setup:python && npm run build && npx electron-builder"
+    "electron:build": "npm run build && npx electron-builder"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -25,9 +18,6 @@
     "@supabase/supabase-js": "^2.103.0",
     "autoprefixer": "^10.4.27",
     "electron-is-dev": "^3.0.1",
-    "electron-updater": "^6.8.3",
-    "ffmpeg-static": "^5.3.0",
-    "ffprobe-static": "^3.1.0",
     "framer-motion": "^12.38.0",
     "jspdf": "^4.2.1",
     "jwt-decode": "^4.0.0",
@@ -66,40 +56,12 @@
       "package.json",
       "icon.ico",
       "!backend/backend_logs.txt",
-      "!backend/__pycache__",
-      "!backend/venv/**/*",
-      "bin/**/*"
-    ],
-    "asar": true,
-    "asarUnpack": [
-      "node_modules/ffmpeg-static/**/*",
-      "node_modules/ffprobe-static/**/*",
-      "bin/**/*"
+      "!backend/__pycache__"
     ],
     "win": {
-      "target": "nsis",
+      "target": "portable",
       "icon": "icon.ico",
-      "requestedExecutionLevel": "requireAdministrator",
-      "publish": [
-        {
-          "provider": "github",
-          "owner": "gSantosX",
-          "repo": "guru-master-app"
-        }
-      ]
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": false,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Guru Master",
-      "include": "installer/installer.nsh",
-      "installerIcon": "icon.ico",
-      "uninstallerIcon": "icon.ico",
-      "installerHeaderIcon": "icon.ico",
-      "installerSidebar": "installer/assets/sidebar.png",
-      "uninstallerSidebar": "installer/assets/sidebar.png"
+      "cscLink": null
     }
   }
 }

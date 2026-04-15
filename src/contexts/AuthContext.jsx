@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { resolveApiUrl } from '../utils/apiUtils';
+import { supabase } from '../utils/supabase';
 
 const AuthContext = createContext();
 
@@ -25,33 +26,33 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password, remember = false) => {
     try {
-      const res = await fetch(resolveApiUrl('/api/auth/login'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `Erro ${res.status}: Login falhou`);
+      // Direct Supabase Verification
+      const { data, error } = await supabase
+        .from('guru_users')
+        .select('*')
+        .eq('email', email)
+        .single();
         
-        setUser(data.user);
-        localStorage.setItem('guru_user', JSON.stringify(data.user));
-        localStorage.setItem('guru_remember', remember ? 'true' : 'false');
-        sessionStorage.setItem('guru_active_session', 'true');
-        return { success: true };
-      } else {
-        const text = await res.text();
-        if (res.status === 404) throw new Error("Motor Backend Offline (404)! Verifique se o servidor Flask está rodando.");
-        if (res.status === 504 || res.status === 502) throw new Error("Tempo limite de conexão esgotado (Gateway Error). O backend pode estar travado.");
-        throw new Error(`Erro ${res.status} no servidor: O Motor não enviou uma resposta válida.`);
+      if (error || !data) {
+          throw new Error("Credenciais inválidas ou e-mail não encontrado na Nuvem Mestra.");
       }
+      
+      if (data.password !== password) {
+          throw new Error("Senha Incorreta.");
+      }
+
+      if (!data.is_active && data.email !== 'ovatsug4212@gmail.com') {
+          throw new Error("Sua assinatura Dark Master não está ativa ou expirou. Renove pelo site!");
+      }
+
+      const userData = { name: data.name, email: data.email };
+      setUser(userData);
+      localStorage.setItem('guru_user', JSON.stringify(userData));
+      localStorage.setItem('guru_remember', remember ? 'true' : 'false');
+      sessionStorage.setItem('guru_active_session', 'true');
+      return { success: true };
     } catch (error) {
       console.error('Login error:', error);
-      if (error.message.includes('Unexpected end of JSON input') || error.message.includes('fetch')) {
-         return { success: false, error: "Falha Crítica de Conexão! O Motor Backend (Porta 5000) não respondeu." };
-      }
       return { success: false, error: error.message };
     }
   };
@@ -68,7 +69,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error('Send code error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: "Motor E-mail Offline. Verifique sua conexão local Python." };
     }
   };
 
@@ -84,23 +85,51 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error('Verify code error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: "Erro de Comunicação com Python Local." };
     }
   };
 
   const register = async (name, email, password, code, remember = false) => {
     try {
-      const res = await fetch(resolveApiUrl('/api/auth/register'), {
+      // 1. Verify code again locally
+      const res = await fetch(resolveApiUrl('/api/auth/verify-code'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, code })
+        body: JSON.stringify({ email, code })
       });
+      if (!res.ok) {
+         throw new Error("Código expirado ou inválido.");
+      }
+
+      // 2. Insert into Supabase Central Database
+      const { data: existingUser } = await supabase
+        .from('guru_users')
+        .select('email')
+        .eq('email', email)
+        .single();
+        
+      if (existingUser) {
+        throw new Error("Este e-mail já está registrado na Nuvem.");
+      }
+
+      const { data, error } = await supabase
+         .from('guru_users')
+         .insert([{ 
+             name, 
+             email, 
+             password, 
+             is_active: false // A ativação virá pelo Webhook da Kiwify futuramente
+         }])
+         .select()
+         .single();
+         
+      if (error) {
+         throw new Error(error.message);
+      }
       
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro no cadastro');
-      
-      setUser(data.user);
-      localStorage.setItem('guru_user', JSON.stringify(data.user));
+      const userData = { name, email };
+      setUser(userData);
+      localStorage.setItem('guru_user', JSON.stringify(userData));
       localStorage.setItem('guru_remember', remember ? 'true' : 'false');
       sessionStorage.setItem('guru_active_session', 'true');
       return { success: true };
@@ -109,6 +138,7 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: error.message };
     }
   };
+
 
   const updateConfig = async (newConfig) => {
     try {

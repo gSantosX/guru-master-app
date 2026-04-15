@@ -21,6 +21,11 @@ export const SystemStatusProvider = ({ children }) => {
     autoFlow: 'offline',
     details: { ffmpeg: '', error: '', youtube_error: '' }
   });
+  const [keyStatuses, setKeyStatuses] = useState({
+    gemini: [],
+    openai: [],
+    grok: []
+  });
   const [configs, setConfigs] = useState({
     gemini_key: '',
     grok_key: '',
@@ -33,18 +38,35 @@ export const SystemStatusProvider = ({ children }) => {
     google_client_id: '',
     smtp_user: '',
     smtp_password: '',
-    active_ai: 'Gemini'
+    active_ai: 'Gemini',
+    active_model: 'gemini-1.5-flash-8b'
   });
 
-  const checkConnectivity = useCallback(async () => {
-    let attempts = 0;
-    const maxAttempts = 10;
-    let isConnected = false;
+  const [activeIndices, setActiveIndices] = useState({
+    gemini: 0,
+    openai: 0,
+    grok: 0
+  });
+ 
+  const [toast, setToast] = useState({ message: '', type: '', visible: false });
+ 
+  const showToast = useCallback((message, type = 'info') => {
+    setToast({ message, type, visible: true });
+    setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 5000);
+  }, []);
 
+  const checkConnectivity = useCallback(async (options = {}) => {
+    const { force = false } = options;
+    let attempts = 0;
+    const maxAttempts = force ? 3 : 10;
+    let isConnected = false;
+    const url = resolveApiUrl(`/api/check${force ? '?force=true' : ''}`);
+
+    // 1. Check Backend Connectivity & Details
     while (attempts < maxAttempts && !isConnected) {
         attempts++;
         try {
-            const res = await fetch(resolveApiUrl('/api/check'));
+            const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
                 setStatus(prev => ({
@@ -52,14 +74,14 @@ export const SystemStatusProvider = ({ children }) => {
                     rendering: 'online',
                     ffmpeg: data.ffmpeg !== 'Not found' ? 'online' : 'offline',
                     ffprobe: data.ffprobe !== 'Not found' ? 'online' : 'offline',
-                    gemini: data.ai?.gemini ? 'online' : 'offline',
-                    openai: data.ai?.openai ? 'online' : 'offline',
-                    grok: data.ai?.grok ? 'online' : 'offline',
-                    anthropic: data.ai?.anthropic ? 'online' : 'offline',
-                    deepseek: data.ai?.deepseek ? 'online' : 'offline',
-                    elevenlabs: data.ai?.elevenlabs ? 'online' : 'offline',
-                    leonardo: data.ai?.leonardo ? 'online' : 'offline',
-                    youtube: data.ai?.youtube ? 'online' : 'offline',
+                    gemini: data.ai?.gemini || 'offline',
+                    openai: data.ai?.openai || 'offline',
+                    grok: data.ai?.grok || 'offline',
+                    anthropic: data.ai?.anthropic || 'offline',
+                    deepseek: data.ai?.deepseek || 'offline',
+                    elevenlabs: data.ai?.elevenlabs || 'offline',
+                    leonardo: data.ai?.leonardo || 'offline',
+                    youtube: data.ai?.youtube === 'quota' ? 'quota' : (data.ai?.youtube === true ? 'online' : 'offline'),
                     smtp: data.smtp ? 'online' : 'offline',
                     details: { 
                       ...prev.details, 
@@ -81,91 +103,30 @@ export const SystemStatusProvider = ({ children }) => {
     }
 
     // 2. Load Configs from Backend
-    let currentConfigs = null;
     try {
       const res = await fetch(resolveApiUrl('/api/config'));
       if (res.ok) {
         const configData = await res.json();
         setConfigs(configData);
-        currentConfigs = configData;
+        // Sync active indices from config
+        setActiveIndices({
+          gemini: configData.gemini_active_idx || 0,
+          openai: configData.gpt_active_idx || 0,
+          grok: configData.grok_active_idx || 0
+        });
         // Sync to localStorage
-        if (configData.google_client_id) localStorage.setItem('guru_google_client_id', configData.google_client_id);
-        if (configData.youtube_key) localStorage.setItem('guru_youtube_key', configData.youtube_key);
-        if (configData.gemini_key) localStorage.setItem('guru_gemini_key', configData.gemini_key);
-        if (configData.grok_key) localStorage.setItem('guru_grok_key', configData.grok_key);
-        if (configData.gpt_key) localStorage.setItem('guru_gpt_key', configData.gpt_key);
-        if (configData.active_ai) localStorage.setItem('guru_active_ai', configData.active_ai);
+        Object.entries(configData).forEach(([k, v]) => {
+           if (v !== undefined && v !== null) localStorage.setItem(`guru_${k}`, v);
+        });
       }
     } catch (err) {
-       // If backend is down, use localStorage as fallback
-       currentConfigs = {
-         gemini_key: localStorage.getItem('guru_gemini_key') || '',
-         grok_key: localStorage.getItem('guru_grok_key') || '',
-         gpt_key: localStorage.getItem('guru_gpt_key') || '',
-         youtube_key: localStorage.getItem('guru_youtube_key') || '',
-         google_client_id: localStorage.getItem('guru_google_client_id') || '',
-         active_ai: localStorage.getItem('guru_active_ai') || 'Gemini'
-       };
-       setConfigs(currentConfigs);
-    }
-
-    // 3. Check AI APIs Independently
-    if (currentConfigs) {
-        const checkApi = async (name, key, url, headers = {}) => {
-            if (!key || key.includes('YOUR_') || key === "" || key.length < 5) return 'offline';
-            try {
-                const res = await fetch(resolveApiUrl(url), { headers });
-                return res.ok ? 'online' : 'offline';
-            } catch (e) {
-                return 'offline';
-            }
-        };
-
-        const [geminiStatus, openaiStatus, grokStatus] = await Promise.all([
-            checkApi('Gemini', currentConfigs.gemini_key, `/api/gemini/v1beta/models?key=${currentConfigs.gemini_key}`),
-            checkApi('GPT', currentConfigs.gpt_key, "/api/openai/v1/models", { "Authorization": `Bearer ${currentConfigs.gpt_key}` }),
-            checkApi('Grok', currentConfigs.grok_key, "/api/grok/v1/models", { "Authorization": `Bearer ${currentConfigs.grok_key}` })
-        ]);
-
-        setStatus(prev => ({
-            ...prev,
-            gemini: geminiStatus,
-            openai: openaiStatus,
-            grok: grokStatus
-        }));
+        console.error("Error loading config from backend:", err);
     }
 
     setIsInitialized(true);
   }, []);
 
-  useEffect(() => {
-    checkConnectivity();
-    // Iniciar pollock periódico para manter o status atualizado
-    const interval = setInterval(async () => {
-        try {
-            const res = await fetch(resolveApiUrl('/api/check'));
-            if (res.ok) {
-                const data = await res.json();
-                setStatus(prev => ({
-                    ...prev,
-                    rendering: 'online',
-                    ffmpeg: data.ffmpeg !== 'Not found' ? 'online' : 'offline'
-                }));
-            }
-            
-            // Pulse for Auto Flow extension
-            const whiskRes = await fetch(resolveApiUrl('/api/whisk/heartbeat'));
-            if (whiskRes.ok) {
-                const whiskData = await whiskRes.json();
-                setStatus(prev => ({ ...prev, autoFlow: whiskData.active ? 'online' : 'offline' }));
-            }
-        } catch (e) {}
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, [checkConnectivity]);
-
-  const updateConfig = async (newConfig) => {
+  const updateConfig = useCallback(async (newConfig) => {
     try {
       const res = await fetch(resolveApiUrl('/api/config'), {
         method: 'POST',
@@ -174,22 +135,164 @@ export const SystemStatusProvider = ({ children }) => {
       });
       if (res.ok) {
         setConfigs(prev => ({ ...prev, ...newConfig }));
-        // Sincronizar localmente também por precaução
         Object.entries(newConfig).forEach(([key, val]) => {
-           if (key.includes('key')) localStorage.setItem(`guru_${key}`, val);
-           else localStorage.setItem(`guru_${key}`, val);
+           localStorage.setItem(`guru_${key}`, val);
         });
-        await checkConnectivity();
+        // Notify aiUtils to bust the model cache
+        window.dispatchEvent(new Event('guru_config_updated'));
+        await checkConnectivity({ force: true });
+        // Specific feedback for Gemini if it just went online
+        setStatus(prev => {
+          if (prev.gemini === 'online') {
+            showToast("Gemini Conectado e Ativo!", "success");
+          }
+          return prev;
+        });
         return true;
       }
     } catch (err) {
       console.error("Erro ao salvar configuração:", err);
     }
     return false;
-  };
+  }, [checkConnectivity, showToast]);
+
+  const rotateKey = useCallback((provider) => {
+    setActiveIndices(prev => {
+        const keyProp = provider === 'openai' ? 'gpt_key' : `${provider}_key`;
+        const idxProp = provider === 'openai' ? 'gpt_active_idx' : `${provider}_active_idx`;
+        const keys = (configs[keyProp] || '').split(',').filter(k => k.trim());
+        const nextIndex = keys.length > 0 ? (prev[provider] + 1) % keys.length : 0;
+        
+        // Update both local and remote if it's a persistent selection change
+        updateConfig({ [idxProp]: nextIndex });
+        return { ...prev, [provider]: nextIndex };
+    });
+  }, [configs, updateConfig]);
+
+  const setManualActiveIndex = useCallback((provider, index) => {
+    setActiveIndices(prev => ({ ...prev, [provider]: index }));
+    
+    // Persist to backend
+    const idxProp = provider === 'openai' ? 'gpt_active_idx' : `${provider}_active_idx`;
+    updateConfig({ [idxProp]: index });
+
+    // Notify the AI engine
+    window.dispatchEvent(new CustomEvent('guru_manual_key_select', { detail: { provider, index } }));
+  }, [updateConfig]);
+  
+  const checkBulkKeys = useCallback(async (provider, keys) => {
+    try {
+      const res = await fetch(resolveApiUrl('/api/check/bulk'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, keys })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setKeyStatuses(prev => ({
+          ...prev,
+          [provider]: data.statuses
+        }));
+        return data.statuses;
+      }
+    } catch (err) {
+      console.error(`Error checking bulk keys for ${provider}:`, err);
+    }
+    return [];
+  }, []);
+
+  useEffect(() => {
+    const handleRotation = (e) => {
+      const { provider, index } = e.detail;
+      setActiveIndices(prev => ({ ...prev, [provider]: index }));
+      showToast(`🔄 Rodando chave ${provider}: #${index + 1}`, 'success');
+    };
+ 
+    const handleFallback = (e) => {
+      const { message } = e.detail;
+      showToast(`⚡ ${message}`, 'warning');
+    };
+ 
+    window.addEventListener('guru_key_rotated', handleRotation);
+    window.addEventListener('guru_fallback_triggered', handleFallback);
+    return () => {
+      window.removeEventListener('guru_key_rotated', handleRotation);
+      window.removeEventListener('guru_fallback_triggered', handleFallback);
+    };
+  }, [showToast]);
+
+  // Implementação da Verificação Contínua e Rotação Autônoma a cada 25s
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const checkAndRotateBackground = async () => {
+      // Background check for Gemini
+      const geminiKeys = (configs.gemini_key || '').split(',').map(k => k.trim()).filter(Boolean);
+      if (geminiKeys.length > 0) {
+         const statuses = await checkBulkKeys('gemini', geminiKeys);
+         const currentIdx = activeIndices.gemini || 0;
+         if (statuses[currentIdx] && !statuses[currentIdx].startsWith('online')) {
+             const nextValidIdx = statuses.findIndex(s => s.startsWith('online'));
+             if (nextValidIdx !== -1 && nextValidIdx !== currentIdx) {
+                 setManualActiveIndex('gemini', nextValidIdx);
+                 console.log(`[Diagnóstico de Fundo] Chave Gemini ${currentIdx} esgotada. Rotacionando para chave ${nextValidIdx}.`);
+             }
+         }
+      }
+
+      // Background check for OpenAI
+      const gptKeys = (configs.gpt_key || '').split(',').map(k => k.trim()).filter(Boolean);
+      if (gptKeys.length > 0) {
+         const statuses = await checkBulkKeys('openai', gptKeys);
+         const currentIdx = activeIndices.openai || 0;
+         if (statuses[currentIdx] && !statuses[currentIdx].startsWith('online')) {
+             const nextValidIdx = statuses.findIndex(s => s.startsWith('online'));
+             if (nextValidIdx !== -1 && nextValidIdx !== currentIdx) {
+                 setManualActiveIndex('openai', nextValidIdx);
+             }
+         }
+      }
+
+      // Background check for Grok
+      const grokKeys = (configs.grok_key || '').split(',').map(k => k.trim()).filter(Boolean);
+      if (grokKeys.length > 0) {
+         const statuses = await checkBulkKeys('grok', grokKeys);
+         const currentIdx = activeIndices.grok || 0;
+         if (statuses[currentIdx] && !statuses[currentIdx].startsWith('online')) {
+             const nextValidIdx = statuses.findIndex(s => s.startsWith('online'));
+             if (nextValidIdx !== -1 && nextValidIdx !== currentIdx) {
+                 setManualActiveIndex('grok', nextValidIdx);
+             }
+         }
+      }
+    };
+
+    const autonomousInterval = setInterval(checkAndRotateBackground, 25000); // 25 seconds
+    // Initial run slightly delayed
+    const timeout = setTimeout(checkAndRotateBackground, 5000);
+
+    return () => {
+      clearInterval(autonomousInterval);
+      clearTimeout(timeout);
+    };
+  }, [isInitialized, configs, activeIndices, checkBulkKeys, setManualActiveIndex]);
+
+  useEffect(() => {
+    checkConnectivity();
+    const interval = setInterval(async () => {
+        try {
+            const res = await fetch(resolveApiUrl('/api/check'));
+            if (res.ok) {
+                const data = await res.json();
+                setStatus(prev => ({ ...prev, rendering: 'online', ffmpeg: data.ffmpeg !== 'Not found' ? 'online' : 'offline' }));
+            }
+        } catch (e) {}
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [checkConnectivity]);
 
   return (
-    <SystemStatusContext.Provider value={{ status, configs, checkConnectivity, updateConfig, isInitialized }}>
+    <SystemStatusContext.Provider value={{ status, configs, checkConnectivity, updateConfig, isInitialized, activeIndices, rotateKey, setManualActiveIndex, toast, showToast, keyStatuses, checkBulkKeys }}>
       {children}
     </SystemStatusContext.Provider>
   );

@@ -25,7 +25,7 @@ import { t } from '../utils/i18n';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { usePersistence } from '../contexts/PersistenceContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { callGemini } from '../utils/aiUtils';
+import { callAI } from '../utils/aiUtils';
 
 const NICHES = [
   "Finanças", "História", "Mistérios", "Crimes Reais", "Espiritualidade", 
@@ -101,6 +101,20 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
   };
 
   const handleSearch = async () => {
+    // Check Cache
+    const cacheKey = `mining_${selectedNiche}_${selectedLang.code}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Date.now() - parsed.timestamp < 1 * 60 * 60 * 1000) { // 1 hour cache
+          console.log("Using cached mining data");
+          setChannels(parsed.data);
+          return;
+        }
+      } catch (e) {}
+    }
+
     setIsSearching(true);
     setChannels([]);
     
@@ -174,6 +188,12 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
         .slice(0, 15); // Increased to 15 results
 
       setChannels(minedChannels);
+      
+      // Save to Cache
+      sessionStorage.setItem(`mining_${selectedNiche}_${selectedLang.code}`, JSON.stringify({
+        timestamp: Date.now(),
+        data: minedChannels
+      }));
 
       if (minedChannels.length === 0) {
         alert("Não encontramos canais com os critérios atuais para este nicho. Tente outro tema ou idioma!");
@@ -225,7 +245,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
         Previous Knowledge context: ${JSON.stringify(knowledge.structures.slice(-5))}
       `;
 
-      const response = await callGemini(configs.gemini_key, analysisPrompt);
+      const response = await callAI(analysisPrompt, { gptKey: configs.gpt_key });
       const cleanJson = response.replace(/```json|```/g, '').trim();
       const results = JSON.parse(cleanJson);
 
@@ -262,31 +282,31 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
 
   return (
     <div className="flex flex-col h-full w-full max-w-[1600px] mx-auto gap-8 font-sans overflow-hidden">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 shrink-0">
-        <div>
-          <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(34,211,238,0.3)]">
-              <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
-                <Youtube className="w-8 h-8 text-white fill-current" />
-              </div>
+      <header className="mb-12">
+        <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(34,211,238,0.3)]">
+            <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
+              <Youtube className="w-8 h-8 text-white fill-current" />
             </div>
-            {t('mining.rising_header')}
-          </h2>
-          <p className="text-gray-400 mt-3 font-bold text-sm md:text-md uppercase tracking-[0.2em] border-l-4 border-neon-cyan pl-4 ml-2">
-            {t('mining.subtitle')}
-          </p>
-        </div>
+          </div>
+          {t('mining.rising_header') || 'Mineração de Canais'}
+        </h2>
+        <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-cyan pl-4 ml-2 italic">
+          {t('mining.subtitle') || 'Detectando Rising Stars e Oportunidades Explosivas'}
+        </p>
+      </header>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-4 bg-white/5 p-4 rounded-3xl border border-white/10 backdrop-blur-md">
-          <div className="flex flex-col gap-1.5">
+      {/* Filters Box */}
+      <div className="w-full mb-8">
+        <div className="flex flex-col md:flex-row gap-6 bg-white/5 p-6 rounded-3xl border border-white/10 backdrop-blur-md items-end w-full">
+          <div className="flex flex-col gap-2 flex-1">
             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2 flex items-center gap-2">
-              <Globe className="w-3 h-3 text-neon-cyan" /> {t('mining.lang_label')}
+              <Globe className="w-4 h-4 text-neon-cyan" /> {t('mining.lang_label')}
             </label>
             <select 
               value={selectedLang.code}
               onChange={(e) => setSelectedLang(LANGUAGES.find(l => l.code === e.target.value))}
-              className="bg-dark/60 border border-white/5 rounded-2xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-neon-cyan/50 hover:bg-dark/80 transition-all cursor-pointer min-w-[180px]"
+              className="bg-dark/60 border border-white/5 rounded-2xl px-5 py-4 text-white font-bold text-sm focus:outline-none focus:border-neon-cyan/50 hover:bg-dark/80 transition-all cursor-pointer w-full"
             >
               {LANGUAGES.map(lang => (
                 <option key={lang.code} value={lang.code}>{lang.name}</option>
@@ -294,14 +314,14 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
             </select>
           </div>
 
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2 flex-1">
             <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2 flex items-center gap-2">
-              <Layers className="w-3 h-3 text-neon-purple" /> {t('mining.niche_label')}
+              <Layers className="w-4 h-4 text-neon-purple" /> {t('mining.niche_label')}
             </label>
             <select 
               value={selectedNiche}
               onChange={(e) => setSelectedNiche(e.target.value)}
-              className="bg-dark/60 border border-white/5 rounded-2xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-neon-purple/50 hover:bg-dark/80 transition-all cursor-pointer min-w-[180px]"
+              className="bg-dark/60 border border-white/5 rounded-2xl px-5 py-4 text-white font-bold text-sm focus:outline-none focus:border-neon-purple/50 hover:bg-dark/80 transition-all cursor-pointer w-full"
             >
               {NICHES.map(niche => (
                 <option key={niche} value={niche}>{niche}</option>
@@ -312,13 +332,13 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
           <button 
             onClick={handleSearch}
             disabled={isSearching}
-            className="self-end px-8 py-3 bg-white text-dark rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-neon-cyan transition-all transform hover:scale-105 active:scale-95 disabled:opacity-30 shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center gap-3"
+            className="flex-shrink-0 md:w-auto w-full px-10 py-4 h-[54px] bg-white text-dark rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-neon-cyan transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-30 shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-3"
           >
-            {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+            {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
             {isSearching ? t('mining.searching') : t('mining.btn_search')}
           </button>
         </div>
-      </header>
+      </div>
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0">
         <AnimatePresence mode="wait">
           {isSearching ? (
@@ -421,16 +441,16 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
 
                     <button 
                       onClick={() => handleCopyUrl(channel)}
-                      className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest transition-all mb-4 relative overflow-hidden group/btn
+                      className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest transition-all mb-4 relative overflow-hidden group/btn shadow-lg transform active:scale-95
                         ${copiedId === channel.id 
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                          : 'bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan hover:text-dark'
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.2)]' 
+                          : 'bg-white text-dark hover:bg-neon-cyan'
                         }
                       `}
                     >
-                      {copiedId === channel.id ? <Check className="w-4 h-4 shadow-[0_0_10px_rgba(34,197,94,0.5)]" /> : <Copy className="w-4 h-4" />}
+                      {copiedId === channel.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       {copiedId === channel.id ? (t('mining.copied') || 'Copiado!') : (t('mining.copy_btn') || 'Copiar Canal')}
-                      {!copiedId && <Zap className="absolute right-4 w-4 h-4 opacity-30 group-hover/btn:opacity-100 group-hover/btn:scale-125 transition-all" />}
+                      {!copiedId && <Zap className="absolute right-4 w-4 h-4 opacity-50 group-hover/btn:opacity-100 group-hover/btn:scale-125 transition-all text-dark/20" />}
                     </button>
                   </div>
                 </motion.div>

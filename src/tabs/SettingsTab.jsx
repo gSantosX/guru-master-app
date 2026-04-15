@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, Key, Palette, HardDrive, Shield, CheckCircle, Cpu, AlertCircle, Info, Zap, RefreshCw, Layout, Plus, Minus, Youtube } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Settings, Key, Palette, HardDrive, Shield, CheckCircle, Cpu, AlertCircle, Info, Zap, RefreshCw, Layout, Plus, Minus, Youtube, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { t } from '../utils/i18n';
+import { useAuth } from '../contexts/AuthContext';
 
 export const SettingsTab = () => {
-  const { status, configs, checkConnectivity, updateConfig, isInitialized } = useSystemStatus();
+  const { status, configs, checkConnectivity, updateConfig, isInitialized, activeIndices, checkBulkKeys } = useSystemStatus();
+  const { user } = useAuth();
+  const isAdmin = user?.email === 'suporte.gurumaster@gmail.com' || localStorage.getItem('guru_user_email') === 'suporte.gurumaster@gmail.com';
   
-  const [geminiKey, setGeminiKey] = useState(configs.gemini_key || '');
-  const [grokKey, setGrokKey] = useState(configs.grok_key || '');
-  const [gptKey, setGptKey] = useState(configs.gpt_key || '');
+  const [geminiKeys, setGeminiKeys] = useState(configs.gemini_key || '');
+  const [gptKeys, setGptKeys] = useState(configs.gpt_key || '');
+  const [grokKeys, setGrokKeys] = useState(configs.grok_key || '');
+  
   const [anthropicKey, setAnthropicKey] = useState(configs.anthropic_key || '');
   const [deepseekKey, setDeepseekKey] = useState(configs.deepseek_key || '');
   const [elevenlabsKey, setElevenlabsKey] = useState(configs.elevenlabs_key || '');
@@ -32,31 +36,42 @@ export const SettingsTab = () => {
   const [appFontSize, setAppFontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);
   const [storageInfo, setStorageInfo] = useState({ cache_size: 0, total_space: 21474836480, free_space: 0 }); 
 
+  const initialLoadRef = React.useRef(false);
+
   useEffect(() => {
-    setGeminiKey(configs.gemini_key || '');
-    setGrokKey(configs.grok_key || '');
-    setGptKey(configs.gpt_key || '');
-    setAnthropicKey(configs.anthropic_key || '');
-    setDeepseekKey(configs.deepseek_key || '');
-    setElevenlabsKey(configs.elevenlabs_key || '');
-    setLeonardoKey(configs.leonardo_key || '');
-    setYoutubeKey(configs.youtube_key || '');
-    setGoogleClientId(configs.google_client_id || '');
-    setSmtpUser(configs.smtp_user || '');
-    setSmtpPass(configs.smtp_password || '');
-    setActiveAi(configs.active_ai);
-    setFfmpegPath(configs.ffmpeg_path || 'ffmpeg');
-    setFfprobePath(configs.ffprobe_path || 'ffprobe');
-    setFlowDownloadsPath(configs.flow_downloads_path || '');
-  }, [configs]);
+    if (isInitialized && !initialLoadRef.current && Object.keys(configs).length > 0) {
+      setGeminiKeys(configs.gemini_key || '');
+      setGptKeys(configs.gpt_key || '');
+      setGrokKeys(configs.grok_key || '');
+      
+      setAnthropicKey(configs.anthropic_key || '');
+      setDeepseekKey(configs.deepseek_key || '');
+      setElevenlabsKey(configs.elevenlabs_key || '');
+      setLeonardoKey(configs.leonardo_key || '');
+      setYoutubeKey(configs.youtube_key || '');
+      setGoogleClientId(configs.google_client_id || '');
+      setSmtpUser(configs.smtp_user || '');
+      setSmtpPass(configs.smtp_password || '');
+      setActiveAi(configs.active_ai);
+      setFfmpegPath(configs.ffmpeg_path || 'ffmpeg');
+      setFfprobePath(configs.ffprobe_path || 'ffprobe');
+      setFlowDownloadsPath(configs.flow_downloads_path || '');
+      
+      initialLoadRef.current = true;
+    }
+  }, [configs, isInitialized]);
 
   // Auto-save logic (Debounce)
   useEffect(() => {
     const timer = setTimeout(() => {
+      const gmnStr = typeof geminiKeys === 'string' ? geminiKeys : '';
+      const gptStr = typeof gptKeys === 'string' ? gptKeys : '';
+      const grkStr = typeof grokKeys === 'string' ? grokKeys : '';
+
       const hasChanges = 
-        geminiKey !== configs.gemini_key ||
-        grokKey !== configs.grok_key ||
-        gptKey !== configs.gpt_key ||
+        gmnStr !== (configs.gemini_key || '') ||
+        gptStr !== (configs.gpt_key || '') ||
+        grkStr !== (configs.grok_key || '') ||
         anthropicKey !== configs.anthropic_key ||
         deepseekKey !== configs.deepseek_key ||
         elevenlabsKey !== configs.elevenlabs_key ||
@@ -75,7 +90,7 @@ export const SettingsTab = () => {
     }, 1500); // Wait 1.5s after typing to save
 
     return () => clearTimeout(timer);
-  }, [geminiKey, grokKey, gptKey, anthropicKey, deepseekKey, elevenlabsKey, leonardoKey, youtubeKey, googleClientId, smtpUser, smtpPass, ffmpegPath, ffprobePath, flowDownloadsPath]);
+  }, [geminiKeys, grokKeys, gptKeys, anthropicKey, deepseekKey, elevenlabsKey, leonardoKey, youtubeKey, googleClientId, smtpUser, smtpPass, ffmpegPath, ffprobePath, flowDownloadsPath]);
 
   const fetchStorageInfo = async () => {
     try {
@@ -100,9 +115,9 @@ export const SettingsTab = () => {
   const handleSaveKeys = async () => {
     setIsSaving(true);
     const success = await updateConfig({
-      gemini_key: geminiKey,
-      grok_key: grokKey,
-      gpt_key: gptKey,
+      gemini_key: typeof geminiKeys === 'string' ? geminiKeys.split(',').map(k => k.trim()).filter(Boolean).join(',') : '',
+      gpt_key: typeof gptKeys === 'string' ? gptKeys.split(',').map(k => k.trim()).filter(Boolean).join(',') : '',
+      grok_key: typeof grokKeys === 'string' ? grokKeys.split(',').map(k => k.trim()).filter(Boolean).join(',') : '',
       anthropic_key: anthropicKey,
       deepseek_key: deepseekKey,
       elevenlabs_key: elevenlabsKey,
@@ -120,12 +135,30 @@ export const SettingsTab = () => {
     setIsSaving(false);
     if (success) {
       setIsSaved(true);
+      // Re-check all keys on save
+      checkAllKeyStatuses();
       setTimeout(() => setIsSaved(false), 2000);
     }
   };
 
+  const checkAllKeyStatuses = useCallback(async () => {
+    if (!isInitialized) return;
+    await checkBulkKeys('gemini', typeof geminiKeys === 'string' ? geminiKeys.split(',').map(k => k.trim()).filter(Boolean) : []);
+    await checkBulkKeys('openai', typeof gptKeys === 'string' ? gptKeys.split(',').map(k => k.trim()).filter(Boolean) : []);
+    await checkBulkKeys('grok', typeof grokKeys === 'string' ? grokKeys.split(',').map(k => k.trim()).filter(Boolean) : []);
+  }, [geminiKeys, gptKeys, grokKeys, isInitialized, checkBulkKeys]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      checkAllKeyStatuses();
+    }
+  }, [isInitialized]); // Run once when tab loads
+
   const handleReconnect = async () => {
     setIsReconnecting(true);
+    try {
+      await fetch(resolveApiUrl('/api/check?force=true'));
+    } catch (e) {}
     await checkConnectivity();
     setTimeout(() => setIsReconnecting(false), 800);
   };
@@ -137,7 +170,7 @@ export const SettingsTab = () => {
   };
 
   const handleMotionChange = (e) => {
-    const isChecked = e.target.checked;
+    const isChecked = typeof e === 'boolean' ? e : e.target.checked;
     setReduceMotion(isChecked);
     localStorage.setItem('guru_reduce_motion', isChecked);
     window.dispatchEvent(new Event('guru_motion_change'));
@@ -146,43 +179,150 @@ export const SettingsTab = () => {
   const handleClearCache = async () => {
     if (confirm(t('settings.clear_warning'))) {
       try {
-        // Clear Backend
-        await fetch('http://localhost:5000/api/storage/clear', { method: 'POST' });
-        
-        // Clear LocalStorage (Projects only)
+        await fetch(resolveApiUrl('/api/storage/clear'), { method: 'POST' });
         localStorage.removeItem('guru_scripts');
         localStorage.removeItem('guru_active_renders');
         localStorage.removeItem('guru_completed_renders');
-        
-        // Refresh
         await fetchStorageInfo();
         alert(t('settings.clear_success'));
         window.dispatchEvent(new Event('guru_completed_updated'));
         window.dispatchEvent(new Event('guru_scripts_updated'));
       } catch (e) {
-        alert("Erro ao limpar cache remoto. Verifique a conexão com o servidor.");
+        alert("Erro ao limpar cache remoto.");
       }
     }
   };
 
-  const StatusItem = ({ label, status, icon: Icon, error }) => (
-    <div className="p-3 bg-dark/40 rounded-xl border border-white/5 flex flex-col gap-1">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Icon className={`w-4 h-4 ${status === 'online' ? 'text-green-400' : status === 'checking...' ? 'text-yellow-400 animate-pulse' : 'text-red-400'}`} />
-          <span className="text-sm text-gray-300">{label}</span>
+  const MultiKeyField = ({ label, keysStr, setKeysStr, placeholder }) => {
+    const { activeIndices, setManualActiveIndex, keyStatuses } = useSystemStatus();
+    const provider = label.toLowerCase() === 'openai' ? 'openai' : label.toLowerCase();
+    const statuses = keyStatuses[provider] || [];
+    const activeIdx = activeIndices[provider] || 0;
+
+    const keysArray = (typeof keysStr === 'string' ? keysStr : '').split(',').map(k => k.trim()).filter(Boolean);
+
+    const handlePaste = (e) => {
+      e.preventDefault();
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').trim();
+      const cleanPasted = pasted.replace(/[\n\r\s]+/g, ',').replace(/,+/g, ',');
+
+      const currentVal = typeof keysStr === 'string' ? keysStr : '';
+      const start = e.target.selectionStart;
+      const end = e.target.selectionEnd;
+      
+      let before = currentVal.substring(0, start);
+      let after = currentVal.substring(end);
+      
+      if (before && !before.endsWith(',') && !before.endsWith(', ') && !cleanPasted.startsWith(',')) {
+        before += ", ";
+      }
+      if (after && !after.startsWith(',') && !after.startsWith(', ') && !cleanPasted.endsWith(',')) {
+        after = ", " + after;
+      }
+      
+      setKeysStr(before + cleanPasted + after);
+    };
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-xs font-medium text-gray-300">{label} (Separe chaves com vírgula)</label>
         </div>
-        <span className={`text-[10px] px-2.5 py-0.5 rounded-lg font-black tracking-widest uppercase shadow-sm ${
-          status === 'online' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 
-          status === 'checking...' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-4' :
-          'bg-red-500/10 text-red-400 border border-red-500/20'
-        }`}>
-          {status === 'online' ? 'LIGADO' : status === 'checking...' ? 'TESTANDO' : 'DESLIGADO'}
-        </span>
+        
+        <textarea 
+          value={typeof keysStr === 'string' ? keysStr : ''}
+          onChange={(e) => setKeysStr(e.target.value)}
+          onPaste={handlePaste}
+          placeholder={`Cole as chaves aqui... Ex: ${placeholder}`}
+          rows={Math.max(2, Math.min(4, keysArray.length > 2 ? 3 : 2))}
+          className="w-full bg-dark/50 border border-white/10 rounded-lg p-2 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-xs font-mono break-all resize-none shadow-inner transition-all hover:bg-dark/70"
+        />
+
+        {keysArray.length > 0 && (
+          <div className="flex gap-2 flex-wrap mt-2">
+            {keysArray.map((key, idx) => {
+              const statusStr = statuses[idx] || '';
+              const isOnline = statusStr.startsWith('online');
+              const isQuota = statusStr.startsWith('quota');
+              const isChecking = statusStr.startsWith('checking');
+              
+              const isExhaustedOrOffline = isQuota || (!isOnline && !isChecking && statusStr !== '');
+
+              let statusColor = isOnline ? 'bg-green-500/20 text-green-400 border-green-500/30' : 
+                                isChecking ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                                'bg-red-500/20 text-red-500 border-red-500/30';
+              
+              let statusDot = isOnline ? 'bg-green-400' : isChecking ? 'bg-yellow-400 animate-pulse' : 'bg-red-500';
+
+              let label = idx === activeIdx ? 'Ativo' : 'Reserva';
+              if (isExhaustedOrOffline) {
+                 label = isQuota ? 'Esgotada' : 'Offline';
+              }
+
+              return (
+                 <div key={idx} className={`flex items-center gap-2 px-2 py-1 rounded border text-[9px] font-black uppercase tracking-widest ${idx === activeIdx ? 'ring-1 ring-neon-cyan shadow-[0_0_10px_rgba(0,243,255,0.2)]' : ''} ${statusColor}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${statusDot}`}></div>
+                    <span>{label}: ...{key.slice(-4)}</span>
+                    <button 
+                      onClick={() => setManualActiveIndex(provider, idx)}
+                      className={`ml-1 px-1.5 py-0.5 rounded ${idx === activeIdx ? 'bg-white/20' : 'bg-black/20 hover:bg-black/40'} transition-colors`}
+                    >
+                      {idx === activeIdx ? 'Usando' : 'Forçar Uso'}
+                    </button>
+                 </div>
+              );
+            })}
+          </div>
+        )}
+        
+        {keysArray.length > 1 && (
+          <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-neon-cyan/5 border border-neon-cyan/10 rounded-lg">
+             <Zap className="w-3 h-3 text-neon-cyan animate-pulse shrink-0" />
+             <span className="text-[9px] text-gray-500 font-medium uppercase tracking-wider">
+               Rotação Automática: O Guru Master pulará a chave esgotada e usará a próxima.
+             </span>
+          </div>
+        )}
       </div>
-      {error && <p className="text-[10px] text-red-400/80 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {error}</p>}
-    </div>
-  );
+    );
+  };
+
+  const StatusItem = ({ label, status, icon: Icon, error }) => {
+    const provider = label.toLowerCase();
+    const isAi = provider.includes('gemini') || provider.includes('openai') || provider.includes('grok');
+    
+    // User requested quota to show as "DESLIGADO"
+    let displayStatus = status === 'online' ? 'LIGADO' : status === 'checking...' ? 'TESTANDO' : 'DESLIGADO';
+    
+    if (isAi && status === 'online') {
+       const keyType = provider.includes('gemini') ? 'gemini' : provider.includes('openai') ? 'openai' : 'grok';
+       const idx = activeIndices[keyType];
+       displayStatus += idx === 0 ? ' (PRIME)' : ` (RES ${idx})`;
+    }
+
+    return (
+      <div className="p-3 bg-dark/40 rounded-xl border border-white/5 flex flex-col gap-1">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Icon className={`w-4 h-4 ${status === 'online' ? 'text-green-400' : status === 'quota' ? 'text-orange-400' : status === 'checking...' ? 'text-yellow-400 animate-pulse' : 'text-red-400'}`} />
+            <span className="text-sm text-gray-300">{label}</span>
+          </div>
+          <span className={`text-[10px] px-2.5 py-0.5 rounded-lg font-black tracking-widest uppercase shadow-sm ${
+            status === 'online' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 
+            status === 'checking...' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-4' :
+            'bg-red-500/10 text-red-400 border border-red-500/20'
+          }`}>
+            {displayStatus}
+          </span>
+        </div>
+        {(error || status === 'quota') && (
+          <p className="text-[10px] text-red-400/80 mt-1 flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" /> {status === 'quota' ? (label.toLowerCase().includes('youtube') ? 'Cota do YouTube excedida.' : 'Limite da API Excedido') : error}
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-5xl mx-auto h-full flex flex-col overflow-y-auto custom-scrollbar pb-20">
@@ -228,37 +368,59 @@ export const SettingsTab = () => {
                   ))}
                 </div>
               </div>
+
+              {/* MODEL SELECTOR */}
+              <div className="pt-2">
+                <label className="text-sm font-medium text-gray-300 block mb-2">Modelo de Inteligência</label>
+                <select 
+                  value={configs.active_model || 'gemini-2.5-flash'}
+                  onChange={async (e) => {
+                    await updateConfig({ active_model: e.target.value });
+                    showToast(`Modelo alterado para: ${e.target.value}`, 'success');
+                  }}
+                  className="w-full bg-dark/60 border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-neon-cyan/50 text-xs shadow-inner appearance-none cursor-pointer hover:bg-white/5 transition-colors"
+                >
+                  <optgroup label="Google Gemini — Gratuito ✅" className="bg-dark text-gray-500">
+                    <option value="gemini-3.1-flash-lite">⚡ Gemini 3.1 Flash Lite (500 req/dia — MAIS ECONÔMICO)</option>
+                    <option value="gemini-2.5-flash">🚀 Gemini 2.5 Flash (20 req/dia — PADRÃO RECOMENDADO)</option>
+                    <option value="gemini-2.5-flash-lite">💡 Gemini 2.5 Flash Lite (20 req/dia)</option>
+                  </optgroup>
+                  <optgroup label="OpenAI" className="bg-dark text-gray-500">
+                    <option value="gpt-4o">GPT-4o (Omni)</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini (Econômico)</option>
+                    <option value="o1-preview">OpenAI o1-Preview</option>
+                  </optgroup>
+                  <optgroup label="xAI" className="bg-dark text-gray-500">
+                    <option value="grok-beta">Grok Beta</option>
+                  </optgroup>
+                </select>
+                <p className="text-[9px] text-gray-600 mt-1 italic tracking-tight">* O modelo selecionado será usado em todas as gerações de roteiros e análises.</p>
+              </div>
               
               <div className="pt-2">
-                <label className="text-sm font-medium text-gray-300 block mb-1">{t('settings.gemini_key')}</label>
-                <input 
-                  type="password" 
-                  value={geminiKey}
-                  onChange={(e) => setGeminiKey(e.target.value)}
-                  placeholder="AIza..."
-                  className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
+                <MultiKeyField 
+                  label="Gemini" 
+                  keysStr={geminiKeys} 
+                  setKeysStr={setGeminiKeys} 
+                  placeholder="AIza..." 
                 />
               </div>
 
-              <div>
-                <label className="text-sm font-medium text-gray-300 block mb-1">{t('settings.gpt_key')}</label>
-                <input 
-                  type="password" 
-                  value={gptKey}
-                  onChange={(e) => setGptKey(e.target.value)}
-                  placeholder="sk-..."
-                  className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
+              <div className="pt-2">
+                <MultiKeyField 
+                  label="OpenAI" 
+                  keysStr={gptKeys} 
+                  setKeysStr={setGptKeys} 
+                  placeholder="sk-..." 
                 />
               </div>
               
               <div className="pt-2">
-                <label className="text-sm font-medium text-gray-300 block mb-1">{t('settings.grok_key')}</label>
-                <input 
-                  type="password" 
-                  value={grokKey}
-                  onChange={(e) => setGrokKey(e.target.value)}
-                  placeholder="xai-..."
-                  className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
+                <MultiKeyField 
+                  label="Grok" 
+                  keysStr={grokKeys} 
+                  setKeysStr={setGrokKeys} 
+                  placeholder="xai-..." 
                 />
               </div>
               <div>
@@ -364,6 +526,7 @@ export const SettingsTab = () => {
                 />
               </div>
 
+              {isAdmin && (
               <div className="pt-2 border-t border-white/5 mt-2">
                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Configurações de E-mail (SMTP)</label>
                 <div className="grid grid-cols-1 gap-3">
@@ -383,6 +546,7 @@ export const SettingsTab = () => {
                    />
                 </div>
               </div>
+              )}
 
               <div className="flex items-center gap-2 pt-2">
                  <div className="flex-1 h-[1px] bg-white/5"></div>
@@ -432,6 +596,52 @@ export const SettingsTab = () => {
                <button onClick={handleClearCache} className="text-sm text-red-400 hover:text-red-300 border border-red-500/30 hover:bg-red-500/10 px-4 py-2 rounded-lg transition-colors w-full shadow-lg">
                  {t('settings.clear_cache')}
                </button>
+             </div>
+          </div>
+
+          {/* LOCAL ENGINE DOWNLOAD */}
+          <div className="glass-card p-6 border-neon-cyan/30 relative overflow-hidden group mt-6">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/5 rounded-full blur-2xl group-hover:bg-neon-cyan/10 transition-colors pointer-events-none"></div>
+            <div className="absolute -top-1 -right-1">
+               <div className="px-3 py-1 bg-neon-cyan/20 border border-neon-cyan/30 rounded-bl-xl">
+                  <span className="text-[8px] font-black text-neon-cyan uppercase tracking-widest animate-pulse">Stable Release</span>
+               </div>
+            </div>
+
+            <h3 className="text-sm md:text-base font-black text-white flex items-center gap-2 mb-2 border-b border-white/10 pb-2 relative z-10 uppercase tracking-widest">
+              <Cpu className="text-neon-cyan w-5 h-5" /> Guru Master Desktop
+            </h3>
+            
+             <div className="space-y-4 relative z-10 pt-2">
+               <div className="flex gap-4 items-start">
+                  <div className="w-16 h-16 rounded-xl border border-white/10 bg-black/40 flex items-center justify-center shrink-0 shadow-2xl">
+                     <img src="logo.jpg" alt="Icon" className="w-12 h-12 rounded-lg object-cover" />
+                  </div>
+                  <p className="text-[11px] text-gray-400 font-medium leading-relaxed">
+                     A versão Desktop profissional é um software autocontido que já inclui o motor **FFmpeg** e **Python**. 
+                     Ideal para renderização de vídeos em alta escala usando 100% da sua GPU.
+                  </p>
+               </div>
+
+               <div className="bg-black/40 border border-white/5 rounded-xl p-4">
+                  <ul className="text-[10px] text-gray-500 space-y-2 font-bold uppercase tracking-tight">
+                     <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-neon-cyan" /> Instalação Zero-Config (Tudo incluído)</li>
+                     <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-neon-cyan" /> Integração Nativa com Windows Defender</li>
+                     <li className="flex items-center gap-2"><CheckCircle className="w-3 h-3 text-neon-cyan" /> Suporte a Renderizações Massivas (100+ vídeos)</li>
+                  </ul>
+               </div>
+               
+               <a 
+                 href="https://github.com/gSantosX/guru-master-app/releases/latest" 
+                 target="_blank" 
+                 rel="noopener noreferrer" 
+                 className="block w-full"
+               >
+                  <button className="w-full bg-white text-dark hover:bg-neon-cyan hover:text-black font-black uppercase tracking-widest py-3.5 rounded-xl transition-all shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(0,243,255,0.3)] hover:-translate-y-1 flex items-center justify-center gap-2 text-xs">
+                    <Download className="w-4 h-4 shrink-0" /> Baixar Instalador Windows (.exe)
+                  </button>
+               </a>
+               <p className="text-center text-[8px] text-gray-600 font-bold uppercase tracking-widest">Versão atual compatível com Windows 10/11 x64</p>
              </div>
           </div>
         </div>
@@ -617,14 +827,14 @@ export const SettingsTab = () => {
                  label={t('settings.gemini_connection')} 
                  status={status.gemini} 
                  icon={Shield} 
-                 error={status.gemini === 'offline' && geminiKey ? 'Chave inválida ou erro de conexão' : null}
+                 error={status.gemini === 'offline' && geminiKeys.length > 0 ? 'Limite excedido ou chave inválida' : null}
                />
 
                <StatusItem 
                  label={t('settings.openai_connection')} 
                  status={status.openai} 
                  icon={Shield} 
-                 error={status.openai === 'offline' && gptKey ? 'Cota excedida ou chave inválida' : null}
+                 error={status.openai === 'offline' && gptKeys.length > 0 ? 'Limite excedido ou chave inválida' : null}
                />
 
                <StatusItem 
@@ -662,12 +872,14 @@ export const SettingsTab = () => {
                  error={status.youtube === 'offline' && youtubeKey ? (status.details.youtube_error || 'Chave de API do YouTube inválida') : null}
                />
 
+               {isAdmin && (
                <StatusItem 
                  label="E-mail (SMTP)" 
                  status={status.smtp} 
                  icon={Shield} 
                  error={status.smtp === 'offline' && smtpUser ? 'Erro de autenticação SMTP' : null}
                />
+               )}
 
                {status.details.ffmpeg && status.ffmpeg === 'online' && (
                  <p className="text-[10px] text-gray-500 font-mono mt-2 truncate">

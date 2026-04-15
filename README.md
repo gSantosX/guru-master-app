@@ -4,6 +4,16 @@ O Guru Master é um pipeline completo de automação para criação de conteúdo
 
 ---
 
+## 📺 Modo Showcase & MVP (Versão de Apresentação)
+Nesta versão de demonstração, os seguintes módulos estão **funcionais no backend mas ocultos no menu lateral** para simplificar a apresentação do fluxo principal:
+- **Gerar Vídeo**: Motor de composição de ativos (imagem + áudio).
+- **Fila de Render**: Monitoramento de renderização via FFmpeg.
+- **Concluídos**: Histórico de produções finalizadas.
+
+*A lógica e os ouvintes desses componentes permanecem ativos, bastando reativar as entradas no `Sidebar.jsx` para acesso total.*
+
+---
+
 ## 🛠️ Requisitos de Sistema (Necessários para Funcionar)
 
 Para que o Guru Master funcione perfeitamente em sua máquina, você **precisa** instalar os seguintes componentes:

@@ -10,7 +10,6 @@ const getNavItems = () => [
   { id: 'create-script', label: t('sidebar.create_script'), icon: PenTool, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
   { id: 'ready-scripts', label: t('sidebar.ready_scripts'), icon: FileText, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
   { id: 'image-prompts', label: t('sidebar.image_prompts'), icon: ImageIcon, color: 'text-neon-pink', shadow: 'shadow-neon-pink' },
-  { id: 'whisk', label: t('sidebar.whisk'), icon: Zap, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
   { id: 'generate-video', label: t('sidebar.generate_video'), icon: Video, color: 'text-neon-purple', shadow: 'shadow-neon-purple' },
   { id: 'progress', label: t('sidebar.progress'), icon: Clock, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
   { id: 'completed', label: t('sidebar.completed'), icon: CheckCircle, color: 'text-neon-pink', shadow: 'shadow-neon-pink' },
@@ -75,17 +74,20 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
     }
   };
 
+  const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+  const GITHUB_RELEASE_URL = 'https://github.com/gSantosX/guru-master-app/releases/latest';
+
   return (
     <div className="w-full md:w-64 h-auto md:h-full glass-panel flex flex-col md:flex-col p-2 md:p-4 flex-shrink-0 z-10 border-b md:border-b-0 border-white/10 md:rounded-xl shadow-2xl">
       <div className="hidden md:flex flex-col items-center justify-center mb-12 px-2 mt-8 space-y-4">
         <div className="w-32 h-32 rounded-full p-1 bg-gradient-to-br from-neon-purple via-neon-cyan to-blue-600 shadow-[0_0_50px_rgba(0,243,255,0.45),inset_0_0_25px_rgba(255,255,255,0.25)] transform transition-transform hover:scale-110 duration-500 overflow-hidden border-[3px] border-white/10 relative group">
           <div className="absolute inset-0 bg-neon-cyan/20 opacity-0 group-hover:opacity-100 transition-opacity blur-2xl"></div>
-          <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-full shadow-2xl relative z-10" />
+          <img src="logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-full shadow-2xl relative z-10" />
         </div>
         <div className="w-16 h-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent rounded-full opacity-50 shadow-[0_0_10px_rgba(0,243,255,0.2)]"></div>
       </div>
 
-      <nav className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto pb-2 md:pb-0 items-center md:items-stretch custom-scrollbar">
+      <nav className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto pb-10 md:pb-10 items-center md:items-stretch custom-scrollbar">
         {getNavItems().map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
@@ -122,6 +124,21 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
       </nav>
 
       <div className="hidden md:block mt-auto px-3 py-3 border-t border-white/5 bg-black/20">
+        
+        {/* --- DOWNLOAD DESKTOP BUTTON (Show on Web only) --- */}
+        {!isElectron && (
+          <a
+            href={GITHUB_RELEASE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full py-3 mb-4 bg-gradient-to-r from-neon-purple/20 to-neon-cyan/20 border border-neon-cyan/30 rounded-xl text-white hover:border-neon-cyan hover:shadow-[0_0_20px_rgba(0,243,255,0.2)] transition-all group overflow-hidden relative"
+          >
+            <Zap className="w-4 h-4 text-neon-cyan animate-pulse" />
+            <span className="text-[11px] font-black uppercase tracking-widest">Baixar App Desktop</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+          </a>
+        )}
+
         <button 
           onClick={() => setActiveTab('profile')}
           className={`w-full flex items-center gap-2.5 p-2.5 mb-3 rounded-xl border transition-all group relative overflow-hidden

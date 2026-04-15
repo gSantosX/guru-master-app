@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Guru Master — Iniciando...</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      background: #0a0a0f;
+      color: #fff;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-app-region: drag;
+    }
+
+    /* Animated background grid */
+    .bg-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(176,38,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(176,38,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* Glow orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      animation: pulse 4s ease-in-out infinite alternate;
+    }
+    .orb-1 { width: 300px; height: 300px; background: #b026ff; top: -80px; left: -80px; }
+    .orb-2 { width: 250px; height: 250px; background: #00f3ff; bottom: -60px; right: -60px; animation-delay: 2s; }
+
+    @keyframes pulse {
+      from { opacity: 0.10; transform: scale(1); }
+      to   { opacity: 0.20; transform: scale(1.1); }
+    }
+
+    /* Logo */
+    .logo-wrap {
+      position: relative;
+      margin-bottom: 40px;
+    }
+    .logo-ring {
+      width: 90px; height: 90px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #b026ff, #00f3ff);
+      padding: 2px;
+      animation: spin-slow 8s linear infinite;
+    }
+    .logo-inner {
+      width: 100%; height: 100%;
+      background: #0a0a0f;
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px;
+    }
+    @keyframes spin-slow {
+      0%   { box-shadow: 0 0 20px rgba(176,38,255,0.4); }
+      50%  { box-shadow: 0 0 40px rgba(0,243,255,0.4); }
+      100% { box-shadow: 0 0 20px rgba(176,38,255,0.4); }
+    }
+
+    /* Title */
+    h1 {
+      font-size: 28px; font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 40%, #b026ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: 11px; color: #555;
+      text-transform: uppercase; letter-spacing: 3px;
+      margin-bottom: 50px;
+    }
+
+    /* Status area */
+    .status-box {
+      width: 360px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 20px 24px;
+    }
+
+    /* Step list */
+    .steps { list-style: none; margin-bottom: 18px; }
+    .step {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 12px; color: #444;
+      padding: 5px 0;
+      transition: color 0.3s;
+    }
+    .step.done   { color: #4ade80; }
+    .step.active { color: #fff; }
+    .step.error  { color: #f87171; }
+
+    .step-icon {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; flex-shrink: 0;
+    }
+    .step.done   .step-icon { background: #4ade80; border-color: #4ade80; }
+    .step.active .step-icon { border-color: #b026ff; }
+    .step.active .step-icon::after {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #b026ff;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* Progress bar */
+    .progress-track {
+      height: 3px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #b026ff, #00f3ff);
+      border-radius: 4px;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+
+    /* Status message */
+    #status-msg {
+      font-size: 11px; color: #666;
+      text-align: center;
+      min-height: 16px;
+      transition: color 0.3s;
+    }
+    #status-msg.error { color: #f87171; }
+
+    /* Version */
+    .version {
+      position: fixed; bottom: 16px;
+      font-size: 10px; color: #333;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="logo-wrap">
+    <div class="logo-ring">
+      <div class="logo-inner">⚡</div>
+    </div>
+  </div>
+
+  <h1>GURU MASTER</h1>
+  <p class="subtitle">AI Video Pipeline</p>
+
+  <div class="status-box">
+    <ul class="steps" id="steps">
+      <li class="step active" id="step-python">
+        <div class="step-icon"></div>
+        Motor Python
+      </li>
+      <li class="step" id="step-deps">
+        <div class="step-icon"></div>
+        Dependências Flask
+      </li>
+      <li class="step" id="step-ffmpeg">
+        <div class="step-icon"></div>
+        Motor FFmpeg
+      </li>
+      <li class="step" id="step-backend">
+        <div class="step-icon"></div>
+        Iniciando Servidor
+      </li>
+    </ul>
+
+    <div class="progress-track">
+      <div class="progress-fill" id="progress"></div>
+    </div>
+    <div id="status-msg">Inicializando sistema...</div>
+  </div>
+
+  <div class="version">GURU MASTER v2.6.2</div>
+
+  <script>
+    function setStep(id, state) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = 'step ' + state;
+      if (state === 'done') {
+        el.querySelector('.step-icon').textContent = '✓';
+      } else if (state === 'error') {
+        el.querySelector('.step-icon').textContent = '✕';
+      }
+    }
+    function setProgress(pct) {
+      document.getElementById('progress').style.width = pct + '%';
+    }
+    function setMessage(msg, isError = false) {
+      const el = document.getElementById('status-msg');
+      el.textContent = msg;
+      el.className = isError ? 'error' : '';
+    }
+
+    // Listen for progress events from main process
+    window.addEventListener('message', (e) => {
+      const { type, step, state, progress, message, error } = e.data || {};
+      if (type === 'step')     setStep(step, state);
+      if (type === 'progress') setProgress(progress);
+      if (type === 'message')  setMessage(message, error);
+    });
+
+    // Also expose globally for IPC
+    window.splashUpdate = function(data) {
+      if (data.step)     setStep(data.step, data.state);
+      if (data.progress !== undefined) setProgress(data.progress);
+      if (data.message)  setMessage(data.message, data.error);
+    };
+  </script>
+</body>
+</html>

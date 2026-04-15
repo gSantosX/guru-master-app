@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
-import { callGemini } from '../utils/aiUtils';
+import { callAI } from '../utils/aiUtils';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
@@ -65,8 +65,8 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
       const saved = localStorage.getItem('guru_niche_identifier_history');
       if(saved) {
         let parsed = JSON.parse(saved);
-        // Purging old formats to avoid V3 crashes
-        if(parsed.length > 0 && !parsed[0].data.trendMomentum) {
+        // Purging old formats to avoid crashes (V3 or below)
+        if(parsed.length > 0 && !parsed[0].data.gapAnalysis) {
            localStorage.removeItem('guru_niche_identifier_history');
            parsed = [];
         }
@@ -111,37 +111,58 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
     if(!result) return;
     const bridgeData = `NICHO GERADO:\n${result.nicheName}\n\nTEMAS IDEAIS:\n${result.videoThemes.join(" | ")}\n\nTÍTULOS IDEAIS:\n${result.titleStructures.join(" | ")}`;
     localStorage.setItem('guru_flow_transfer', bridgeData);
-    if(setActiveTab) {
-      setActiveTab('whisk');
-    } else {
-      alert("Navegação Indisponível. Envio estocado na prancheta Auto-Flow.");
-    }
+    alert("Função Auto Flow temporariamente indisponível (Em manutenção). Dados copiados.");
   };
 
   const handleSearch = async () => {
+    // Check Cache
+    const cacheKey = `niche_yt_${topic}_${language.code}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    let cachedYTData = null;
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Date.now() - parsed.timestamp < 1 * 60 * 60 * 1000) {
+          cachedYTData = parsed.data;
+        }
+      } catch (e) {}
+    }
+
     setIsSearching(true);
     setResult(null);
 
     try {
       const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
+      const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
       if (!geminiKey) throw new Error("Chave Gemini não configurada!");
 
       // 1. Live Data Ingestion (YouTube API)
       setLoadingStep('Mergulhando na API do YouTube');
       let youtubeContextData = "Buscador de Dados Real-time indisponível no momento. Use sua intuição máxima pre-treinada.";
       try {
-           let searchUrl = '';
-           if(topic) {
-                searchUrl = resolveApiUrl(`/api/youtube/search?part=snippet&type=video&q=${encodeURIComponent(topic)}&relevanceLanguage=${language.code}&regionCode=${language.region}&maxResults=10&order=viewCount`);
+           if (cachedYTData) {
+               console.log("Using cached YouTube context data for niche identification");
+               youtubeContextData = cachedYTData;
            } else {
-                searchUrl = resolveApiUrl(`/api/youtube/videos?part=snippet,statistics&chart=mostPopular&regionCode=${language.region}&maxResults=15`);
-           }
-           const ytRes = await fetch(searchUrl);
-           const ytData = await ytRes.json();
-           
-           if(ytData.items && ytData.items.length > 0) {
-               const videoTitles = ytData.items.map(item => item.snippet?.title || item.title).join(" || ");
-               youtubeContextData = `TOP VÍDEOS MAIS VISTOS E EM ALTA NESTE EXATO MOMENTO NA REGIÃO [${language.region}]:\n${videoTitles}\n(Cruze isso para construir o modelo perfeito de concorrência).`;
+               let searchUrl = '';
+               if(topic) {
+                    searchUrl = resolveApiUrl(`/api/youtube/search?part=snippet&type=video&q=${encodeURIComponent(topic)}&relevanceLanguage=${language.code}&regionCode=${language.region}&maxResults=10&order=viewCount`);
+               } else {
+                    searchUrl = resolveApiUrl(`/api/youtube/videos?part=snippet,statistics&chart=mostPopular&regionCode=${language.region}&maxResults=15`);
+               }
+               const ytRes = await fetch(searchUrl);
+               const ytData = await ytRes.json();
+               
+               if(ytData.items && ytData.items.length > 0) {
+                   const videoTitles = ytData.items.map(item => item.snippet?.title || item.title).join(" || ");
+                   youtubeContextData = `TOP VÍDEOS MAIS VISTOS E EM ALTA NESTE EXATO MOMENTO NA REGIÃO [${language.region}]:\n${videoTitles}\n(Cruze isso para construir o modelo perfeito de concorrência).`;
+                   
+                   // Save to cache
+                   sessionStorage.setItem(cacheKey, JSON.stringify({
+                     timestamp: Date.now(),
+                     data: youtubeContextData
+                   }));
+               }
            }
       } catch(e) {
           console.warn("YouTube live ingestion failed", e);
@@ -149,48 +170,53 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
 
       setLoadingStep('Decodificando Estratégia Apex');
 
-      // 2. Strategy AI Generation V3 APEX
-      const prompt = `Você é um Cientista de Dados de Mídia Preditiva e Estrategista Genial do YouTube.
-      Sua missão é desenvolver o "Plano Funcional" mais avançado da história mesclando a ideia base com os DADOS VIVOS do YouTube.
+      // 2. Strategy AI Generation V4 ORACLE
+      const prompt = `Você é um Cientista de Dados Supremo do YouTube.
+      Sua missão é identificar BURACOS (Gaps) escondidos na concorrência e criar o "Plano Tático Validado" de Baixíssimo Custo de Produção (Faceless), focando sempre na maior rentabilidade possível em Oceanos Azuis (sempre procure falhas na massa atual).
       
-      TÓPICO: "${topic || 'TENDÊNCIA SECRETA TOTALMENTE FORA DO RADAR E ALTA RENTABILIDADE'}"
+      TÓPICO PAI: "${topic || 'OS 3 INFRA-NICHOS OCULTOS MAIS LUCRATIVOS E FÁCEIS DO MOMENTO (Ex: Fatos Macabros ou Cripto-Gamer)'}"
       MERCADO ALVO: "${language.name}"
       
-      CONTEXTO: DADOS AO VIVO DO YOUTUBE HOJE NESTE MERCADO:
+      CONTEXTO: DADOS AO VIVO DO YOUTUBE HOJE NO MERCADO SELECIONADO:
       """${youtubeContextData}"""
       
-      IMPORTANTE:
-      - TUDO em PORTUGUÊS (PT-BR). APENAS channelNames e titleStructures devem vir em ${language.name}.
-      - "saturationScore": Score de 0 a 10 de Concorrência atual. (10 é oceano congelado, 1 é oceano puramente azul).
-      - "categoryMultiplier": Quanto este nicho específico paga bem em anúncios? Ex: Finanças 2.5, Games 0.8, Vlogs 1.0. (Apenas o Float matemático).
-      - "trendMomentum": Retorne EXATAMENTE "Descobrimento", "Em Alta" ou "Declínio".
-      - "competitors": Analise os dados injetados e deduza os 2 maiores canais concorrentes prováveis, suas forças e fraquezas.
+      REGRAS CRÍTICAS DE ENGENHARIA (NÃO AS QUEBRE):
+      - "saturationScore": TEM QUE SER BAIXO (1 a 4). Foque na variação inexplorada do nicho, nunca no nicho genérico saturado.
+      - "productionDifficulty": O ESFORÇO DEVE SER ZERO PARA O HUMANO. Grave essa nota como 1 a 3 no máximo. Sugira APENAS canais que possam ser 100%feitos com IA (Voz + Imagens base) sem câmera ou filmagem real.
+      - "gapAnalysis": A Falha Inimiga. Explique em uma frase exata por que os youtubers locais não estão vendo isso e qual a falha exata da concorrência que deixará seu vídeo dominar em cliques (O Oceano Azul).
+      - "monetizationStrategy": Vá MUITO ALÉM DO ADSENSE. Indique exatamente o tipo de afiliado, curso, CPA ou venda direta (Info-produto de R$ 47 a R$ 197) que se faz rios de dinheiro injetando silenciosamente nestes vídeos.
+      - "channelArchetype": Formato validado. Ex: "Vídeo-Listas Rápidas de 3min", "Mini-Documentários de 9min Estilo Detetive", etc.
       
-      Retorne a resposta EXATAMENTE no seguinte formato JSON puro (sem markdown ou \`\`\`json):
+      Retorne a resposta EXATAMENTE no seguinte formato JSON puro (sem marcações e com chaves em pt-BR adaptadas pra o modelo):
       {
-        "nicheName": "Nome do Nicho Cruzado (PT-BR)",
+        "nicheName": "O Micro-Nicho Encontrado (PT-BR)",
         "viralPotential": 9,
         "saturationScore": 2,
+        "productionDifficulty": 2,
         "categoryMultiplier": 1.5,
-        "trendMomentum": "Em Alta",
-        "strategyDescription": "Explicação avassaladora de 3 frases.",
-        "targetAudience": "Quem exatamente assiste (mapeamento psicológico).",
-        "channelNames": ["Nome 1", "Nome 2", "Nome 3"],
-        "videoThemes": ["Tema 1", "Tema 2", "Tema 3"],
-        "titleStructures": ["Fórmula de Título 1", "Fórmula 2", "Fórmula 3"],
-        "thumbnailIdeas": ["Como será a capa detalhada", "Ideia 2"],
+        "trendMomentum": "Nascente (Oceano Azul)",
+        "strategyDescription": "Explicação pragmática da tática validada de criação e escala do canal.",
+        "gapAnalysis": "A fraqueza fatal da concorrência (O Gap).",
+        "channelArchetype": "Estrutura Base de Tempo e Estilo Narrativo",
+        "monetizationStrategy": "Por trás dos panos: O que vender além de Views (Clickbank, Eduzz, Parceiros, etc).",
+        "toolsRequired": ["ElevenLabs (Voz Mágica)", "Midjourney (Imagens)", "CapCut (Edição Seca)"],
+        "targetAudience": "Mapeamento Psicológico de quem não consegue parar de ver isso.",
+        "channelNames": ["Nome Criativo 1", "Nome 2", "Nome 3"],
+        "videoThemes": ["Tema Inédito 1", "Tema Polêmico 2", "Tema 3"],
+        "titleStructures": ["Fórmula Matadora 1", "Fórmula 2", "Fórmula 3"],
+        "thumbnailIdeas": ["Como montar a Capa 1 (Alta Retenção)", "Ideia da Capa 2"],
         "thumbnailStyle": {
            "primaryColor": "#ff0080",
            "secondaryColor": "#00f3ff",
-           "mood": "Cinematográfico e Investigativo",
-           "keyElement": "Silhueta Sombria"
+           "mood": "Cinematográfico Oculto",
+           "keyElement": "Contraste Alto"
         },
         "competitors": [
-           { "name": "Canal Rival A", "strength": "Possuem muita autoridade visual", "weakness": "Duração muito longa e tédio narrativo" }
+           { "name": "Canal Rival A", "strength": "Efeitos visuais", "weakness": "Textos engessados sem gancho emocional" }
         ]
       }`;
 
-      const response = await callGemini(geminiKey, prompt);
+      const response = await callAI(prompt, { gptKey });
       const cleanJson = response.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(cleanJson);
       
@@ -253,27 +279,31 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
   };
 
   const getTrendColor = (momentum) => {
-     if(momentum?.includes("Nascente") || momentum?.includes("Descob")) return "text-neon-cyan border-neon-cyan bg-neon-cyan/10";
+     if(momentum?.includes("Nascente") || momentum?.includes("Oceano") || momentum?.includes("Descob")) return "text-neon-cyan border-neon-cyan bg-neon-cyan/10";
      if(momentum?.includes("Alta")) return "text-green-400 border-green-500 bg-green-500/10";
      return "text-red-500 border-red-500 bg-red-500/10";
   };
 
+  const getDifficultyColor = (score) => {
+     if(score <= 3) return 'text-green-400';
+     if(score <= 6) return 'text-yellow-400';
+     return 'text-red-500';
+  };
+
   return (
     <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto gap-8 font-sans overflow-hidden">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 shrink-0 mb-2">
-        <div>
-          <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-pink p-[2px] shadow-[0_0_20px_rgba(255,44,182,0.3)]">
-              <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
-                <Compass className="w-8 h-8 text-white" />
-              </div>
+      <header className="mb-12">
+        <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-pink p-[2px] shadow-[0_0_20px_rgba(255,44,182,0.3)]">
+            <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
+              <Compass className="w-8 h-8 text-white" />
             </div>
-            Identificador
-          </h2>
-          <p className="text-gray-400 mt-3 font-bold text-sm md:text-md uppercase tracking-[0.2em] border-l-4 border-neon-pink pl-4 ml-2">
-            V3 APEX: Dossiê Funcional e Preditivo
-          </p>
-        </div>
+          </div>
+          Identificador de Nichos
+        </h2>
+        <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-pink pl-4 ml-2 italic">
+          V4 ORACLE: Caçador de Oceanos Azuis & Gaps Táticos de Mercado
+        </p>
       </header>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12">
@@ -383,11 +413,22 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
                            </span>
                         </div>
 
+                        {/* Production Difficulty */}
+                        <div className="flex flex-col items-center justify-center p-5 border border-white/5 rounded-2xl bg-dark/80 relative">
+                           <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                              <Zap className={`w-3 h-3 ${getDifficultyColor(result.productionDifficulty)}`} /> Esforço Produção
+                           </span>
+                           <span className={`text-4xl font-black leading-none tracking-tighter ${getDifficultyColor(result.productionDifficulty)}`}>
+                              {result.productionDifficulty || "2"}
+                              <span className="text-xl text-gray-600 ml-1">/10</span>
+                           </span>
+                        </div>
+
                          {/* Trend Phase Graph Mock */}
-                         <div className={`col-span-2 md:col-span-2 xl:col-span-1 flex flex-col items-center justify-center p-4 border rounded-2xl ${getTrendColor(result.trendMomentum)} relative overflow-hidden backdrop-blur-md`}>
-                           <span className="text-[9px] font-black uppercase tracking-[0.2em] mb-1 opacity-70">Sinal de Tendência</span>
-                           <span className="text-xl font-black uppercase tracking-widest flex items-center gap-2">
-                             <TrendingUp className="w-5 h-5" /> {result.trendMomentum}
+                         <div className={`col-span-2 md:col-span-2 xl:col-span-1 flex flex-col items-center justify-center p-3 border rounded-2xl ${getTrendColor(result.trendMomentum)} relative overflow-hidden backdrop-blur-md`}>
+                           <span className="text-[9px] font-black uppercase tracking-[0.2em] mb-1 opacity-70">Oceano de Mercado</span>
+                           <span className="text-sm text-center md:text-base font-black uppercase tracking-widest flex items-center gap-2 px-2">
+                             {result.trendMomentum}
                            </span>
                         </div>
                     </div>
@@ -404,28 +445,42 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
                        </div>
                        
                        <h3 className="text-4xl md:text-5xl lg:text-7xl font-black text-white italic tracking-tighter leading-none">{result.nicheName}</h3>
-                       <div className="relative group/strat">
-                          <p className="text-base md:text-lg font-bold text-gray-300 leading-relaxed border-l-4 border-neon-cyan pl-5 py-2 pr-10">
-                             {result.strategyDescription}
-                          </p>
-                          <div className="absolute top-2 right-0 opacity-0 group-hover/strat:opacity-100 transition-opacity">
-                             <ItemCopyBtn text={result.strategyDescription} id="strat-desc" />
+                       <div className="relative group/strat space-y-4">
+                          {/* STrategy Output */}
+                          <div className="border-l-4 border-neon-cyan pl-5 py-1 pr-10">
+                             <span className="block text-[10px] font-black text-neon-cyan uppercase tracking-widest mb-1">A Estrutura Validada:</span>
+                             <p className="text-base font-bold text-gray-300 leading-relaxed">
+                                {result.strategyDescription}
+                             </p>
+                          </div>
+                          
+                          {/* Gap Analysis Drop */}
+                          <div className="border-l-4 border-neon-pink pl-5 py-1 pr-10">
+                             <span className="block text-[10px] font-black text-neon-pink uppercase tracking-widest mb-1 flex items-center gap-2"><Target className="w-3 h-3" /> A Fraqueza (Gap de Concorrência):</span>
+                             <p className="text-[13px] font-medium text-gray-400 italic leading-relaxed">
+                                "{result.gapAnalysis}"
+                             </p>
+                          </div>
+                          
+                          <div className="absolute top-2 right-0 opacity-0 group-hover/strat:opacity-100 transition-opacity flex flex-col gap-2">
+                             <ItemCopyBtn text={`ESTRUTURA: ${result.strategyDescription}\n\nGAP (FALHA DELES): ${result.gapAnalysis}`} id="strat-desc" />
                           </div>
                        </div>
                     </div>
 
                     {/* Right Panel: Actions */}
                     <div className="flex flex-col justify-end xl:w-64 shrink-0 mt-6 xl:mt-0 relative z-10 gap-3">
-                       <button 
-                         onClick={transferToAutoFlow}
-                         className="w-full relative overflow-hidden rounded-xl bg-white p-[2px] transition-all transform hover:scale-[1.02] active:scale-[0.98] group"
-                       >
-                         <div className="absolute inset-0 bg-gradient-to-r from-neon-purple via-neon-cyan to-blue-600 animate-[shimmer_2s_infinite]" />
-                         <div className="relative bg-dark px-4 py-5 rounded-[10px] w-full h-full flex items-center justify-center gap-2">
-                           <Zap className="w-4 h-4 text-white/50 group-hover:text-neon-cyan transition-colors" />
-                           <span className="text-[11px] font-black text-white uppercase tracking-[0.2em] group-hover:glow-text">Enviar p/ Auto-Flow</span>
-                         </div>
-                       </button>
+                        <div className="w-full py-5 rounded-xl border border-white/5 bg-white/5 flex items-center justify-center gap-2">
+                           <Target className="w-4 h-4 text-white/20" />
+                           <span className="text-[11px] font-black text-gray-500 uppercase tracking-[0.2em]">Oportunidade Mapeada</span>
+                        </div>
+
+                       <div className="w-full mb-2 bg-gradient-to-r from-green-600/10 to-transparent border border-green-500/20 rounded-xl p-3 shadow-inner">
+                           <span className="block text-[9px] font-black text-green-500 uppercase tracking-widest mb-1 flex items-center gap-1"><DollarSign className="w-3 h-3" /> Monetização Camuflada</span>
+                           <p className="text-[10px] font-bold text-green-100 leading-tight">
+                              {result.monetizationStrategy}
+                           </p>
+                        </div>
 
                        <div className="glass-card bg-dark/60 border border-white/5 p-4 rounded-xl flex items-center gap-3 relative group/aud">
                           <Users className="w-8 h-8 text-neon-purple p-1.5 bg-neon-purple/10 rounded-lg shrink-0" />
@@ -444,10 +499,13 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
                  <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
                     
                     {/* Visual Predizer - Thumbnail Blueprint (New Feature) */}
-                    <div className="glass-card md:col-span-3 xl:col-span-1 border border-white/5 relative overflow-hidden flex flex-col group p-0">
-                       <div className="p-4 border-b border-white/5 bg-black/40 flex items-center gap-2">
-                         <LayoutTemplate className="w-4 h-4 text-neon-pink" />
-                         <span className="text-[10px] font-black text-neon-pink uppercase tracking-[0.2em]">Blueprint Visual</span>
+                    <div className="glass-card md:col-span-3 xl:col-span-1 border border-white/5 relative overflow-hidden flex flex-col group p-0 min-h-[400px]">
+                       <div className="p-4 border-b border-white/5 bg-black/40 flex items-center justify-between gap-2 z-10 relative">
+                         <div className="flex items-center gap-2">
+                           <LayoutTemplate className="w-4 h-4 text-neon-pink" />
+                           <span className="text-[10px] font-black text-neon-pink uppercase tracking-[0.2em]">Blueprint Visual</span>
+                         </div>
+                         <span className="text-[8px] font-black uppercase text-gray-500 bg-white/5 px-2 py-1 rounded truncate max-w-[120px]">{result.channelArchetype}</span>
                        </div>
                        
                        <div className="p-6 flex-1 flex flex-col justify-center items-center relative overflow-hidden min-h-[200px]">
@@ -466,10 +524,22 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
                          </div>
                        </div>
 
-                       <div className="p-4 border-t border-white/5 bg-dark/60 space-y-3">
+                       <div className="p-4 border-t border-white/5 bg-dark/60 space-y-4">
                           <p className="text-[11px] text-gray-400 font-bold leading-relaxed border-b border-white/5 pb-2">
                             <span className="text-white">Direção de Arte:</span> {result.thumbnailStyle?.mood || 'Vibrante e Misterioso'}.
                           </p>
+                          
+                          {/* Tools Needed Badges */}
+                          {(result.toolsRequired && result.toolsRequired.length > 0) && (
+                              <div className="flex flex-wrap gap-1.5 pb-2 border-b border-white/5">
+                                 {result.toolsRequired.map((tool, idx) => (
+                                    <span key={idx} className="text-[8px] font-black text-white/70 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shadow-sm">
+                                       {tool}
+                                    </span>
+                                 ))}
+                              </div>
+                           )}
+
                           <div className="space-y-2">
                              {result.thumbnailIdeas?.map((idea, idx) => (
                                 <div key={idx} className="flex items-start justify-between gap-2 p-2 bg-white/5 rounded-lg group/thumb">
