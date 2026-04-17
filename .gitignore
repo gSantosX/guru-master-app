@@ -24,6 +24,9 @@ Thumbs.db
 .system_generated/
 brain/
 *.log
+backend/backend_logs.txt
+backend_stdout.txt
+backend_stderr.txt
 
 # Environment and Scripts
 backend/venv/
@@ -38,3 +41,6 @@ installer/
 dist_backup/
 temp_app/
 bin/
+.vercel/.env.development.local
+.vercel/README.txt
+.vercel/project.json

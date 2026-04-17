@@ -23,7 +23,11 @@ import { PersistenceProvider } from './contexts/PersistenceContext';
 import { Login } from './components/Login';
 import InteractiveBackground from './components/InteractiveBackground';
 
+const AdminTab = React.lazy(() => import('./tabs/AdminTab').then(m => ({ default: m.AdminTab })));
+const ResetPassword = React.lazy(() => import('./components/ResetPassword').then(m => ({ default: m.ResetPassword })));
+
 const tabComponents = {
+  'dashboard': ScriptTab, // Map dashboard to ScriptTab for now or a dedicated DashboardTab
   'create-script': ScriptTab,
   'ready-scripts': ReadyScriptsTab,
   'capa-video': VideoCoverTab,
@@ -37,6 +41,7 @@ const tabComponents = {
   'channel-mining': ChannelMiningTab,
   'niche-identifier': NicheIdentifierTab,
   'channel-modeler': ChannelModelerTab,
+  'admin': AdminTab,
   'settings': SettingsTab
 };
 
@@ -101,7 +106,17 @@ function AppContent() {
     };
   }, []);
 
+  const [currentHash, setCurrentHash] = useState(window.location.hash);
+
+  useEffect(() => {
+    const handleHashChange = () => setCurrentHash(window.location.hash);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   if (loading) return null;
+
+  const isResettingPassword = currentHash.startsWith('#reset-password');
 
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
@@ -124,7 +139,7 @@ function AppContent() {
               key="splash"
               initial={{ opacity: 1 }}
               exit={{ opacity: 0, y: -20 }}
-              className="fixed inset-0 z-[100] bg-dark flex flex-col items-center justify-center"
+              className="fixed inset-0 z-[400] bg-dark flex flex-col items-center justify-center"
             >
               <div className="relative mb-8">
                 <div className="w-32 h-32 rounded-full p-1 bg-gradient-to-br from-neon-purple via-neon-cyan to-blue-600 shadow-[0_0_40px_rgba(0,243,255,0.3)] flex items-center justify-center overflow-hidden border-2 border-white/20">
@@ -141,12 +156,19 @@ function AppContent() {
                 transition={{ duration: 2, repeat: Infinity }}
                 className="mt-12 text-neon-cyan text-sm font-bold uppercase tracking-[0.3em]"
               >
-                Iniciando Sistemas Local...
+                Iniciando Guru Master AI...
               </motion.p>
             </motion.div>
           )}
+
           {!isAuthenticated && isInitialized && (
-             <Login isAppContext={true} /> 
+            isResettingPassword ? (
+               <React.Suspense fallback={null}>
+                  <ResetPassword onClose={() => window.location.hash = ''} />
+               </React.Suspense>
+            ) : (
+               <Login isAppContext={true} /> 
+            )
           )}
         </AnimatePresence>
 
