@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Allow: /downloads/
+
+Sitemap: https://guru-master-website.vercel.app/sitemap.xml

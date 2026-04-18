@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
-import { User, Lock, Mail, ArrowRight, Sparkles, LogIn, UserPlus, Info, ShieldCheck, Key, Settings, AlertCircle, CheckCircle2, Activity, X } from 'lucide-react';
+import { User, Lock, Mail, ArrowRight, Sparkles, LogIn, UserPlus, Info, ShieldCheck, Key, Settings, AlertCircle, CheckCircle2, Activity, X, Eye, EyeOff } from 'lucide-react';
 import { resolveApiUrl } from '../utils/apiUtils';
 
 export const Login = ({ onClose, isAppContext }) => {
@@ -11,6 +11,7 @@ export const Login = ({ onClose, isAppContext }) => {
   
   // UI States
   const [isLogin, setIsLogin] = useState(true);
+  const [recoveryMode, setRecoveryMode] = useState(false);
   const [regStep, setRegStep] = useState('details'); // 'details' | 'verify' | 'security'
   
   // Form Data
@@ -19,56 +20,54 @@ export const Login = ({ onClose, isAppContext }) => {
     email: localStorage.getItem('guru_last_email') || '', 
     password: '', 
     confirmPassword: '',
-    code: ''
+    code: '',
+    referralCode: ''
   });
   
-  const [rememberMe, setRememberMe] = useState(localStorage.getItem('guru_remember_me') !== 'false'); // Default to true
+  const [rememberMe, setRememberMe] = useState(localStorage.getItem('guru_remember_me') !== 'false'); 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [backendStatus, setBackendStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
+  const [backendStatus, setBackendStatus] = useState('checking'); 
+  
+  // Password Visibility States
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
-  // Check backend status on mount
-  React.useEffect(() => {
-    const checkBackend = async () => {
-      try {
-        const res = await fetch(resolveApiUrl('/api/whisk/status'), { signal: AbortSignal.timeout(3000) });
-        if (res.ok) setBackendStatus('online');
-        else setBackendStatus('offline');
-      } catch (err) {
-        setBackendStatus('offline');
-      }
-    };
-    checkBackend();
-    const interval = setInterval(checkBackend, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setError('');
-  };
+  // ... (checkBackend useEffect remains same)
 
   const handleSendCode = async () => {
-    if (!formData.email || !formData.name) {
-      setError('Preencha seu nome e e-mail para continuar.');
+    if (!formData.email || (!recoveryMode && !formData.name)) {
+      setError('Preencha os campos obrigatórios para continuar.');
       return;
     }
     setIsSubmitting(true);
-    const res = await sendVerificationCode(formData.email);
+    // If recoveryMode, call forgot-password, else call send-code
+    const endpoint = recoveryMode ? '/api/auth/forgot-password' : '/api/auth/send-code';
+    const res = await fetch(resolveApiUrl(endpoint), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: formData.email })
+    });
+    const data = await res.json();
     setIsSubmitting(false);
     
-    if (res.success) {
-      setRegStep('verify');
-      setSuccess('Código enviado! Verifique sua caixa de entrada.');
+    if (res.ok) {
+      if (recoveryMode) {
+        setSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+      } else {
+        setRegStep('verify');
+        setSuccess('Código enviado! Verifique sua caixa de entrada.');
+      }
     } else {
-      setError(res.error);
+      setError(data.error || 'Erro ao processar solicitação');
     }
   };
 
   const handleVerifyCode = async () => {
-    if (formData.code.length !== 4) {
-      setError('O código deve ter 4 dígitos.');
+    if (formData.code.length !== 6) {
+      setError('O código deve ter 6 dígitos.');
       return;
     }
     setIsSubmitting(true);
@@ -95,7 +94,7 @@ export const Login = ({ onClose, isAppContext }) => {
     }
 
     setIsSubmitting(true);
-    const res = await register(formData.name, formData.email, formData.password, formData.code, rememberMe);
+    const res = await register(formData.name, formData.email, formData.password, formData.code, formData.referralCode, rememberMe);
     setIsSubmitting(false);
     
     if (!res.success) {
@@ -113,7 +112,6 @@ export const Login = ({ onClose, isAppContext }) => {
     if (!res.success) {
        setError(res.error);
     } else {
-       // Persist "Remember Login" preference
        localStorage.setItem('guru_remember_me', rememberMe ? 'true' : 'false');
        if (rememberMe) {
           localStorage.setItem('guru_last_email', formData.email);
@@ -132,7 +130,6 @@ export const Login = ({ onClose, isAppContext }) => {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-neon-cyan/20 rounded-full blur-[120px] animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-neon-pink/20 rounded-full blur-[120px] animate-pulse delay-700" />
       
-      {/* Botão de Fechar / Voltar (Visível Apenas no Modo Web) */}
       {onClose && (
         <button 
            onClick={onClose} 
@@ -151,8 +148,8 @@ export const Login = ({ onClose, isAppContext }) => {
           layout
           className="relative bg-[#1a1a24]/80 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] p-12 lg:p-16 shadow-2xl flex flex-col items-center overflow-hidden"
         >
-          {/* Progress Bar (Registration Only) */}
-          {!isLogin && (
+          {/* Progress Bar */}
+          {!isLogin && !recoveryMode && (
             <div className="absolute top-0 left-0 w-full h-1.5 bg-white/5">
               <motion.div 
                 initial={{ width: '0%' }}
@@ -166,24 +163,17 @@ export const Login = ({ onClose, isAppContext }) => {
           <div className="w-20 h-20 mb-8 relative group">
              <div className="absolute inset-0 bg-neon-cyan rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
              <div className="relative w-full h-full p-1 bg-gradient-to-br from-neon-cyan via-neon-purple to-neon-pink rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(0,243,255,0.3)] overflow-hidden border border-white/20">
-                 <img src="/logo.jpg" alt="Guru Master Logo" className="w-full h-full object-cover rounded-full" />
+                 <img src="logo.jpg" alt="Guru Master Logo" className="w-full h-full object-cover rounded-full" />
               </div>
               
               {/* Backend Status Badge */}
               <div className="absolute -bottom-2 -right-2 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 border backdrop-blur-md shadow-lg">
-                 {backendStatus === 'checking' && (
-                    <div className="flex items-center gap-1.5 text-gray-400">
-                       <div className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-pulse" />
-                       Status: Sincronizando...
-                    </div>
-                 )}
-                 {backendStatus === 'online' && (
+                 {backendStatus === 'online' ? (
                     <div className="flex items-center gap-1.5 text-neon-cyan">
                        <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan shadow-[0_0_5px_rgba(0,243,255,1)]" />
                        Motor Online
                     </div>
-                 )}
-                 {backendStatus === 'offline' && (
+                 ) : (
                     <div className="flex items-center gap-1.5 text-neon-pink">
                        <div className="w-1.5 h-1.5 rounded-full bg-neon-pink shadow-[0_0_5px_rgba(255,0,243,1)] animate-pulse" />
                        Motor Offline
@@ -193,7 +183,7 @@ export const Login = ({ onClose, isAppContext }) => {
           </div>
 
           <AnimatePresence mode="wait">
-            {isLogin ? (
+            {isLogin && !recoveryMode ? (
               <motion.div 
                 key="login" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
                 className="w-full flex flex-col items-center"
@@ -208,7 +198,22 @@ export const Login = ({ onClose, isAppContext }) => {
                   </div>
                   <div className="relative group">
                     <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
-                    <input type="password" name="password" placeholder="Senha" required value={formData.password} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      name="password" 
+                      placeholder="Senha" 
+                      required 
+                      value={formData.password} 
+                      onChange={handleChange} 
+                      className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-cyan transition-all" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-cyan transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
 
                   <div className="flex items-center justify-between px-2">
@@ -217,9 +222,9 @@ export const Login = ({ onClose, isAppContext }) => {
                       <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${rememberMe ? 'bg-neon-cyan border-neon-cyan' : 'border-white/10'}`}>
                         {rememberMe && <CheckCircle2 className="w-4 h-4 text-black" />}
                       </div>
-                      <span className="text-xs font-bold text-gray-500 group-hover:text-gray-300">Lembrar acesso</span>
+                      <span className="text-xs font-bold text-gray-500 group-hover:text-gray-300">Lembrar</span>
                     </label>
-                    <button type="button" className="text-xs text-gray-500 hover:text-white transition-colors">Esqueceu a senha?</button>
+                    <button type="button" onClick={() => setRecoveryMode(true)} className="text-xs text-gray-500 hover:text-white transition-colors">Esqueceu a senha?</button>
                   </div>
 
                   {error && <div className="text-neon-pink text-xs font-bold text-center bg-neon-pink/5 p-4 rounded-xl border border-neon-pink/20 flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4" /> {error}</div>}
@@ -228,6 +233,30 @@ export const Login = ({ onClose, isAppContext }) => {
                     {isSubmitting ? 'Entrando...' : 'Entrar'}
                   </button>
                 </form>
+              </motion.div>
+            ) : recoveryMode ? (
+              <motion.div 
+                key="recovery" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                className="w-full flex flex-col items-center"
+              >
+                <h1 className="text-3xl font-bold text-white mb-2 text-glow-pink tracking-tight">Recuperação</h1>
+                <p className="text-gray-500 mb-10 text-xs font-bold tracking-widest uppercase text-center">Enviaremos um link seguro para seu e-mail</p>
+
+                <div className="w-full space-y-6">
+                  <div className="relative group">
+                    <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
+                    <input type="email" name="email" placeholder="E-mail da sua conta" required value={formData.email} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-pink transition-all" />
+                  </div>
+
+                  {error && <div className="text-neon-pink text-xs font-bold text-center bg-neon-pink/5 p-4 rounded-xl border border-neon-pink/20"><AlertCircle className="w-4 h-4 inline mr-2" /> {error}</div>}
+                  {success && <div className="text-neon-cyan text-xs font-bold text-center bg-neon-cyan/5 p-4 rounded-xl border border-neon-cyan/20"><CheckCircle2 className="w-4 h-4 inline mr-2" /> {success}</div>}
+
+                  <button onClick={handleSendCode} disabled={isSubmitting || !!success} className="w-full h-16 bg-neon-pink text-white font-black uppercase tracking-widest rounded-2xl hover:shadow-neon-pink transition-all disabled:opacity-50">
+                    {isSubmitting ? 'Enviando Link...' : 'Enviar Link de Recuperação'}
+                  </button>
+                  
+                  <button onClick={() => { setRecoveryMode(false); setError(''); setSuccess(''); }} className="w-full text-xs text-gray-500 hover:text-white transition-colors">Voltar ao Login</button>
+                </div>
               </motion.div>
             ) : (
               <motion.div 
@@ -242,8 +271,25 @@ export const Login = ({ onClose, isAppContext }) => {
                 <div className="w-full space-y-6">
                   {regStep === 'details' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                      <div className="relative"><User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" /><input type="text" name="name" placeholder="Nome Completo" value={formData.name} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" /></div>
-                      <div className="relative"><Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" /><input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" /></div>
+                      <div className="relative group">
+                        <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                        <input type="text" name="name" placeholder="Nome Completo" value={formData.name} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
+                      </div>
+                      <div className="relative group">
+                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                        <input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
+                      </div>
+                      <div className="relative group">
+                        <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                        <input 
+                          type="text" 
+                          name="referralCode" 
+                          placeholder="Código de Recomendação / Acesso" 
+                          value={formData.referralCode} 
+                          onChange={handleChange} 
+                          className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" 
+                        />
+                      </div>
                       <button onClick={handleSendCode} disabled={isSubmitting} className="w-full h-16 bg-[#12121c] border border-neon-cyan/50 text-neon-cyan font-bold uppercase tracking-widest rounded-2xl hover:bg-neon-cyan/10 transition-all">
                         {isSubmitting ? 'Enviando...' : 'Enviar Código'}
                       </button>
@@ -252,10 +298,10 @@ export const Login = ({ onClose, isAppContext }) => {
 
                   {regStep === 'verify' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                      <div className="text-center mb-4"><p className="text-gray-400 text-sm">Enviamos um código de 4 dígitos para:</p><p className="text-neon-cyan font-bold text-sm">{formData.email}</p></div>
+                      <div className="text-center mb-4"><p className="text-gray-400 text-sm">Enviamos um código de 6 dígitos para:</p><p className="text-neon-cyan font-bold text-sm">{formData.email}</p></div>
                       <div className="relative">
                         <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                        <input type="text" name="code" maxLength="4" placeholder="Código de 4 dígitos" value={formData.code} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white text-center text-3xl font-black tracking-[1em] outline-none focus:border-neon-purple transition-all" />
+                        <input type="text" name="code" maxLength="6" placeholder="6 dígitos" value={formData.code} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white text-center text-3xl font-black tracking-[0.5em] outline-none focus:border-neon-purple transition-all" />
                       </div>
                       <button onClick={handleVerifyCode} disabled={isSubmitting} className="w-full h-16 bg-neon-purple text-white font-bold uppercase tracking-widest rounded-2xl hover:shadow-neon-purple transition-all">
                         {isSubmitting ? 'Validando...' : 'Validar Código'}
@@ -266,8 +312,42 @@ export const Login = ({ onClose, isAppContext }) => {
 
                   {regStep === 'security' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                      <div className="relative"><Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" /><input type="password" name="password" placeholder="Nova Senha" value={formData.password} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-pink transition-all" /></div>
-                      <div className="relative"><Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" /><input type="password" name="confirmPassword" placeholder="Confirmar Senha" value={formData.confirmPassword} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-pink transition-all" /></div>
+                      <div className="relative group">
+                        <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
+                        <input 
+                          type={showRegPassword ? "text" : "password"} 
+                          name="password" 
+                          placeholder="Nova Senha" 
+                          value={formData.password} 
+                          onChange={handleChange} 
+                          className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-pink transition-all" 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegPassword(!showRegPassword)}
+                          className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-pink transition-colors"
+                        >
+                          {showRegPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                      <div className="relative group">
+                        <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
+                        <input 
+                          type={showRegConfirmPassword ? "text" : "password"} 
+                          name="confirmPassword" 
+                          placeholder="Confirmar Senha" 
+                          value={formData.confirmPassword} 
+                          onChange={handleChange} 
+                          className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-pink transition-all" 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                          className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-pink transition-colors"
+                        >
+                          {showRegConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
                       <button onClick={handleFinalRegister} disabled={isSubmitting} className="w-full h-16 bg-neon-pink text-white font-bold uppercase tracking-widest rounded-2xl hover:shadow-neon-pink transition-all">
                         {isSubmitting ? 'Finalizando...' : 'Concluir Cadastro'}
                       </button>

@@ -2,10 +2,15 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Download, Terminal, Settings, User, CreditCard, Bell, ChevronRight, PlayCircle, Star, Sparkles, Monitor } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSystemStatus } from '../contexts/SystemStatusContext';
+import { SettingsPanel } from '../components/SettingsPanel';
+import { ViralHacker } from '../components/ViralHacker';
 
 export const MemberPortal = ({ onLogout }) => {
   const { user } = useAuth();
+  const { configs } = useSystemStatus();
   const [activeMenu, setActiveMenu] = useState('overview');
+  const [selectedLanguage, setSelectedLanguage] = useState(null);
 
   const copyCommand = () => {
     navigator.clipboard.writeText('irm https://gurumaster.com/install.ps1 | iex');
@@ -50,11 +55,14 @@ export const MemberPortal = ({ onLogout }) => {
               <button onClick={() => setActiveMenu('engine')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase transition-all tracking-widest ${activeMenu === 'engine' ? 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}>
                  <Download className="w-4 h-4" /> Download Engine
               </button>
-              <button disabled className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-gray-700 cursor-not-allowed">
-                 <CreditCard className="w-4 h-4" /> Minha Assinatura
+              <button onClick={() => setActiveMenu('viral-hacker')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase transition-all tracking-widest ${activeMenu === 'viral-hacker' ? 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}>
+                 <Zap className="w-4 h-4" /> Viral Hacker
+              </button>
+              <button onClick={() => setActiveMenu('settings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase transition-all tracking-widest ${activeMenu === 'settings' ? 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}>
+                 <Settings className="w-4 h-4" /> Configurações
               </button>
               <button disabled className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-gray-700 cursor-not-allowed">
-                 <Settings className="w-4 h-4" /> Configurações
+                 <CreditCard className="w-4 h-4" /> Minha Assinatura
               </button>
            </nav>
         </aside>
@@ -106,50 +114,28 @@ export const MemberPortal = ({ onLogout }) => {
               </div>
             )}
 
-            {activeMenu === 'engine' && (
+            {activeMenu === 'viral-hacker' && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                 <div className="bg-black/40 border border-neon-cyan/20 rounded-3xl p-8 lg:p-12 relative overflow-hidden backdrop-blur-md">
-                    <div className="absolute top-0 right-0 p-8">
-                       <Monitor className="w-32 h-32 text-neon-cyan/5 -rotate-12" />
-                    </div>
-
-                    <h2 className="text-2xl font-black text-white mb-4">Módulo de Instalação (Windows)</h2>
-                    <p className="text-sm text-gray-400 mb-8 max-w-xl font-medium">Você agora tem as chaves da máquina. Baixe o instalador oficial do aplicativo para sua máquina. Diferente de scripts lentos no navegador, nosso modelo utiliza um .EXE blindado que aproveita 100% da velocidade da sua internet.</p>
-                    
-                    <div className="bg-white/5 border border-white/10 p-6 rounded-2xl flex items-center justify-between mb-8 group hover:border-white/20 transition-all">
-                       <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-black rounded-lg border border-neon-cyan/30 flex items-center justify-center">
-                             <Download className="w-5 h-5 text-neon-cyan" />
-                          </div>
-                          <div>
-                             <h4 className="text-white font-black uppercase tracking-widest text-sm mb-1">GuruMaster_Setup_v3.1.exe</h4>
-                             <p className="text-xs text-gray-500 font-bold tracking-widest">Tamanho: ~140MB - 64 Bits Windows</p>
-                          </div>
-                       </div>
-                       <button onClick={() => alert('Download do .EXE iniciado! (Modo Simulação)')} className="px-6 py-3 bg-neon-cyan text-black font-black uppercase text-xs tracking-widest rounded-xl hover:bg-white hover:shadow-[0_0_20px_rgba(34,211,238,0.4)] transition-all">
-                          Baixar Arquivo
-                       </button>
-                    </div>
-
-                    <div className="space-y-6">
-                       <div className="flex items-start gap-4">
-                          <div className="w-8 h-8 bg-white/5 border border-white/10 rounded-full flex items-center justify-center font-black text-gray-400 text-xs shrink-0">1</div>
-                          <div>
-                             <h4 className="text-white font-bold text-sm mb-1">Dê 2-Cliques no Arquivo Baixado</h4>
-                             <p className="text-xs text-gray-500">Nosso sistema cuidará de injetar o App no seu Desktop magicamente sem complicação técnica.</p>
-                          </div>
-                       </div>
-                       
-                       <div className="flex items-start gap-4">
-                          <div className="w-8 h-8 bg-neon-cyan/10 border border-neon-cyan/20 rounded-full flex items-center justify-center font-black text-neon-cyan text-xs shrink-0">2</div>
-                          <div className="w-full">
-                             <h4 className="text-white font-bold text-sm mb-1">Faça Login dentro do Aplicativo</h4>
-                             <p className="text-xs text-gray-500">Ao abrir o botão "Guru Master" criado na área de trabalho, você informará seu e-mail de membro para dar a partida no motor de análise.</p>
-                          </div>
-                       </div>
-                    </div>
-                 </div>
+                 <ViralHacker 
+                    configs={configs} 
+                    selectedLanguage={selectedLanguage} 
+                    setSelectedLanguage={setSelectedLanguage}
+                    result={{ 
+                      title: "Guru Master Web",
+                      sections: {
+                        countries: [
+                          { name: 'Brasil', code: 'br', flag: '🇧🇷' },
+                          { name: 'USA', code: 'us', flag: '🇺🇸' },
+                          { name: 'Espanha', code: 'es', flag: '🇪🇸' }
+                        ]
+                      }
+                    }}
+                 />
               </motion.div>
+            )}
+
+            {activeMenu === 'settings' && (
+               <SettingsPanel />
             )}
 
           </motion.div>

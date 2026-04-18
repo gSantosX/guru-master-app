@@ -7,29 +7,34 @@ export const callGemini = async (apiKey, prompt, options = {}) => {
   if (!apiKey) throw new Error("Chave Gemini ausente!");
 
   const modelsToTry = [];
+  const preferredModelLabel = options.gemini_model || localStorage.getItem('guru_gemini_model') || '';
+  
+  // Custom Mapping logic for the branded labels
+  if (preferredModelLabel.includes('3.1 Flash Lite')) {
+    modelsToTry.push('models/gemini-1.5-flash');
+  } else if (preferredModelLabel.includes('2.5 Flash')) {
+    modelsToTry.push('models/gemini-2.0-flash');
+  }
+
   try {
     const modelsRes = await fetch(resolveApiUrl(`/api/gemini/v1beta/models?key=${apiKey}`));
     if (modelsRes.ok) {
-    const modelsData = await modelsRes.json();
-    if (modelsData.models) {
-      // Collect all promising models in order of preference
-      const flash20 = modelsData.models.find(m => m.name.includes('gemini-2.0-flash') && m.supportedGenerationMethods?.includes('generateContent'));
-      const flash15 = modelsData.models.find(m => m.name.includes('gemini-1.5-flash') && m.supportedGenerationMethods?.includes('generateContent'));
-      const pro15 = modelsData.models.find(m => m.name.includes('gemini-1.5-pro') && m.supportedGenerationMethods?.includes('generateContent'));
-      const pro10 = modelsData.models.find(m => m.name.includes('gemini-1.0-pro') && m.supportedGenerationMethods?.includes('generateContent'));
-      
-      if (flash20) modelsToTry.push(flash20.name);
-      if (flash15) modelsToTry.push(flash15.name);
-      if (pro15) modelsToTry.push(pro15.name);
-      if (pro10) modelsToTry.push(pro10.name);
-      
-      // Add any other gemini models as a last resort
-      modelsData.models.forEach(m => {
-        if (m.name.includes('gemini') && m.supportedGenerationMethods?.includes('generateContent') && !modelsToTry.includes(m.name)) {
-          modelsToTry.push(m.name);
-        }
-      });
-    }
+      const modelsData = await modelsRes.json();
+      if (modelsData.models) {
+        // Find specific variants if not already pushed
+        const flash20 = modelsData.models.find(m => m.name.includes('gemini-2.0-flash') && m.supportedGenerationMethods?.includes('generateContent'));
+        const flash15 = modelsData.models.find(m => m.name.includes('gemini-1.5-flash') && m.supportedGenerationMethods?.includes('generateContent'));
+        
+        if (flash20 && !modelsToTry.includes(flash20.name)) modelsToTry.push(flash20.name);
+        if (flash15 && !modelsToTry.includes(flash15.name)) modelsToTry.push(flash15.name);
+        
+        // Add others
+        modelsData.models.forEach(m => {
+          if (m.name.includes('gemini') && m.supportedGenerationMethods?.includes('generateContent') && !modelsToTry.includes(m.name)) {
+            modelsToTry.push(m.name);
+          }
+        });
+      }
     }
   } catch (e) {
     console.error("Gemini model list error:", e);

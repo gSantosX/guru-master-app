@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Shield, Zap, TrendingUp, Lock, XCircle, FastForward, Layers, PenTool, Image, ArrowRight, Target, Clock, Monitor, Sparkles, Terminal, CheckCircle2, Globe, Cpu, EyeOff, CheckCircle, ChevronDown, Mail, X } from 'lucide-react';
 import { NativeCheckout } from '../components/NativeCheckout';
@@ -359,3 +359,4 @@ export const SalesLanding = ({ onLoginClick }) => {
     </div>
   );
 };
+
