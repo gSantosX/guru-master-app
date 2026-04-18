@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     if (resetError) throw resetError;
 
     // 4. Send E-mail
-    const resetUrl = `https://guru-master-app.vercel.app/#reset-password?token=${token}`;
+    const resetUrl = `https://guru-master-website.vercel.app/#/reset?token=${token}`;
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -45,27 +45,46 @@ export default async function handler(req, res) {
       }
     });
 
-    const mailOptions = {
+    let mailOptions = {
       from: '"Guru Master AI" <suporte.gurumaster@gmail.com>',
       to: email,
       subject: 'Redefinição de Senha - Guru Master AI',
       html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #eee; border-radius: 20px; background-color: #0a0a0f; color: #ffffff;">
-          <h1 style="color: #00f3ff; text-align: center;">Guru Master AI</h1>
-          <p style="font-size: 16px;">Olá,</p>
-          <p style="font-size: 16px;">Recebemos um pedido para redefinir a senha da sua conta no Guru Master AI.</p>
-          <p style="font-size: 16px;">Clique no botão abaixo para escolher uma nova senha:</p>
-          
-          <div style="text-align: center; margin: 40px 0;">
-            <a href="${resetUrl}" style="background-color: #00f3ff; color: #000; padding: 15px 30px; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 16px; display: inline-block;">Redefinir Minha Senha</a>
-          </div>
-          
-          <p style="font-size: 14px; color: #888;">Este link é válido por 2 horas. Se você não solicitou a redefinição, pode ignorar este e-mail.</p>
-          <hr style="border: 0; border-top: 1px solid #333; margin: 30px 0;">
-          <p style="font-size: 12px; color: #555; text-align: center;">Guru Master AI - Protocolo Seguro de Autenticação</p>
+        <div style="background: #000; padding: 20px; text-align: center;">
+          <img src="cid:reset_image" style="max-width: 100%; border-radius: 15px;">
+          <p style="margin-top: 20px;">
+            <a href="${resetUrl}" style="color: #00f3ff; text-decoration: underline; font-size: 12px;">Clique aqui se não conseguir ver o link acima</a>
+          </p>
         </div>
-      `
+      `,
+      attachments: []
     };
+
+    try {
+      const Jimp = (await import('jimp')).default;
+      const path = await import('path');
+      const templatePath = path.join(process.cwd(), 'public', 'reset_template.jpg');
+      
+      const image = await Jimp.read(templatePath);
+      // Use a smaller font for the link
+      const font = await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK); 
+      
+      const textWidth = Jimp.measureText(font, resetUrl);
+      const x = (image.bitmap.width - textWidth) / 2;
+      const y = image.bitmap.height * 0.65; // Estimated box position
+      
+      image.print(font, x, y, resetUrl);
+      const buffer = await image.getBufferAsync(Jimp.MIME_JPEG);
+      
+      mailOptions.attachments.push({
+        filename: 'reset.jpg',
+        content: buffer,
+        cid: 'reset_image'
+      });
+    } catch (imgError) {
+      console.error('Image processing error:', imgError);
+      mailOptions.html = `<p>Clique no link para redefinir sua senha: <a href="${resetUrl}">${resetUrl}</a></p>`;
+    }
 
     await transporter.sendMail(mailOptions);
     return res.status(200).json({ message: 'E-mail de recuperação enviado' });

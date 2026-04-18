@@ -34,25 +34,45 @@ export default async function handler(req, res) {
       }
     });
 
-    const mailOptions = {
+    let mailOptions = {
       from: '"Guru Master AI" <suporte.gurumaster@gmail.com>',
       to: email,
       subject: `Seu código de acesso: ${code}`,
       html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; rounded: 10px;">
-          <h2 style="color: #00f3ff; text-align: center;">Guru Master AI</h2>
-          <p>Olá!</p>
-          <p>Seu código de verificação para acesso à plataforma é:</p>
-          <div style="background: #f0f0f0; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #333; margin: 20px 0;">
-            ${code}
-          </div>
-          <p style="font-size: 12px; color: #666; text-align: center;">Este código expira em 15 minutos.</p>
+        <div style="background: #000; padding: 20px; text-align: center;">
+          <img src="cid:verify_image" style="max-width: 100%; border-radius: 15px;">
+          <p style="color: #444; font-size: 10px; margin-top: 10px;">Código: ${code}</p>
         </div>
-      `
+      `,
+      attachments: []
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+      const Jimp = (await import('jimp')).default;
+      const path = await import('path');
+      const templatePath = path.join(process.cwd(), 'public', 'verify_template.jpg');
+      
+      const image = await Jimp.read(templatePath);
+      const font = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
+      
+      const textWidth = Jimp.measureText(font, code);
+      const x = (image.bitmap.width - textWidth) / 2;
+      const y = image.bitmap.height * 0.65; // Estimated box position
+      
+      image.print(font, x, y, code);
+      const buffer = await image.getBufferAsync(Jimp.MIME_JPEG);
+      
+      mailOptions.attachments.push({
+        filename: 'verify.jpg',
+        content: buffer,
+        cid: 'verify_image'
+      });
+    } catch (imgError) {
+      console.error('Image processing error:', imgError);
+      mailOptions.html = `<p>Seu código de verificação: <b>${code}</b></p>`;
+    }
 
+    await transporter.sendMail(mailOptions);
     return res.status(200).json({ message: 'Código enviado com sucesso' });
   } catch (error) {
     console.error('Send code error:', error);

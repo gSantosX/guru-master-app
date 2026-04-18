@@ -96,10 +96,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, code, remember = false) => {
+  const register = async (name, email, password, verificationCode, referralCode, remember = false) => {
     try {
       // 1. Verify code again
-      const verifyRes = await verifyCode(email, code);
+      const verifyRes = await verifyCode(email, verificationCode);
       if (!verifyRes.success) throw new Error(verifyRes.error);
 
       // 2. Check if user already exists (maybe created via webhook)
@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }) => {
         const { data: accessCode } = await supabase
           .from('guru_access_codes')
           .select('*')
-          .eq('code', code)
+          .eq('code', referralCode)
           .eq('is_used', false)
           .single();
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Key, AlertCircle, CheckCircle2, ArrowRight, Sparkles } from 'lucide-react';
+import { Lock, Key, AlertCircle, CheckCircle2, ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { resolveApiUrl } from '../utils/apiUtils';
 
 export const ResetPassword = ({ onClose }) => {
@@ -11,6 +11,11 @@ export const ResetPassword = ({ onClose }) => {
   const [token, setToken] = useState('');
   const [status, setStatus] = useState('idle'); // 'idle' | 'submitting' | 'success' | 'error'
   const [error, setError] = useState('');
+  
+  // Password Visibility States
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -96,12 +101,42 @@ export const ResetPassword = ({ onClose }) => {
               <motion.form key="form" onSubmit={handleReset} className="w-full space-y-6">
                 <div className="relative group">
                   <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
-                  <input type="password" name="password" placeholder="Nova Senha" required value={formData.password} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-pink transition-all" />
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    name="password" 
+                    placeholder="Nova Senha" 
+                    required 
+                    value={formData.password} 
+                    onChange={handleChange} 
+                    className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-pink transition-all" 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-pink transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
 
                 <div className="relative group">
                   <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
-                  <input type="password" name="confirmPassword" placeholder="Confirmar Nova Senha" required value={formData.confirmPassword} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-pink transition-all" />
+                  <input 
+                    type={showConfirmPassword ? "text" : "password"} 
+                    name="confirmPassword" 
+                    placeholder="Confirmar Nova Senha" 
+                    required 
+                    value={formData.confirmPassword} 
+                    onChange={handleChange} 
+                    className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-pink transition-all" 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-pink transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
 
                 {error && (

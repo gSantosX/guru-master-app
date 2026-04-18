@@ -121,6 +121,9 @@ USERS_FILE = os.path.join(BASE_DIR, 'users.json')
 
 # Temporary store for verification codes
 verification_codes = {}
+reset_codes = {} # Storage for password recovery tokens
+
+BASE_SITE_URL = "https://guru-master-website.vercel.app"
 
 def load_config():
     global FFMPEG_CMD, FFPROBE_CMD
@@ -184,9 +187,16 @@ def save_users(users):
 from email.mime.image import MIMEImage
 from PIL import Image, ImageDraw, ImageFont
 
-def get_code_image(code):
+def get_code_image(code, template_type='verify'):
     try:
-        img_path = os.path.join(BASE_DIR, 'email_template.jpg')
+        # Template selection
+        fname = 'verify_template.jpg' if template_type == 'verify' else 'reset_template.jpg'
+        img_path = os.path.join(BASE_DIR, fname)
+        
+        # Fallback to the original if new ones aren't there yet
+        if not os.path.exists(img_path):
+            img_path = os.path.join(BASE_DIR, 'email_template.jpg')
+            
         if not os.path.exists(img_path):
             return None
             
@@ -207,7 +217,7 @@ def get_code_image(code):
                 if r > 220 and g > 220 and b > 220:
                     white_count += 1
                 else:
-                    if white_count > width * 0.4:
+                    if white_count > width * 0.3: # Lower threshold to catch the box
                         box_y = y
                         for xs in range(width):
                             if pixels[xs, y][0] > 220:
@@ -221,37 +231,48 @@ def get_code_image(code):
                     white_count = 0
             if box_y != -1: break
             
+        # Fallback coordinates if detection fails
         if box_y == -1: 
              box_y, box_x_start, box_x_end = 538, 40, 530
              
+        # Determine font size based on text length (short link vs 6-digit code)
+        text = str(code)
+        font_size = 60
+        if len(text) > 10: # Likely a link
+            font_size = 24
+        elif len(text) == 6:
+            font_size = 50
+            
         try:
-            # Use arialbd.ttf if possible, otherwise arial.ttf or default
-            font = ImageFont.truetype("arialbd.ttf", 60)
+            font = ImageFont.truetype("arialbd.ttf", font_size)
         except:
             try:
-                font = ImageFont.truetype("arial.ttf", 60)
+                font = ImageFont.truetype("arial.ttf", font_size)
             except:
                 font = ImageFont.load_default()
             
-        text = str(code)
         # Use textbbox for precise centering in Pillow 10+
         if hasattr(draw, "textbbox"):
             bbox = draw.textbbox((0, 0), text, font=font)
             text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
         else:
-            text_w = 140 # Ballpark
+            text_w = len(text) * (font_size // 2)
+            text_h = font_size
             
         center_x = box_x_start + (box_x_end - box_x_start) // 2
-        draw.text((center_x - text_w // 2, box_y + 8), text, fill=(0, 0, 0), font=font)
+        # Center vertically in the white strip (assuming roughly 40-60px height)
+        draw.text((center_x - text_w // 2, box_y + 5), text, fill=(0, 0, 0), font=font)
         
-        out_path = os.path.join(BASE_DIR, 'temp_verify.jpg')
+        prefix = 'temp_verify' if template_type == 'verify' else 'temp_reset'
+        out_path = os.path.join(BASE_DIR, f'{prefix}.jpg')
         img.save(out_path, quality=95)
         return out_path
     except Exception as e:
         print(f"PIL Error: {e}")
         return None
 
-def send_verification_email(target_email, code):
+def send_verification_email(target_email, code, template_type='verify'):
     config = load_config()
     smtp_user = str(config.get("smtp_user", ""))
     smtp_pass = str(config.get("smtp_password", ""))
@@ -262,10 +283,10 @@ def send_verification_email(target_email, code):
     msg = MIMEMultipart('related')
     msg['From'] = f"Guru Master AI <{smtp_user}>"
     msg['To'] = target_email
-    msg['Subject'] = f"{code} é o seu código de verificação"
+    msg['Subject'] = f"{code} é o seu código de verificação" if template_type == 'verify' else "Redefinição de Senha Guru Master"
     
     # Generate the custom image
-    custom_img_path = get_code_image(code)
+    custom_img_path = get_code_image(code, template_type)
     
     if custom_img_path:
         html_body = f"""
@@ -522,17 +543,76 @@ def send_code():
     if not email:
         return jsonify({"error": "E-mail inválido"}), 400
         
-    code = f"{random.randint(1000, 9999)}"
+    code = f"{random.randint(100000, 999999)}"
     verification_codes[email] = {
         "code": code,
         "timestamp": datetime.now().isoformat()
     }
     
     try:
-        send_verification_email(email, code)
+        send_verification_email(email, code, template_type='verify')
         return jsonify({"message": "Código enviado para " + email})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.json
+    email = data.get('email')
+    if not email:
+        return jsonify({"error": "E-mail inválido"}), 400
+        
+    users = load_users()
+    if email not in users:
+        # Don't reveal if user exists for security, but we'll return success anyway
+        return jsonify({"message": "Se este e-mail estiver cadastrado, você receberá um link em breve."})
+        
+    # Generate a unique token
+    token = str(uuid.uuid4())
+    reset_codes[token] = {
+        "email": email,
+        "timestamp": time.time()
+    }
+    
+    # Create the short-ish link
+    # The frontend uses hash routing or clean URLs? Based on ResetPassword.jsx line 16, it expects hash:
+    # window.location.hash; ... params.get('token');
+    reset_link = f"{BASE_SITE_URL}/#/reset?token={token}"
+    
+    try:
+        send_verification_email(email, reset_link, template_type='reset')
+        return jsonify({"message": "E-mail de recuperação enviado."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+def reset_password():
+    data = request.json
+    token = data.get('token')
+    new_password = data.get('password')
+    
+    if not token or not new_password:
+        return jsonify({"error": "Dados inválidos"}), 400
+        
+    stored = reset_codes.get(token)
+    if not stored:
+        return jsonify({"error": "Link de recuperação inválido ou expirado"}), 400
+        
+    # Check expiry (15 mins)
+    if time.time() - stored['timestamp'] > 900:
+        del reset_codes[token]
+        return jsonify({"error": "Link expirado. Solicite um novo."}), 400
+        
+    email = stored['email']
+    users = load_users()
+    
+    if email in users:
+        users[email]['password'] = new_password
+        save_users(users)
+        del reset_codes[token]
+        return jsonify({"message": "Senha redefinida com sucesso!"})
+    
+    return jsonify({"error": "Usuário não encontrado"}), 404
 
 @app.route('/api/auth/verify-code', methods=['POST'])
 def verify_code():

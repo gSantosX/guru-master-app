@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
-import { User, Lock, Mail, ArrowRight, Sparkles, LogIn, UserPlus, Info, ShieldCheck, Key, Settings, AlertCircle, CheckCircle2, Activity, X } from 'lucide-react';
+import { User, Lock, Mail, ArrowRight, Sparkles, LogIn, UserPlus, Info, ShieldCheck, Key, Settings, AlertCircle, CheckCircle2, Activity, X, Eye, EyeOff } from 'lucide-react';
 import { resolveApiUrl } from '../utils/apiUtils';
 
 export const Login = ({ onClose, isAppContext }) => {
@@ -20,7 +20,8 @@ export const Login = ({ onClose, isAppContext }) => {
     email: localStorage.getItem('guru_last_email') || '', 
     password: '', 
     confirmPassword: '',
-    code: ''
+    code: '',
+    referralCode: ''
   });
   
   const [rememberMe, setRememberMe] = useState(localStorage.getItem('guru_remember_me') !== 'false'); 
@@ -28,6 +29,11 @@ export const Login = ({ onClose, isAppContext }) => {
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backendStatus, setBackendStatus] = useState('checking'); 
+  
+  // Password Visibility States
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
   // ... (checkBackend useEffect remains same)
 
@@ -88,7 +94,7 @@ export const Login = ({ onClose, isAppContext }) => {
     }
 
     setIsSubmitting(true);
-    const res = await register(formData.name, formData.email, formData.password, formData.code, rememberMe);
+    const res = await register(formData.name, formData.email, formData.password, formData.code, formData.referralCode, rememberMe);
     setIsSubmitting(false);
     
     if (!res.success) {
@@ -192,7 +198,22 @@ export const Login = ({ onClose, isAppContext }) => {
                   </div>
                   <div className="relative group">
                     <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
-                    <input type="password" name="password" placeholder="Senha" required value={formData.password} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      name="password" 
+                      placeholder="Senha" 
+                      required 
+                      value={formData.password} 
+                      onChange={handleChange} 
+                      className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-cyan transition-all" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-cyan transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
 
                   <div className="flex items-center justify-between px-2">
@@ -250,8 +271,25 @@ export const Login = ({ onClose, isAppContext }) => {
                 <div className="w-full space-y-6">
                   {regStep === 'details' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                      <div className="relative"><User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" /><input type="text" name="name" placeholder="Nome Completo" value={formData.name} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" /></div>
-                      <div className="relative"><Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" /><input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" /></div>
+                      <div className="relative group">
+                        <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                        <input type="text" name="name" placeholder="Nome Completo" value={formData.name} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
+                      </div>
+                      <div className="relative group">
+                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                        <input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
+                      </div>
+                      <div className="relative group">
+                        <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                        <input 
+                          type="text" 
+                          name="referralCode" 
+                          placeholder="Código de Recomendação / Acesso" 
+                          value={formData.referralCode} 
+                          onChange={handleChange} 
+                          className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" 
+                        />
+                      </div>
                       <button onClick={handleSendCode} disabled={isSubmitting} className="w-full h-16 bg-[#12121c] border border-neon-cyan/50 text-neon-cyan font-bold uppercase tracking-widest rounded-2xl hover:bg-neon-cyan/10 transition-all">
                         {isSubmitting ? 'Enviando...' : 'Enviar Código'}
                       </button>
@@ -260,10 +298,10 @@ export const Login = ({ onClose, isAppContext }) => {
 
                   {regStep === 'verify' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                      <div className="text-center mb-4"><p className="text-gray-400 text-sm">Enviamos um código de 4 dígitos para:</p><p className="text-neon-cyan font-bold text-sm">{formData.email}</p></div>
+                      <div className="text-center mb-4"><p className="text-gray-400 text-sm">Enviamos um código de 6 dígitos para:</p><p className="text-neon-cyan font-bold text-sm">{formData.email}</p></div>
                       <div className="relative">
                         <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-                        <input type="text" name="code" maxLength="4" placeholder="Código de 4 dígitos" value={formData.code} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white text-center text-3xl font-black tracking-[1em] outline-none focus:border-neon-purple transition-all" />
+                        <input type="text" name="code" maxLength="6" placeholder="6 dígitos" value={formData.code} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white text-center text-3xl font-black tracking-[0.5em] outline-none focus:border-neon-purple transition-all" />
                       </div>
                       <button onClick={handleVerifyCode} disabled={isSubmitting} className="w-full h-16 bg-neon-purple text-white font-bold uppercase tracking-widest rounded-2xl hover:shadow-neon-purple transition-all">
                         {isSubmitting ? 'Validando...' : 'Validar Código'}
@@ -274,8 +312,42 @@ export const Login = ({ onClose, isAppContext }) => {
 
                   {regStep === 'security' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                      <div className="relative"><Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" /><input type="password" name="password" placeholder="Nova Senha" value={formData.password} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-pink transition-all" /></div>
-                      <div className="relative"><Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" /><input type="password" name="confirmPassword" placeholder="Confirmar Senha" value={formData.confirmPassword} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-pink transition-all" /></div>
+                      <div className="relative group">
+                        <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
+                        <input 
+                          type={showRegPassword ? "text" : "password"} 
+                          name="password" 
+                          placeholder="Nova Senha" 
+                          value={formData.password} 
+                          onChange={handleChange} 
+                          className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-pink transition-all" 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegPassword(!showRegPassword)}
+                          className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-pink transition-colors"
+                        >
+                          {showRegPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                      <div className="relative group">
+                        <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
+                        <input 
+                          type={showRegConfirmPassword ? "text" : "password"} 
+                          name="confirmPassword" 
+                          placeholder="Confirmar Senha" 
+                          value={formData.confirmPassword} 
+                          onChange={handleChange} 
+                          className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-pink transition-all" 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                          className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-pink transition-colors"
+                        >
+                          {showRegConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
                       <button onClick={handleFinalRegister} disabled={isSubmitting} className="w-full h-16 bg-neon-pink text-white font-bold uppercase tracking-widest rounded-2xl hover:shadow-neon-pink transition-all">
                         {isSubmitting ? 'Finalizando...' : 'Concluir Cadastro'}
                       </button>
