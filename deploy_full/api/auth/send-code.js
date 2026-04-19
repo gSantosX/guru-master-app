@@ -34,34 +34,36 @@ export default async function handler(req, res) {
       }
     });
 
-    // Robust Text-only email for maximum reliability
-    const mailOptions = {
+    let mailOptions = {
       from: '"Guru Master AI" <suporte.gurumaster@gmail.com>',
       to: email,
-      subject: `Código de Acesso: ${code}`,
+      subject: `Seu código de acesso: ${code}`,
       html: `
-        <div style="font-family: sans-serif; padding: 20px; text-align: center; background: #f9f9f9; border-radius: 10px;">
-          <h2 style="color: #000;">Seu código de verificação</h2>
-          <p style="font-size: 32px; font-weight: bold; color: #4F46E5; margin: 20px 0;">${code}</p>
-          <p style="color: #666;">Use este código para completar seu cadastro por indicação no Guru Master.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-          <p style="font-size: 12px; color: #999;">Se você não solicitou este código, ignore este e-mail.</p>
+        <div style="background: #000; padding: 20px; text-align: center;">
+          <img src="cid:verify_image" style="max-width: 100%; border-radius: 15px;">
+          <p style="color: #444; font-size: 10px; margin-top: 10px;">Código: ${code}</p>
         </div>
-      `
-    };
+      `,
+      attachments: []
+    // Simple Text-only email for reliability
+    mailOptions.html = `
+      <div style="font-family: sans-serif; padding: 20px; color: #333;">
+        <h2>Seu código de acesso</h2>
+        <p>Olá! Você iniciou seu cadastro por indicação no Guru Master AI.</p>
+        <p style="font-size: 24px; font-weight: bold; color: #000;">${code}</p>
+        <p>Insira este código para prosseguir com a definição de sua senha.</p>
+      </div>
+    `;
 
     if (!process.env.SMTP_PASS) {
-      console.error('ERRO: SMTP_PASS não encontrada no ambiente');
-      return res.status(500).json({ error: 'Configuração de e-mail incompleta no servidor' });
+      console.error('SMTP_PASS não configurada');
+      return res.status(500).json({ error: 'Configuração de e-mail ausente (SMTP_PASS)' });
     }
 
-    console.log('Tentando enviar e-mail para:', email);
     await transporter.sendMail(mailOptions);
-    console.log('E-mail enviado com sucesso.');
-    
     return res.status(200).json({ message: 'Código enviado com sucesso' });
   } catch (error) {
-    console.error('Send code critical error:', error);
-    return res.status(500).json({ error: 'Erro ao processar cadastro: ' + error.message });
+    console.error('Send code error:', error);
+    return res.status(500).json({ error: 'Erro interno ao processar cadastro: ' + error.message });
   }
 }
