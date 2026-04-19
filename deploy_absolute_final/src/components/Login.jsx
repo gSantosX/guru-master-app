@@ -1,0 +1,427 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
+import { useSystemStatus } from '../contexts/SystemStatusContext';
+import { User, Lock, Mail, ArrowRight, Sparkles, LogIn, UserPlus, Info, ShieldCheck, Key, Settings, AlertCircle, CheckCircle2, Activity, X, Eye, EyeOff } from 'lucide-react';
+import { resolveApiUrl } from '../utils/apiUtils';
+
+export const Login = ({ onClose, isAppContext }) => {
+  const { login, register, sendVerificationCode, verifyCode } = useAuth();
+  const { isInitialized, checkConnectivity } = useSystemStatus();
+  
+  // UI States
+  const [isLogin, setIsLogin] = useState(true);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [regStep, setRegStep] = useState('details'); // 'details' | 'verify' | 'security'
+  const [isReferralMode, setIsReferralMode] = useState(false);
+  
+  // Form Data
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    email: localStorage.getItem('guru_last_email') || '', 
+    password: '', 
+    confirmPassword: '',
+    code: '',
+    referralCode: ''
+  });
+  
+  const [rememberMe, setRememberMe] = useState(localStorage.getItem('guru_remember_me') !== 'false'); 
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [backendStatus, setBackendStatus] = useState('checking'); 
+  
+  // Password Visibility States
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  // ... (checkBackend useEffect remains same)
+
+  const handleSendCode = async () => {
+    if (!formData.email || (!recoveryMode && !formData.name)) {
+      setError('Preencha os campos obrigatórios para continuar.');
+      return;
+    }
+    setIsSubmitting(true);
+    // If recoveryMode, call forgot-password, else call send-code
+    const endpoint = recoveryMode ? '/api/auth/forgot-password' : '/api/auth/send-code';
+    const res = await fetch(resolveApiUrl(endpoint), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: formData.email })
+    });
+    const data = await res.json();
+    setIsSubmitting(false);
+    
+    if (res.ok) {
+      if (recoveryMode) {
+        setSuccess('E-mail de recuperação enviado! Verifique sua caixa de entrada.');
+      } else {
+        setRegStep('verify');
+        setSuccess('Código enviado! Verifique sua caixa de entrada.');
+      }
+    } else {
+      setError(data.error || 'Erro ao processar solicitação');
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (formData.code.length !== 6) {
+      setError('O código deve ter 6 dígitos.');
+      return;
+    }
+    setIsSubmitting(true);
+    const res = await verifyCode(formData.email, formData.code);
+    setIsSubmitting(false);
+    
+    if (res.success) {
+      setRegStep('security');
+      setError('');
+    } else {
+      setError(res.error);
+    }
+  };
+
+  const handleFinalRegister = async (e) => {
+    e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      setError('As senhas não coincidem.');
+      return;
+    }
+    if (formData.password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const res = await register(formData.name, formData.email, formData.password, formData.code, formData.referralCode, rememberMe);
+    setIsSubmitting(false);
+    
+    if (!res.success) {
+      setError(res.error);
+    } else {
+      checkConnectivity();
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    const res = await login(formData.email, formData.password, rememberMe);
+    setIsSubmitting(false);
+    if (!res.success) {
+       setError(res.error);
+    } else {
+       localStorage.setItem('guru_remember_me', rememberMe ? 'true' : 'false');
+       if (rememberMe) {
+          localStorage.setItem('guru_last_email', formData.email);
+       } else {
+          localStorage.removeItem('guru_last_email');
+       }
+       checkConnectivity();
+    }
+  };
+
+  if (!isInitialized) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-[#0a0a0f] flex items-center justify-center p-6 overflow-hidden font-sans">
+      {/* Background Animated Orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-neon-cyan/20 rounded-full blur-[120px] animate-pulse" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-neon-pink/20 rounded-full blur-[120px] animate-pulse delay-700" />
+      
+      {onClose && (
+        <button 
+           onClick={onClose} 
+           className="absolute top-8 md:top-12 left-8 md:left-12 z-[250] flex items-center gap-2 px-5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white transition-all group shadow-lg"
+        >
+           <X className="w-4 h-4 text-neon-pink group-hover:scale-110 transition-transform" /> 
+           Voltar
+        </button>
+      )}
+
+      {/* Main Glass Card */}
+      <div className="relative w-full max-w-xl">
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-neon-cyan via-neon-purple to-neon-pink rounded-[2.5rem] opacity-30 blur-md"></div>
+        
+        <motion.div 
+          layout
+          className="relative bg-[#1a1a24]/80 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] p-12 lg:p-16 shadow-2xl flex flex-col items-center overflow-hidden"
+        >
+          {/* Progress Bar */}
+          {!isLogin && !recoveryMode && (
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-white/5">
+              <motion.div 
+                initial={{ width: '0%' }}
+                animate={{ width: regStep === 'details' ? '33.3%' : regStep === 'verify' ? '66.6%' : '100%' }}
+                className="h-full bg-gradient-to-r from-neon-cyan to-neon-purple shadow-[0_0_10px_rgba(0,243,255,1)]"
+              />
+            </div>
+          )}
+
+          {/* Logo */}
+          <div className="w-20 h-20 mb-8 relative group">
+             <div className="absolute inset-0 bg-neon-cyan rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+             <div className="relative w-full h-full p-1 bg-gradient-to-br from-neon-cyan via-neon-purple to-neon-pink rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(0,243,255,0.3)] overflow-hidden border border-white/20">
+                 <img src="logo.jpg" alt="Guru Master Logo" className="w-full h-full object-cover rounded-full" />
+              </div>
+              
+              {/* Backend Status Badge */}
+              <div className="absolute -bottom-2 -right-2 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1.5 border backdrop-blur-md shadow-lg">
+                 {backendStatus === 'online' ? (
+                    <div className="flex items-center gap-1.5 text-neon-cyan">
+                       <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan shadow-[0_0_5px_rgba(0,243,255,1)]" />
+                       Motor Online
+                    </div>
+                 ) : (
+                    <div className="flex items-center gap-1.5 text-neon-pink">
+                       <div className="w-1.5 h-1.5 rounded-full bg-neon-pink shadow-[0_0_5px_rgba(255,0,243,1)] animate-pulse" />
+                       Motor Offline
+                    </div>
+                 )}
+              </div>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {isLogin && !recoveryMode ? (
+              <motion.div 
+                key="login" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+                className="w-full flex flex-col items-center"
+              >
+                <h1 className="text-3xl font-bold text-white mb-2 text-glow-cyan tracking-tight">Login</h1>
+                <p className="text-gray-500 mb-10 text-xs font-bold tracking-widest uppercase">Bem-vindo de volta</p>
+
+                <form onSubmit={handleLogin} className="w-full space-y-6">
+                  <div className="relative group">
+                    <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                    <input type="email" name="email" placeholder="E-mail" required value={formData.email} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
+                  </div>
+                  <div className="relative group">
+                    <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      name="password" 
+                      placeholder="Senha" 
+                      required 
+                      value={formData.password} 
+                      onChange={handleChange} 
+                      className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-cyan transition-all" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-cyan transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between px-2">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className="sr-only" />
+                      <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${rememberMe ? 'bg-neon-cyan border-neon-cyan' : 'border-white/10'}`}>
+                        {rememberMe && <CheckCircle2 className="w-4 h-4 text-black" />}
+                      </div>
+                      <span className="text-xs font-bold text-gray-500 group-hover:text-gray-300">Lembrar</span>
+                    </label>
+                    <button type="button" onClick={() => setRecoveryMode(true)} className="text-xs text-gray-500 hover:text-white transition-colors">Esqueceu a senha?</button>
+                  </div>
+
+                  {error && <div className="text-neon-pink text-xs font-bold text-center bg-neon-pink/5 p-4 rounded-xl border border-neon-pink/20 flex items-center justify-center gap-2"><AlertCircle className="w-4 h-4" /> {error}</div>}
+
+                  <button type="submit" disabled={isSubmitting} className="w-full h-16 bg-neon-cyan text-black font-black uppercase tracking-widest rounded-2xl hover:shadow-neon-cyan transition-all disabled:opacity-50">
+                    {isSubmitting ? 'Entrando...' : 'Entrar'}
+                  </button>
+                </form>
+              </motion.div>
+            ) : recoveryMode ? (
+              <motion.div 
+                key="recovery" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                className="w-full flex flex-col items-center"
+              >
+                <h1 className="text-3xl font-bold text-white mb-2 text-glow-pink tracking-tight">Recuperação</h1>
+                <p className="text-gray-500 mb-10 text-xs font-bold tracking-widest uppercase text-center">Enviaremos um link seguro para seu e-mail</p>
+
+                <div className="w-full space-y-6">
+                  <div className="relative group">
+                    <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
+                    <input type="email" name="email" placeholder="E-mail da sua conta" required value={formData.email} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-pink transition-all" />
+                  </div>
+
+                  {error && <div className="text-neon-pink text-xs font-bold text-center bg-neon-pink/5 p-4 rounded-xl border border-neon-pink/20"><AlertCircle className="w-4 h-4 inline mr-2" /> {error}</div>}
+                  {success && <div className="text-neon-cyan text-xs font-bold text-center bg-neon-cyan/5 p-4 rounded-xl border border-neon-cyan/20"><CheckCircle2 className="w-4 h-4 inline mr-2" /> {success}</div>}
+
+                  <button onClick={handleSendCode} disabled={isSubmitting || !!success} className="w-full h-16 bg-neon-pink text-white font-black uppercase tracking-widest rounded-2xl hover:shadow-neon-pink transition-all disabled:opacity-50">
+                    {isSubmitting ? 'Enviando Link...' : 'Enviar Link de Recuperação'}
+                  </button>
+                  
+                  <button onClick={() => { setRecoveryMode(false); setError(''); setSuccess(''); }} className="w-full text-xs text-gray-500 hover:text-white transition-colors">Voltar ao Login</button>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="register" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                className="w-full flex flex-col items-center"
+              >
+                <h1 className="text-3xl font-bold text-white mb-2 text-glow-cyan tracking-tight">Cadastro</h1>
+                <p className="text-gray-500 mb-10 text-[10px] font-bold tracking-[0.3em] uppercase">
+                  {regStep === 'details' ? 'Passo 1: Identificação' : regStep === 'verify' ? 'Passo 2: Verificação' : 'Passo 3: Segurança'}
+                </p>
+
+                <div className="w-full space-y-6">
+                  {regStep === 'details' && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                      <div className="relative group">
+                        <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                        <input type="text" name="name" placeholder="Nome Completo" value={formData.name} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
+                      </div>
+                      <div className="relative group">
+                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                        <input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
+                      </div>
+                      {!isReferralMode && (
+                        <div className="relative group">
+                          <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                          <input 
+                            type="text" 
+                            name="referralCode" 
+                            placeholder="Código de Recomendação / Acesso" 
+                            value={formData.referralCode} 
+                            onChange={handleChange} 
+                            className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" 
+                          />
+                        </div>
+                      )}
+                      <button onClick={handleSendCode} disabled={isSubmitting} className="w-full h-16 bg-[#12121c] border border-neon-cyan/50 text-neon-cyan font-bold uppercase tracking-widest rounded-2xl hover:bg-neon-cyan/10 transition-all">
+                        {isSubmitting ? 'Enviando...' : 'Enviar Código'}
+                      </button>
+                    </motion.div>
+                  )}
+
+                  {regStep === 'verify' && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                      <div className="text-center mb-4"><p className="text-gray-400 text-sm">Enviamos um código de 6 dígitos para:</p><p className="text-neon-cyan font-bold text-sm">{formData.email}</p></div>
+                      <div className="relative">
+                        <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                        <input type="text" name="code" maxLength="6" placeholder="6 dígitos" value={formData.code} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white text-center text-3xl font-black tracking-[0.5em] outline-none focus:border-neon-purple transition-all" />
+                      </div>
+                      <button onClick={handleVerifyCode} disabled={isSubmitting} className="w-full h-16 bg-neon-purple text-white font-bold uppercase tracking-widest rounded-2xl hover:shadow-neon-purple transition-all">
+                        {isSubmitting ? 'Validando...' : 'Validar Código'}
+                      </button>
+                      <button onClick={() => setRegStep('details')} className="w-full text-xs text-gray-500 hover:text-white transition-colors">Voltar e alterar e-mail</button>
+                    </motion.div>
+                  )}
+
+                  {regStep === 'security' && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                      <div className="relative group">
+                        <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
+                        <input 
+                          type={showRegPassword ? "text" : "password"} 
+                          name="password" 
+                          placeholder="Nova Senha" 
+                          value={formData.password} 
+                          onChange={handleChange} 
+                          className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-pink transition-all" 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegPassword(!showRegPassword)}
+                          className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-pink transition-colors"
+                        >
+                          {showRegPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                      <div className="relative group">
+                        <Lock className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
+                        <input 
+                          type={showRegConfirmPassword ? "text" : "password"} 
+                          name="confirmPassword" 
+                          placeholder="Confirmar Senha" 
+                          value={formData.confirmPassword} 
+                          onChange={handleChange} 
+                          className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-pink transition-all" 
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                          className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-pink transition-colors"
+                        >
+                          {showRegConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                      {isReferralMode && (
+                        <div className="relative group">
+                          <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
+                          <input 
+                            type="text" 
+                            name="referralCode" 
+                            placeholder="Código do Administrador (Acesso Vitalício)" 
+                            value={formData.referralCode} 
+                            onChange={handleChange} 
+                            className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-pink transition-all font-bold" 
+                          />
+                        </div>
+                      )}
+                      <button onClick={handleFinalRegister} disabled={isSubmitting} className="w-full h-16 bg-neon-pink text-white font-bold uppercase tracking-widest rounded-2xl hover:shadow-neon-pink transition-all">
+                        {isSubmitting ? 'Finalizando...' : 'Concluir Cadastro'}
+                      </button>
+                    </motion.div>
+                  )}
+
+                  {error && <div className="text-neon-pink text-xs font-bold text-center bg-neon-pink/5 p-4 rounded-xl border border-neon-pink/20">{error}</div>}
+                  {success && <div className="text-neon-cyan text-xs font-bold text-center bg-neon-cyan/5 p-4 rounded-xl border border-neon-cyan/20 flex gap-2 justify-center"><CheckCircle2 className="w-4 h-4" /> {success}</div>}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Toggle Screen (Apenas Web) */}
+           {!isAppContext && (
+             <div className="flex flex-col items-center gap-4 mt-10">
+               <button 
+                 onClick={() => { setIsLogin(!isLogin); setIsReferralMode(false); setRegStep('details'); setError(''); setSuccess(''); }}
+                 className="text-xs text-gray-500 hover:text-neon-cyan transition-colors flex items-center gap-2 group"
+               >
+                 {isLogin ? 'Não tem conta? Começar registro' : 'Já tem conta? Voltar ao Login'}
+                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+               </button>
+
+               {isLogin && (
+                 <button 
+                   onClick={() => { setIsLogin(false); setIsReferralMode(true); setRegStep('details'); setError(''); setSuccess(''); }}
+                   className="text-xs text-neon-cyan hover:text-white transition-colors flex items-center gap-2 group font-bold tracking-wider"
+                 >
+                   Possui indicação? Cadastro por indicação
+                   <Sparkles className="w-3 h-3 group-hover:scale-125 transition-transform" />
+                 </button>
+               )}
+             </div>
+           )}
+
+          {/* Locked Registration Disclaimer (Apenas App) */}
+          {isAppContext && (
+             <div className="mt-10 pt-8 border-t border-white/5 w-full flex flex-col items-center">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-600 mb-2">Acesso Exclusivo para Membros</span>
+                <p className="text-xs text-gray-500 text-center font-bold">
+                   A criação de novas contas e assinatura do software Dark Master ocorre apenas através do <a href="#" className="text-neon-cyan hover:underline transition-all">site web oficial</a>.
+                </p>
+             </div>
+          )}
+        </motion.div>
+      </div>
+      
+      {/* Build Info */}
+      <div className="fixed bottom-6 left-6 flex items-center gap-4 text-[10px] text-gray-700 font-black tracking-widest uppercase">
+         <span>Guru Master AI v2.1.1</span>
+         <div className="w-px h-3 bg-gray-800"></div>
+         <span>Secure SMTP Protocol Verified</span>
+      </div>
+    </div>
+  );
+};

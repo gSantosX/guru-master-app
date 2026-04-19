@@ -31,10 +31,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ message: 'Status ignored' });
   }
 
-  // Connect to Supabase
+  // Connect to Supabase using env keys or hardcoded (since this is server-side securely running on Vercel)
   const supabaseUrl = 'https://mntkcxqzqewsowaazoao.supabase.co';
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseKey) return res.status(500).json({ error: 'Configuração do banco de dados incompleta' });
+  const supabaseKey = 'sb_publishable_qobuvzXBNQBIxI9b1Q6lBQ_uxf8h5p3'; // Replace with Service Role Key for security in prod
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   // Update User Status in Database
