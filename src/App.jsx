@@ -1,3 +1,4 @@
+// Vercel Force Build - Author Fix
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 const ScriptTab = React.lazy(() => import('./tabs/ScriptTab').then(m => ({ default: m.ScriptTab })));
