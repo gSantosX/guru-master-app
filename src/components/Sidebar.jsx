@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PenTool, FileText, Image as ImageIcon, Video, Activity, CheckCircle, Settings, RefreshCw, User, Zap, Youtube, Clock, Compass } from 'lucide-react';
+import { PenTool, FileText, Image as ImageIcon, Video, Activity, CheckCircle, Settings, RefreshCw, User, Zap, MonitorPlay as Youtube, Clock, Compass } from 'lucide-react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { motion } from 'framer-motion';
 import { resolveApiUrl } from '../utils/apiUtils';

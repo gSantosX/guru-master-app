@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Key, Save, RefreshCw, CheckCircle2, AlertCircle, Cpu, Zap, Youtube, Globe, ShieldCheck } from 'lucide-react';
+import { Settings, Key, Save, RefreshCw, CheckCircle2, AlertCircle, Cpu, Zap, MonitorPlay as Youtube, Globe, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 
