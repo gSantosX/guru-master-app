@@ -33,7 +33,7 @@ function WebAppContent() {
           )}
           
           {isAuthenticated && (
-             user?.is_active ? (
+             (user?.is_active || user?.is_lifetime || user?.is_admin) ? (
                <GuruMasterApp key="guru-app" onLogout={logout} />
              ) : (
                <SalesLanding key="sales-pending" onLoginClick={() => window.location.hash = 'login'} pendingActivation={true} />

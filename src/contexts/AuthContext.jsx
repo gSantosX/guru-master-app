@@ -47,6 +47,7 @@ export const AuthProvider = ({ children }) => {
       const userData = { 
         name: data.name, 
         email: data.email, 
+        is_active: data.is_active,
         is_admin: data.is_admin,
         is_lifetime: data.is_lifetime,
         expires_at: data.expires_at,
@@ -128,6 +129,7 @@ export const AuthProvider = ({ children }) => {
         userData = { 
           name: data.name, 
           email: data.email, 
+          is_active: data.is_active,
           is_admin: data.is_admin,
           is_lifetime: data.is_lifetime,
           expires_at: data.expires_at,
