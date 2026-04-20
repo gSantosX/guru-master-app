@@ -2,14 +2,10 @@ import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
 
 const supabaseUrl = 'https://mntkcxqzqewsowaazoao.supabase.co';
-export default async function handler(req, res) {
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
-  if (!supabaseKey) {
-    console.error('ERRO: SUPABASE_SERVICE_ROLE_KEY não encontrada');
-    return res.status(500).json({ error: 'Configuração do banco de dados incompleta' });
-  }
-  const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
+const supabase = createClient(supabaseUrl, supabaseKey);
 
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { email } = req.body;
@@ -38,34 +34,48 @@ export default async function handler(req, res) {
       }
     });
 
-    // Robust Text-only email for maximum reliability
-    const mailOptions = {
+    let mailOptions = {
       from: '"Guru Master AI" <suporte.gurumaster@gmail.com>',
       to: email,
-      subject: `Código de Acesso: ${code}`,
+      subject: `Seu código de acesso: ${code}`,
       html: `
-        <div style="font-family: sans-serif; padding: 20px; text-align: center; background: #f9f9f9; border-radius: 10px;">
-          <h2 style="color: #000;">Seu código de verificação</h2>
-          <p style="font-size: 32px; font-weight: bold; color: #4F46E5; margin: 20px 0;">${code}</p>
-          <p style="color: #666;">Use este código para completar seu cadastro por indicação no Guru Master.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-          <p style="font-size: 12px; color: #999;">Se você não solicitou este código, ignore este e-mail.</p>
+        <div style="background: #000; padding: 20px; text-align: center;">
+          <img src="cid:verify_image" style="max-width: 100%; border-radius: 15px;">
+          <p style="color: #444; font-size: 10px; margin-top: 10px;">Código: ${code}</p>
         </div>
-      `
+      `,
+      attachments: []
     };
 
-    if (!process.env.SMTP_PASS) {
-      console.error('ERRO: SMTP_PASS não encontrada no ambiente');
-      return res.status(500).json({ error: 'Configuração de e-mail incompleta no servidor' });
+    try {
+      const Jimp = (await import('jimp')).default;
+      const path = await import('path');
+      const templatePath = path.join(process.cwd(), 'public', 'verify_template.jpg');
+      
+      const image = await Jimp.read(templatePath);
+      const font = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
+      
+      const textWidth = Jimp.measureText(font, code);
+      const x = (image.bitmap.width - textWidth) / 2;
+      const y = image.bitmap.height * 0.65; // Estimated box position
+      
+      image.print(font, x, y, code);
+      const buffer = await image.getBufferAsync(Jimp.MIME_JPEG);
+      
+      mailOptions.attachments.push({
+        filename: 'verify.jpg',
+        content: buffer,
+        cid: 'verify_image'
+      });
+    } catch (imgError) {
+      console.error('Image processing error:', imgError);
+      mailOptions.html = `<p>Seu código de verificação: <b>${code}</b></p>`;
     }
 
-    console.log('Tentando enviar e-mail para:', email);
     await transporter.sendMail(mailOptions);
-    console.log('E-mail enviado com sucesso.');
-    
     return res.status(200).json({ message: 'Código enviado com sucesso' });
   } catch (error) {
-    console.error('Send code critical error:', error);
-    return res.status(500).json({ error: 'Erro ao processar cadastro: ' + error.message });
+    console.error('Send code error:', error);
+    return res.status(500).json({ error: 'Erro ao enviar código de verificação' });
   }
 }

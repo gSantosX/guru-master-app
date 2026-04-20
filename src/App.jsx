@@ -6,11 +6,11 @@ import { PersistenceProvider } from './contexts/PersistenceContext';
 import { SystemStatusProvider, useSystemStatus } from './contexts/SystemStatusContext';
 import { Login } from './components/Login';
 import { SalesLanding } from './pages/SalesLanding';
-import { MemberPortal } from './pages/MemberPortal';
+import { GuruMasterApp } from './pages/GuruMasterApp';
 import InteractiveBackground from './components/InteractiveBackground';
 
 function WebAppContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, logout } = useAuth();
   const { isInitialized } = useSystemStatus();
   
   const [showLoginComponent, setShowLoginComponent] = useState(window.location.hash === '#login');
@@ -27,17 +27,21 @@ function WebAppContent() {
     <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden relative">
         <AnimatePresence mode="wait">
           {!isAuthenticated && (
-            showLoginComponent ? <Login isAppContext={false} onClose={() => { window.location.hash = ''; setShowLoginComponent(false); }} /> : <SalesLanding onLoginClick={() => window.location.hash = 'login'} />
+            showLoginComponent
+              ? <Login key="login" isAppContext={false} onClose={() => { window.location.hash = ''; setShowLoginComponent(false); }} />
+              : <SalesLanding key="sales" onLoginClick={() => window.location.hash = 'login'} />
+          )}
+          
+          {isAuthenticated && (
+             user?.is_active ? (
+               <GuruMasterApp key="guru-app" onLogout={logout} />
+             ) : (
+               <SalesLanding key="sales-pending" onLoginClick={() => window.location.hash = 'login'} pendingActivation={true} />
+             )
           )}
         </AnimatePresence>
 
         <InteractiveBackground />
-
-        {isAuthenticated && (
-           <div className="absolute inset-0 z-40 bg-[#050505]">
-              <MemberPortal onLogout={() => { localStorage.clear(); window.location.reload(); }} />
-           </div>
-        )}
     </div>
   );
 }

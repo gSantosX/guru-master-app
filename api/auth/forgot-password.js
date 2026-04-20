@@ -3,10 +3,10 @@ import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 
 const supabaseUrl = 'https://mntkcxqzqewsowaazoao.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 export default async function handler(req, res) {
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
-  if (!supabaseKey) return res.status(500).json({ error: 'Configuração do banco de dados incompleta' });
-  const supabase = createClient(supabaseUrl, supabaseKey);
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { email } = req.body;
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     if (resetError) throw resetError;
 
     // 4. Send E-mail
-    const resetUrl = `https://www.gurumaster.shop/#/reset?token=${token}`;
+    const resetUrl = `https://guru-master-website.vercel.app/#/reset?token=${token}`;
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',

@@ -1,199 +1,415 @@
 import { resolveApiUrl } from './apiUtils';
 
 /**
- * Robustly calls the Gemini API, handling model selection and fallbacks.
+ * Global cache for Gemini models to avoid redundant network calls during parallel generation.
  */
-export const callGemini = async (apiKey, prompt, options = {}) => {
-  if (!apiKey) throw new Error("Chave Gemini ausente!");
+let cachedGeminiModels = null;
 
-  const modelsToTry = [];
-  const preferredModelLabel = options.gemini_model || localStorage.getItem('guru_gemini_model') || '';
-  
-  // Custom Mapping logic for the branded labels
-  if (preferredModelLabel.includes('3.1 Flash Lite')) {
-    modelsToTry.push('models/gemini-1.5-flash');
-  } else if (preferredModelLabel.includes('2.5 Flash')) {
-    modelsToTry.push('models/gemini-2.0-flash');
-  }
+// Global session trackers for active indices
+const sessionIndices = {
+  gemini: parseInt(localStorage.getItem('guru_gemini_active_idx') || '0'),
+  openai: parseInt(localStorage.getItem('guru_gpt_active_idx') || '0'),
+  grok: parseInt(localStorage.getItem('guru_grok_active_idx') || '0')
+};
 
-  try {
-    const modelsRes = await fetch(resolveApiUrl(`/api/gemini/v1beta/models?key=${apiKey}`));
-    if (modelsRes.ok) {
-      const modelsData = await modelsRes.json();
-      if (modelsData.models) {
-        // Find specific variants if not already pushed
-        const flash20 = modelsData.models.find(m => m.name.includes('gemini-2.0-flash') && m.supportedGenerationMethods?.includes('generateContent'));
-        const flash15 = modelsData.models.find(m => m.name.includes('gemini-1.5-flash') && m.supportedGenerationMethods?.includes('generateContent'));
-        
-        if (flash20 && !modelsToTry.includes(flash20.name)) modelsToTry.push(flash20.name);
-        if (flash15 && !modelsToTry.includes(flash15.name)) modelsToTry.push(flash15.name);
-        
-        // Add others
-        modelsData.models.forEach(m => {
-          if (m.name.includes('gemini') && m.supportedGenerationMethods?.includes('generateContent') && !modelsToTry.includes(m.name)) {
-            modelsToTry.push(m.name);
-          }
-        });
-      }
+/**
+ * Robustly detects if an error is a Quota/Rate Limit error (429).
+ */
+const isQuotaError = (error, data = {}) => {
+  const status = error?.status || data?.error?.code;
+  if (status === 429) return true;
+  const msg = (error?.message || data?.error?.message || "").toLowerCase();
+  return msg.includes('quota exhausted') || msg.includes('rate limit exceeded') || msg.includes('resource has been exhausted');
+};
+
+/**
+ * Robustly detects if an error is an authentication/key issue (400, 401, 403).
+ */
+const isAuthError = (error, data = {}) => {
+  const status = error?.status || data?.error?.code;
+  if (status === 401 || status === 403) return true;
+  const msg = (error?.message || data?.error?.message || "").toLowerCase();
+  return status === 400 || msg.includes('api key not valid') || msg.includes('invalid api key') || msg.includes('unauthorized') || msg.includes('service_disabled');
+};
+
+// Listen for manual selection from the UI Settings
+if (typeof window !== 'undefined') {
+  window.addEventListener('guru_manual_key_select', (e) => {
+    const { provider, index } = e.detail;
+    if (sessionIndices.hasOwnProperty(provider)) {
+      console.log(`🎯 Manual Selection: Setting ${provider} to index ${index}`);
+      sessionIndices[provider] = index;
     }
-  } catch (e) {
-    console.error("Gemini model list error:", e);
-  }
-
-  // Ensure we have at least the standard ones if list failed
-  const fallbacks = [
-    "models/gemini-2.0-flash",
-    "models/gemini-1.5-flash", 
-    "models/gemini-1.5-flash-latest",
-    "models/gemini-1.5-pro", 
-    "models/gemini-1.5-pro-latest"
-  ];
-  fallbacks.forEach(f => {
-    if (!modelsToTry.includes(f)) modelsToTry.push(f);
   });
 
+  // Reset model cache when API key is updated so the new key can discover models fresh
+  window.addEventListener('guru_config_updated', () => {
+    console.log('🔄 Config updated — clearing Gemini model cache.');
+    cachedGeminiModels = null;
+  });
+}
+
+// --- GEMINI SMART USAGE TRACKER ---
+// Limits: 15 Requests Per Minute (RPM), approx 1480 safe daily.
+const SAFE_RPM_LIMIT = 14; 
+const SAFE_RPD_LIMIT = 1450;
+
+const getRollingUsage = (apiKey) => {
+   if (typeof window === 'undefined') return { rpm: 0, rpd: 0 };
+   const now = Date.now();
+   let history = [];
+   try {
+     const parsed = JSON.parse(localStorage.getItem(`guru_gemini_history_${apiKey}`) || '[]');
+     if (Array.isArray(parsed)) {
+       history = parsed;
+     }
+   } catch {}
+   const lastMinute = history.filter(t => now - t < 61000); // 61 seconds sliding window
+   const lastDay = history.filter(t => now - t < 86400000); // 24h sliding window
+   
+   if (history.length > lastDay.length + 50) {
+      localStorage.setItem(`guru_gemini_history_${apiKey}`, JSON.stringify(lastDay));
+   }
+   return { rpm: lastMinute.length, rpd: lastDay.length, history: lastDay };
+};
+
+const recordUsage = (apiKey) => {
+   if (typeof window === 'undefined') return;
+   const now = Date.now();
+   try {
+       const { history } = getRollingUsage(apiKey);
+       history.push(now);
+       localStorage.setItem(`guru_gemini_history_${apiKey}`, JSON.stringify(history));
+   } catch {}
+};
+
+/**
+ * Robustly calls the Gemini API, handling model selection and fallbacks.
+ */
+export const callGemini = async (apiKeys, prompt, options = {}) => {
+  if (!apiKeys) throw new Error("Chave Gemini ausente!");
+
+  // Parse multi-keys
+  const keyList = apiKeys.split(',').map(k => k.trim()).filter(Boolean);
   let lastError = null;
-  let hasTriedGpt = false;
 
-  for (const modelPath of modelsToTry) {
-    let attempts = 0;
-    while (attempts < 2) {
-      attempts++;
-      try {
-        const cleanPath = modelPath.startsWith('models/') ? modelPath : `models/${modelPath}`;
-        
-        const res = await fetch(resolveApiUrl(`/api/gemini/v1beta/${cleanPath}:generateContent?key=${apiKey}`), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: options.generationConfig || {}
-          })
-        });
+  // UNIVERSAL CONTROL: If a specific index is forced (manual selection), use ONLY that key.
+  const forcedIdx = options.forcedIndex !== undefined ? options.forcedIndex : sessionIndices.gemini;
+  const isStrict = options.forcedIndex !== undefined;
 
-        const data = await res.json();
-        
-        if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          return data.candidates[0].content.parts[0].text;
+  const startIndex = forcedIdx % (keyList.length || 1);
+  const iterations = isStrict ? 1 : keyList.length; // If strict, try only the selected key
+
+  for (let i = 0; i < iterations; i++) {
+    const kIdx = (startIndex + i) % keyList.length;
+    const apiKey = keyList[kIdx];
+    
+    // PREEMPTIVE CHECK
+    const usage = getRollingUsage(apiKey);
+    if ((usage.rpm >= SAFE_RPM_LIMIT || usage.rpd >= SAFE_RPD_LIMIT) && i < iterations - 1) {
+       console.warn(`🔄 Gemini Tracker: Chave ${kIdx} bateu no teto de segurança (RPM: ${usage.rpm}). Pulando preventiva...`);
+       continue;
+    }
+    
+    if (kIdx !== startIndex && usage.rpm < SAFE_RPM_LIMIT) {
+        console.warn(`🔄 Gemini: Entrando na próxima chave (Index ${kIdx})...`);
+    }
+
+    try {
+      const modelsToTry = [];
+      
+      if (cachedGeminiModels) {
+        modelsToTry.push(...cachedGeminiModels);
+      } else {
+        try {
+          // v1beta is only for listing models, NOT for generateContent
+          const modelsRes = await fetch(resolveApiUrl(`/api/gemini/v1beta/models?key=${apiKey}`));
+          if (modelsRes.ok) {
+            const modelsData = await modelsRes.json();
+            if (modelsData.models) {
+              const list = [];
+              // Priority: 3.1-flash-lite (500/day FREE) > 2.5-flash (20/day FREE) > 2.5-flash-lite (20/day)
+              const lite31 = modelsData.models.find(m => m.name.includes('gemini-3.1-flash-lite') && m.supportedGenerationMethods?.includes('generateContent'));
+              const flash25 = modelsData.models.find(m => m.name.includes('gemini-2.5-flash') && !m.name.includes('lite') && m.supportedGenerationMethods?.includes('generateContent'));
+              const lite25 = modelsData.models.find(m => m.name.includes('gemini-2.5-flash-lite') && m.supportedGenerationMethods?.includes('generateContent'));
+              const flash8b = modelsData.models.find(m => m.name.includes('gemini-1.5-flash-8b') && m.supportedGenerationMethods?.includes('generateContent'));
+              const flash20 = modelsData.models.find(m => m.name === 'models/gemini-2.0-flash' && m.supportedGenerationMethods?.includes('generateContent'));
+              
+              if (lite31) list.push(lite31.name);
+              if (flash25 && !list.includes(flash25.name)) list.push(flash25.name);
+              if (lite25 && !list.includes(lite25.name)) list.push(lite25.name);
+              if (flash8b && !list.includes(flash8b.name)) list.push(flash8b.name);
+              if (flash20 && !list.includes(flash20.name)) list.push(flash20.name);
+              
+              cachedGeminiModels = list;
+              modelsToTry.push(...list);
+            }
+          }
+        } catch (e) {
+          console.error("Gemini model list error:", e);
         }
-
-        if (data.error) {
-          const errorMsg = data.error.message || "Unknown error";
-          const currentError = new Error(`Gemini (${cleanPath}): ${errorMsg}`);
-          
-          if (!lastError || res.status === 429 || (lastError.message.includes('not found') && !errorMsg.includes('not found'))) {
-            lastError = currentError;
-          }
-          
-          if (res.status === 429 && attempts === 1) {
-            console.warn(`Quota hit for ${cleanPath}, retrying in 2.5s...`);
-            await new Promise(r => setTimeout(r, 2500));
-            continue; // Retry same model
-          }
-
-          const retryableMessages = ['quota', 'not found', 'supported', 'limit', 'exhausted', 'permission'];
-          const isRetryable = retryableMessages.some(msg => errorMsg.toLowerCase().includes(msg));
-          
-          if (res.status === 429 || res.status === 404 || res.status === 400 || res.status === 403 || isRetryable || res.status >= 500) {
-            console.warn(`Error for ${cleanPath}, moving to next...`);
-            break; // Move to next model
-          }
-          throw lastError;
-        }
-      } catch (e) {
-        lastError = e;
-        break;
       }
+
+      // Fallbacks: current models with free quotas (as of 2026)
+      const fallbacks = ["models/gemini-3.1-flash-lite", "models/gemini-2.5-flash", "models/gemini-2.5-flash-lite"];
+      fallbacks.forEach(f => { if (!modelsToTry.includes(f)) modelsToTry.push(f); });
+
+      for (const modelPath of modelsToTry) {
+        let attempts = 0;
+        while (attempts < 2) {
+          attempts++;
+          try {
+            const cleanPath = modelPath.startsWith('models/') ? modelPath : `models/${modelPath}`;
+            // Switching to v1beta for broader model compatibility (Flash 8B, Gemini 2.0)
+            const res = await fetch(resolveApiUrl(`/api/gemini/v1beta/${cleanPath}:generateContent?key=${apiKey}`), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                  maxOutputTokens: options.maxOutputTokens || 8192,
+                  temperature: options.temperature || 0.7,
+                  ...options.generationConfig
+                }
+              })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+              recordUsage(apiKey);
+              // Store this as the successful index for the session
+              if (sessionIndices.gemini !== kIdx) {
+                sessionIndices.gemini = kIdx;
+                window.dispatchEvent(new CustomEvent('guru_key_rotated', { detail: { provider: 'gemini', index: kIdx } }));
+              }
+              return data.candidates[0].content.parts[0].text;
+            }
+
+            if (data.error) {
+              const errorMsg = data.error.message || "Unknown error";
+              
+              if (isQuotaError(null, data)) {
+                if (attempts === 1) {
+                  await new Promise(r => setTimeout(r, 2000));
+                  continue; 
+                }
+                console.warn(`⚠️ [Gemini]: Cota atingida na chave ${kIdx}.`);
+                const err = new Error(errorMsg);
+                err.status = 429;
+                throw err;
+              }
+
+              if (isAuthError(null, data)) {
+                console.error(`❌ [Gemini]: Erro de Autenticação/Chave na chave ${kIdx}: ${errorMsg}`);
+                const err = new Error(errorMsg);
+                err.status = 403;
+                throw err;
+              }
+              
+              throw new Error(errorMsg || "Erro desconhecido na API do Google");
+            }
+          } catch (e) {
+            if (isQuotaError(e)) {
+                e.status = 429; // Ensure status is set for the outer loop
+                throw e; 
+            }
+            lastError = e;
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      lastError = e;
+      if (isQuotaError(e) && i < iterations - 1) {
+        console.warn(`🔄 [Gemini]: Rotacionando para próxima chave devido a limite de quota...`);
+        continue;
+      }
+      // If it's an Auth error, we might still want to try the next key in case only one is bad
+      if (isAuthError(e) && i < iterations - 1) {
+        console.warn(`🔄 [Gemini]: Chave inválida détectada (Index ${kIdx}). Tentando próxima...`);
+        continue;
+      }
+      break;
     }
   }
 
   // FINAL RECOVERY: Try GPT if Gemini is completely exhausted
   const gptKey = options.gptKey || localStorage.getItem('guru_gpt_key');
-  if (gptKey && lastError?.message?.includes('Gemini') && (lastError.message.includes('quota') || lastError.message.includes('limit'))) {
+  const lastMsg = lastError?.message || "";
+  
+  // Strict Quota Check for Fallback
+  const isQuotaReached = lastError?.status === 429 || 
+                         (lastMsg.toLowerCase().includes('quota') && lastMsg.toLowerCase().includes('exhausted')) ||
+                         lastMsg.toLowerCase().includes('rate limit exceeded');
+
+  if (gptKey && isQuotaReached) {
     try {
-      console.warn("Gemini exhausted. Activating Smart Fallback to OpenAI...");
+      console.warn("🚨 Todas as chaves Gemini exauridas (ou bloqueadas). Acionando Fallback Crítico para GPT...");
+      window.dispatchEvent(new CustomEvent('guru_fallback_triggered', { 
+        detail: { message: "Gemini esgotado. Acionando GPT de emergência..." } 
+      }));
+      // Try with GPT-4o-mini as it is reliable and cheaper for emergency recovery
       return await callGPT(gptKey, prompt, "gpt-4o-mini", options);
     } catch (gptErr) {
-      console.error("Smart Fallback to GPT also failed:", gptErr);
+      console.error("Critical Fallback also failed:", gptErr);
     }
   }
 
-  throw lastError || new Error("Não foi possível obter resposta do Gemini.");
+  if (lastError) {
+    throw lastError;
+  }
+
+  throw new Error("Não foi possível obter resposta do Gemini após tentar todas as chaves.");
 };
+
 
 /**
  * Calls Gemini (Imagen) to generate an image from a prompt.
  * Uses the v1beta endpoint for Imagen 3.
  */
-export const callGeminiImage = async (apiKey, prompt, options = {}) => {
-  if (!apiKey) throw new Error("Chave Gemini ausente!");
+export const callGeminiImage = async (apiKeys, prompt, options = {}) => {
+  if (!apiKeys) throw new Error("Chave Gemini ausente!");
 
-  const modelPath = options.model || "models/imagen-3.0-generate-001";
-  const url = resolveApiUrl(`/api/gemini/v1beta/${modelPath}:generateImages?key=${apiKey}`);
+  const keyList = apiKeys.split(',').map(k => k.trim()).filter(Boolean);
+  let lastError = null;
 
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: prompt,
-        number_of_images: 1,
-        aspect_ratio: options.aspect_ratio || "16:9",
-        safety_settings: options.safety_settings || []
-      })
-    });
+  // Start from the last known working key in this session
+  const startIndex = sessionIndices.gemini % (keyList.length || 1);
 
-    const data = await res.json();
-    if (res.ok && data.images?.[0]?.url) {
-      return data.images[0].url;
-    } else if (res.ok && data.images?.[0]?.image_url) {
-      return data.images[0].image_url;
+  for (let i = 0; i < keyList.length; i++) {
+    const kIdx = (startIndex + i) % keyList.length;
+    const apiKey = keyList[kIdx];
+
+    try {
+      if (kIdx !== startIndex) {
+          console.warn(`🔄 Gemini Imagem: Tentando próxima chave (Index ${kIdx})...`);
+      }
+
+      const modelPath = options.model || "models/imagen-3.0-generate-001";
+      const url = resolveApiUrl(`/api/gemini/v1beta/${modelPath}:generateImages?key=${apiKey}`);
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompt,
+          number_of_images: 1,
+          aspect_ratio: options.aspect_ratio || "16:9",
+          safety_settings: options.safety_settings || []
+        })
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        let imageUrl = data.images?.[0]?.url || data.images?.[0]?.image_url;
+        if (imageUrl) {
+          // Sync successful index
+          if (sessionIndices.gemini !== kIdx) {
+            sessionIndices.gemini = kIdx;
+            window.dispatchEvent(new CustomEvent('guru_key_rotated', { detail: { provider: 'gemini', index: kIdx } }));
+          }
+          return imageUrl;
+        }
+      }
+
+      if (isQuotaError(null, data) && i < keyList.length - 1) {
+        console.warn(`⚠️ [Gemini Imagem]: Cota atingida na chave ${kIdx}. Rotacionando...`);
+        continue;
+      }
+
+      if (data.error) {
+        throw new Error(`Gemini Image Error: ${data.error.message}`);
+      }
+      
+      throw new Error("Resposta de imagem do Gemini vazia ou malformada.");
+    } catch (e) {
+      lastError = e;
+      if (isQuotaError(e) && i < keyList.length - 1) {
+        console.warn(`🔄 [Gemini Imagem]: Rotacionando para próxima chave...`);
+        continue;
+      }
+      console.error("Gemini Image generation failure on index " + kIdx, e);
     }
-    
-    // Fallback if the above doesn't work (some accounts use a different response structure)
-    if (data.error) {
-       throw new Error(`Gemini Image Error: ${data.error.message}`);
-    }
-    
-    throw new Error("Resposta de imagem do Gemini vazia ou malformada.");
-  } catch (e) {
-    console.error("Gemini Image generation failed:", e);
-    throw e;
   }
+
+  if (isQuotaError(lastError)) {
+    throw new Error("Limite Google API Key diário excedido");
+  }
+
+  throw lastError || new Error("Falha total na geração de imagem Gemini após tentar todas as chaves.");
 };
 
 /**
  * Robustly calls OpenAI (GPT) API via proxy.
  */
-export const callGPT = async (apiKey, prompt, model = "gpt-4o-mini", options = {}) => {
-  if (!apiKey) throw new Error("Chave GPT ausente!");
+export const callGPT = async (apiKeys, prompt, model = "gpt-4o-mini", options = {}) => {
+  if (!apiKeys) throw new Error("Chave GPT ausente!");
 
-  const response = await fetch(resolveApiUrl("/api/openai/v1/chat/completions"), {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json", 
-      "Authorization": `Bearer ${apiKey}` 
-    },
-    body: JSON.stringify({ 
-      model: model, 
-      messages: options.messages || [{ role: "user", content: prompt }],
-      temperature: options.temperature ?? 0.7
-    })
-  });
+  const keyList = apiKeys.split(',').map(k => k.trim()).filter(Boolean);
+  let lastError = null;
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(`GPT Error: ${data.error?.message || response.statusText}`);
+  // UNIVERSAL CONTROL
+  const forcedIdx = options.forcedIndex !== undefined ? options.forcedIndex : sessionIndices.openai;
+  const isStrict = options.forcedIndex !== undefined || (typeof window !== 'undefined' && localStorage.getItem('guru_gpt_active_idx') !== null);
+
+  const startIndex = forcedIdx % (keyList.length || 1);
+  const iterations = isStrict ? 1 : keyList.length;
+
+  for (let i = 0; i < iterations; i++) {
+    const kIdx = (startIndex + i) % keyList.length;
+    const apiKey = keyList[kIdx];
+    
+    try {
+      if (kIdx !== startIndex) {
+        console.warn(`🔄 GPT: Tentando próxima chave (Index ${kIdx})...`);
+      }
+
+      const response = await fetch(resolveApiUrl("/api/openai/v1/chat/completions"), {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json", 
+          "Authorization": `Bearer ${apiKey}` 
+        },
+        body: JSON.stringify({ 
+          model: model, 
+          messages: options.messages || [{ role: "user", content: prompt }],
+          temperature: options.temperature ?? 0.7,
+          max_tokens: options.max_tokens || 4096
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        if (isQuotaError(null, data) || response.status === 429) {
+          console.warn(`⚠️ [OpenAI]: 429/Quota na chave ${kIdx}. Rotacionando para próxima...`);
+          const err = new Error(data.error?.message || "OpenAI Rate Limit");
+          err.status = 429;
+          throw err; // Trigger the catch rotation
+        }
+        const err = new Error(data.error?.message || response.statusText);
+        err.status = response.status;
+        throw err;
+      }
+      return data.choices[0].message.content;
+    } catch (e) {
+      lastError = e;
+      if (isQuotaError(e) && i < keyList.length - 1) {
+        console.warn(`🔄 [OpenAI]: Ativando rotação devido a limite de quota...`);
+        continue; 
+      }
+      break;
+    }
   }
 
-  return data.choices[0].message.content;
+  throw lastError || new Error("Não foi possível obter resposta do GPT.");
 };
 
 /**
  * Translates SRT content while preserving timestamps and structure.
  */
-export const translateSRT = async (srtText, targetLang, apiKey, provider = 'gemini') => {
-  if (!apiKey) throw new Error("API Key ausente para tradução!");
+export const translateSRT = async (srtText, targetLang, apiKeys, provider = 'gemini') => {
+  if (!apiKeys) throw new Error("API Key ausente para tradução!");
 
   const prompt = `Translate the following SRT file content into ${targetLang}. 
   STRICT RULES:
@@ -207,37 +423,104 @@ export const translateSRT = async (srtText, targetLang, apiKey, provider = 'gemi
   ${srtText}`;
 
   if (provider === 'gpt') {
-    return await callGPT(apiKey, prompt, "gpt-4o-mini");
+    return await callGPT(apiKeys, prompt, "gpt-4o-mini");
   } else {
-    return await callGemini(apiKey, prompt);
+    return await callGemini(apiKeys, prompt);
   }
 };
 
 /**
  * Robustly calls Grok API via proxy.
  */
-export const callGrok = async (apiKey, prompt, model = "grok-beta", options = {}) => {
-  if (!apiKey) throw new Error("Chave Grok ausente!");
+export const callGrok = async (apiKeys, prompt, model = "grok-beta", options = {}) => {
+  if (!apiKeys) throw new Error("Chave Grok ausente!");
 
-  const response = await fetch(resolveApiUrl("/api/grok/v1/chat/completions"), {
-    method: "POST",
-    headers: { 
-      "Content-Type": "application/json", 
-      "Authorization": `Bearer ${apiKey}` 
-    },
-    body: JSON.stringify({ 
-      model: model, 
-      messages: options.messages || [
-        { role: "system", content: "You are a professional assistant." },
-        { role: "user", content: prompt }
-      ]
-    })
-  });
+  const keyList = apiKeys.split(',').map(k => k.trim()).filter(Boolean);
+  let lastError = null;
 
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(`Grok Error: ${data.error?.message || response.statusText}`);
+  // UNIVERSAL CONTROL
+  const forcedIdx = options.forcedIndex !== undefined ? options.forcedIndex : sessionIndices.grok;
+  const isStrict = options.forcedIndex !== undefined || (typeof window !== 'undefined' && localStorage.getItem('guru_grok_active_idx') !== null);
+
+  const startIndex = forcedIdx % (keyList.length || 1);
+  const iterations = isStrict ? 1 : keyList.length;
+
+  for (let i = 0; i < iterations; i++) {
+    const kIdx = (startIndex + i) % keyList.length;
+    const apiKey = keyList[kIdx];
+
+    try {
+      if (kIdx !== startIndex) {
+        console.warn(`🔄 Grok: Tentando próxima chave (Index ${kIdx})...`);
+      }
+
+      const response = await fetch(resolveApiUrl("/api/grok/v1/chat/completions"), {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json", 
+          "Authorization": `Bearer ${apiKey}` 
+        },
+        body: JSON.stringify({ 
+          model: model, 
+          messages: options.messages || [
+            { role: "system", content: "You are a professional assistant." },
+            { role: "user", content: prompt }
+          ]
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        if (response.status === 429 && i < keyList.length - 1) {
+          console.warn(`⚠️ Grok Cota atingida na chave ${kIdx}.`);
+          continue; 
+        }
+        const err = new Error(data.error?.message || response.statusText);
+        err.status = response.status;
+        throw err;
+      }
+
+      // Store this as the successful index for the session
+      if (sessionIndices.grok !== kIdx) {
+        sessionIndices.grok = kIdx;
+        window.dispatchEvent(new CustomEvent('guru_key_rotated', { detail: { provider: 'grok', index: kIdx } }));
+      }
+
+      return data.choices[0].message.content;
+    } catch (e) {
+      lastError = e;
+      if (e.status === 429 && i < keyList.length - 1) {
+        continue; // Try next key in rotation circle
+      }
+      break;
+    }
   }
 
-  return data.choices[0].message.content;
+  throw lastError || new Error("Não foi possível obter resposta do Grok.");
+};
+
+/**
+ * Universal dispatcher for AI calls.
+ * Respects global configuration for active engine and key index.
+ */
+export const callAI = async (prompt, options = {}) => {
+  const activeAI = localStorage.getItem('guru_active_ai') || 'Gemini';
+  
+  if (activeAI === 'Gemini') {
+    const keys = localStorage.getItem('guru_gemini_key') || '';
+    const idx = parseInt(localStorage.getItem('guru_gemini_active_idx') || '0');
+    return await callGemini(keys, prompt, { ...options, forcedIndex: idx });
+  } else if (activeAI === 'OpenAI' || activeAI === 'GPT') {
+    const keys = localStorage.getItem('guru_gpt_key') || '';
+    const idx = parseInt(localStorage.getItem('guru_gpt_active_idx') || '0');
+    return await callGPT(keys, prompt, options.model || "gpt-4o-mini", { ...options, forcedIndex: idx });
+  } else if (activeAI === 'Grok') {
+    const keys = localStorage.getItem('guru_grok_key') || '';
+    const idx = parseInt(localStorage.getItem('guru_grok_active_idx') || '0');
+    return await callGrok(keys, prompt, options.model || "grok-beta", { ...options, forcedIndex: idx });
+  }
+  
+  // Default to Gemini if unknown
+  const defaultKeys = localStorage.getItem('guru_gemini_key') || '';
+  return await callGemini(defaultKeys, prompt, options);
 };

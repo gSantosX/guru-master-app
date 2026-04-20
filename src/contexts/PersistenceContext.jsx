@@ -57,6 +57,37 @@ export const PersistenceProvider = ({ children }) => {
     },
     speechMode: 'true' // 'true' = Com Fala, 'false' = Sem Fala
   });
+  
+  // 4. Video Cover Global State (Titles, ShockWords, Covers)
+  const [coverState, setCoverState] = useState({
+    selectedScript: null,
+    titles: [],
+    shockWords: { one: '', two: '', three: '' },
+    covers: {},
+    coverPrefs: {},
+    description: '',
+    lastSelectedTitle: ''
+  });
+
+  // 5. Script Creator Global State
+  const [scriptState, setScriptState] = useState({
+    titulo: '',
+    dna: 'Jornada do Herói',
+    alma: 'Épica e Cinematográfica',
+    cta: 'Viral (Engajamento)',
+    nicho: 'Documentário',
+    idioma: 'Português (BR)',
+    formato: 'Texto Corrido',
+    natureza: 'Dados Reais (usar pesquisa web)',
+    safety: 'Formato Seguro (Safety)',
+    intellect: 'Médio Intelectual',
+    formality: 'Médio',
+    tamanho: 5000,
+    generatedScript: null,
+    generationProgress: 0,
+    statusMessage: '',
+    lastSavedId: null
+  });
 
   // Helper to update video settings
   const updateVideoSettings = (newSettings) => {
@@ -87,7 +118,11 @@ export const PersistenceProvider = ({ children }) => {
       miningState,
       setMiningState,
       promptState,
-      setPromptState
+      setPromptState,
+      coverState,
+      setCoverState,
+      scriptState,
+      setScriptState
     }}>
       {children}
     </PersistenceContext.Provider>

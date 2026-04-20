@@ -1,31 +1,27 @@
 /**
- * Resolves an API path to a full URL.
- * In Web Mode (Vercel/Browser), it maps AI endpoints directly to providers to bypass local proxy.
- * In Desktop Mode (Electron), it uses the local Flask context.
+ * Resolves an API path to a full URL if running in a desktop/packaged environment,
+ * or keeps it relative if running via Vite (development).
  * 
- * @param {string} path - The API path (e.g., '/api/system/check' or '/api/gemini/...')
+ * @param {string} path - The API path (e.g., '/api/system/check')
  * @returns {string} - The resolved URL
  */
 export const resolveApiUrl = (path) => {
-  const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+  // If we're running from a local file (packaged Electron), 
+  // or if we're in an context where the standard relative path won't hit our backend properly,
+  // we default to the local backend port.
   
-  // If we are on the web, we want to route AI calls directly to the provider
-  if (!isElectron) {
-    if (path.startsWith('/api/gemini/')) {
-      return path.replace('/api/gemini', 'https://generativelanguage.googleapis.com');
-    }
-    if (path.startsWith('/api/openai/')) {
-      return path.replace('/api/openai', 'https://api.openai.com');
-    }
-    if (path.startsWith('/api/grok/')) {
-      return path.replace('/api/grok', 'https://api.x.ai');
-    }
-  }
-
-  // In development (Vite 5173) or packaged Electron (file:), 
-  // we default to the local backend port if we are in Electron.
-  if (isElectron && (window.location.protocol === 'file:' || window.location.port === '5173' || !window.location.port)) {
-    return `http://localhost:5000${path}`;
+  if (window.location.protocol === 'file:' || !window.location.port || window.location.port === '5173') {
+     // In development or packaged Electron, use the explicit backend port for API calls
+     // EXCEPT when Vite is proxying everything correctly.
+     // However, to be extra safe in Electron, we can prefix with localhost:5000.
+     
+     // Detect if we are in Electron
+     const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+     
+     if (isElectron) {
+        // Force full URL in Electron to ensure it hits the Flask backend regardless of load method
+        return `http://localhost:5000${path}`;
+     }
   }
   
   return path;

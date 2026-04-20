@@ -1,52 +1,49 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Vercel Serverless Function to handle Kiwify/Hotmart Webhooks
+const supabaseUrl = 'https://mntkcxqzqewsowaazoao.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Gateway Payload (Example for Kiwify)
-  // {
-  //   order_id: '1234',
-  //   order_status: 'paid', // approved, refunded, chargeback
-  //   Customer: { email: 'cliente@gmail.com' }, ...
-  // }
-  
   const payload = req.body;
-  
-  // Minimal detection logic - You might need to adjust this depending on the exact Gateway JSON schema
-  const email = payload?.Customer?.email || payload?.data?.buyer?.email || payload?.email;
-  const status = payload?.order_status || payload?.status || payload?.event;
+  console.log('Webhook payload received:', JSON.stringify(payload, null, 2));
 
-  if (!email) {
-    return res.status(400).json({ error: 'No email found in webhook payload' });
+  // Cakto specific fields
+  const status = payload.status || payload.event;
+  const email = payload.customer?.email || payload.email;
+  const name = payload.customer?.name || payload.name || 'Usuário Guru';
+
+  // Standard Success Statuses for Cakto/Hotmart/etc.
+  const isSuccess = ['paid', 'completed', 'approved', 'sucesso', 'active', 'pago'].includes(status?.toLowerCase());
+
+  if (isSuccess && email) {
+    try {
+      console.log(`Processing valid payment for: ${email}`);
+      
+      // Upsert user: Create if not exists, update access if exists
+      const { data, error } = await supabase
+        .from('guru_users')
+        .upsert({ 
+          email: email.toLowerCase(),
+          name: name,
+          is_active: true,
+          is_lifetime: true,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'email' });
+
+      if (error) throw error;
+      
+      console.log(`User ${email} activated successfully.`);
+      return res.status(200).json({ success: true, message: 'User activated' });
+    } catch (error) {
+      console.error('Database error in webhook:', error);
+      return res.status(500).json({ error: 'Database activation failed' });
+    }
   }
 
-  // Check if it's a paid/approved status
-  const isApproved = ['paid', 'approved', 'COMPLETED'].includes(status?.toLowerCase());
-  const isRefunded = ['refunded', 'chargeback', 'canceled'].includes(status?.toLowerCase());
-
-  if (!isApproved && !isRefunded) {
-    return res.status(200).json({ message: 'Status ignored' });
-  }
-
-  // Connect to Supabase
-  const supabaseUrl = 'https://mntkcxqzqewsowaazoao.supabase.co';
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseKey) return res.status(500).json({ error: 'Configuração do banco de dados incompleta' });
-  const supabase = createClient(supabaseUrl, supabaseKey);
-
-  // Update User Status in Database
-  const { data, error } = await supabase
-    .from('guru_users')
-    .update({ is_active: isApproved })
-    .eq('email', email);
-
-  if (error) {
-    console.error('Database Update Error:', error);
-    return res.status(500).json({ error: 'Database error' });
-  }
-
-  return res.status(200).json({ message: `User ${email} activation status set to ${isApproved}` });
+  return res.status(200).json({ message: 'Webhook received but no action taken' });
 }

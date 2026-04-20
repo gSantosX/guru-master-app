@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -13,7 +13,6 @@ export const Login = ({ onClose, isAppContext }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [regStep, setRegStep] = useState('details'); // 'details' | 'verify' | 'security'
-  const [isReferralMode, setIsReferralMode] = useState(false);
   
   // Form Data
   const [formData, setFormData] = useState({ 
@@ -36,11 +35,13 @@ export const Login = ({ onClose, isAppContext }) => {
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
   // ... (checkBackend useEffect remains same)
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (error) setError('');
+    if (success) setSuccess('');
+  };
 
   const handleSendCode = async () => {
     if (!formData.email || (!recoveryMode && !formData.name)) {
@@ -284,19 +285,17 @@ export const Login = ({ onClose, isAppContext }) => {
                         <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
                         <input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
                       </div>
-                      {!isReferralMode && (
-                        <div className="relative group">
-                          <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
-                          <input 
-                            type="text" 
-                            name="referralCode" 
-                            placeholder="Código de Recomendação / Acesso" 
-                            value={formData.referralCode} 
-                            onChange={handleChange} 
-                            className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" 
-                          />
-                        </div>
-                      )}
+                      <div className="relative group">
+                        <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                        <input 
+                          type="text" 
+                          name="referralCode" 
+                          placeholder="Código de Recomendação / Acesso" 
+                          value={formData.referralCode} 
+                          onChange={handleChange} 
+                          className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" 
+                        />
+                      </div>
                       <button onClick={handleSendCode} disabled={isSubmitting} className="w-full h-16 bg-[#12121c] border border-neon-cyan/50 text-neon-cyan font-bold uppercase tracking-widest rounded-2xl hover:bg-neon-cyan/10 transition-all">
                         {isSubmitting ? 'Enviando...' : 'Enviar Código'}
                       </button>
@@ -355,19 +354,6 @@ export const Login = ({ onClose, isAppContext }) => {
                           {showRegConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                         </button>
                       </div>
-                      {isReferralMode && (
-                        <div className="relative group">
-                          <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-pink transition-colors" />
-                          <input 
-                            type="text" 
-                            name="referralCode" 
-                            placeholder="Código do Administrador (Acesso Vitalício)" 
-                            value={formData.referralCode} 
-                            onChange={handleChange} 
-                            className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-pink transition-all font-bold" 
-                          />
-                        </div>
-                      )}
                       <button onClick={handleFinalRegister} disabled={isSubmitting} className="w-full h-16 bg-neon-pink text-white font-bold uppercase tracking-widest rounded-2xl hover:shadow-neon-pink transition-all">
                         {isSubmitting ? 'Finalizando...' : 'Concluir Cadastro'}
                       </button>
@@ -382,27 +368,15 @@ export const Login = ({ onClose, isAppContext }) => {
           </AnimatePresence>
 
           {/* Toggle Screen (Apenas Web) */}
-           {!isAppContext && (
-             <div className="flex flex-col items-center gap-4 mt-10">
-               <button 
-                 onClick={() => { setIsLogin(!isLogin); setIsReferralMode(false); setRegStep('details'); setError(''); setSuccess(''); }}
-                 className="text-xs text-gray-500 hover:text-neon-cyan transition-colors flex items-center gap-2 group"
-               >
-                 {isLogin ? 'Não tem conta? Começar registro' : 'Já tem conta? Voltar ao Login'}
-                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-               </button>
-
-               {isLogin && (
-                 <button 
-                   onClick={() => { setIsLogin(false); setIsReferralMode(true); setRegStep('details'); setError(''); setSuccess(''); }}
-                   className="text-xs text-neon-cyan hover:text-white transition-colors flex items-center gap-2 group font-bold tracking-wider"
-                 >
-                   Possui indicação? Cadastro por indicação
-                   <Sparkles className="w-3 h-3 group-hover:scale-125 transition-transform" />
-                 </button>
-               )}
-             </div>
-           )}
+          {!isAppContext && (
+             <button 
+               onClick={() => { setIsLogin(!isLogin); setRegStep('details'); setError(''); setSuccess(''); }}
+               className="mt-10 text-xs text-gray-500 hover:text-neon-cyan transition-colors flex items-center gap-2 group"
+             >
+               {isLogin ? 'Não tem conta? Começar registro' : 'Já tem conta? Voltar ao Login'}
+               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+             </button>
+          )}
 
           {/* Locked Registration Disclaimer (Apenas App) */}
           {isAppContext && (

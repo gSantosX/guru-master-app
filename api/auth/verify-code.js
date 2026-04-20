@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://mntkcxqzqewsowaazoao.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 export default async function handler(req, res) {
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
-  if (!supabaseKey) return res.status(500).json({ error: 'Configuração do banco de dados incompleta' });
-  const supabase = createClient(supabaseUrl, supabaseKey);
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { email, code } = req.body;

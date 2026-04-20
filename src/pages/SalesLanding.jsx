@@ -1,9 +1,12 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Shield, Zap, TrendingUp, Lock, XCircle, FastForward, Layers, PenTool, Image, ArrowRight, Target, Clock, Monitor, Sparkles, Terminal, CheckCircle2, Globe, Cpu, EyeOff, CheckCircle, ChevronDown, Mail, X } from 'lucide-react';
 import { NativeCheckout } from '../components/NativeCheckout';
+import { FloatingNav } from '../components/FloatingNav';
+import { useAuth } from '../contexts/AuthContext';
 
 export const SalesLanding = ({ onLoginClick }) => {
+  const { isAuthenticated, logout } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -43,32 +46,11 @@ export const SalesLanding = ({ onLoginClick }) => {
   ];
 
   return (
-    <div className="absolute inset-0 z-50 w-full h-full overflow-y-auto overflow-x-hidden bg-slate-950 text-slate-200 font-sans selection:bg-cyan-500/30 selection:text-white custom-scrollbar">
+    <div id="sales-scroll-container" className="absolute inset-0 z-50 w-full h-full overflow-y-auto overflow-x-hidden bg-slate-950 text-slate-200 font-sans selection:bg-cyan-500/30 selection:text-white custom-scrollbar">
       {/* Background Soft Mesh */}
       <div className="fixed inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 15% 50%, rgba(34, 211, 238, 0.04), transparent 50%), radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.04), transparent 50%)' }} />
 
-      {/* HEADER NAVBAR */}
-      <header className={`fixed top-0 w-full z-[100] transition-all duration-300 ${isScrolled ? 'bg-slate-950/80 border-b border-slate-800/50 backdrop-blur-xl py-4' : 'bg-transparent py-6'}`}>
-        <div className="max-w-6xl mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-3 cursor-pointer group">
-             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-purple-500 p-[1px] shadow-sm">
-                <img src="/logo.jpg" alt="Guru Master Logo" className="w-full h-full rounded-xl object-cover" />
-             </div>
-             <span className="text-xl font-bold tracking-wide text-white group-hover:text-cyan-400 transition-colors">
-               Guru Master
-             </span>
-          </div>
-          
-          <button 
-            onClick={onLoginClick}
-            className="px-5 py-2 rounded-xl text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-all border border-transparent hover:border-slate-700 active:scale-95"
-          >
-            Acessar Plataforma
-          </button>
-        </div>
-      </header>
-
-      <main className="relative z-10 w-full flex flex-col items-center pt-16">
+      <main className="relative z-10 w-full flex flex-col items-center pt-24">
         
         {/* SESSÃO 1: HERO */}
         <section className="relative pt-16 pb-20 md:pt-24 md:pb-32 px-6 flex flex-col items-center text-center w-full max-w-4xl">
@@ -285,7 +267,7 @@ export const SalesLanding = ({ onLoginClick }) => {
         </section>
 
         {/* FAQ */}
-        <section className="py-24 px-6 w-full max-w-2xl mx-auto">
+        <section id="faq" className="py-24 px-6 w-full max-w-2xl mx-auto">
            <div className="text-center mb-12">
               <h3 className="text-2xl font-bold text-white">Perguntas Frequentes</h3>
            </div>
@@ -316,6 +298,13 @@ export const SalesLanding = ({ onLoginClick }) => {
            <p className="text-[10px] text-slate-500">Valor exclusivo: R$ 24,90 mensais.</p>
         </footer>
       </main>
+
+      {/* Floating Navigation */}
+      <FloatingNav
+        onLoginClick={onLoginClick}
+        isAuthenticated={isAuthenticated}
+        onLogout={logout}
+      />
 
       {/* Checkout Modal */}
       <AnimatePresence>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Globe, Loader2, Copy, Check, ShieldCheck, XCircle, TrendingUp, AlertCircle, CheckCircle, Sparkles, MonitorPlay as Youtube } from 'lucide-react';
+import { Zap, Globe, Loader2, Copy, Check, ShieldCheck, XCircle, TrendingUp, AlertCircle, CheckCircle, Sparkles, Youtube } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { callGemini, callGPT } from '../utils/aiUtils';
+import { callGemini, callGPT, callAI } from '../utils/aiUtils';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { t } from '../utils/i18n';
 
@@ -21,6 +21,7 @@ export const ViralHacker = ({ result, configs, selectedLanguage, setSelectedLang
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [showTranslations, setShowTranslations] = useState({}); // { index: boolean }
   const [brainContext, setBrainContext] = useState("");
+  const [titleCount, setTitleCount] = useState(10);
 
   useEffect(() => {
     const fetchBrain = async () => {
@@ -66,6 +67,9 @@ CONTEXTO CIRÚRGICO DO CANAL MODELADO:
 - Oportunidade Delta (Nicho Ultra-Seletivo): ${niche}
 - Mercado-alvo: ${langName}
 
+📍 ANÁLISE DE PERFORMANCE REAL (VÍDEOS VIRAIS - OUTLIERS):
+${result.viralVideos?.slice(0, 5).map(v => `- Título Viral: "${v.title}" (${(v.viewCount/1000).toFixed(0)}K views)`).join('\n') || 'Nenhum dado de vídeo viral disponível.'}
+
 📍 INTELIGÊNCIA EXECUTIVA A SER SEGUIDA CEGAMENTE:
 
 VOZ DA AUDIÊNCIA (O que os usuários estão pedindo/criticando. Resolva isso nos títulos):
@@ -78,10 +82,12 @@ ${titleRules}
 BLUEPRINT DE AÇÃO:
 ${blueprintFocus}
 
-MISSÃO: Criar exatamente 10 (DEZ) títulos virais de ALTO CTR e suas respectivas traduções para o Português (Brasil).
+MISSÃO: Criar exatamente ${titleCount} títulos virais de ALTO CTR e suas respectivas traduções para o Português (Brasil).
 
-INSTRUÇÃO CRÍTICA: Não devaneie. Seus títulos DEVEM usar as regras fornecidas pela "Inteligência Executiva" e atacar DIRETAMENTE as dores mapeadas na "Voz da Audiência". 
-Eles devem se aplicar perfeitamente ao formato do canal (Faceless/Dark), prometendo resolver o que o canal original não conseguiu.
+INSTRUÇÃO CRÍTICA: 
+1. Não devaneie. Seus títulos DEVEM usar as regras fornecidas pela "Inteligência Executiva" e atacar DIRETAMENTE as dores mapeadas na "Voz da Audiência". 
+2. ANALISE OS VÍDEOS VIRAIS ACIMA: Identifique os temas que deram certo (o "tema em alta") e crie novos títulos baseados nesse tema, mas SEM repetir a estrutura gramatical dos vídeos originais.
+3. Crie estruturas "perfeitas" que tenham gatilhos emocionais (curiosidade, medo, urgência).
 
 ${hookInstructions[hook.id] || hookInstructions.viral}
 
@@ -92,10 +98,12 @@ Título: [Título no Idioma Nativo] || Tradução: [Tradução em PT-BR]
 REGRAS DE OURO ELITE:
 Todo título deve conter TODOS os elementos abaixo:
 1. ESPECIFICIDADE E CONTEXTO: Resolva as dores reais lidas no contexto acima. Nada genérico.
-2. LACUNA COGNITIVA: O título entrega informação suficiente para criar curiosidade, mas não o suficiente para satisfazê-la
-3. EMOÇÃO PRIMÁRIA: Medo, curiosidade, esperança, indignação ou surpresa — uma por título
-4. COMPRIMENTO IDEAL: Entre 40 e 70 caracteres (contando espaços) — ideal para YouTube e Shorts
-5. VERBO DE AÇÃO ou SUBSTANTIVO DE IMPACTO na posição de destaque
+2. NO MARKERS: NÃO use números (1., 2.), nem hashtags, nem caracteres especiais de marcação no início ou fim do título.
+3. IDIOMA: O título deve estar no MESMO IDIOMA dos títulos virais listados acima (${langName}).
+4. COMPRIMENTO: Máximo de 100 caracteres por título.
+5. LACUNA COGNITIVA: O título entrega informação suficiente para criar curiosidade, mas não o suficiente para satisfazê-la.
+6. EMOÇÃO PRIMÁRIA: Medo, curiosidade, esperança, indignação ou surpresa — uma por título.
+7. POSIÇÃO: Verbo de Ação ou Substantivo de Impacto na posição de destaque.
 
 ---
 ## ADAPTAÇÃO CULTURAL PARA ${langName.toUpperCase()}
@@ -103,30 +111,19 @@ Adapte o vocabulário para o mercado ${langName} usando palavras de alto impacto
 
 ---
 ## BLACKLIST — TÍTULOS PROIBIDOS
+❌ Qualquer título com numeração ou marcadores (ex: "1. Título")
+❌ Qualquer título com mais de 100 caracteres
 ❌ "A Verdade que Ninguém Te Conta Sobre..." (overused)
 ❌ "O Segredo Que Todo Mundo Esconde..." (vago)
 ❌ "Como Fazer [X] do Zero" (sem especificidade)
-❌ "Tudo que Você Sabe Sobre [X] está Errado" (clickbait sem substância)
-❌ Qualquer título com mais de 80 caracteres
-❌ Títulos sem pelo menos um elemento de especificidade/concretude
 
 ---
 ## FORMATO DE ENTREGA (MANDATÓRIO)
-1.
-2.
-3.
-4.
-5.
-6.
-7.
-8.
-9.
-10.`;
+Liste os ${titleCount} títulos seguindo o formato: Título: [Texto] || Tradução: [Texto]`;
 
     try {
       const gptKey = configs.gpt_key?.trim();
       const geminiKey = configs.gemini_key?.trim();
-      const activeAi = configs.active_ai || 'Gemini';
       let responseText = "";
       
       if (!gptKey && !geminiKey) {
@@ -135,46 +132,31 @@ Adapte o vocabulário para o mercado ${langName} usando palavras de alto impacto
         return;
       }
       
-      const callAI = async (engine) => {
-        if (engine === 'OpenAI' || engine === 'GPT') {
-          if (!gptKey) throw new Error("Chave OpenAI ausente");
-          return await callGPT(gptKey, prompt);
-        } else {
-          if (!geminiKey) throw new Error("Chave Gemini ausente");
-          return await callGemini(geminiKey, prompt);
-        }
-      };
-
       try { 
-        // Try preferred AI first
-        responseText = await callAI(activeAi);
+        responseText = await callAI(prompt, { temperature: 0.95 });
       } catch (err) { 
-        console.warn(`Preferência ${activeAi} falhou, tentando fallback...`, err);
-        try {
-          // Fallback to the other one
-          responseText = await callAI(activeAi === 'Gemini' ? 'OpenAI' : 'Gemini');
-        } catch (finalErr) {
-          console.error('All AI engines failed', finalErr);
-          setGeneratedTitles([{ 
-            title: `FALHA NA CONEXÃO (${finalErr.message})`, 
-            translation: "Verifique seu saldo, cota ou validade da chave de API nos Ajustes." 
-          }]);
-          setIsGeneratingTitles(false);
-          return;
-        }
+        console.error('AI Dispatch failure:', err);
+        setGeneratedTitles([{ 
+          title: `FALHA NA CONEXÃO (${err.message})`, 
+          translation: "Verifique seu saldo, cota ou validade da chave de API nos Ajustes." 
+        }]);
+        setIsGeneratingTitles(false);
+        return;
       }
       
       const lines = responseText.split('\n').filter(l => l.includes('||'));
       if (lines.length === 0) {
-         // Extra fallback for non-standard formats
-         const fallbackLines = responseText.split('\n').filter(l => l.length > 20 && l.match(/^\d+[\.\)]/));
+         const fallbackLines = responseText.split('\n').filter(l => l.length > 20);
          if (fallbackLines.length > 0) {
-            setGeneratedTitles(fallbackLines.slice(0, 10).map(l => ({ title: l.replace(/^\d+[\.\)]\s*/, '').trim(), translation: "Tradução não disponível para este formato." })));
+            setGeneratedTitles(fallbackLines.slice(0, titleCount).map(l => ({ 
+              title: l.replace(/^\d+[\.\)]\s*/, '').replace(/^Título:\s*/i, '').trim(), 
+              translation: "Tradução não disponível." 
+            })));
          } else {
             throw new Error("I.A. retornou em um formato irreconhecível. Tente novamente.");
          }
       } else {
-        const finalResults = lines.slice(0, 10).map(l => {
+        const finalResults = lines.slice(0, titleCount).map(l => {
           let [left, right] = l.split('||');
           let cleanTitle = left.replace(/Título:\s*/i, '').replace(/^\d+[\.\)]\s*/, '').trim();
           let cleanTranslation = right?.replace(/Tradução:\s*/i, '').trim() || "";
@@ -224,46 +206,72 @@ Adapte o vocabulário para o mercado ${langName} usando palavras de alto impacto
             </h3>
             <p className="text-[10px] text-neon-cyan font-bold uppercase mt-1 tracking-widest opacity-80 animate-pulse">Status: Inteligência Elite Ativa</p>
             
-            {/* Country Selection Cards */}
-            <div className="mt-8">
-               <div className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-widest pl-1 mb-4">
-                  <Globe className="w-4 h-4 text-neon-cyan/60" /> Mercados Selecionados para Replicação:
+            {/* Country and Quantity Selection Area */}
+            <div className="mt-8 flex flex-col xl:flex-row gap-8">
+               {/* Left Side: Language Selection */}
+               <div className="flex-1">
+                  <div className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-widest pl-1 mb-4">
+                     <Globe className="w-4 h-4 text-neon-cyan/60" /> Mercados Selecionados para Replicação:
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                     {result?.sections?.countries?.map((c, i) => (
+                       <button 
+                         key={i} 
+                         onClick={() => {
+                           setSelectedLanguage(c);
+                           if (translateChannelNames) translateChannelNames(c);
+                         }}
+                         className={`p-4 rounded-2xl border transition-all text-left relative overflow-hidden group/opt
+                           ${selectedLanguage?.code === c.code 
+                             ? 'bg-neon-cyan/20 border-neon-cyan/40 shadow-[0_0_20px_rgba(34,211,238,0.1)]' 
+                             : 'bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10'
+                           }
+                         `}
+                       >
+                          <div className="flex items-center gap-3 mb-2">
+                             <span className="text-2xl grayscale group-hover/opt:grayscale-0 transition-all">{c.flag}</span>
+                             <span className={`text-[11px] font-black uppercase tracking-tight font-outfit ${selectedLanguage?.code === c.code ? 'text-white' : 'text-gray-400'}`}>{c.name}</span>
+                          </div>
+                          {i === 0 ? (
+                            <div className="flex items-center gap-1.5">
+                               <div className="w-1 h-1 rounded-full bg-orange-400 animate-pulse" />
+                               <span className="text-[8px] font-black text-orange-400/80 uppercase">Alta Probabilidade</span>
+                            </div>
+                          ) : (
+                            <span className="text-[8px] font-bold text-gray-600 uppercase">Opportunity Market</span>
+                          )}
+                          
+                          {selectedLanguage?.code === c.code && (
+                            <div className="absolute top-2 right-2">
+                               <ShieldCheck className="w-4 h-4 text-neon-cyan" />
+                            </div>
+                          )}
+                       </button>
+                     ))}
+                  </div>
                </div>
-               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {result?.sections?.countries?.map((c, i) => (
-                    <button 
-                      key={i} 
-                      onClick={() => {
-                        setSelectedLanguage(c);
-                        if (translateChannelNames) translateChannelNames(c);
-                      }}
-                      className={`p-4 rounded-2xl border transition-all text-left relative overflow-hidden group/opt
-                        ${selectedLanguage?.code === c.code 
-                          ? 'bg-neon-cyan/20 border-neon-cyan/40 shadow-[0_0_20px_rgba(34,211,238,0.1)]' 
-                          : 'bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10'
-                        }
-                      `}
-                    >
-                       <div className="flex items-center gap-3 mb-2">
-                          <span className="text-2xl grayscale group-hover/opt:grayscale-0 transition-all">{c.flag}</span>
-                          <span className={`text-[11px] font-black uppercase tracking-tight font-outfit ${selectedLanguage?.code === c.code ? 'text-white' : 'text-gray-400'}`}>{c.name}</span>
-                       </div>
-                       {i === 0 ? (
-                         <div className="flex items-center gap-1.5">
-                            <div className="w-1 h-1 rounded-full bg-orange-400 animate-pulse" />
-                            <span className="text-[8px] font-black text-orange-400/80 uppercase">Alta Probabilidade</span>
-                         </div>
-                       ) : (
-                         <span className="text-[8px] font-bold text-gray-600 uppercase">Opportunity Market</span>
-                       )}
-                       
-                       {selectedLanguage?.code === c.code && (
-                         <div className="absolute top-2 right-2">
-                            <ShieldCheck className="w-4 h-4 text-neon-cyan" />
-                         </div>
-                       )}
-                    </button>
-                  ))}
+
+               {/* Right Side: Quantity Selection */}
+               <div className="xl:w-64">
+                  <div className="flex items-center gap-2 text-[10px] font-black text-gray-500 uppercase tracking-widest pl-1 mb-4">
+                     <CheckCircle className="w-4 h-4 text-neon-purple/60" /> Quantidade de Títulos:
+                  </div>
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-2 grid grid-cols-3 gap-2">
+                    {[5, 10, 15, 20, 25, 30].map(qty => (
+                      <button
+                        key={qty}
+                        onClick={() => setTitleCount(qty)}
+                        className={`py-2.5 rounded-xl font-black text-xs transition-all ${
+                          titleCount === qty 
+                            ? 'bg-neon-purple text-white shadow-lg shadow-neon-purple/30 scale-105' 
+                            : 'bg-dark/40 text-gray-500 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        {qty}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-gray-600 font-bold uppercase mt-3 italic text-center">IA calibrada para {titleCount} títulos</p>
                </div>
             </div>
 
@@ -287,7 +295,7 @@ Adapte o vocabulário para o mercado ${langName} usando palavras de alto impacto
                      <div className="text-left">
                         <span className={`block text-[11px] font-black uppercase tracking-[0.2em] ${!selectedLanguage ? 'text-gray-600' : 'text-neon-cyan'}`}>Hacker de Viralização</span>
                         <span className="block text-[9px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">
-                           {selectedLanguage ? `Gerar 10 Títulos para ${selectedLanguage.name}` : 'Selecione um País Acima'}
+                           {selectedLanguage ? `Gerar ${titleCount} Títulos para ${selectedLanguage.name}` : 'Selecione um País Acima'}
                         </span>
                      </div>
                   </div>
@@ -360,13 +368,13 @@ Adapte o vocabulário para o mercado ${langName} usando palavras de alto impacto
                                      </button>
                                      <button 
                                        onClick={() => copyTitle(item.title, i)} 
-                                       className={`p-2 rounded-lg transition-all border
+                                       className={`p-2 rounded-lg transition-all border transform active:scale-95
                                          ${copiedIndex === i 
-                                           ? 'bg-green-500/20 border-green-500 text-green-400' 
-                                           : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'
+                                           ? 'bg-green-500/20 border-green-500 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
+                                           : 'bg-white/5 border-white/5 text-gray-500 hover:text-white hover:bg-white/10'
                                          }`}
                                      >
-                                        {copiedIndex === i ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                        {copiedIndex === i ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                                      </button>
                                   </div>
                                </div>

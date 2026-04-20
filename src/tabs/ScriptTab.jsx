@@ -1,0 +1,786 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { stackPush } from '../utils/stackUtils';
+import { Wand2, Type, Layout, Target, FileText, Download, FileJson, File as FilePdf, Settings, BookOpen, Copy, Check, Sparkles, Languages, Gauge, Heart, Zap, Loader2, Save, Trash2, Share2, Trash, Eye, X, ChevronRight } from 'lucide-react';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import jsPDF from 'jspdf';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSystemStatus } from '../contexts/SystemStatusContext';
+import { resolveApiUrl } from '../utils/apiUtils';
+import { callAI } from '../utils/aiUtils';
+import { t } from '../utils/i18n';
+import { usePersistence } from '../contexts/PersistenceContext';
+
+const DNA_OPTIONS = [
+  "Linear Tradicional", "Jornada do Herói", "O Grande Mistério", "Ponto vs Contraponto",
+  "Pirâmide Invertida", "Cinematográfico Visceral", "Lista em Contagem Regressiva", 
+  "A Grande Mentira", "Problema e Solução", "Antes e Depois", "O Método Científico",
+  "Narrativa Imersiva (Você)", "Análise de Caso Real", "Círculo Narrativo", 
+  "Fatos Curiosos em Cadeia", "Perspectiva em Primeira Pessoa", "Análise de Portfólio Real",
+  "O Caminho da Liberdade Financeira", "Raio-X do Mercado", "Ensinamento Financeiro Estruturado",
+  "Teoria da Conspiração", "Desconstrução de Mitos", "Revelação em Camadas (Iceberg)", 
+  "A Receita do Desastre", "Efeito Borboleta (Causas)", "Dossiê Investigativo", 
+  "Verdade Chocante de Início", "Choque de Expectativas", "A Queda do Império", 
+  "Desabafo Visceral", "Guia Definitivo Passo-a-passo", "Futuro e Previsões", 
+  "Ponto de Inflexão (A Virada)", "Debate Múltiplas Visões", "Micro-Histórias Conectadas",
+  "Investigação Cinematográfica", "Reconstrução Histórica (Timeline)", "O Lado Oculto (Deep Dive)",
+  "Efeito Borboleta Inverso", "O Vazio Cognitivo (Loops)", "A Anatomia de um Golpe", "Paradoxo Temporal", "Duelo de Titãs (Análise)"
+];
+
+const ALMA_OPTIONS = [
+  "Amigável e Casual", "Sarcástica e Ácida", "Acolhedora e Empática", "Épica e Cinematográfica",
+  "Misteriosa e Sombria", "Didática e Leve", "Autoritária e Confiante", "Inspiradora e Poética",
+  "Cética e Provocadora", "Entusiasta e Vibrante", "Zen e Relaxante", "Confessional e Íntima",
+  "Reflexão Bíblica Profunda", "Análise Teológica Contempl.", "Ensinamentos Bíblicos Aprof.",
+  "Estudo Devocional Narrado", "Educacional Espiritual", "Pragmática e Analítica",
+  "Visionária e Estratégica", "Paternalista e Educativa", "Investigadora Obcecada", 
+  "Jornalística e Urgente", "Sombria e Macabra (Dark)", "Fria e Calculista",
+  "Mentora Severa (Hard Truth)", "Sátira e Cinismo", "Altamente Eufórica", 
+  "Questionadora Inquisitiva", "Melancólica e Nostálgica", "Especialista Tech", 
+  "Conselheiro Sussurrado", "Persuasão Magnética", "Transformacional Raiz",
+  "Sabedoria Anciã", "Razão Minimalista", "Documental Frio e Analítico", 
+  "Autoridade Histórica Clássica", "Reportagem Investigativa Densa",
+  "Sussurros de Conspiração", "Autoridade Técnica Absoluta", "Entusiasmo Contagiante", "Ironia Sofisticada", "Mentor Provocativo"
+];
+
+const CTA_OPTIONS = [
+  "Viral (Engajamento)", "Conversão (Inscrição)", "Venda (Produto)", "Curiosidade (Próximo Vídeo)",
+  "Desafio (Interação)", "Comunidade (Membro)", "Espiritual (Reflexão)", "Sutil (Invisível)", "Sem CTA"
+];
+
+const NICHO_OPTIONS = [
+  "Documentário", "História", "Finanças", "Mistérios", "Crimes reais", "Espiritualidade",
+  "Motivação", "Educação", "Curiosidades", "Histórias emocionantes", "Relacionamentos",
+  "Saúde", "Tecnologia", "Outro"
+];
+
+const IDIOMA_OPTIONS = [
+  "Português (BR)", "Português (PT)", "Inglês", "Espanhol", "Francês", "Alemão", 
+  "Italiano", "Japonês", "Chinês", "Russo", "Árabe", "Coreano", "Hindi"
+];
+
+const FORMATO_OPTIONS = ["Por Partes", "Texto Corrido", "Lista"];
+
+const NATUREZA_OPTIONS = ["Dados Reais (usar pesquisa web)", "Ficção (criatividade pura)"];
+
+const SAFETY_OPTIONS = ["Formato Seguro (Safety)", "Formato Meio Seguro (Médio Risco)", "Formato Livre (Sem Filtro)"];
+const INTELLECT_OPTIONS = ["Pouco Intelectual", "Médio Intelectual", "Intelectual Alto"];
+const FORMALITY_OPTIONS = ["Baixo", "Médio", "Alto"];
+
+export const ScriptTab = ({ setActiveTab }) => {
+  const { configs, showToast } = useSystemStatus();
+  const { scriptState, setScriptState } = usePersistence();
+  
+  const {
+    titulo, dna, alma, cta, nicho, idioma, formato, natureza, 
+    safety, intellect, formality, tamanho, isGenerating, 
+    generatedScript, generationProgress, statusMessage, lastSavedId
+  } = scriptState;
+
+  // Generic state updater
+  const updateScriptState = (updates) => {
+    setScriptState(prev => ({ ...prev, ...updates }));
+  };
+
+  const setTitulo = (val) => updateScriptState({ titulo: val });
+  const setDna = (val) => updateScriptState({ dna: val });
+  const setAlma = (val) => updateScriptState({ alma: val });
+  const setCta = (val) => updateScriptState({ cta: val });
+  const setNicho = (val) => updateScriptState({ nicho: val });
+  const setIdioma = (val) => updateScriptState({ idioma: val });
+  const setFormato = (val) => updateScriptState({ formato: val });
+  const setNatureza = (val) => updateScriptState({ natureza: val });
+  const setSafety = (val) => updateScriptState({ safety: val });
+  const setIntellect = (val) => updateScriptState({ intellect: val });
+  const setFormality = (val) => updateScriptState({ formality: val });
+  const setTamanho = (val) => updateScriptState({ tamanho: val });
+  const setIsGenerating = (val) => updateScriptState({ isGenerating: val });
+  const setGeneratedScript = (val) => updateScriptState({ generatedScript: val });
+  const setGenerationProgress = (val) => updateScriptState({ generationProgress: val });
+  const setStatusMessage = (val) => updateScriptState({ statusMessage: val });
+  const setLastSavedId = (val) => updateScriptState({ lastSavedId: val });
+
+  const [isCopied, setIsCopied] = useState(false);
+  const [isAnalyzingTitle, setIsAnalyzingTitle] = useState(false);
+  const [showFullScript, setShowFullScript] = useState(false);
+
+  const scriptViewerRef = useRef(null);
+
+  const handleAnalyzeTitle = async () => {
+    if (!titulo) return;
+    setIsAnalyzingTitle(true);
+    try {
+      const prompt = `Analise: "${titulo}". Responda APENAS um JSON: {"dna":"OPCAO","alma":"OPCAO","nicho":"OPCAO","idioma":"OPCAO"}. 
+      DNA: ${DNA_OPTIONS.join('|')}
+      Alma: ${ALMA_OPTIONS.join('|')}
+      Nicho: ${NICHO_OPTIONS.join('|')}
+      Idioma: ${IDIOMA_OPTIONS.join('|')}`;
+
+      const response = await callAI(prompt, { 
+        model: configs.active_model,
+        temperature: 0.1 
+      });
+      
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+         const result = JSON.parse(jsonMatch[0]);
+         if (result.dna && DNA_OPTIONS.includes(result.dna)) setDna(result.dna);
+         if (result.alma && ALMA_OPTIONS.includes(result.alma)) setAlma(result.alma);
+         if (result.nicho && NICHO_OPTIONS.includes(result.nicho)) setNicho(result.nicho);
+         if (result.idioma && IDIOMA_OPTIONS.includes(result.idioma)) setIdioma(result.idioma);
+         showToast("IA: Configurações otimizadas com sucesso!", "success");
+      }
+    } catch (e) {
+      console.error('Erro na análise profunda:', e);
+      showToast(e?.message || "Erro ao analisar título. Verifique a chave API.", "error");
+    } finally {
+      setIsAnalyzingTitle(false);
+    }
+  };
+
+  useEffect(() => {
+    const seedStr = localStorage.getItem('guru_script_seed');
+    if (seedStr) {
+      try {
+        const seed = JSON.parse(seedStr);
+        if (seed.title) setTitulo(seed.title);
+        if (seed.niche) setNicho(seed.niche);
+        if (seed.dna) setDna(seed.dna);
+        localStorage.removeItem('guru_script_seed');
+      } catch (e) {
+        console.error('Seed error', e);
+      }
+    }
+  }, []);
+
+  const cleanScript = (text) => {
+    return text
+      .replace(/\[.*?\]/g, '') // Remove technical markers in brackets
+      .replace(/\(.*?\)/g, '') // Remove technical markers in parentheses
+      // Remove common labels like "Narrador:", "Cena 1:", etc.
+      .replace(/^(Narrador|Ação|Nota|Parte|Parágrafo|Cena|Texto|Locução|Narrator|Action|Note|Part|Paragraph|Scene|Text|Voiceover|Título|Title|Intro|Hook|Outro|Conclusão)\s*\d*\s*[:\-]\s*/gim, '')
+      // Remove any line starting with "Something: " (dialogue style)
+      .replace(/^\s*[\w\u00C0-\u00FF\s]+:\s*/gm, '')
+      // Remove numbering at the start of lines (1., 2-, etc.)
+      .replace(/^\d+[\.\-\)]\s+/gm, '')
+      // Remove Markdown headers (# Header)
+      .replace(/^#+\s+/gm, '')
+      // Remove asterisks used for emphasis/bolding that might look like markers
+      .replace(/\*{1,3}/g, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    setGenerationProgress(5);
+    setStatusMessage('Iniciando Inteligência Guru...');
+    setGeneratedScript(null);
+
+    const targetWords = Math.ceil(tamanho / 6);
+    const minChars = tamanho - 2000;
+    const maxChars = tamanho + 2000;
+
+    // Phase 1: Planning & Initial Generation
+    const systemPrompt = `Você é o Guru Master V5, o roteirista mais experiente em canais Dark do mundo.
+Sua missão é criar um roteiro MAGISTRAL, PROFISSIONAL e ALTAMENTE ENGAJADOR.
+
+--- PROTOCOLO DE CONFORMIDADE DE TAMANHO (OBRIGATÓRIO) ---
+- ALVO: ${tamanho} caracteres.
+- MARGEM RÍGIDA: Entre ${minChars} e ${maxChars} caracteres.
+- ESTIMATIVA: Cerca de ${targetWords} palavras.
+Você DEVE analisar o tema e deduzir quantas partes/marcos narrativos são necessários para preencher esse volume com QUALIDADE.
+Se necessário, seja extremamente detalhado, use exemplos, analogias e análises profundas para atingir o tamanho.
+
+--- PROTOCOLO ZERO-MARKING (CRÍTICO) ---
+- O texto DEVE ser PURO. Sem [Cenas], sem (Narrador), sem "Parte 1", sem títulos internos.
+- Nada de numeração de parágrafos ou frases.
+- O texto deve estar PRONTO PARA NARRAR, sem interrupções técnicas.
+- Fluxo contínuo com ganchos (loops) entre as seções.
+
+Título: ${titulo}
+Nicho: ${nicho}
+DNA: ${dna} | Alma: ${alma} | CTA: ${cta}
+Idioma: ${idioma} | Intelecto: ${intellect} | Formalidade: ${formality}`;
+
+    const userPrompt = `Escreva o roteiro completo para: "${titulo}". 
+Desenvolva o tema de forma coesa, mantendo o nível de qualidade do início ao fim. 
+Finalize com o CTA: ${cta}.
+RESPONDA APENAS COM O TEXTO DA NARRAÇÃO.`;
+
+    try {
+      setGenerationProgress(20);
+      setStatusMessage('Planejando Milestones de Volume...');
+      
+      const fullPrompt = `${systemPrompt}\n\nUSER REQUEST:\n${userPrompt}`;
+      const estimatedTokens = Math.min(8192, Math.ceil((tamanho / 2.5) + 1000));
+
+      let response = await callAI(fullPrompt, {
+        model: configs.active_model,
+        maxOutputTokens: estimatedTokens,
+        temperature: 0.7
+      });
+
+      let cleanedContent = cleanScript(response);
+      setGenerationProgress(60);
+
+      // Phase 2: Recursive Expansion if too short (SMART CONTINUATION - TOKEN SAVING)
+      if (cleanedContent.length < minChars) {
+        setStatusMessage('Auto-Expansão Econômica: Gerando Continuação...');
+        setGenerationProgress(70);
+        
+        // Em vez de enviar o roteiro inteiro (caro!), enviamos apenas o contexto final
+        const expansionPrompt = `${systemPrompt}
+        
+--- TAREFA DE CONTINUAÇÃO (ECONOMIA DE TOKENS) ---
+O roteiro gerado está incompleto (${cleanedContent.length} caracteres). Alvo: ${tamanho}.
+Continue a narrativa exatamente de onde parou abaixo. 
+Mantenha o tom e a fluidez. 
+IMPORTANTE: Retorne APENAS o novo conteúdo gerado, sem repetir o contexto inicial.
+
+CONTEXTO FINAL:
+... ${cleanedContent.slice(-2000)}`;
+
+        const expandedResponse = await callAI(expansionPrompt, {
+          model: configs.active_model,
+          maxOutputTokens: 8192,
+          temperature: 0.8
+        });
+
+        cleanedContent = cleanedContent + "\n\n" + cleanScript(expandedResponse);
+      }
+
+      setGenerationProgress(90);
+      setStatusMessage('Polimento Final de Fluxo...');
+      
+      const finalScript = {
+        title: titulo,
+        niche: nicho,
+        content: cleanedContent,
+        date: new Date().toLocaleString(),
+        dna,
+        alma
+      };
+
+      setGeneratedScript(finalScript);
+      setGenerationProgress(100);
+      setStatusMessage('Roteiro Magistral Concluído!');
+      
+      // AUTO-SAVE: sempre salva cada roteiro gerado com ID único
+      const generatedId = Date.now();
+      const existingScripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+      const toSave = { ...finalScript, id: generatedId, length: cleanedContent.length };
+      localStorage.setItem('guru_scripts', JSON.stringify([toSave, ...existingScripts].slice(0, 6)));
+      setLastSavedId(generatedId);
+      window.dispatchEvent(new Event('guru_scripts_updated'));
+      showToast("✅ Roteiro salvo em Roteiros Prontos!", "success");
+      
+      setTimeout(() => scriptViewerRef.current?.scrollTo({ top: 0, behavior: 'smooth' }), 500);
+
+    } catch (error) {
+      console.error('Erro na geração:', error);
+      showToast(error.message || "Erro inesperado na geração", "error");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (!generatedScript) return;
+    navigator.clipboard.writeText(generatedScript.content);
+    setIsCopied(true);
+    showToast(t('script.copied'), 'success');
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleGoToPrompts = () => {
+    if (!generatedScript || !lastSavedId) {
+      // If for some reason we lost the ID, try to find the most recent one
+      const scripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+      if (scripts.length > 0) {
+        localStorage.setItem('guru_image_prompt_trigger_id', scripts[0].id.toString());
+        localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
+        setActiveTab('image-prompts');
+        return;
+      }
+      showToast("Gere um roteiro primeiro.", "error");
+      return;
+    }
+    
+    localStorage.setItem('guru_image_prompt_trigger_id', lastSavedId.toString());
+    localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
+    setActiveTab('image-prompts');
+  };
+
+  const clearCurrentScript = () => {
+    setGeneratedScript(null);
+    setTitulo('');
+    setGenerationProgress(0);
+  };
+
+  const transferToFlow = () => {
+    if (!generatedScript) return;
+    localStorage.setItem('guru_flow_prompts', generatedScript.content);
+    // setActiveTab('whisk');
+    showToast("Função Auto Flow temporariamente indisponível.", "error");
+  };
+
+  return (
+    <div className="flex flex-col h-auto min-h-full animate-in fade-in duration-500 pb-10">
+      
+      <header className="mb-8 w-full max-w-4xl">
+        <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(0,243,255,0.3)]">
+            <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
+              <Wand2 className="w-8 h-8 text-white" />
+            </div>
+          </div>
+          Criar Roteiro
+        </h2>
+        <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-cyan pl-4 ml-2 italic">
+          V4 SCRIPT ENGINE: Roteirização Cirúrgica
+        </p>
+      </header>
+
+      <div className="flex flex-col lg:flex-row gap-8 flex-1">
+        {/* Coluna Esquerda - Configurações */}
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="w-full xl:w-8/12 flex flex-col"
+        >
+
+        <div className="glass-card p-8 border border-white/10 shadow-2xl relative overflow-hidden group h-full">
+            {generatedScript && (
+              <button 
+                onClick={clearCurrentScript}
+                className="absolute top-6 right-6 p-2 rounded-lg bg-white/5 hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-all border border-white/5 z-10"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+
+          <div className="space-y-8">
+            {/* INPUT TÍTULO + GEMINI */}
+            <div className="relative group">
+               <div className="flex justify-between mb-1.5 px-1">
+                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                   <Type className="w-3 h-3 text-neon-cyan" /> {t('script.field_title')}
+                 </label>
+                 <span className="text-[10px] font-mono text-gray-600">{titulo.length}/100</span>
+               </div>
+               <div className="relative flex gap-2">
+                 <input 
+                   type="text"
+                   value={titulo}
+                   onChange={(e) => setTitulo(e.target.value)}
+                   placeholder={t('script.field_title_placeholder')}
+                   className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-neon-cyan/50 transition-all placeholder:text-gray-700 font-medium"
+                 />
+                  <button
+                    onClick={handleAnalyzeTitle}
+                    disabled={!titulo || isAnalyzingTitle}
+                    className={`px-4 rounded-xl border flex items-center justify-center gap-2 transition-all duration-300 relative overflow-hidden group/gemini
+                      ${isAnalyzingTitle 
+                        ? 'bg-neon-cyan/20 border-neon-cyan/40 text-neon-cyan' 
+                        : 'bg-black/60 border-white/10 text-gray-400 hover:border-neon-purple/50 hover:text-white'
+                      }
+                    `}
+                  >
+                    {isAnalyzingTitle ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-neon-cyan" />}
+                  </button>
+               </div>
+               <div className="absolute bottom-0 left-4 right-14 h-[1px] bg-gradient-to-r from-transparent via-neon-cyan/20 to-transparent scale-x-0 group-focus-within:scale-x-100 transition-transform duration-500" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               {/* DNA */}
+               <div>
+                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2 px-1">{t('script.field_dna')}</label>
+                 <select 
+                    value={dna}
+                    onChange={(e) => setDna(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white text-xs focus:outline-none focus:border-neon-purple/50 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+                 >
+                   {DNA_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-dark text-white">{opt}</option>)}
+                 </select>
+               </div>
+
+               {/* ALMA */}
+               <div>
+                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2 px-1">{t('script.field_alma')}</label>
+                 <select 
+                    value={alma}
+                    onChange={(e) => setAlma(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white text-xs focus:outline-none focus:border-neon-pink/50 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+                 >
+                   {ALMA_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-dark text-white">{opt}</option>)}
+                 </select>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+               {/* NICHO */}
+               <div className="space-y-2">
+                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block px-1">{t('script.niche')}</label>
+                 <select 
+                    value={nicho}
+                    onChange={(e) => setNicho(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-[10px] focus:outline-none focus:border-white/20"
+                 >
+                   {NICHO_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-dark text-white">{opt}</option>)}
+                 </select>
+               </div>
+
+               {/* CTA */}
+               <div className="space-y-2">
+                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block px-1">{t('script.field_cta')}</label>
+                 <select 
+                    value={cta}
+                    onChange={(e) => setCta(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-[10px] focus:outline-none focus:border-white/20"
+                 >
+                   {CTA_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-dark text-white">{opt}</option>)}
+                 </select>
+               </div>
+
+               {/* IDIOMA */}
+               <div className="space-y-2">
+                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block px-1">{t('script.lang')}</label>
+                 <select 
+                    value={idioma}
+                    onChange={(e) => setIdioma(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-[10px] focus:outline-none focus:border-white/20"
+                 >
+                   {IDIOMA_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-dark text-white">{opt}</option>)}
+                 </select>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                {/* NATUREZA */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block px-1">{t('script.nature')}</label>
+                  <select 
+                     value={natureza}
+                     onChange={(e) => setNatureza(e.target.value)}
+                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white text-xs focus:outline-none focus:border-neon-cyan/50 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+                  >
+                    {NATUREZA_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-dark text-white">{opt}</option>)}
+                  </select>
+                </div>
+
+                {/* SAFETY */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block px-1">{t('script.safety')}</label>
+                  <select 
+                     value={safety}
+                     onChange={(e) => setSafety(e.target.value)}
+                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white text-xs focus:outline-none focus:border-neon-purple/50 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+                  >
+                    {SAFETY_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-dark text-white">{opt}</option>)}
+                  </select>
+                </div>
+
+                {/* INTELLECT */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block px-1">{t('script.intellect')}</label>
+                  <select 
+                     value={intellect}
+                     onChange={(e) => setIntellect(e.target.value)}
+                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white text-xs focus:outline-none focus:border-neon-pink/50 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+                  >
+                    {INTELLECT_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-dark text-white">{opt}</option>)}
+                  </select>
+                </div>
+
+                {/* FORMALITY */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block px-1">{t('script.formality')}</label>
+                  <select 
+                     value={formality}
+                     onChange={(e) => setFormality(e.target.value)}
+                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white text-xs focus:outline-none focus:border-white/30 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+                  >
+                    {FORMALITY_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-dark text-white">{opt}</option>)}
+                  </select>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center border-t border-white/5 pt-8">
+                {/* FORMATO */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block px-1">{t('script.format')}</label>
+                  <select 
+                     value={formato}
+                     onChange={(e) => setFormato(e.target.value)}
+                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white text-xs focus:outline-none focus:border-neon-cyan/50 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+                  >
+                    {FORMATO_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-dark text-white">{opt}</option>)}
+                  </select>
+                </div>
+
+                {/* SLIDER TAMANHO */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center mb-2 px-1">
+                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block">{t('script.size')}</label>
+                     <div className="flex items-center gap-1.5">
+                        <span className="text-[8px] font-bold text-gray-600 uppercase tracking-widest">(±2000)</span>
+                        <span className="text-[10px] font-black font-mono text-neon-cyan bg-neon-cyan/10 px-2.5 py-1 rounded-full border border-neon-cyan/20">{tamanho}</span>
+                     </div>
+                  </div>
+                  <input 
+                    type="range" min="1000" max="60000" step="500" value={tamanho}
+                    onChange={(e) => setTamanho(Number(e.target.value))}
+                    className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-neon-cyan"
+                  />
+                </div>
+            </div>
+          </div>
+
+          <div className="mt-12">
+            <button 
+              onClick={handleGenerate}
+              disabled={isGenerating || !titulo}
+              className={`w-full py-5 rounded-xl flex items-center justify-center gap-3 font-black text-lg transition-all duration-500 transform active:scale-[0.98] relative overflow-hidden group
+                ${isGenerating || !titulo
+                  ? 'bg-white/5 text-gray-600 border border-white/5 cursor-not-allowed'
+                  : 'bg-white text-dark shadow-[0_10px_30px_rgba(255,255,255,0.1)] hover:shadow-[0_15px_40px_rgba(0,243,255,0.2)] hover:-translate-y-1'
+                }
+              `}
+            >
+              {isGenerating ? (
+                <span className="flex items-center gap-3">
+                  <Loader2 className="w-6 h-6 animate-spin text-neon-cyan" /> {t('script.generating')}
+                </span>
+              ) : (
+                <>
+                  <Wand2 className={`w-6 h-6 ${!titulo ? 'text-gray-600' : 'text-neon-purple'}`} /> {t('script.generate')}
+                  <div className="absolute inset-0 bg-gradient-to-r from-neon-cyan/0 via-white/20 to-neon-purple/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 pointer-events-none" />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Coluna Direita - Visualizador */}
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="w-full xl:w-4/12 flex"
+      >
+        <div className="glass-card flex flex-col h-full border border-white/10 shadow-2xl relative overflow-hidden">
+          <div className="p-6 border-b border-white/5 bg-black/20 flex justify-between items-center z-10 backdrop-blur-md">
+            <h3 className="text-sm font-black text-white flex items-center gap-2 uppercase tracking-widest">
+              <BookOpen className="text-neon-cyan w-4 h-4" /> {t('script.viewer_title')}
+            </h3>
+            
+            {isGenerating && (
+              <div className="flex items-center gap-3">
+                 <div className="flex flex-col items-end">
+                    <span className="text-[9px] font-black text-neon-cyan animate-pulse uppercase">{statusMessage}</span>
+                    <span className="text-[8px] font-mono text-gray-500">{generationProgress}%</span>
+                 </div>
+                 <div className="w-16 h-1 bg-white/5 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${generationProgress}%` }}
+                      className="h-full bg-neon-cyan shadow-[0_0_10px_#00f3ff]"
+                    />
+                 </div>
+              </div>
+            )}
+
+            {generatedScript && !isGenerating && (
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setShowFullScript(true)}
+                  className="p-2 rounded-lg bg-neon-cyan/10 hover:bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/20 transition-all group/eye"
+                  title="Ver Roteiro Completo"
+                >
+                  <Eye className="w-4 h-4 group-hover/eye:scale-110 transition-transform" />
+                </button>
+                <span className="text-[10px] bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded font-black uppercase tracking-widest">{t('ready')}</span>
+              </div>
+            )}
+          </div>
+          
+          <div 
+            ref={scriptViewerRef}
+            className="flex-1 overflow-y-auto p-8 relative z-10 custom-scrollbar"
+          >
+            {isGenerating && !generatedScript ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-12 space-y-4">
+                 <div className="relative">
+                    <LoadingSpinner size="lg" />
+                    <Sparkles className="absolute -top-4 -right-4 w-6 h-6 text-neon-cyan animate-pulse" />
+                 </div>
+                 <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">{statusMessage}</p>
+              </div>
+            ) : generatedScript ? (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="mb-8 p-6 bg-black/40 rounded-2xl border border-white/5">
+                   <h4 className="text-xl font-black text-white mb-4 leading-tight">{generatedScript.title}</h4>
+                   <div className="flex flex-wrap gap-2 text-[8px] font-black uppercase tracking-widest opacity-80">
+                     <span className="bg-neon-cyan/10 border border-neon-cyan/20 px-2 py-1 rounded-md text-neon-cyan">{generatedScript.niche}</span>
+                     <span className="bg-neon-purple/10 border border-neon-purple/20 px-2 py-1 rounded-md text-neon-purple">{dna}</span>
+                     <span className="bg-white/5 border border-white/10 px-2 py-1 rounded-md text-gray-500">{generatedScript.date}</span>
+                     <div className={`border px-2 py-1 rounded-md flex items-center gap-1 ${
+                        Math.abs((generatedScript.content?.length || 0) - tamanho) <= 2000 
+                        ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+                        : 'bg-red-500/10 border-red-500/20 text-red-400'
+                      }`}>
+                        <span className="font-black">{generatedScript.content?.length || 0}</span>
+                        <span className="text-[7px] opacity-60">/ {tamanho} CHARS</span>
+                     </div>
+                   </div>
+                </div>
+                <div className="relative">
+                  <div className="font-mono text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                    {generatedScript.content.length > 800 
+                      ? generatedScript.content.substring(0, 800) + '...' 
+                      : generatedScript.content
+                    }
+                  </div>
+                  {generatedScript.content.length > 800 && (
+                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-dark/90 to-transparent pointer-events-none" />
+                  )}
+                </div>
+                {generatedScript.content.length > 800 && (
+                   <button 
+                     onClick={() => setShowFullScript(true)}
+                     className="mt-4 text-[10px] font-black text-neon-cyan uppercase tracking-widest flex items-center gap-2 hover:gap-3 transition-all"
+                   >
+                     Continuar Lendo <ChevronRight className="w-3 h-3" />
+                   </button>
+                )}
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-center opacity-20 p-12">
+                <FileText className="w-16 h-16 text-gray-500 mb-6" />
+                <p className="text-gray-500 text-sm font-bold uppercase tracking-widest leading-loose whitespace-pre-wrap">
+                  {t('script.empty_hint')}
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <div className="p-6 bg-black/40 border-t border-white/5 z-20 backdrop-blur-xl space-y-4">
+             <button 
+                onClick={handleGoToPrompts}
+                disabled={isGenerating || !generatedScript}
+                className={`w-full py-4 rounded-xl font-black uppercase tracking-superwide flex items-center justify-center gap-3 transition-all transform active:scale-95 shadow-xl text-xs
+                  ${isGenerating || !generatedScript
+                    ? 'bg-white/5 text-gray-700 border border-white/5 cursor-not-allowed opacity-30 shadow-none'
+                    : 'bg-gradient-to-r from-neon-pink to-neon-purple text-white shadow-neon-pink hover:scale-[1.02]'
+                  }
+                `}
+              >
+                <Wand2 className="w-5 h-5 flex-shrink-0" /> GERAR PROMPTS VISUAIS
+              </button>
+
+            <button 
+              onClick={handleCopy}
+              disabled={isGenerating || !generatedScript}
+              className={`w-full py-4 rounded-xl font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all transform active:scale-95 shadow-lg text-[10px]
+                ${isGenerating || !generatedScript
+                  ? 'bg-white/5 text-gray-600 border border-white/5 cursor-not-allowed opacity-30'
+                  : isCopied 
+                    ? 'bg-green-500/20 border border-green-500 text-green-400' 
+                    : 'bg-white text-dark shadow-xl hover:bg-white/90'
+                }
+              `}
+            >
+              {isCopied ? (
+                <>
+                  <Check className="w-4 h-4" /> {t('script.copied') || 'COPIADO!'}
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" /> {t('script.copy_full') || 'COPIAR ROTEIRO COMPLETO'}
+                </>
+              )}
+            </button>
+
+          </div>
+        </div>
+      </motion.div>
+      </div>
+      {/* MODAL ROTEIRO COMPLETO */}
+      <AnimatePresence>
+        {showFullScript && generatedScript && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowFullScript(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+            />
+            
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-5xl max-h-[90vh] bg-dark border border-white/10 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden"
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b border-white/5 flex justify-between items-center bg-black/20">
+                <div className="flex items-center gap-4">
+                  <div className="p-2.5 rounded-xl bg-neon-cyan/10 border border-neon-cyan/20">
+                    <BookOpen className="w-5 h-5 text-neon-cyan" />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-black uppercase tracking-widest text-sm">{generatedScript.title}</h3>
+                    <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{dna} • {alma}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowFullScript(false)}
+                  className="p-3 rounded-full hover:bg-white/10 text-gray-500 hover:text-white transition-all"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-8 sm:p-12 custom-scrollbar">
+                <div className="max-w-3xl mx-auto font-mono text-base text-gray-300 whitespace-pre-wrap leading-loose">
+                  {generatedScript.content}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-6 border-t border-white/5 bg-black/20 flex flex-wrap gap-4 items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-neon-cyan/10 border border-neon-cyan/20 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                    <span className="text-neon-cyan font-black font-mono text-xs">{generatedScript.content.length}</span>
+                    <span className="text-[8px] text-neon-cyan/60 font-black uppercase">Caracteres</span>
+                  </div>
+                  <span className="text-[10px] text-gray-600 font-bold uppercase tracking-widest">{generatedScript.date}</span>
+                </div>
+                
+                <div className="flex gap-3">
+                  <button 
+                    onClick={handleCopy}
+                    className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest"
+                  >
+                    <Copy className="w-4 h-4 text-neon-purple" /> Copiar Tudo
+                  </button>
+                  <button 
+                    onClick={() => {}} // Download logic can be added/re-used
+                    className="px-6 py-3 rounded-xl bg-neon-cyan text-dark font-black transition-all flex items-center gap-2 text-xs uppercase tracking-widest hover:shadow-[0_0_20px_rgba(0,243,255,0.4)] hover:-translate-y-0.5"
+                  >
+                    <Download className="w-4 h-4" /> Download TXT
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+export default ScriptTab;

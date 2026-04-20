@@ -11,6 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@react-oauth/google": "^0.13.4",
     "@stripe/react-stripe-js": "^6.1.0",
     "@stripe/stripe-js": "^9.1.0",
     "@supabase/supabase-js": "^2.103.0",
@@ -19,12 +21,14 @@
     "express": "^4.18.2",
     "framer-motion": "^12.38.0",
     "jimp": "^1.6.1",
-    "lucide-react": "^1.8.0",
+    "jspdf": "^4.2.1",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.577.0",
     "nodemailer": "^6.9.7",
-    "postcss": "^8.5.9",
+    "postcss": "^8.5.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.14.0",
+    "react-router-dom": "^7.13.1",
     "stripe": "^22.0.1",
     "tailwindcss": "^3.4.19"
   },

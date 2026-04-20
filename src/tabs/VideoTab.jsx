@@ -1,0 +1,776 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Video, Settings2, Play, Music, Mic, Layers, Image as ImageIcon, CheckCircle, Captions, RefreshCw, Trash2, Wifi, WifiOff, RotateCcw, AlertTriangle } from 'lucide-react';
+import { resolveApiUrl } from '../utils/apiUtils';
+import { ActiveRenderMonitor } from '../components/ActiveRenderMonitor';
+import { LoadingSpinner } from '../components/LoadingSpinner';
+import { usePersistence } from '../contexts/PersistenceContext';
+import { translateSRT } from '../utils/aiUtils';
+import { stackRead, stackPush, MAX_STACK } from '../utils/stackUtils';
+
+export const VideoTab = () => {
+  const { videoState, setVideoState, updateVideoSettings, clearVideoState } = usePersistence();
+  const { resolution, fps, transitionStyle, zoomStyle, zoomSpeed, filterStyle, outputDir, narrationVolume, videoVolume, musicVolume, encoder, renderPreset } = videoState.settings;
+  const { audioFile, musicFile, imageFiles, videoFiles, subtitleFile } = videoState;
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [targetLang, setTargetLang] = useState('English');
+  const [activeJobId, setActiveJobId] = useState(null);
+  const [renderSuccess, setRenderSuccess] = useState(false);
+  const [formKey, setFormKey] = useState(Date.now()); 
+  const [selectedScriptId, setSelectedScriptId] = useState('');
+  const [availableScripts, setAvailableScripts] = useState([]);
+
+  // ── Backend health state ────────────────────────────────────
+  const [backendStatus, setBackendStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  const checkBackend = useCallback(async () => {
+    try {
+      const res = await fetch(resolveApiUrl('/api/check'), { signal: AbortSignal.timeout(4000) });
+      setBackendStatus(res.ok ? 'online' : 'offline');
+    } catch {
+      setBackendStatus('offline');
+    }
+  }, []);
+
+  // Poll backend health every 12 seconds
+  useEffect(() => {
+    checkBackend();
+    const id = setInterval(checkBackend, 12000);
+    return () => clearInterval(id);
+  }, [checkBackend]);
+
+  // Listen for Electron IPC backend-status events
+  useEffect(() => {
+    if (window.electronAPI?.onBackendStatus) {
+      window.electronAPI.onBackendStatus(({ online }) => {
+        setBackendStatus(online ? 'online' : 'offline');
+      });
+      return () => window.electronAPI.removeAllListeners?.('backend-status');
+    }
+  }, []);
+
+  const handleRestartBackend = async () => {
+    setIsRestarting(true);
+    setBackendStatus('checking');
+    try {
+      if (window.electronAPI?.restartBackend) {
+        await window.electronAPI.restartBackend();
+      }
+      await checkBackend();
+    } finally {
+      setIsRestarting(false);
+    }
+  };
+
+
+  // Load scripts from localStorage on mount
+  useEffect(() => {
+    const savedScripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+    setAvailableScripts(Array.isArray(savedScripts) ? savedScripts : []);
+  }, []);
+  const setAudioFile = (file) => setVideoState(prev => ({ ...prev, audioFile: file }));
+  const setMusicFile = (file) => setVideoState(prev => ({ ...prev, musicFile: file }));
+  const setImageFiles = (updater) => {
+    const nextImages = typeof updater === 'function' ? updater(imageFiles) : updater;
+    setVideoState(prev => ({ ...prev, imageFiles: nextImages }));
+  };
+  const setVideoFiles = (updater) => {
+    const nextVideos = typeof updater === 'function' ? updater(videoFiles) : updater;
+    setVideoState(prev => ({ ...prev, videoFiles: nextVideos }));
+  };
+  const setSubtitleFile = (file) => setVideoState(prev => ({ ...prev, subtitleFile: file }));
+
+  const setResolution = (val) => updateVideoSettings({ resolution: val });
+  const setFps = (val) => updateVideoSettings({ fps: val });
+  const setTransitionStyle = (val) => updateVideoSettings({ transitionStyle: val });
+  const setZoomStyle = (val) => updateVideoSettings({ zoomStyle: val });
+  const setZoomSpeed = (val) => updateVideoSettings({ zoomSpeed: val });
+  const setFilterStyle = (val) => updateVideoSettings({ filterStyle: val });
+  const setOutputDir = (val) => {
+    updateVideoSettings({ outputDir: val });
+    localStorage.setItem('guru_output_dir', val);
+  };
+
+  const handleSelectFolder = async () => {
+    if (window.electronAPI && window.electronAPI.selectFolder) {
+      const res = await window.electronAPI.selectFolder();
+      if (res.success && res.folderPath) {
+         setOutputDir(res.folderPath);
+         localStorage.setItem('guru_output_dir', res.folderPath);
+      }
+    } else {
+      alert("⚠️ Seleção de pasta nativa disponível apenas no App Desktop.\n\nNo navegador, os vídeos serão salvos na pasta padrão: \n/backend/output/\n\nAbra o App Desktop para escolher outro local.");
+    }
+  };
+
+
+  const handleTranslate = async () => {
+    if (!subtitleFile) return;
+    const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
+    if (!geminiKey) {
+      alert("Chave Gemini necessária para tradução!");
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const reader = new FileReader();
+      const text = await new Promise((resolve) => {
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsText(subtitleFile);
+      });
+
+      const translated = await translateSRT(text, targetLang, geminiKey);
+      const blob = new Blob([translated], { type: 'text/plain' });
+      const newFile = new File([blob], `${subtitleFile.name.replace('.srt', '')}_${targetLang}.srt`, { type: 'text/plain' });
+      setSubtitleFile(newFile);
+      alert(`Legenda traduzida para ${targetLang} com sucesso!`);
+    } catch (error) {
+      console.error(error);
+      alert("Erro na tradução: " + error.message);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleStartRender = async () => {
+    if (!audioFile && imageFiles.length === 0 && videoFiles.length === 0) {
+      alert("Por favor, adicione pelo menos um áudio e algumas mídias antes de renderizar.");
+      return;
+    }
+
+    const activeRenders = stackRead('guru_active_renders');
+    if (activeRenders.length >= MAX_STACK) {
+        alert(`Limite de ${MAX_STACK} renderizações simultâneas atingido.`);
+        return;
+    }
+
+    setIsGenerating(true);
+    const cleanFileName = (name) => name ? name.split('.').slice(0, -1).join('.') || name : null;
+    
+    // Choose project name: Selected Script Title > Audio Name > Video Name > Default
+    const selectedScript = availableScripts.find(s => s.id === selectedScriptId);
+    let projNameSkeleton = selectedScript ? selectedScript.title : cleanFileName(audioFile?.name);
+    
+    if (!projNameSkeleton && videoFiles.length > 0) projNameSkeleton = `Vídeo ${cleanFileName(videoFiles[0].name)}`;
+    if (!projNameSkeleton && imageFiles.length > 0) projNameSkeleton = `Vídeo ${cleanFileName(imageFiles[0].name)}`;
+    if (!projNameSkeleton) projNameSkeleton = 'Projeto ' + new Date().getTime().toString().slice(-4);
+
+    try {
+      const formData = new FormData();
+      formData.append('projectName', projNameSkeleton);
+      
+      const settings = {
+        resolution,
+        fps,
+        transitionStyle,
+        zoomStyle,
+        zoomSpeed,
+        filterStyle,
+        outputDir,
+        narrationVolume,
+        videoVolume,
+        musicVolume
+      };
+      formData.append('settings', JSON.stringify(settings));
+      
+      if (audioFile) formData.append('audio', audioFile);
+      if (musicFile) formData.append('music', musicFile);
+      if (subtitleFile) formData.append('subtitle', subtitleFile);
+      
+      imageFiles.forEach((file, index) => {
+         formData.append(`image_${index}`, file);
+      });
+      videoFiles.forEach((file, index) => {
+         formData.append(`video_${index}`, file);
+      });
+
+      // Send to python backend
+      const response = await fetch(resolveApiUrl('/api/render'), {
+         method: 'POST',
+         body: formData
+      });
+      
+      if (!response.ok) {
+         let serverError = "Erro desconhecido no servidor.";
+         try {
+            const errorData = await response.json();
+            serverError = errorData.error || errorData.message || JSON.stringify(errorData);
+         } catch(e) {
+            try {
+               serverError = await response.text();
+            } catch(e2) {}
+         }
+         throw new Error(`Servidor respondeu com ${response.status}: ${serverError}`);
+      }
+      
+      const data = await response.json();
+      
+      const newProj = { 
+         id: data.job_id, 
+         name: projNameSkeleton, 
+         status: 'Postando na Fila...', 
+         progress: 0, 
+         color: 'neon-purple' 
+      };
+      
+      // LIFO stack push — newest first, max 6
+      stackPush('guru_active_renders', newProj);
+      window.dispatchEvent(new Event('guru_active_updated'));
+      
+      setActiveJobId(data.job_id);
+      setIsGenerating(false);
+      setRenderSuccess(true);
+      
+    } catch (error) {
+      console.error("Erro na renderização:", error);
+      
+      const errorMessage = error.message || "";
+      const isNetworkError = errorMessage.toLowerCase().includes('network') || 
+                             errorMessage.toLowerCase().includes('fetch') || 
+                             errorMessage.toLowerCase().includes('failed');
+
+      if (errorMessage.includes('413')) {
+        alert("O servidor recusou o envio (Erro 413: Payload Too Large). Aumentamos o limite para 10GB no backend, mas certifique-se de que os arquivos não excedam isso ou que o computador tenha memória RAM suficiente.");
+      } else if (error.name === 'AbortError' || isNetworkError) {
+        alert("A conexão com o servidor local falhou ou foi interrompida. \n\nSe você está enviando 100+ vídeos, o upload pode demorar alguns minutos. Se o erro for imediato, verifique se o Backend Python está rodando na porta 5000.");
+      } else {
+        alert("Erro ao conectar ao motor local! \n\nDetalhe: " + errorMessage + "\n\nO Backend Python (Flask) está rodando e aceitando mídias massivas?");
+      }
+      setIsGenerating(false);
+    }
+  };
+
+  const clearForm = () => {
+     clearVideoState();
+     setRenderSuccess(false);
+     setActiveJobId(null);
+     setFormKey(Date.now());
+  }
+
+  const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+  const GITHUB_RELEASE_URL = 'https://github.com/gSantosX/guru-master-app/releases/latest';
+
+  return (
+    <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto md:overflow-hidden custom-scrollbar">
+      <header className="mb-6 md:mb-8 shrink-0">
+        <h2 className="text-2xl md:text-4xl font-bold text-glow-purple text-white flex items-center gap-2 md:gap-3">
+          <Video className="text-neon-purple w-8 h-8 md:w-10 md:h-10 shrink-0" />
+          Gerar Vídeo
+        </h2>
+        <p className="text-sm md:text-base text-gray-400 mt-2">Combine seu roteiro, voz e imagens em uma obra-prima final usando motor FFmpeg.</p>
+      </header>
+
+      {/* ── Web Warning Banner ────────────────────────────────── */}
+      {!isElectron && (
+        <div className="shrink-0 mb-6 p-4 rounded-xl bg-gradient-to-r from-neon-purple/20 to-neon-cyan/20 border border-neon-cyan/30 shadow-[0_0_30px_rgba(0,243,255,0.1)] flex flex-col md:flex-row items-center justify-between gap-4 animate-pulse">
+           <div className="flex items-center gap-4 text-center md:text-left">
+              <div className="w-12 h-12 rounded-full bg-neon-cyan/20 flex items-center justify-center shrink-0">
+                 <AlertTriangle className="w-6 h-6 text-neon-cyan" />
+              </div>
+              <div>
+                 <h4 className="font-bold text-white text-sm md:text-base uppercase tracking-tight">Motor de Renderização Indisponível no Browser</h4>
+                 <p className="text-xs text-gray-400 mt-1 max-w-md">Para garantir a máxima performance e privacidade, o processamento de vídeos pesados (FFmpeg) ocorre localmente no seu PC.</p>
+              </div>
+           </div>
+           <a 
+              href={GITHUB_RELEASE_URL}
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="px-6 py-2.5 bg-neon-cyan text-black font-black text-xs uppercase tracking-widest rounded-lg hover:shadow-[0_0_20px_#00f3ff] transition-all whitespace-nowrap"
+           >
+              Baixar App Desktop
+           </a>
+        </div>
+      )}
+
+      {/* ── Backend Status Banner ─────────────────────────────── */}
+      <div className={`shrink-0 mb-4 flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+        backendStatus === 'online'   ? 'bg-green-500/8 border-green-500/25 text-green-400' :
+        backendStatus === 'offline'  ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+                                       'bg-white/5 border-white/10 text-gray-500'
+      }`}>
+        <div className="flex items-center gap-2.5">
+          {backendStatus === 'online'  && <Wifi className="w-3.5 h-3.5 shrink-0" />}
+          {backendStatus === 'offline' && <WifiOff className="w-3.5 h-3.5 shrink-0" />}
+          {backendStatus === 'checking'&& <LoadingSpinner size="xs" message="" />}
+          <span className="uppercase tracking-widest text-[10px]">
+            {backendStatus === 'online'   && 'Motor de Renderização Online — FFmpeg pronto'}
+            {backendStatus === 'offline'  && 'Motor Offline — Renderização indisponível'}
+            {backendStatus === 'checking' && 'Verificando motor...'}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {backendStatus === 'offline' && (
+            <div className="flex items-center gap-1.5 text-[9px] text-red-400/70 uppercase tracking-wider">
+              <AlertTriangle className="w-3 h-3" />
+              Verifique o antivírus
+            </div>
+          )}
+          <button
+            onClick={handleRestartBackend}
+            disabled={isRestarting || backendStatus === 'checking'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-all disabled:opacity-40 text-[10px] uppercase tracking-widest"
+          >
+            <RotateCcw className={`w-3 h-3 ${isRestarting ? 'animate-spin' : ''}`} />
+            {isRestarting ? 'Reiniciando...' : 'Reiniciar Motor'}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 flex-1 pb-10 md:pb-0 overflow-y-auto custom-scrollbar">
+        
+        {/* Left Column: Configuration */}
+        <div className="space-y-6">
+          <div className="glass-card p-6 border-l-4 border-neon-cyan">
+            <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Layers className="text-neon-cyan w-5 h-5" /> Ativos de Mídia
+              </h3>
+              <button 
+                onClick={() => {
+                  clearVideoState();
+                  setFormKey(Date.now());
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-400/70 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors border border-red-500/10 group"
+                title="Limpar todos os arquivos desta seção"
+              >
+                <Trash2 className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                Limpar
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Vínculo de Roteiro */}
+              <div className="p-3 bg-neon-purple/5 border border-neon-purple/20 rounded-xl mb-4">
+                <label className="text-[10px] font-black text-neon-purple uppercase tracking-widest block mb-2">Vincular ao Roteiro (Auto-Nomear)</label>
+                <select 
+                  value={selectedScriptId}
+                  onChange={(e) => setSelectedScriptId(e.target.value)}
+                  className="w-full bg-dark/60 border border-white/10 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-neon-purple/50"
+                >
+                  <option value="">Selecione um roteiro para nomear o vídeo...</option>
+                  {availableScripts.map(script => (
+                    <option key={script.id} value={script.id}>{script.title}</option>
+                  ))}
+                </select>
+                <p className="text-[9px] text-gray-500 mt-2 font-bold italic uppercase tracking-tighter">* O vídeo e o arquivo final serão salvos com este título.</p>
+              </div>
+
+              {/* Narração */}
+              <div className="p-3 bg-dark/50 border border-white/5 rounded-xl flex items-center justify-between group hover:border-white/20 transition-colors">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-10 h-10 shrink-0 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                    <Mic className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-white font-medium text-sm">Áudio Original (Narração)</h4>
+                    <p className="text-xs text-gray-500 truncate">{audioFile ? audioFile.name : 'Voz do locutor...'}</p>
+                  </div>
+                </div>
+                <label className="text-xs px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-colors cursor-pointer shrink-0 ml-2 shadow-inner border border-white/5">
+                  <input key={formKey + 'aud'} type="file" accept="audio/*" className="hidden" onChange={e => setAudioFile(e.target.files[0])} />
+                  {audioFile ? 'Trocar' : 'Selecionar'}
+                </label>
+              </div>
+
+              {/* Imagens */}
+              <div className="p-3 bg-dark/50 border border-white/5 rounded-xl flex items-center justify-between group hover:border-white/20 transition-colors">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-10 h-10 shrink-0 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <ImageIcon className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-white font-medium text-sm">Biblioteca de Imagens</h4>
+                    <p className="text-xs text-gray-500 truncate">{imageFiles.length > 0 ? `${imageFiles.length} imagens carregadas` : 'Pasta ou fotos soltas...'}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0 ml-2">
+                  <label className="text-[10px] md:text-xs px-2 md:px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-colors cursor-pointer shadow-inner border border-white/5 whitespace-nowrap">
+                     <input key={formKey + 'img'} type="file" accept="image/*" multiple className="hidden" onChange={e => setImageFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+                     + Arquivos
+                  </label>
+                  <label className="text-[10px] md:text-xs px-2 md:px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-colors cursor-pointer shadow-inner border border-white/5 whitespace-nowrap">
+                     <input key={formKey + 'dir'} type="file" accept="image/*" multiple webkitdirectory="true" directory="true" className="hidden" onChange={e => setImageFiles(prev => [...prev, ...Array.from(e.target.files).filter(f => f.type.startsWith('image/'))])} />
+                     + Pasta
+                  </label>
+                </div>
+              </div>
+
+              {/* Vídeos */}
+              <div className="p-3 bg-dark/50 border border-white/5 rounded-xl flex items-center justify-between group hover:border-white/20 transition-colors">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-10 h-10 shrink-0 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <Video className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-white font-medium text-sm">Biblioteca de Vídeos</h4>
+                    <p className="text-xs text-gray-500 truncate">{videoFiles.length > 0 ? `${videoFiles.length} vídeos carregados` : 'Pasta ou vídeos (.mp4)...'}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0 ml-2">
+                  <label className="text-[10px] md:text-xs px-2 md:px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-colors cursor-pointer shadow-inner border border-white/5 whitespace-nowrap">
+                     <input key={formKey + 'vid'} type="file" accept="video/mp4,video/quicktime,video/*" multiple className="hidden" onChange={e => setVideoFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+                     + Arquivos
+                  </label>
+                  <label className="text-[10px] md:text-xs px-2 md:px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-colors cursor-pointer shadow-inner border border-white/5 whitespace-nowrap">
+                     <input key={formKey + 'vdir'} type="file" accept="video/mp4,video/quicktime,video/*" multiple webkitdirectory="true" directory="true" className="hidden" onChange={e => setVideoFiles(prev => [...prev, ...Array.from(e.target.files).filter(f => f.type.startsWith('video/') || f.name.toLowerCase().endsWith('.mp4') || f.name.toLowerCase().endsWith('.mov'))])} />
+                     + Pasta
+                  </label>
+                </div>
+              </div>
+
+              {/* Música (Opcional) */}
+              <div className="p-3 bg-dark/50 border border-white/5 rounded-xl flex items-center justify-between group hover:border-white/20 transition-colors">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-10 h-10 shrink-0 rounded-lg bg-green-500/20 flex items-center justify-center">
+                    <Music className="w-5 h-5 text-green-400" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-white font-medium text-sm flex gap-2 items-center">Trilha Sonora <span className="text-[9px] bg-dark-lighter px-1.5 py-0.5 rounded border border-white/10 text-gray-400 uppercase tracking-widest">Opcional</span></h4>
+                    <p className="text-xs text-gray-500 truncate">{musicFile ? musicFile.name : 'Música de fundo...'}</p>
+                  </div>
+                </div>
+                <label className="text-xs px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-md text-white transition-colors cursor-pointer shrink-0 ml-2 shadow-inner border border-white/5">
+                  <input key={formKey + 'mus'} type="file" accept="audio/*" className="hidden" onChange={e => setMusicFile(e.target.files[0])} />
+                  {musicFile ? 'Trocar' : 'Selecionar'}
+                </label>
+              </div>
+
+              {/* Legenda (Opcional) */}
+              <div className={`p-3 border rounded-xl flex items-center justify-between group transition-colors ${
+                subtitleFile
+                  ? 'bg-yellow-500/10 border-yellow-500/40 hover:border-yellow-500/70'
+                  : 'bg-dark/50 border-white/5 hover:border-white/20'
+              }`}>
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center ${
+                    subtitleFile ? 'bg-yellow-500/20' : 'bg-yellow-500/10'
+                  }`}>
+                    <Captions className={`w-5 h-5 ${subtitleFile ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-white font-medium text-sm flex gap-2 items-center">
+                      Legenda (Subtitle)
+                      <span className="text-[9px] bg-dark-lighter px-1.5 py-0.5 rounded border border-white/10 text-gray-400 uppercase tracking-widest">Opcional</span>
+                    </h4>
+                    <p className="text-xs truncate">
+                      {subtitleFile
+                        ? <span className="text-yellow-400 font-medium">{subtitleFile.name} — será renderizada no vídeo</span>
+                        : <span className="text-gray-500">.srt ou .ass — queimada no vídeo pelo FFmpeg</span>}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 shrink-0 ml-2">
+                  {subtitleFile && (
+                    <div className="flex items-center bg-white/5 border border-white/10 rounded-md overflow-hidden h-9">
+                      <select 
+                        value={targetLang}
+                        onChange={(e) => setTargetLang(e.target.value)}
+                        className="bg-transparent text-[10px] text-gray-400 px-2 focus:outline-none border-r border-white/10 cursor-pointer h-full"
+                      >
+                        <option value="English">EN</option>
+                        <option value="Spanish">ES</option>
+                        <option value="French">FR</option>
+                        <option value="German">DE</option>
+                        <option value="Hindi">HI</option>
+                        <option value="Japanese">JA</option>
+                        <option value="Portuguese">PT</option>
+                      </select>
+                      <button
+                        onClick={handleTranslate}
+                        disabled={isTranslating}
+                        className="px-3 text-[10px] font-black text-yellow-500 hover:bg-yellow-500/10 transition-colors h-full disabled:opacity-30"
+                      >
+                        {isTranslating ? '...' : <RefreshCw className="w-3 h-3" />}
+                      </button>
+                    </div>
+                  )}
+                  <label className="text-xs px-3 py-1.5 h-9 flex items-center bg-white/10 hover:bg-yellow-500/20 hover:border-yellow-500/40 rounded-md text-white transition-colors cursor-pointer shadow-inner border border-white/5">
+                    <input key={formKey + 'sub'} type="file" accept=".srt,.ass,.vtt" className="hidden" onChange={e => setSubtitleFile(e.target.files[0])} />
+                    {subtitleFile ? 'Trocar' : 'Selecionar'}
+                  </label>
+                  {subtitleFile && (
+                    <button
+                      onClick={() => setSubtitleFile(null)}
+                      className="w-9 h-9 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 rounded-md text-red-400 border border-red-500/20 transition-colors"
+                      title="Remover legenda"
+                    >✕</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card p-6 border-l-4 border-neon-purple shadow-xl">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-5 border-b border-white/10 pb-2">
+              <Settings2 className="text-neon-purple w-5 h-5" /> Configurações de Renderização
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6">
+              
+              {/* Qualidade Visual */}
+              <div className="col-span-1 sm:col-span-2">
+                <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-2">Qualidade de Saída</label>
+                <div className="flex gap-2">
+                  <select className="flex-1 bg-dark/60 border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-neon-purple/50 text-xs shadow-inner" value={resolution} onChange={e=>setResolution(e.target.value)}>
+                    <option>1080p Horizontal (1920x1080)</option>
+                    <option>4K Filmes (3840x2160)</option>
+                    <option>Shorts / Reels (1080x1920)</option>
+                    <option>Quadrado (1080x1080)</option>
+                  </select>
+                  <select className="w-28 bg-dark/60 border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-neon-purple/50 text-xs shadow-inner" value={fps} onChange={e=>setFps(e.target.value)}>
+                    <option>24 FPS</option>
+                    <option>30 FPS</option>
+                    <option>60 FPS</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Aceleração de Hardware */}
+              <div>
+                <label className="text-xs text-neon-cyan font-bold uppercase tracking-wider block mb-2">Aceleração de Hardware</label>
+                <select 
+                  className="w-full bg-dark/60 border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-neon-cyan/50 text-xs shadow-inner" 
+                  value={encoder} 
+                  onChange={e => updateVideoSettings({ encoder: e.target.value })}
+                >
+                  <option value="libx264">Apenas CPU (Padrão)</option>
+                  <option value="h264_nvenc">NVIDIA (NVENC)</option>
+                  <option value="h264_qsv">Intel (QuickSync)</option>
+                  <option value="h264_amf">AMD (AMF)</option>
+                </select>
+                <p className="text-[9px] text-gray-500 mt-1 italic">* Escolha de acordo com sua placa de vídeo.</p>
+              </div>
+
+              {/* Velocidade de Renderização */}
+              <div>
+                <label className="text-xs text-neon-pink font-bold uppercase tracking-wider block mb-2">Velocidade de Encode</label>
+                <select 
+                  className="w-full bg-dark/60 border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-neon-pink/50 text-xs shadow-inner" 
+                  value={renderPreset} 
+                  onChange={e => updateVideoSettings({ renderPreset: e.target.value })}
+                >
+                  <option value="ultrafast">🚀 Ultra Rápido (Menor Qualidade)</option>
+                  <option value="veryfast">⚡ Muito Rápido</option>
+                  <option value="faster">🚄 Rápido</option>
+                  <option value="medium">⚖️ Equilibrado (Padrão)</option>
+                  <option value="slow">💎 Alta Qualidade (Lento)</option>
+                </select>
+              </div>
+
+              {/* Transição */}
+              <div>
+                <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-2 text-neon-cyan">Estilo de Transição</label>
+                <select className="w-full bg-dark/60 border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-neon-cyan/50 text-xs shadow-inner" value={transitionStyle} onChange={e=>setTransitionStyle(e.target.value)}>
+                  <option value="crossfade">Suave (Crossfade)</option>
+                  <option value="fade">Piscar Preto (Fade Out/In)</option>
+                  <option value="dissolve">Dissolver (Xfade)</option>
+                  <option value="wipeleft">Deslizar para a Esquerda</option>
+                  <option value="wiperight">Deslizar para a Direita</option>
+                  <option value="none">Corte Seco (Sem efeito)</option>
+                </select>
+              </div>
+
+              {/* Filtro Visual */}
+              <div>
+                <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-2 text-neon-pink">Filtro Visual (FFmpeg)</label>
+                <select className="w-full bg-dark/60 border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-neon-pink/50 text-xs shadow-inner" value={filterStyle} onChange={e=>setFilterStyle(e.target.value)}>
+                  <option value="nenhum">Cor Original (Nenhum)</option>
+                  <option value="sepia">Tons de Sépia (Vintage)</option>
+                  <option value="grayscale">Preto & Branco (Dramático)</option>
+                  <option value="high-contrast">Alto Contraste (+20%)</option>
+                  <option value="high-saturation">Cores Vibrantes (+Saturação)</option>
+                  <option value="blur">Suavizado (Leve Desfoque)</option>
+                  <option value="vignette">Vinheta Escura (Foco Central)</option>
+                </select>
+              </div>
+
+              {/* Efeito de Movimento (Ken Burns) */}
+              <div>
+                <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block mb-2 text-blue-400">Animação 3D (Zoom & Pan)</label>
+                <select className="w-full bg-dark/60 border border-white/10 rounded-lg p-2.5 text-white focus:outline-none focus:border-blue-500/50 text-xs shadow-inner" value={zoomStyle} onChange={e=>setZoomStyle(e.target.value)}>
+                  <option value="zoom-in">Acercar Câmera (Zoom In)</option>
+                  <option value="zoom-out">Afastar Câmera (Zoom Out)</option>
+                  <option value="pan-right">Deslizar para Direita (Pan R)</option>
+                  <option value="pan-left">Deslizar para Esquerda (Pan L)</option>
+                  <option value="random">Variado (Modo Aleatório)</option>
+                  <option value="none">Imagem Estática</option>
+                </select>
+              </div>
+
+              {/* Velocidade de Zoom */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Intensidade do Movto</label>
+                  <span className="text-[10px] text-gray-300 font-mono bg-white/10 px-1.5 py-0.5 rounded">{zoomSpeed}</span>
+                </div>
+                <input 
+                  type="range" min="1" max="5" step="1" 
+                  value={zoomSpeed.includes('Lenta') ? 1 : zoomSpeed.includes('Média') ? 2 : zoomSpeed.includes('Normal') ? 3 : zoomSpeed.includes('Rápida') ? 4 : 5}
+                  onChange={(e) => {
+                     const v = e.target.value;
+                     if(v==='1') setZoomSpeed('Muito Lenta (1.05x)');
+                     if(v==='2') setZoomSpeed('Média (1.08x)');
+                     if(v==='3') setZoomSpeed('Normal (1.1x)');
+                     if(v==='4') setZoomSpeed('Rápida (1.15x)');
+                     if(v==='5') setZoomSpeed('Agressiva (1.2x)');
+                  }}
+                  className="w-full h-1.5 bg-dark border border-white/5 rounded-lg appearance-none cursor-pointer accent-neon-purple mt-2 disabled:opacity-30 disabled:grayscale"
+                  disabled={zoomStyle === 'none'}
+                />
+              </div>
+
+              {/* Volume Narração */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-orange-400 font-bold uppercase tracking-wider block">Volume Narração</label>
+                  <span className="text-[10px] text-gray-300 font-mono bg-white/10 px-1.5 py-0.5 rounded">{narrationVolume} dB</span>
+                </div>
+                <input 
+                  type="range" min="-30" max="20" step="1" 
+                  value={narrationVolume}
+                  onChange={(e) => updateVideoSettings({ narrationVolume: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-dark border border-white/5 rounded-lg appearance-none cursor-pointer accent-orange-500 mt-2"
+                />
+              </div>
+
+              {/* Volume Vídeos da Biblioteca */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-purple-400 font-bold uppercase tracking-wider block">Volume Video-Broll</label>
+                  <span className="text-[10px] text-gray-300 font-mono bg-white/10 px-1.5 py-0.5 rounded">{videoVolume} dB</span>
+                </div>
+                <input 
+                  type="range" min="-60" max="0" step="1" 
+                  value={videoVolume}
+                  onChange={(e) => updateVideoSettings({ videoVolume: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-dark border border-white/5 rounded-lg appearance-none cursor-pointer accent-purple-500 mt-2"
+                />
+              </div>
+
+              {/* Volume Música de Fundo */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-xs text-green-400 font-bold uppercase tracking-wider block">Volume Música</label>
+                  <span className="text-[10px] text-gray-300 font-mono bg-white/10 px-1.5 py-0.5 rounded">{musicVolume} dB</span>
+                </div>
+                <input 
+                  type="range" min="-60" max="0" step="1" 
+                  value={musicVolume}
+                  onChange={(e) => updateVideoSettings({ musicVolume: parseInt(e.target.value) })}
+                  className="w-full h-1.5 bg-dark border border-white/5 rounded-lg appearance-none cursor-pointer accent-green-500 mt-2"
+                />
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Preview and Action */}
+        <div className="glass-card flex flex-col relative overflow-y-auto md:overflow-hidden shadow-2xl custom-scrollbar">
+          <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/5 via-dark to-dark-lighter pointer-events-none" />
+          
+          <div className="p-5 border-b border-white/10 bg-dark/50 relative z-10 flex justify-between items-center backdrop-blur-sm">
+            <h3 className="font-bold text-white flex items-center gap-2">
+              Resumo do Motor Final
+            </h3>
+            <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-1 bg-neon-purple/20 text-neon-purple rounded border border-neon-purple/30">FFmpeg Pipeline</span>
+          </div>
+          
+          <div className="flex-1 p-6 relative z-10 flex flex-col items-center justify-start overflow-y-auto custom-scrollbar">
+             {renderSuccess && activeJobId ? (
+                <div className="w-full h-full flex items-center justify-center">
+                   <ActiveRenderMonitor 
+                     jobId={activeJobId} 
+                     onFinished={() => console.log("Render finished")} 
+                   />
+                </div>
+             ) : (
+                <div className={`w-full max-w-sm ${resolution.includes('Shorts') ? 'aspect-[9/16] w-auto h-64' : resolution.includes('Quadrado') ? 'aspect-square w-48' : 'aspect-video'} bg-dark-lighter rounded-xl border border-white/10 flex flex-col items-center justify-center relative overflow-hidden group shadow-[0_0_50px_rgba(0,0,0,0.6)] transition-all duration-500`}>
+                  <div className="absolute inset-0 opacity-10 flex flex-wrap gap-1 p-2 overflow-hidden pointer-events-none">
+                     {[...Array(20)].map((_, i) => <div key={i} className="w-1/4 h-1/4 min-w-[30px] min-h-[30px] bg-white rounded-sm" />)}
+                  </div>
+                  <Play className="w-12 h-12 text-white/40 group-hover:text-neon-purple group-hover:scale-110 transition-all cursor-pointer z-10 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]" />
+                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-neon-purple/50 transition-colors rounded-xl pointer-events-none" />
+                  
+                  {/* Label on video frame showing applied visual filter */}
+                  {filterStyle !== 'nenhum' && (
+                    <div className="absolute bottom-2 left-2 bg-dark/80 px-2 py-1 rounded text-[10px] font-mono text-neon-pink uppercase">Filtro: {filterStyle}</div>
+                  )}
+                  {zoomStyle !== 'none' && (
+                    <div className="absolute bottom-2 right-2 bg-dark/80 px-2 py-1 rounded text-[10px] font-mono text-blue-400 uppercase">Mov: {zoomStyle}</div>
+                  )}
+                </div>
+             )}
+             
+             <div className="mt-8 grid grid-cols-2 gap-4 w-full max-w-sm">
+                <div className="bg-dark/40 p-3 rounded-lg border border-white/5 text-center">
+                   <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Mídia Inserida</p>
+                   <p className="text-sm font-bold text-white">{imageFiles.length} Imgs / {videoFiles.length} Vids</p>
+                   <p className="text-xs text-gray-400">{audioFile ? 'C/ Narração' : 'Sem Voz'}</p>
+                </div>
+                <div className="bg-dark/40 p-3 rounded-lg border border-white/5 text-center">
+                   <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Impacto Previsto</p>
+                   <p className="text-sm font-bold text-neon-purple transition-colors">Tamanho Médio</p>
+                   <p className="text-xs font-mono text-gray-400">{resolution.split('(')[0]}</p>
+                 </div>
+              </div>
+              <div className="mt-6 w-full max-w-sm mb-4">
+                 <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-gray-400 font-bold uppercase tracking-wider text-green-400">Pasta de Saída</label>
+                    <button type="button" onClick={handleSelectFolder} className="text-[10px] bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded transition-colors border border-white/5 font-mono cursor-pointer relative z-20">Alterar</button>
+                 </div>
+                 <div className="w-full bg-dark/60 border border-white/10 rounded-lg p-3 flex flex-col items-start min-h-[44px] justify-center text-xs shadow-inner cursor-pointer hover:border-white/30 transition-colors relative z-20" onClick={handleSelectFolder}>
+                    {outputDir ? (
+                       <span className="text-green-400 font-mono tracking-tighter truncate w-full" title={outputDir}>{outputDir}</span>
+                    ) : (
+                       <span className="text-gray-500 italic">Pasta padrão (/backend/output/)</span>
+                    )}
+                 </div>
+              </div>
+           </div>
+
+           <div className="p-5 mt-auto relative z-10 bg-dark/30 backdrop-blur-md border-t border-white/10 min-h-[96px] flex items-center justify-center">
+            {renderSuccess ? (
+              <div className="w-full flex w-full p-4 rounded-xl flex items-center justify-between gap-4 bg-green-500/10 border border-green-500/30 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.15)] animate-fade-in translate-y-[-10px]">
+                <div className="flex items-center gap-3">
+                   <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                     <CheckCircle className="w-5 h-5" />
+                   </div>
+                   <div>
+                     <h4 className="font-bold text-sm">Processando Master Audiovisual</h4>
+                     <p className="text-xs text-green-400/80 mt-0.5">Veja os detalhes e baixe o arquivo acima.</p>
+                   </div>
+                </div>
+                <button onClick={clearForm} className="text-xs font-bold px-4 py-2 bg-green-500/20 hover:bg-green-500/40 rounded-lg transition-colors border border-green-500/30 whitespace-nowrap">
+                  Novo Vídeo
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={handleStartRender}
+                disabled={isGenerating}
+                className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-black tracking-wide transition-all duration-300 transform active:scale-[0.98] ${
+                  isGenerating
+                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-purple-600 via-neon-purple to-blue-600 text-white shadow-[0_0_30px_rgba(157,78,221,0.4)] hover:shadow-[0_0_50px_rgba(157,78,221,0.6)]'
+                }`}
+              >
+                {isGenerating ? (
+                  <LoadingSpinner message="Compilando Matriz Audiovisual..." size="sm" />
+                ) : (
+                  <>
+                    <Video className="w-6 h-6" /> INICIAR REDE DE RENDERIZAÇÃO
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
