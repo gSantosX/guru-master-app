@@ -105,8 +105,6 @@ export const VideoCoverTab = ({ isActive }) => {
     const ENGINES = []; // Keep empty or just remove entirely. Let's just remove them.
 
     const [cloudScripts] = useCloudStorage('scripts', []);
-    const [scripts, setScripts] = useState([]);
-
     useEffect(() => {
         if (!isActive) return;
         const fallback = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
