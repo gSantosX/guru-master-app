@@ -2,33 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Trash2, AlertTriangle, ChevronRight, ArrowLeft, Download, FileJson, File as FilePdf, Copy, Check, Wand2 } from 'lucide-react';
 import jsPDF from 'jspdf';
+import { useCloudStorage } from '../hooks/useCloudStorage';
 
 export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
-  const [scripts, setScripts] = useState([]);
+  const [scripts, setScripts] = useCloudStorage('scripts', []);
   const [activeScript, setActiveScript] = useState(null);
   const [copyingId, setCopyingId] = useState(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  const loadScripts = () => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
-      setScripts(Array.isArray(saved) ? saved : []);
-    } catch (e) {
-      console.error("Error loading scripts:", e);
-      setScripts([]);
-    }
-  };
-
+  // Refresh scripts from cloud when event fires (e.g., after ScriptTab saves)
   useEffect(() => {
-    loadScripts();
-    // Listen for auto-saves from ScriptTab so the list updates in real time
-    window.addEventListener('guru_scripts_updated', loadScripts);
-    return () => window.removeEventListener('guru_scripts_updated', loadScripts);
+    const refresh = () => {}; // useCloudStorage auto-loads; no-op keeps compatibility
+    window.addEventListener('guru_scripts_updated', refresh);
+    return () => window.removeEventListener('guru_scripts_updated', refresh);
   }, [isActive]);
 
   const saveScripts = (newScripts) => {
     setScripts(newScripts);
-    localStorage.setItem('guru_scripts', JSON.stringify(newScripts));
   };
 
   const handleDelete = (id, e) => {

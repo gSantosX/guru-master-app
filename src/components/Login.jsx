@@ -6,13 +6,14 @@ import { User, Lock, Mail, ArrowRight, Sparkles, LogIn, UserPlus, Info, ShieldCh
 import { resolveApiUrl } from '../utils/apiUtils';
 
 export const Login = ({ onClose, isAppContext }) => {
-  const { login, register, sendVerificationCode, verifyCode } = useAuth();
+  const { login, register, sendVerificationCode, verifyCode, checkReferralCode } = useAuth();
   const { isInitialized, checkConnectivity } = useSystemStatus();
   
   // UI States
   const [isLogin, setIsLogin] = useState(true);
+  const [isReferralMode, setIsReferralMode] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
-  const [regStep, setRegStep] = useState('details'); // 'details' | 'verify' | 'security'
+  const [regStep, setRegStep] = useState('details'); // 'details' | 'verify' | 'security' | 'referral-check' | 'referral-final'
   
   // Form Data
   const [formData, setFormData] = useState({ 
@@ -41,6 +42,24 @@ export const Login = ({ onClose, isAppContext }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     if (error) setError('');
     if (success) setSuccess('');
+  };
+
+  const handleCheckReferral = async () => {
+    if (!formData.referralCode) {
+      setError('Por favor, insira o código de indicação.');
+      return;
+    }
+    setIsSubmitting(true);
+    const res = await checkReferralCode(formData.referralCode);
+    setIsSubmitting(false);
+    
+    if (res.success) {
+      setRegStep('referral-final');
+      setError('');
+      setSuccess('Código validado! Complete seu cadastro abaixo.');
+    } else {
+      setError(res.error);
+    }
   };
 
   const handleSendCode = async () => {
@@ -100,7 +119,9 @@ export const Login = ({ onClose, isAppContext }) => {
     }
 
     setIsSubmitting(true);
-    const res = await register(formData.name, formData.email, formData.password, formData.code, formData.referralCode, rememberMe);
+    // If in referral mode, we send empty verificationCode because referralCode is the proof
+    const vCode = isReferralMode ? '' : formData.code;
+    const res = await register(formData.name, formData.email, formData.password, vCode, formData.referralCode, rememberMe);
     setIsSubmitting(false);
     
     if (!res.success) {
@@ -271,11 +292,15 @@ export const Login = ({ onClose, isAppContext }) => {
               >
                 <h1 className="text-3xl font-bold text-white mb-2 text-glow-cyan tracking-tight">Cadastro</h1>
                 <p className="text-gray-500 mb-10 text-[10px] font-bold tracking-[0.3em] uppercase">
-                  {regStep === 'details' ? 'Passo 1: Identificação' : regStep === 'verify' ? 'Passo 2: Verificação' : 'Passo 3: Segurança'}
+                  {regStep === 'details' ? 'Passo 1: Identificação' : 
+                   regStep === 'verify' ? 'Passo 2: Verificação' : 
+                   regStep === 'referral-check' ? 'Validação de Convite' :
+                   regStep === 'referral-final' ? 'Informações de Acesso' :
+                   'Passo 3: Segurança'}
                 </p>
 
                 <div className="w-full space-y-6">
-                  {regStep === 'details' && (
+                  {regStep === 'details' && !isReferralMode && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                       <div className="relative group">
                         <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
@@ -285,30 +310,108 @@ export const Login = ({ onClose, isAppContext }) => {
                         <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
                         <input type="email" name="email" placeholder="E-mail" value={formData.email} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
                       </div>
-                      <div className="relative group">
-                        <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
-                        <input 
-                          type="text" 
-                          name="referralCode" 
-                          placeholder="Código de Recomendação / Acesso" 
-                          value={formData.referralCode} 
-                          onChange={handleChange} 
-                          className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" 
-                        />
-                      </div>
                       <button onClick={handleSendCode} disabled={isSubmitting} className="w-full h-16 bg-[#12121c] border border-neon-cyan/50 text-neon-cyan font-bold uppercase tracking-widest rounded-2xl hover:bg-neon-cyan/10 transition-all">
                         {isSubmitting ? 'Enviando...' : 'Enviar Código'}
                       </button>
+                      
+                      <div className="pt-4 border-t border-white/5 flex justify-center">
+                        <button 
+                          onClick={() => { setIsReferralMode(true); setRegStep('referral-check'); setError(''); setSuccess(''); }}
+                          className="text-[10px] text-neon-cyan font-black uppercase tracking-widest hover:underline"
+                        >
+                          Tenho um código de indicação / acesso exclusivo
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {regStep === 'referral-check' && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                      <div className="text-center mb-6 px-4">
+                        <p className="text-gray-400 text-xs leading-relaxed font-medium">Insira abaixo o código de acesso vitalício que você recebeu por e-mail ou do administrador.</p>
+                      </div>
+                      <div className="relative group">
+                         <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-neon-cyan/50 group-focus-within:text-neon-cyan transition-colors" />
+                         <input 
+                           type="text" 
+                           name="referralCode" 
+                           placeholder="CÓDIGO DE ACESSO" 
+                           value={formData.referralCode} 
+                           onChange={handleChange} 
+                           className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white text-center font-black tracking-[0.2em] outline-none focus:border-neon-cyan transition-all" 
+                         />
+                      </div>
+                      <button onClick={handleCheckReferral} disabled={isSubmitting} className="w-full h-16 bg-neon-cyan text-black font-black uppercase tracking-widest rounded-2xl hover:shadow-[0_0_20px_rgba(0,243,255,0.3)] transition-all">
+                        {isSubmitting ? 'Validando...' : 'Confirmar Código'}
+                      </button>
+                      <button onClick={() => { setIsReferralMode(false); setRegStep('details'); setError(''); }} className="w-full text-xs text-gray-500 hover:text-white transition-colors">Voltar ao cadastro padrão</button>
+                    </motion.div>
+                  )}
+
+                  {regStep === 'referral-final' && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                      <div className="relative group">
+                        <User className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                        <input type="text" name="name" placeholder="Nome Completo" required value={formData.name} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
+                      </div>
+                      <div className="relative group">
+                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-neon-cyan transition-colors" />
+                        <input type="email" name="email" placeholder="E-mail principal" required value={formData.email} onChange={handleChange} className="w-full h-14 bg-white/5 border border-white/10 rounded-xl pl-14 pr-6 text-white outline-none focus:border-neon-cyan transition-all" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="relative group">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                          <input 
+                            type={showRegPassword ? "text" : "password"} 
+                            name="password" 
+                            placeholder="Senha" 
+                            value={formData.password} 
+                            onChange={handleChange} 
+                            className="w-full h-14 bg-white/5 border border-white/10 rounded-xl pl-10 pr-10 text-white text-sm outline-none focus:border-neon-pink transition-all" 
+                          />
+                          <button type="button" onClick={() => setShowRegPassword(!showRegPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+                             {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <div className="relative group">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                          <input 
+                            type={showRegConfirmPassword ? "text" : "password"} 
+                            name="confirmPassword" 
+                            placeholder="Repetir" 
+                            value={formData.confirmPassword} 
+                            onChange={handleChange} 
+                            className="w-full h-14 bg-white/5 border border-white/10 rounded-xl pl-10 pr-10 text-white text-sm outline-none focus:border-neon-pink transition-all" 
+                          />
+                        </div>
+                      </div>
+                      <button onClick={handleFinalRegister} disabled={isSubmitting} className="w-full h-16 bg-gradient-to-r from-neon-cyan to-neon-purple text-black font-black uppercase tracking-widest rounded-2xl hover:shadow-lg transition-all">
+                        {isSubmitting ? 'Finalizando...' : 'Concluir Acesso Vitalício'}
+                      </button>
+                      <button onClick={() => setRegStep('referral-check')} className="w-full text-xs text-gray-500 hover:text-white transition-colors">Voltar para alterar código</button>
                     </motion.div>
                   )}
 
                   {regStep === 'verify' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                       <div className="text-center mb-4"><p className="text-gray-400 text-sm">Enviamos um código de 6 dígitos para:</p><p className="text-neon-cyan font-bold text-sm">{formData.email}</p></div>
-                      <div className="relative">
+                      <div className="relative group">
                         <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                         <input type="text" name="code" maxLength="6" placeholder="6 dígitos" value={formData.code} onChange={handleChange} className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-6 text-white text-center text-3xl font-black tracking-[0.5em] outline-none focus:border-neon-purple transition-all" />
                       </div>
+                      
+                      <div className="relative group opacity-60 hover:opacity-100 transition-opacity">
+                         <Key className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                         <input 
+                           type="text" 
+                           name="referralCode" 
+                           placeholder="Possui código de indicação? (Opcional)" 
+                           value={formData.referralCode} 
+                           onChange={handleChange} 
+                           className="w-full h-12 bg-white/5 border border-white/10 rounded-xl pl-12 pr-6 text-white text-xs outline-none focus:border-neon-cyan transition-all" 
+                         />
+                      </div>
+
                       <button onClick={handleVerifyCode} disabled={isSubmitting} className="w-full h-16 bg-neon-purple text-white font-bold uppercase tracking-widest rounded-2xl hover:shadow-neon-purple transition-all">
                         {isSubmitting ? 'Validando...' : 'Validar Código'}
                       </button>
@@ -370,7 +473,7 @@ export const Login = ({ onClose, isAppContext }) => {
           {/* Toggle Screen (Apenas Web) */}
           {!isAppContext && (
              <button 
-               onClick={() => { setIsLogin(!isLogin); setRegStep('details'); setError(''); setSuccess(''); }}
+               onClick={() => { setIsLogin(!isLogin); setRegStep('details'); setIsReferralMode(false); setError(''); setSuccess(''); }}
                className="mt-10 text-xs text-gray-500 hover:text-neon-cyan transition-colors flex items-center gap-2 group"
              >
                {isLogin ? 'Não tem conta? Começar registro' : 'Já tem conta? Voltar ao Login'}

@@ -7,16 +7,21 @@ import { SystemStatusProvider, useSystemStatus } from './contexts/SystemStatusCo
 import { Login } from './components/Login';
 import { SalesLanding } from './pages/SalesLanding';
 import { GuruMasterApp } from './pages/GuruMasterApp';
+import { ResetPassword } from './components/ResetPassword';
 import InteractiveBackground from './components/InteractiveBackground';
 
 function WebAppContent() {
   const { isAuthenticated, user, logout } = useAuth();
   const { isInitialized } = useSystemStatus();
   
-  const [showLoginComponent, setShowLoginComponent] = useState(window.location.hash === '#login');
+  const [showLoginComponent, setShowLoginComponent] = useState(window.location.hash.includes('login'));
+  const [isResetMode, setIsResetMode] = useState(window.location.hash.includes('reset'));
 
   useEffect(() => {
-    const handleHashChange = () => setShowLoginComponent(window.location.hash === '#login');
+    const handleHashChange = () => {
+      setShowLoginComponent(window.location.hash.includes('login'));
+      setIsResetMode(window.location.hash.includes('reset'));
+    };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
@@ -27,9 +32,13 @@ function WebAppContent() {
     <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden relative">
         <AnimatePresence mode="wait">
           {!isAuthenticated && (
-            showLoginComponent
-              ? <Login key="login" isAppContext={false} onClose={() => { window.location.hash = ''; setShowLoginComponent(false); }} />
-              : <SalesLanding key="sales" onLoginClick={() => window.location.hash = 'login'} />
+            isResetMode ? (
+              <ResetPassword key="reset" onClose={() => { window.location.hash = ''; setIsResetMode(false); }} />
+            ) : showLoginComponent ? (
+              <Login key="login" isAppContext={false} onClose={() => { window.location.hash = ''; setShowLoginComponent(false); }} />
+            ) : (
+              <SalesLanding key="sales" onLoginClick={() => window.location.hash = 'login'} />
+            )
           )}
           
           {isAuthenticated && (
@@ -49,15 +58,15 @@ function WebAppContent() {
 function WebApp() {
   return (
     <GlobalErrorBoundary>
-      <SystemStatusProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <SystemStatusProvider>
           <PersistenceProvider>
             <MotionConfig reducedMotion="user">
               <WebAppContent />
             </MotionConfig>
           </PersistenceProvider>
-        </AuthProvider>
-      </SystemStatusProvider>
+        </SystemStatusProvider>
+      </AuthProvider>
     </GlobalErrorBoundary>
   );
 }

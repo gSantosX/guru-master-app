@@ -20,7 +20,7 @@ const getNavItems = (user = null) => {
     { id: 'profile', label: t('sidebar.profile'), icon: User, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' }
   ];
 
-  if (user?.is_admin) {
+  if (user?.is_admin === true) {
     items.push({ id: 'admin', label: 'Painel Admin', icon: Shield, color: 'text-neon-purple', shadow: 'shadow-neon-purple' });
   }
 

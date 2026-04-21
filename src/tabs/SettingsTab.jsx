@@ -13,6 +13,7 @@ export const SettingsTab = () => {
   const [geminiKeys, setGeminiKeys] = useState(configs.gemini_key || '');
   const [gptKeys, setGptKeys] = useState(configs.gpt_key || '');
   const [grokKeys, setGrokKeys] = useState(configs.grok_key || '');
+  const [geminiPromptsKey, setGeminiPromptsKey] = useState(configs.gemini_prompts_key || '');
   
   const [anthropicKey, setAnthropicKey] = useState(configs.anthropic_key || '');
   const [deepseekKey, setDeepseekKey] = useState(configs.deepseek_key || '');
@@ -34,71 +35,73 @@ export const SettingsTab = () => {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [appFontSize, setAppFontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);
   const [storageInfo, setStorageInfo] = useState({ cache_size: 0, total_space: 21474836480, free_space: 0 }); 
+  const [promptsKeyStatus, setPromptsKeyStatus] = useState('idle'); // 'idle' | 'checking...' | 'online' | 'offline'
 
-  const initialLoadRef = React.useRef(false);
+  // Flag to block auto-save when we're syncing FROM cloud (not user typing)
+  const syncingFromCloud = React.useRef(false);
 
+  // Sync form fields whenever configs change (e.g., after loading from Supabase)
   useEffect(() => {
-    if (isInitialized && !initialLoadRef.current && Object.keys(configs).length > 0) {
-      setGeminiKeys(configs.gemini_key || '');
-      setGptKeys(configs.gpt_key || '');
-      setGrokKeys(configs.grok_key || '');
-      
-      setAnthropicKey(configs.anthropic_key || '');
-      setDeepseekKey(configs.deepseek_key || '');
-      setElevenlabsKey(configs.elevenlabs_key || '');
-      setLeonardoKey(configs.leonardo_key || '');
-      setYoutubeKey(configs.youtube_key || '');
-      setGoogleClientId(configs.google_client_id || '');
-      setSmtpUser(configs.smtp_user || '');
-      setSmtpPass(configs.smtp_password || '');
-      setActiveAi(configs.active_ai);
-      setFfmpegPath(configs.ffmpeg_path || 'ffmpeg');
-      setFfprobePath(configs.ffprobe_path || 'ffprobe');
-      setFlowDownloadsPath(configs.flow_downloads_path || '');
-      
-      initialLoadRef.current = true;
-    }
-  }, [configs, isInitialized]);
+    if (!configs) return;
+    // Block auto-save during sync so we don't overwrite cloud data with empty strings
+    syncingFromCloud.current = true;
+    setGeminiKeys(configs.gemini_key || '');
+    setGptKeys(configs.gpt_key || '');
+    setGrokKeys(configs.grok_key || '');
+    setGeminiPromptsKey(configs.gemini_prompts_key || '');
+    setAnthropicKey(configs.anthropic_key || '');
+    setDeepseekKey(configs.deepseek_key || '');
+    setElevenlabsKey(configs.elevenlabs_key || '');
+    setLeonardoKey(configs.leonardo_key || '');
+    setYoutubeKey(configs.youtube_key || '');
+    setGoogleClientId(configs.google_client_id || '');
+    setSmtpUser(configs.smtp_user || '');
+    setSmtpPass(configs.smtp_password || '');
+    if (configs.active_ai) setActiveAi(configs.active_ai);
+    setFfmpegPath(configs.ffmpeg_path || 'ffmpeg');
+    setFfprobePath(configs.ffprobe_path || 'ffprobe');
+    setFlowDownloadsPath(configs.flow_downloads_path || '');
+    // Release lock after debounce + buffer (1.5s debounce + 1.5s buffer)
+    setTimeout(() => { syncingFromCloud.current = false; }, 3000);
+  }, [configs]);
 
-  // Auto-save logic (Debounce)
+  // Auto-save logic — only fires when USER types (not during cloud sync)
   useEffect(() => {
     const timer = setTimeout(() => {
+      // Skip if we're syncing from cloud to avoid overwriting with stale data
+      if (syncingFromCloud.current) return;
+
       const gmnStr = typeof geminiKeys === 'string' ? geminiKeys : '';
       const gptStr = typeof gptKeys === 'string' ? gptKeys : '';
       const grkStr = typeof grokKeys === 'string' ? grokKeys : '';
 
-      const hasChanges = 
+      const hasChanges =
         gmnStr !== (configs.gemini_key || '') ||
         gptStr !== (configs.gpt_key || '') ||
         grkStr !== (configs.grok_key || '') ||
-        anthropicKey !== configs.anthropic_key ||
-        deepseekKey !== configs.deepseek_key ||
-        elevenlabsKey !== configs.elevenlabs_key ||
-        leonardoKey !== configs.leonardo_key ||
-        youtubeKey !== configs.youtube_key ||
-        googleClientId !== configs.google_client_id ||
-        smtpUser !== configs.smtp_user ||
-        smtpPass !== configs.smtp_password ||
-        ffmpegPath !== configs.ffmpeg_path ||
-        ffprobePath !== configs.ffprobe_path ||
-        flowDownloadsPath !== configs.flow_downloads_path;
+        geminiPromptsKey.trim() !== (configs.gemini_prompts_key || '') ||
+        anthropicKey !== (configs.anthropic_key || '') ||
+        deepseekKey !== (configs.deepseek_key || '') ||
+        elevenlabsKey !== (configs.elevenlabs_key || '') ||
+        leonardoKey !== (configs.leonardo_key || '') ||
+        youtubeKey !== (configs.youtube_key || '') ||
+        googleClientId !== (configs.google_client_id || '') ||
+        smtpUser !== (configs.smtp_user || '') ||
+        smtpPass !== (configs.smtp_password || '') ||
+        ffmpegPath !== (configs.ffmpeg_path || 'ffmpeg') ||
+        ffprobePath !== (configs.ffprobe_path || 'ffprobe') ||
+        flowDownloadsPath !== (configs.flow_downloads_path || '');
 
       if (hasChanges && isInitialized) {
         handleSaveKeys();
       }
-    }, 1500); // Wait 1.5s after typing to save
-
+    }, 1500);
     return () => clearTimeout(timer);
-  }, [geminiKeys, grokKeys, gptKeys, anthropicKey, deepseekKey, elevenlabsKey, leonardoKey, youtubeKey, googleClientId, smtpUser, smtpPass, ffmpegPath, ffprobePath, flowDownloadsPath]);
+  }, [geminiKeys, grokKeys, gptKeys, geminiPromptsKey, anthropicKey, deepseekKey, elevenlabsKey, leonardoKey, youtubeKey, googleClientId, smtpUser, smtpPass, ffmpegPath, ffprobePath, flowDownloadsPath]);
 
   const fetchStorageInfo = async () => {
-    try {
-      const res = await fetch('http://localhost:5000/api/storage/info');
-      const data = await res.json();
-      if (!data.error) setStorageInfo(data);
-    } catch (e) {
-      console.error("Error fetching storage info:", e);
-    }
+    // Storage info only available in local Electron/desktop mode
+    setStorageInfo({ cache_size: 0, total_space: 0, free_space: 0 });
   };
 
   const formatBytes = (bytes, decimals = 1) => {
@@ -117,6 +120,7 @@ export const SettingsTab = () => {
       gemini_key: typeof geminiKeys === 'string' ? geminiKeys.split(',').map(k => k.trim()).filter(Boolean).join(',') : '',
       gpt_key: typeof gptKeys === 'string' ? gptKeys.split(',').map(k => k.trim()).filter(Boolean).join(',') : '',
       grok_key: typeof grokKeys === 'string' ? grokKeys.split(',').map(k => k.trim()).filter(Boolean).join(',') : '',
+      gemini_prompts_key: geminiPromptsKey.trim(),
       anthropic_key: anthropicKey,
       deepseek_key: deepseekKey,
       elevenlabs_key: elevenlabsKey,
@@ -140,26 +144,48 @@ export const SettingsTab = () => {
     }
   };
 
+  // Check key statuses using the REAL configs values (not form field state)
+  // This avoids showing "offline" when fields haven't been filled yet
   const checkAllKeyStatuses = useCallback(async () => {
     if (!isInitialized) return;
-    await checkBulkKeys('gemini', typeof geminiKeys === 'string' ? geminiKeys.split(',').map(k => k.trim()).filter(Boolean) : []);
-    await checkBulkKeys('openai', typeof gptKeys === 'string' ? gptKeys.split(',').map(k => k.trim()).filter(Boolean) : []);
-    await checkBulkKeys('grok', typeof grokKeys === 'string' ? grokKeys.split(',').map(k => k.trim()).filter(Boolean) : []);
-  }, [geminiKeys, gptKeys, grokKeys, isInitialized, checkBulkKeys]);
+    const gemini = (configs.gemini_key || '').split(',').map(k => k.trim()).filter(Boolean);
+    const gpt    = (configs.gpt_key    || '').split(',').map(k => k.trim()).filter(Boolean);
+    const grok   = (configs.grok_key   || '').split(',').map(k => k.trim()).filter(Boolean);
+    if (gemini.length > 0) await checkBulkKeys('gemini', gemini);
+    if (gpt.length > 0)    await checkBulkKeys('openai', gpt);
+    if (grok.length > 0)   await checkBulkKeys('grok', grok);
 
+    // Validate the exclusive prompts key separately
+    const promptsKey = (configs.gemini_prompts_key || '').trim();
+    if (promptsKey) {
+      setPromptsKeyStatus('checking...');
+      try {
+        const res = await fetch('/api/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: 'gemini', keys: [promptsKey] })
+        });
+        const data = await res.json();
+        setPromptsKeyStatus(data.statuses?.[0] || 'offline');
+      } catch {
+        setPromptsKeyStatus('offline');
+      }
+    } else {
+      setPromptsKeyStatus('idle');
+    }
+  }, [configs, isInitialized, checkBulkKeys]);
+
+  // Run key check once configs are fully loaded (not just initialized)
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized && (configs.gemini_key || configs.gpt_key || configs.grok_key || configs.gemini_prompts_key)) {
       checkAllKeyStatuses();
     }
-  }, [isInitialized]); // Run once when tab loads
+  }, [isInitialized, configs.gemini_key, configs.gpt_key, configs.grok_key, configs.gemini_prompts_key]);
 
   const handleReconnect = async () => {
     setIsReconnecting(true);
-    try {
-      await fetch(resolveApiUrl('/api/check?force=true'));
-    } catch (e) {}
     await checkConnectivity();
-    setTimeout(() => setIsReconnecting(false), 800);
+    setTimeout(() => setIsReconnecting(false), 1200);
   };
 
   const handleThemeChange = (newTheme) => {
@@ -421,6 +447,36 @@ export const SettingsTab = () => {
                   setKeysStr={setGrokKeys} 
                   placeholder="xai-..." 
                 />
+              </div>
+
+              {/* ── CHAVE EXCLUSIVA GERADOR DE PROMPTS ─────────────── */}
+              <div className="pt-3 border-t border-neon-pink/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-4 h-4 rounded bg-gradient-to-br from-neon-pink to-neon-purple flex items-center justify-center shrink-0">
+                    <span className="text-[8px]">✦</span>
+                  </div>
+                  <label className="text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-neon-pink to-neon-purple bg-clip-text text-transparent">
+                    Chave Exclusiva — Gerador de Prompts
+                  </label>
+                </div>
+                <p className="text-[9px] text-gray-500 italic mb-2 pl-6">
+                  Esta chave será usada <span className="text-neon-pink font-bold">somente</span> na aba "Gerador de Prompts". 
+                  Se vazia, usa a chave Gemini principal. Ideal para separar cotas de uso.
+                </p>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={geminiPromptsKey}
+                    onChange={(e) => setGeminiPromptsKey(e.target.value)}
+                    placeholder="AIza... (chave exclusiva para prompts)"
+                    className="w-full bg-dark/50 border border-neon-pink/20 rounded-lg p-2.5 text-gray-300 focus:outline-none focus:border-neon-pink/50 text-xs font-mono transition-all hover:bg-dark/70 shadow-[0_0_10px_rgba(255,44,182,0.05)] focus:shadow-[0_0_15px_rgba(255,44,182,0.15)]"
+                  />
+                  {geminiPromptsKey && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-neon-pink/20 text-neon-pink font-black uppercase tracking-wider border border-neon-pink/30">Prompts</span>
+                    </div>
+                  )}
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-300 block mb-1">Anthropic (Claude) Key</label>
@@ -792,6 +848,37 @@ export const SettingsTab = () => {
                  icon={Shield} 
                  error={status.gemini === 'offline' && geminiKeys.length > 0 ? 'Limite excedido ou chave inválida' : null}
                />
+
+               {/* Status da chave exclusiva de prompts */}
+               {promptsKeyStatus !== 'idle' && (
+                 <div className="p-3 rounded-xl border flex flex-col gap-1"
+                   style={{ background: 'rgba(255,44,182,0.04)', borderColor: 'rgba(255,44,182,0.2)' }}
+                 >
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                       <span className="text-xs" style={{ color: '#ff2cb6' }}>✦</span>
+                       <span className="text-sm text-gray-300">Chave de Prompts</span>
+                     </div>
+                     <span className={`text-[10px] px-2.5 py-0.5 rounded-lg font-black tracking-widest uppercase shadow-sm ${
+                       promptsKeyStatus === 'online'      ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                       promptsKeyStatus === 'checking...' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' :
+                       'bg-red-500/10 text-red-400 border border-red-500/20'
+                     }`}>
+                       {promptsKeyStatus === 'online' ? 'LIGADO' : promptsKeyStatus === 'checking...' ? 'TESTANDO' : 'DESLIGADO'}
+                     </span>
+                   </div>
+                   {promptsKeyStatus === 'offline' && (
+                     <p className="text-[10px] text-red-400/80 mt-1 flex items-center gap-1">
+                       <AlertCircle className="w-3 h-3" /> Chave exclusiva inválida ou com cota esgotada
+                     </p>
+                   )}
+                   {promptsKeyStatus === 'online' && (
+                     <p className="text-[10px] mt-1" style={{ color: 'rgba(255,44,182,0.7)' }}>
+                       ✦ Apenas a aba Gerador de Prompts usa esta chave
+                     </p>
+                   )}
+                 </div>
+               )}
 
                <StatusItem 
                  label={t('settings.openai_connection')} 

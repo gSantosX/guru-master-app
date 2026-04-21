@@ -9,6 +9,7 @@ export const ResetPassword = ({ onClose }) => {
     confirmPassword: '' 
   });
   const [token, setToken] = useState('');
+  const [email, setEmail] = useState('');
   const [status, setStatus] = useState('idle'); // 'idle' | 'submitting' | 'success' | 'error'
   const [error, setError] = useState('');
   
@@ -20,9 +21,13 @@ export const ResetPassword = ({ onClose }) => {
   useEffect(() => {
     const hash = window.location.hash;
     const params = new URLSearchParams(hash.split('?')[1]);
-    const t = params.get('token');
+    const t = params.get('t') || params.get('token');
+    const e = params.get('e') || params.get('email');
+    
     if (t) setToken(t);
     else setError('Token de recuperação não encontrado.');
+    
+    if (e) setEmail(decodeURIComponent(e));
   }, []);
 
   const handleChange = (e) => {
@@ -80,6 +85,11 @@ export const ResetPassword = ({ onClose }) => {
           </div>
 
           <h1 className="text-3xl font-bold text-white mb-2 text-glow-cyan tracking-tight text-center">Nova Senha</h1>
+          {email && (
+            <div className="mb-4 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full">
+              <p className="text-[10px] text-neon-cyan font-bold uppercase tracking-widest text-center">{email}</p>
+            </div>
+          )}
           <p className="text-gray-500 mb-10 text-xs font-bold tracking-widest uppercase text-center">Crie suas novas credenciais de acesso</p>
 
           <AnimatePresence mode="wait">

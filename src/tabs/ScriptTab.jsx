@@ -9,6 +9,7 @@ import { resolveApiUrl } from '../utils/apiUtils';
 import { callAI } from '../utils/aiUtils';
 import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
+import { useCloudStorage } from '../hooks/useCloudStorage';
 
 const DNA_OPTIONS = [
   "Linear Tradicional", "Jornada do Herói", "O Grande Mistério", "Ponto vs Contraponto",
@@ -69,6 +70,7 @@ const FORMALITY_OPTIONS = ["Baixo", "Médio", "Alto"];
 export const ScriptTab = ({ setActiveTab }) => {
   const { configs, showToast } = useSystemStatus();
   const { scriptState, setScriptState } = usePersistence();
+  const [cloudScripts, setCloudScripts] = useCloudStorage('scripts', []);
   
   const {
     titulo, dna, alma, cta, nicho, idioma, formato, natureza, 
@@ -265,11 +267,13 @@ CONTEXTO FINAL:
       setGenerationProgress(100);
       setStatusMessage('Roteiro Magistral Concluído!');
       
-      // AUTO-SAVE: sempre salva cada roteiro gerado com ID único
+      // AUTO-SAVE to cloud (per-user account)
       const generatedId = Date.now();
-      const existingScripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
       const toSave = { ...finalScript, id: generatedId, length: cleanedContent.length };
-      localStorage.setItem('guru_scripts', JSON.stringify([toSave, ...existingScripts].slice(0, 6)));
+      setCloudScripts(prev => {
+        const existing = Array.isArray(prev) ? prev : [];
+        return [toSave, ...existing].slice(0, 30); // Keep up to 30 scripts per user
+      });
       setLastSavedId(generatedId);
       window.dispatchEvent(new Event('guru_scripts_updated'));
       showToast("✅ Roteiro salvo em Roteiros Prontos!", "success");
@@ -294,8 +298,8 @@ CONTEXTO FINAL:
 
   const handleGoToPrompts = () => {
     if (!generatedScript || !lastSavedId) {
-      // If for some reason we lost the ID, try to find the most recent one
-      const scripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+      // If for some reason we lost the ID, try to find the most recent one from cloud
+      const scripts = Array.isArray(cloudScripts) ? cloudScripts : [];
       if (scripts.length > 0) {
         localStorage.setItem('guru_image_prompt_trigger_id', scripts[0].id.toString());
         localStorage.setItem('guru_image_prompt_auto_analyze', 'true');

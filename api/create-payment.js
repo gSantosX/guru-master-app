@@ -16,7 +16,7 @@ export default async function handler(req, res) {
 
     // Create a PaymentIntent with the final exact price
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: 4700, // R$ 47,00 represented in cents
+      amount: 2990, // R$ 29,90 represented in cents
       currency: 'brl',
       payment_method_types: ['card', 'pix'],
       receipt_email: email,

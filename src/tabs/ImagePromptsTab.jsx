@@ -23,7 +23,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { resolveApiUrl } from '../utils/apiUtils';
-import { callAI } from '../utils/aiUtils';
+import { callAI, callGemini } from '../utils/aiUtils';
 import { stackPush, stackRead, stackRemove } from '../utils/stackUtils';
 import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
@@ -52,6 +52,10 @@ const VISUAL_STYLES = [
 ];
 export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const { status, configs } = useSystemStatus();
+
+  // Use dedicated prompts key if set, otherwise fall back to main Gemini key
+  const getPromptsApiKey = () => configs.gemini_prompts_key?.trim() || configs.gemini_key || '';
+
   const { promptState, setPromptState } = usePersistence();
   const { 
     file, 
@@ -157,7 +161,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       ROTEIRO PARA ANÁLISE:
       ${scriptToAnalyze.substring(0, 4500)}`;
 
-      const response = await callAI(analysisPrompt, { model: 'gemini-2.5-flash', temperature: 0.1 });
+      const response = await callGemini(getPromptsApiKey(), analysisPrompt, { model: 'gemini-2.5-flash', temperature: 0.1 });
       const cleanJson = response.replace(/```json|```/g, '').trim();
       const dna = JSON.parse(cleanJson);
       setVisualDNA(dna);
@@ -340,7 +344,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         Repair these blocks keeping original descriptions:
         ${repaired}`;
         
-        const aiRepaired = await callAI(repairPrompt, { model: 'gemini-2.5-flash' });
+        const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-2.5-flash' });
         repaired = aiRepaired.trim();
         setRepairLogs(prev => [...prev, "✓ Reparo de Estrutura via IA Concluído"]);
       }
@@ -512,7 +516,7 @@ GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
               step: globalRetry > 0 ? `Corrigindo Bloco ${i+1}...` : `Processando Bloco ${i+1}/${totalChunks}...` 
             }));
 
-            const responseText = await callAI(promptParam, { model: 'gemini-2.5-flash' });
+            const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.5-flash' });
             success = true;
             
             // Success processing
@@ -691,7 +695,7 @@ GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
         const promptBatchQuery = `${getSystemPrompt()}\n\nSCRIPT SEGMENT (BLOCK ${i+1}):\n"${segment}"\n\nGENERATE ELITE PROMPTS (ENGLISH ONLY):`;
  
         try {
-          const batchResult = await callAI(promptBatchQuery);
+          const batchResult = await callGemini(getPromptsApiKey(), promptBatchQuery);
           
           let processedBatch = "";
           if (genMode === 'quality') {

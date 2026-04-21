@@ -10,6 +10,10 @@ import forgotPasswordHandler from './api/auth/forgot-password.js';
 import resetPasswordHandler from './api/auth/reset-password.js';
 import createPaymentHandler from './api/create-payment.js';
 import webhookHandler from './api/webhook.js';
+import brainContextHandler from './api/brain/context.js';
+import brainLearnHandler from './api/brain/learn.js';
+import checkHandler from './api/check.js';
+import debugHandler from './api/debug.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +42,12 @@ app.post('/api/auth/forgot-password', vercelToExpress(forgotPasswordHandler));
 app.post('/api/auth/reset-password', vercelToExpress(resetPasswordHandler));
 app.post('/api/create-payment', vercelToExpress(createPaymentHandler));
 app.post('/api/webhook', vercelToExpress(webhookHandler));
+app.get('/api/brain/context', vercelToExpress(brainContextHandler));
+app.post('/api/brain/learn', vercelToExpress(brainLearnHandler));
+app.get('/api/check', vercelToExpress(checkHandler));
+app.get('/api/check/bulk', vercelToExpress(checkHandler));
+app.get('/api/check_update', vercelToExpress(checkHandler));
+app.get('/api/debug', vercelToExpress(debugHandler));
 
 // Serve Static Files (Frontend)
 app.use(express.static(path.join(__dirname, 'dist')));

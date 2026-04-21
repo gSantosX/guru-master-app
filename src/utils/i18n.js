@@ -1,6 +1,7 @@
 const TRANSLATIONS = {
   pt: {
     sidebar: {
+      dashboard: "DashBoard",
       create_script: "Criar Roteiro",
       ready_scripts: "Roteiros Prontos",
       image_prompts: "Gerador de Prompts",
@@ -24,6 +25,34 @@ const TRANSLATIONS = {
       system_status: "Status do Sistema",
       reconnect: "Reconectar",
       reconnecting: "Reconectando..."
+    },
+    dashboard: {
+      title: "DashBoard",
+      subtitle: "Visão geral da sua conta e acesso rápido às ferramentas.",
+      welcome: "Bem-vindo de volta,",
+      plan_status: "Status do Plano",
+      shortcuts: "Atalhos Rápidos",
+      remaining_days: "Dias Restantes",
+      active_until: "Ativo até",
+      unlimited: "Acesso Vitalício",
+      tools_summary: "Ferramentas",
+      scripts_desc: "Gerador de roteiros com IA ultra-humana.",
+      whisk_desc: "Automação massiva de imagens para vídeos.",
+      capas_desc: "Criação de thumbs virais e profissionais.",
+      monitoring_desc: "Acompanhe canais e tendências em tempo real."
+    },
+    help: {
+      title: "Central de Ajuda",
+      subtitle: "Tutoriais, documentação e suporte técnico.",
+      contact_support: "Suporte Técnico",
+      contact_desc: "Precisa de ajuda personalizada? Entre em contato por e-mail.",
+      email_support: "suporte.gurumaster@gmail.com",
+      tutorials: "Tutoriais em Vídeo",
+      how_to_use: "Como utilizar o App",
+      how_to_use_desc: "Guia completo do painel às ferramentas.",
+      connect_api: "Conexão com API",
+      connect_api_desc: "Como configurar e validar suas chaves de IA.",
+      watch_video: "Assitir Tutorial"
     },
     profile: {
       title: "Perfil do Usuário",
@@ -205,6 +234,7 @@ const TRANSLATIONS = {
   },
   en: {
     sidebar: {
+      dashboard: "DashBoard",
       create_script: "Create Script",
       ready_scripts: "Ready Scripts",
       image_prompts: "Prompt Generator",
@@ -225,6 +255,34 @@ const TRANSLATIONS = {
       user_guru: "Guru User",
       view_profile: "Profile",
       pro_member: "Pro Member"
+    },
+    dashboard: {
+      title: "DashBoard",
+      subtitle: "Account overview and quick access to tools.",
+      welcome: "Welcome back,",
+      plan_status: "Plan Status",
+      shortcuts: "Quick Shortcuts",
+      remaining_days: "Remaining Days",
+      active_until: "Active until",
+      unlimited: "Lifetime Access",
+      tools_summary: "Tools",
+      scripts_desc: "AI script generator with ultra-human touch.",
+      whisk_desc: "Massive image automation for videos.",
+      capas_desc: "Viral and professional thumbnail creation.",
+      monitoring_desc: "Track channels and trends in real-time."
+    },
+    help: {
+      title: "Help Center",
+      subtitle: "Tutorials, documentation, and technical support.",
+      contact_support: "Technical Support",
+      contact_desc: "Need personalized help? Contact us via email.",
+      email_support: "suporte.gurumaster@gmail.com",
+      tutorials: "Video Tutorials",
+      how_to_use: "How to use the App",
+      how_to_use_desc: "Complete guide from dashboard to tools.",
+      connect_api: "API Connection",
+      connect_api_desc: "How to configure and validate your AI keys.",
+      watch_video: "Watch Tutorial"
     },
     profile: {
       title: "User Profile",
@@ -406,6 +464,7 @@ const TRANSLATIONS = {
   },
   es: {
     sidebar: {
+      dashboard: "DashBoard",
       create_script: "Crear Guion",
       ready_scripts: "Guiones Listos",
       image_prompts: "Generador de Prompts",
@@ -426,6 +485,34 @@ const TRANSLATIONS = {
       user_guru: "Usuario Guru",
       view_profile: "Perfil",
       pro_member: "Miembro Pro"
+    },
+    dashboard: {
+      title: "DashBoard",
+      subtitle: "Resumen de su cuenta y acceso rápido a herramientas.",
+      welcome: "Bienvenido de nuevo,",
+      plan_status: "Estado del Plan",
+      shortcuts: "Atajos Rápidos",
+      remaining_days: "Días Restantes",
+      active_until: "Activo hasta",
+      unlimited: "Acceso Vitalicio",
+      tools_summary: "Herramientas",
+      scripts_desc: "Generador de guiones con IA ultra-humana.",
+      whisk_desc: "Automatización masiva de imágenes para videos.",
+      capas_desc: "Creación de miniaturas virales y profesionales.",
+      monitoring_desc: "Siga canales y tendencias en tiempo real."
+    },
+    help: {
+      title: "Centro de Ayuda",
+      subtitle: "Tutoriales, documentación y soporte técnico.",
+      contact_support: "Soporte Técnico",
+      contact_desc: "¿Necesita ayuda personalizada? Contáctenos por correo electrónico.",
+      email_support: "suporte.gurumaster@gmail.com",
+      tutorials: "Tutoriales en Vídeo",
+      how_to_use: "Como utilizar la App",
+      how_to_use_desc: "Guía completa desde el panel hasta las herramientas.",
+      connect_api: "Conexión de API",
+      connect_api_desc: "Cómo configurar e validar sus claves de IA.",
+      watch_video: "Ver Tutorial"
     },
     profile: {
       title: "Perfil de Usuario",

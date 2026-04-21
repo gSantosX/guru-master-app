@@ -21,9 +21,11 @@ const ChannelModelerTab = React.lazy(() => import('../tabs/ChannelModelerTab').t
 const ChannelMiningTab = React.lazy(() => import('../tabs/ChannelMiningTab').then(m => ({ default: m.ChannelMiningTab })));
 const NicheIdentifierTab = React.lazy(() => import('../tabs/NicheIdentifierTab').then(m => ({ default: m.NicheIdentifierTab })));
 const AdminTab = React.lazy(() => import('../tabs/AdminTab').then(m => ({ default: m.AdminTab })));
+const DashboardTab = React.lazy(() => import('../tabs/DashboardTab').then(m => ({ default: m.DashboardTab })));
+const HelpTab = React.lazy(() => import('../tabs/HelpTab').then(m => ({ default: m.HelpTab })));
 
 const tabComponents = {
-  'dashboard': NicheIdentifierTab, // Default landing para análise de nicho
+  'dashboard': DashboardTab,
   'create-script': ScriptTab,
   'ready-scripts': ReadyScriptsTab,
   'capa-video': VideoCoverTab,
@@ -38,13 +40,14 @@ const tabComponents = {
   'niche-identifier': NicheIdentifierTab,
   'channel-modeler': ChannelModelerTab,
   'admin': AdminTab,
+  'help': HelpTab,
   'settings': SettingsTab
 };
 
 export const GuruMasterApp = () => {
   const { user, logout } = useAuth();
   const { isInitialized, toast } = useSystemStatus();
-  const [activeTab, setActiveTab] = useState('niche-identifier');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [theme] = useState(localStorage.getItem('guru_theme') || 'neon');
   const [reduceMotion] = useState(localStorage.getItem('guru_reduce_motion') === 'true');
   const [fontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);

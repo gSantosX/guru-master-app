@@ -29,6 +29,7 @@ import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { callAI } from '../utils/aiUtils';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { useCloudStorage } from '../hooks/useCloudStorage';
 
 const LANGUAGES = [
   { name: "Inglês (EUA/Reino Unido) 🚀", code: "en-US", region: "US", rpm: 6.50 },
@@ -60,21 +61,7 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
   const [copiedSection, setCopiedSection] = useState(null);
   const [loadingStep, setLoadingStep] = useState('');
 
-  const [history, setHistory] = useState(() => {
-    try {
-      const saved = localStorage.getItem('guru_niche_identifier_history');
-      if(saved) {
-        let parsed = JSON.parse(saved);
-        // Purging old formats to avoid crashes (V3 or below)
-        if(parsed.length > 0 && !parsed[0].data.gapAnalysis) {
-           localStorage.removeItem('guru_niche_identifier_history');
-           parsed = [];
-        }
-        return parsed;
-      }
-      return [];
-    } catch { return []; }
-  });
+  const [history, setHistory] = useCloudStorage('niche_history', []);
 
   const saveToHistory = (newResult, langInfo) => {
     const newEntry = {
@@ -84,15 +71,17 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
       data: newResult,
       date: new Date().toLocaleDateString()
     };
-    const updatedHistory = [newEntry, ...history].slice(0, 30);
-    setHistory(updatedHistory);
-    localStorage.setItem('guru_niche_identifier_history', JSON.stringify(updatedHistory));
+    setHistory(prev => {
+      const existing = Array.isArray(prev) ? prev : [];
+      // Filter out old format entries without gapAnalysis
+      const valid = existing.filter(h => h?.data?.gapAnalysis);
+      return [newEntry, ...valid].slice(0, 30);
+    });
   };
 
   const clearHistory = () => {
     if(window.confirm("Deseja apagar permanentemente o histórico de nichos analisados?")) {
       setHistory([]);
-      localStorage.removeItem('guru_niche_identifier_history');
     }
   };
 

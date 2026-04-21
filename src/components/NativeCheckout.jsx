@@ -175,7 +175,7 @@ export const NativeCheckout = ({ userEmail, onVerificationSuccess }) => {
        <h3 className="text-xl font-black text-white mb-6 flex items-center justify-between">
          Segurança do Plano
          <span className="text-xs px-3 py-1 bg-white/5 border border-white/10 rounded-full font-mono text-gray-400 font-normal">
-           R$ 47,00
+           R$ 29,90
          </span>
        </h3>
 
