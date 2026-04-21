@@ -6,6 +6,7 @@ import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { usePersistence } from '../contexts/PersistenceContext';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { callAI } from '../utils/aiUtils';
+import { useCloudStorage } from '../hooks/useCloudStorage';
 
 const THUMBNAIL_STYLES = [
     { id: 'cinematic', label: 'Cinematográfico', icon: Sparkles, prompt: 'Cinematic lighting, high contrast, shallow depth of field, blockbuster movie poster aesthetic, extremely detailed textures.' },
@@ -103,11 +104,14 @@ export const VideoCoverTab = ({ isActive }) => {
     
     const ENGINES = []; // Keep empty or just remove entirely. Let's just remove them.
 
+    const [cloudScripts] = useCloudStorage('scripts', []);
+    const [scripts, setScripts] = useState([]);
+
     useEffect(() => {
         if (!isActive) return;
-        const saved = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
-        setScripts(Array.isArray(saved) ? saved : []);
-    }, [isActive]);
+        const fallback = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
+        setScripts(cloudScripts.length > 0 ? cloudScripts : fallback);
+    }, [isActive, cloudScripts]);
 
     const handleSelectScript = (script) => {
         updateCoverState({

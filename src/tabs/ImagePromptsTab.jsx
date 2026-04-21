@@ -28,6 +28,7 @@ import { stackPush, stackRead, stackRemove } from '../utils/stackUtils';
 import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
+import { useCloudStorage } from '../hooks/useCloudStorage';
 
 const VISUAL_STYLES = [
   { id: 'ultra-realista',    label: '📷 Ultra-Realista',      desc: 'Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita' },
@@ -52,6 +53,7 @@ const VISUAL_STYLES = [
 ];
 export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const { status, configs } = useSystemStatus();
+  const [cloudScripts] = useCloudStorage('scripts', []);
 
   const { promptState, setPromptState } = usePersistence();
   const { 
@@ -98,7 +100,9 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   };
 
   const loadScripts = () => {
-    const savedScripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+    // Agora o dropdown utilizará "cloudScripts" que já é um estado reativo,
+    // mas mantemos este utilitário para caso o hook demore, ele ter fallback instantâneo.
+    const savedScripts = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
     const scriptsArray = Array.isArray(savedScripts) ? savedScripts : [];
     setAvailableScripts(scriptsArray);
     return scriptsArray;
@@ -116,7 +120,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       
       if (!script) {
         console.warn("⚠️ [DNA_DEBUG] Script não encontrado no estado. Lendo localStorage...");
-        const freshScripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+        const freshScripts = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
         script = freshScripts.find(s => String(s.id) === String(targetId));
       }
 
@@ -812,8 +816,8 @@ GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
               onChange={(e) => setSelectedScriptId(e.target.value)}
               className="flex-1 min-w-[200px] bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-gray-400 focus:outline-none focus:border-neon-purple/50 hover:bg-white/10 transition-all cursor-pointer"
            >
-              <option value="">-- Meus Projetos Salvos --</option>
-              {availableScripts.map(s => (
+              <option value="">-- MEUS PROJETOS SALVOS --</option>
+              {(cloudScripts.length > 0 ? cloudScripts : availableScripts).map(s => (
                  <option key={s.id} value={s.id} className="bg-dark text-white">{s.title}</option>
               ))}
            </select>
