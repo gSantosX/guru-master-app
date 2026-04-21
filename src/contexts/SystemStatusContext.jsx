@@ -190,6 +190,9 @@ export const SystemStatusProvider = ({ children }) => {
   // ── STEP 4: Check Gemini / OpenAI / Grok connectivity ────────────
   const checkAllApiKeys = useCallback(async (cfg) => {
     const c = cfg || configsRef.current;
+    const geminiKeys = (c.gemini_key || '').split(',').map(k => k.trim()).filter(Boolean);
+    const gptKeys    = (c.gpt_key || '').split(',').map(k => k.trim()).filter(Boolean);
+    const grokKeys   = (c.grok_key || '').split(',').map(k => k.trim()).filter(Boolean);
     const promptsKey = (c.gemini_prompts_key || '').trim();
     const youtubeKey = (c.youtube_key || '').trim();
 
