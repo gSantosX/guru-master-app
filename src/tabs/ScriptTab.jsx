@@ -119,7 +119,8 @@ export const ScriptTab = ({ setActiveTab }) => {
 
       const response = await callAI(prompt, { 
         model: configs.active_model,
-        temperature: 0.1 
+        temperature: 0.1,
+        isPromptTask: true
       });
       
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -219,7 +220,8 @@ RESPONDA APENAS COM O TEXTO DA NARRAÇÃO.`;
       let response = await callAI(fullPrompt, {
         model: configs.active_model,
         maxOutputTokens: estimatedTokens,
-        temperature: 0.7
+        temperature: 0.7,
+        isPromptTask: true
       });
 
       let cleanedContent = cleanScript(response);
@@ -245,7 +247,8 @@ CONTEXTO FINAL:
         const expandedResponse = await callAI(expansionPrompt, {
           model: configs.active_model,
           maxOutputTokens: 8192,
-          temperature: 0.8
+          temperature: 0.8,
+          isPromptTask: true
         });
 
         cleanedContent = cleanedContent + "\n\n" + cleanScript(expandedResponse);

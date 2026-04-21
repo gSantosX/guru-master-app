@@ -145,6 +145,16 @@ export const SystemStatusProvider = ({ children }) => {
     }
     return null;
   }, []); // no deps — uses emailRef which is always current
+  
+  // ── Sync configs to localStorage for aiUtils motor ───────────────
+  useEffect(() => {
+    if (configs.gemini_key) localStorage.setItem('guru_gemini_key', configs.gemini_key);
+    if (configs.gpt_key) localStorage.setItem('guru_gpt_key', configs.gpt_key);
+    if (configs.grok_key) localStorage.setItem('guru_grok_key', configs.grok_key);
+    if (configs.gemini_prompts_key) localStorage.setItem('guru_gemini_prompts_key', configs.gemini_prompts_key);
+    if (configs.active_ai) localStorage.setItem('guru_active_ai', configs.active_ai);
+    if (configs.gemini_active_idx !== undefined) localStorage.setItem('guru_gemini_active_idx', configs.gemini_active_idx.toString());
+  }, [configs]);
 
   // ── STEP 3: Ping API keys for Gemini / OpenAI / Grok ──────────────
   const checkBulkKeys = useCallback(async (provider, keys) => {

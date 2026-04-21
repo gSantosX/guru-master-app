@@ -507,9 +507,17 @@ export const callAI = async (prompt, options = {}) => {
   const activeAI = localStorage.getItem('guru_active_ai') || 'Gemini';
   
   if (activeAI === 'Gemini') {
-    const keys = localStorage.getItem('guru_gemini_key') || '';
+    // Prioritize exclusive prompts key if this is a prompt task
+    const promptsKey = localStorage.getItem('guru_gemini_prompts_key') || '';
+    const mainKeys = localStorage.getItem('guru_gemini_key') || '';
+    
+    if (options.isPromptTask && promptsKey) {
+      console.log('💎 Using Exclusive Prompts Key for this task');
+      return await callGemini(promptsKey, prompt, { ...options, forcedIndex: 0 });
+    }
+    
     const idx = parseInt(localStorage.getItem('guru_gemini_active_idx') || '0');
-    return await callGemini(keys, prompt, { ...options, forcedIndex: idx });
+    return await callGemini(mainKeys, prompt, { ...options, forcedIndex: idx });
   } else if (activeAI === 'OpenAI' || activeAI === 'GPT') {
     const keys = localStorage.getItem('guru_gpt_key') || '';
     const idx = parseInt(localStorage.getItem('guru_gpt_active_idx') || '0');
