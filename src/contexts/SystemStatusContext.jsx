@@ -249,10 +249,15 @@ export const SystemStatusProvider = ({ children }) => {
 
   // ── MASTER: server → configs → keys ───────────────────────────────
   const checkConnectivity = useCallback(async () => {
-    await checkServer();
-    const freshConfigs = await loadConfigs();
-    if (freshConfigs) await checkAllApiKeys(freshConfigs);
-    setIsInitialized(true);
+    try {
+      await checkServer();
+      const freshConfigs = await loadConfigs();
+      if (freshConfigs) await checkAllApiKeys(freshConfigs);
+    } catch (err) {
+      console.error('[SystemStatus] Boot check failed:', err);
+    } finally {
+      setIsInitialized(true);
+    }
   }, [checkServer, loadConfigs, checkAllApiKeys]);
 
   // ── updateConfig: save to Supabase — uses emailRef (always current) ─
