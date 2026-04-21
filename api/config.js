@@ -49,7 +49,20 @@ export default async function handler(req, res) {
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      return res.status(200).json(data || { ...DEFAULTS, email });
+      // Fallback: buscar gemini_prompts_key da tabela guru_user_data
+      const { data: userData } = await supabase
+        .from('guru_user_data')
+        .select('data_value')
+        .eq('email', email)
+        .eq('data_key', 'gemini_prompts_key')
+        .single();
+
+      const baseConfig = data || { ...DEFAULTS, email };
+      if (userData?.data_value) {
+        baseConfig.gemini_prompts_key = userData.data_value;
+      }
+
+      return res.status(200).json(baseConfig);
     } catch (err) {
       console.error('Config GET error:', err);
       return res.status(500).json({ error: 'Erro ao buscar configurações' });
@@ -58,14 +71,31 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { email: _e, ...rest } = req.body;
+      const { email: _e, gemini_prompts_key, ...rest } = req.body;
+      
+      // 1. Salvar config principal (removendo gemini_prompts_key para evitar erro de coluna inexistente)
       const payload = { email, ...rest, updated_at: new Date().toISOString() };
-
       const { error } = await supabase
         .from(TABLE)
         .upsert(payload, { onConflict: 'email' });
 
       if (error) throw error;
+
+      // 2. Salvar gemini_prompts_key na tabela flexível guru_user_data
+      if (gemini_prompts_key !== undefined) {
+        const { error: err2 } = await supabase
+          .from('guru_user_data')
+          .upsert(
+            { 
+              email, 
+              data_key: 'gemini_prompts_key', 
+              data_value: gemini_prompts_key, 
+              updated_at: new Date().toISOString() 
+            },
+            { onConflict: 'email,data_key' }
+          );
+        if (err2) console.error('Error saving prompts key fallback:', err2);
+      }
 
       return res.status(200).json({ success: true });
     } catch (err) {
