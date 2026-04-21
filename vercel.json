@@ -10,7 +10,6 @@
     { "source": "/api/auth/reset-password", "destination": "/api/auth?action=reset-password" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/login", "destination": "/index.html#login" },
-    { "handle": "filesystem" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
