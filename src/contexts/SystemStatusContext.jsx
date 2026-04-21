@@ -84,7 +84,6 @@ export const SystemStatusProvider = ({ children }) => {
       elevenlabs:  c.elevenlabs_key?.trim()   ? 'configured' : 'unconfigured',
       leonardo:    c.leonardo_key?.trim()     ? 'configured' : 'unconfigured',
       youtube:     c.youtube_key?.trim()      ? 'configured' : 'unconfigured',
-      prompts_key: c.gemini_prompts_key?.trim() ? 'configured' : 'unconfigured',
       smtp:        c.smtp_user?.trim()        ? 'configured' : 'unconfigured',
     }));
   }, [configs]);
@@ -185,14 +184,42 @@ export const SystemStatusProvider = ({ children }) => {
     const gptKeys    = (c.gpt_key    || '').split(',').map(k => k.trim()).filter(Boolean);
     const grokKeys   = (c.grok_key   || '').split(',').map(k => k.trim()).filter(Boolean);
 
+    const promptsKey = (c.gemini_prompts_key || '').trim();
+
     if (geminiKeys.length === 0) setStatus(prev => ({ ...prev, gemini: 'offline' }));
     if (gptKeys.length    === 0) setStatus(prev => ({ ...prev, openai: 'offline' }));
     if (grokKeys.length   === 0) setStatus(prev => ({ ...prev, grok:   'offline' }));
+    if (!promptsKey)           setStatus(prev => ({ ...prev, prompts_key: 'unconfigured' }));
 
     const checks = [];
     if (geminiKeys.length > 0) checks.push(checkBulkKeys('gemini', geminiKeys));
     if (gptKeys.length    > 0) checks.push(checkBulkKeys('openai', gptKeys));
     if (grokKeys.length   > 0) checks.push(checkBulkKeys('grok',   grokKeys));
+    
+    // Check exclusive prompts key
+    if (promptsKey) {
+      checks.push((async () => {
+        try {
+          const res = await fetch(resolveApiUrl('/api/check'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider: 'gemini', keys: [promptsKey] }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const best = data.statuses?.[0] || 'offline';
+            const reason = data.debug?.[0] || '';
+            setStatus(prev => ({ 
+              ...prev, 
+              prompts_key: best,
+              details: { ...prev.details, prompts_error: reason }
+            }));
+          }
+        } catch (e) {
+          setStatus(prev => ({ ...prev, prompts_key: 'offline' }));
+        }
+      })());
+    }
 
     await Promise.allSettled(checks);
   }, [checkBulkKeys]);

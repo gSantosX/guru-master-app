@@ -36,7 +36,7 @@ export const SettingsTab = () => {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [appFontSize, setAppFontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);
   const [storageInfo, setStorageInfo] = useState({ cache_size: 0, total_space: 21474836480, free_space: 0 }); 
-  const [promptsKeyStatus, setPromptsKeyStatus] = useState('idle'); // 'idle' | 'checking...' | 'online' | 'offline'
+  // promptsKeyStatus removed — using global status.prompts_key from context
 
   // Flag to block auto-save when we're syncing FROM cloud (not user typing)
   const syncingFromCloud = React.useRef(false);
@@ -115,34 +115,7 @@ export const SettingsTab = () => {
 
   // Check key statuses using the REAL configs values (not form field state)
   // This avoids showing "offline" when fields haven't been filled yet
-  const checkAllKeyStatuses = useCallback(async () => {
-    if (!isInitialized) return;
-    const gemini = (configs.gemini_key || '').split(',').map(k => k.trim()).filter(Boolean);
-    const gpt    = (configs.gpt_key    || '').split(',').map(k => k.trim()).filter(Boolean);
-    const grok   = (configs.grok_key   || '').split(',').map(k => k.trim()).filter(Boolean);
-    if (gemini.length > 0) await checkBulkKeys('gemini', gemini);
-    if (gpt.length > 0)    await checkBulkKeys('openai', gpt);
-    if (grok.length > 0)   await checkBulkKeys('grok', grok);
-
-    // Validate the exclusive prompts key separately
-    const promptsKey = (configs.gemini_prompts_key || '').trim();
-    if (promptsKey) {
-      setPromptsKeyStatus('checking...');
-      try {
-        const res = await fetch('/api/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ provider: 'gemini', keys: [promptsKey] })
-        });
-        const data = await res.json();
-        setPromptsKeyStatus(data.statuses?.[0] || 'offline');
-      } catch {
-        setPromptsKeyStatus('offline');
-      }
-    } else {
-      setPromptsKeyStatus('idle');
-    }
-  }, [configs, isInitialized, checkBulkKeys]);
+    await checkConnectivity();
 
   // Run key check once configs are fully loaded (not just initialized)
   useEffect(() => {
@@ -440,13 +413,23 @@ export const SettingsTab = () => {
                     value={geminiPromptsKey}
                     onChange={(e) => setGeminiPromptsKey(e.target.value)}
                     placeholder="AIza... (chave exclusiva para prompts)"
-                    className="w-full bg-dark/50 border border-neon-pink/20 rounded-lg p-2.5 text-gray-300 focus:outline-none focus:border-neon-pink/50 text-xs font-mono transition-all hover:bg-dark/70 shadow-[0_0_10px_rgba(255,44,182,0.05)] focus:shadow-[0_0_15px_rgba(255,44,182,0.15)]"
+                    className="w-full bg-dark/50 border border-neon-pink/20 rounded-lg p-2.5 pr-20 text-gray-300 focus:outline-none focus:border-neon-pink/50 text-xs font-mono transition-all hover:bg-dark/70 shadow-[0_0_10px_rgba(255,44,182,0.05)] focus:shadow-[0_0_15px_rgba(255,44,182,0.15)]"
                   />
-                  {geminiPromptsKey && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-neon-pink/20 text-neon-pink font-black uppercase tracking-wider border border-neon-pink/30">Prompts</span>
-                    </div>
-                  )}
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <button
+                      onClick={async () => {
+                        if (!geminiPromptsKey.trim()) return;
+                        setIsSaving(true);
+                        await updateConfig({ gemini_prompts_key: geminiPromptsKey.trim() });
+                        await checkConnectivity();
+                        setIsSaving(false);
+                        showToast('Teste de conexão concluído', 'info');
+                      }}
+                      className="text-[8px] px-2 py-1 rounded bg-neon-pink/20 text-neon-pink font-black uppercase tracking-wider border border-neon-pink/30 hover:bg-neon-pink/30 transition-colors"
+                    >
+                      {status.prompts_key === 'checking...' ? '...' : 'Testar'}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div>
@@ -824,11 +807,12 @@ export const SettingsTab = () => {
                />
 
                {/* Chave Exclusiva de Prompts — sempre visível */}
-               <StatusItem
-                 label="Chave Exclusiva (Prompts)"
-                 status={configs.gemini_prompts_key?.trim() ? 'configured' : 'unconfigured'}
-                 icon={Shield}
-               />
+                <StatusItem
+                  label="Chave Exclusiva (Prompts)"
+                  status={status.prompts_key}
+                  icon={Shield}
+                  error={status.prompts_key === 'offline' && configs.gemini_prompts_key ? (status.details.prompts_error || 'Chave de Prompts expirada ou inválida') : null}
+                />
 
                <StatusItem 
                  label={t('settings.openai_connection')} 
