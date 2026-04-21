@@ -1,11 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { resolveApiUrl } from '../utils/apiUtils';
-import { supabase } from '../utils/supabase';
 import { useAuth } from './AuthContext';
 
 const SystemStatusContext = createContext();
 
-// Helper: get email from localStorage as fallback during initial boot
+// Fallback: read email from localStorage during initial hydration
 const getEmailFromStorage = () => {
   try {
     const stored = localStorage.getItem('guru_user');
@@ -14,49 +13,53 @@ const getEmailFromStorage = () => {
   return '';
 };
 
+const DEFAULTS = {
+  gemini_key: '',
+  grok_key: '',
+  gpt_key: '',
+  gemini_prompts_key: '',
+  anthropic_key: '',
+  deepseek_key: '',
+  elevenlabs_key: '',
+  leonardo_key: '',
+  youtube_key: '',
+  google_client_id: '',
+  smtp_user: '',
+  smtp_password: '',
+  active_ai: 'Gemini',
+  active_model: 'gemini-2.5-flash',
+};
+
 export const SystemStatusProvider = ({ children }) => {
-  // Use real authenticated user email — works on any machine/browser
   const { user } = useAuth();
-  const userEmail = user?.email || getEmailFromStorage();
+
+  // ── emailRef: always has the latest email, safe across async closures ──
+  const emailRef = useRef(user?.email || getEmailFromStorage());
+  useEffect(() => {
+    emailRef.current = user?.email || getEmailFromStorage();
+  }, [user]);
+
   const [isInitialized, setIsInitialized] = useState(false);
   const [status, setStatus] = useState({
     rendering: 'checking...',
-    ffmpeg: 'checking...',
-    ffprobe: 'checking...',
     gemini: 'checking...',
     openai: 'checking...',
     grok: 'checking...',
-    anthropic: 'checking...',
-    deepseek: 'checking...',
-    elevenlabs: 'checking...',
-    leonardo: 'checking...',
-    smtp: 'checking...',
-    youtube: 'checking...',
-    autoFlow: 'offline',
-    details: { ffmpeg: '', error: '', youtube_error: '' }
+    // presence-only (no API ping needed):
+    anthropic: 'unconfigured',
+    deepseek: 'unconfigured',
+    elevenlabs: 'unconfigured',
+    leonardo: 'unconfigured',
+    youtube: 'unconfigured',
+    prompts_key: 'unconfigured',
+    smtp: 'unconfigured',
+    details: { error: '' },
   });
   const [lastLatency, setLastLatency] = useState(0);
   const [isHealthy, setIsHealthy] = useState(true);
   const [keyStatuses, setKeyStatuses] = useState({ gemini: [], openai: [], grok: [] });
-  const DEFAULTS = {
-    gemini_key: '',
-    grok_key: '',
-    gpt_key: '',
-    gemini_prompts_key: '',
-    anthropic_key: '',
-    deepseek_key: '',
-    elevenlabs_key: '',
-    leonardo_key: '',
-    youtube_key: '',
-    google_client_id: '',
-    smtp_user: '',
-    smtp_password: '',
-    active_ai: 'Gemini',
-    active_model: 'gemini-1.5-flash-8b'
-  };
 
   const [configs, setConfigs] = useState(() => {
-    // Restore from localStorage cache for instant display on page refresh
     try {
       const cached = localStorage.getItem('guru_configs_cache');
       if (cached) return { ...DEFAULTS, ...JSON.parse(cached) };
@@ -67,16 +70,31 @@ export const SystemStatusProvider = ({ children }) => {
   const [activeIndices, setActiveIndices] = useState({ gemini: 0, openai: 0, grok: 0 });
   const [toast, setToast] = useState({ message: '', type: '', visible: false });
 
-  // Ref so callbacks always have latest configs without stale closure
+  // configsRef: always latest config without stale closures
   const configsRef = useRef(configs);
   useEffect(() => { configsRef.current = configs; }, [configs]);
+
+  // ── Update presence-based statuses whenever configs change ────────
+  useEffect(() => {
+    const c = configs;
+    setStatus(prev => ({
+      ...prev,
+      anthropic:   c.anthropic_key?.trim()   ? 'configured' : 'unconfigured',
+      deepseek:    c.deepseek_key?.trim()     ? 'configured' : 'unconfigured',
+      elevenlabs:  c.elevenlabs_key?.trim()   ? 'configured' : 'unconfigured',
+      leonardo:    c.leonardo_key?.trim()     ? 'configured' : 'unconfigured',
+      youtube:     c.youtube_key?.trim()      ? 'configured' : 'unconfigured',
+      prompts_key: c.gemini_prompts_key?.trim() ? 'configured' : 'unconfigured',
+      smtp:        c.smtp_user?.trim()        ? 'configured' : 'unconfigured',
+    }));
+  }, [configs]);
 
   const showToast = useCallback((message, type = 'info') => {
     setToast({ message, type, visible: true });
     setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 5000);
   }, []);
 
-  // ── STEP 1: Ping the server health endpoint ────────────────────────
+  // ── STEP 1: Ping server health ─────────────────────────────────────
   const checkServer = useCallback(async () => {
     try {
       const res = await fetch(resolveApiUrl('/api/check'));
@@ -85,10 +103,7 @@ export const SystemStatusProvider = ({ children }) => {
         setStatus(prev => ({
           ...prev,
           rendering: 'online',
-          ffmpeg: data.ffmpeg !== 'Not found' ? 'online' : 'offline',
-          ffprobe: data.ffprobe !== 'Not found' ? 'online' : 'offline',
-          smtp: data.smtp ? 'online' : 'offline',
-          details: { ...prev.details, ffmpeg: data.ffmpeg, error: data.error || '' }
+          details: { error: data.error || '' },
         }));
         setIsHealthy(true);
         return true;
@@ -101,15 +116,13 @@ export const SystemStatusProvider = ({ children }) => {
     return false;
   }, []);
 
-  // ── STEP 2: Load user configs from Supabase ────────────────────────
-  // Always uses the live authenticated email — works across machines/browsers
-  const loadConfigs = useCallback(async (emailOverride) => {
-    const email = emailOverride || userEmail;
+  // ── STEP 2: Load configs from Supabase by email ────────────────────
+  const loadConfigs = useCallback(async () => {
+    const email = emailRef.current;
     if (!email) {
       setStatus(prev => ({
         ...prev,
         gemini: 'offline', openai: 'offline', grok: 'offline',
-        anthropic: 'offline', deepseek: 'offline'
       }));
       return null;
     }
@@ -117,24 +130,24 @@ export const SystemStatusProvider = ({ children }) => {
       const res = await fetch(resolveApiUrl(`/api/config?email=${encodeURIComponent(email)}`));
       if (res.ok) {
         const configData = await res.json();
-        setConfigs(configData);
-        configsRef.current = configData;
+        const merged = { ...DEFAULTS, ...configData };
+        setConfigs(merged);
+        configsRef.current = merged;
         setActiveIndices({
-          gemini: configData.gemini_active_idx || 0,
-          openai: configData.gpt_active_idx || 0,
-          grok: configData.grok_active_idx || 0
+          gemini: merged.gemini_active_idx || 0,
+          openai: merged.gpt_active_idx || 0,
+          grok:   merged.grok_active_idx || 0,
         });
-        // Cache locally for instant restore on same-machine refresh
-        try { localStorage.setItem('guru_configs_cache', JSON.stringify(configData)); } catch {}
-        return configData;
+        try { localStorage.setItem('guru_configs_cache', JSON.stringify(merged)); } catch {}
+        return merged;
       }
     } catch (err) {
       console.error('[SystemStatus] Error loading config:', err);
     }
     return null;
-  }, [userEmail]);
+  }, []); // no deps — uses emailRef which is always current
 
-  // ── STEP 3: Ping API keys for a provider ──────────────────────────
+  // ── STEP 3: Ping API keys for Gemini / OpenAI / Grok ──────────────
   const checkBulkKeys = useCallback(async (provider, keys) => {
     const validKeys = (keys || []).filter(k => k && k.trim() !== '');
     if (validKeys.length === 0) {
@@ -146,7 +159,7 @@ export const SystemStatusProvider = ({ children }) => {
       const res = await fetch(resolveApiUrl('/api/check'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, keys: validKeys })
+        body: JSON.stringify({ provider, keys: validKeys }),
       });
       const elapsed = Date.now() - start;
       if (res.ok) {
@@ -165,7 +178,7 @@ export const SystemStatusProvider = ({ children }) => {
     return [];
   }, []);
 
-  // ── STEP 4: Check all AI keys using loaded config ─────────────────
+  // ── STEP 4: Check Gemini / OpenAI / Grok connectivity ────────────
   const checkAllApiKeys = useCallback(async (cfg) => {
     const c = cfg || configsRef.current;
     const geminiKeys = (c.gemini_key || '').split(',').map(k => k.trim()).filter(Boolean);
@@ -173,55 +186,52 @@ export const SystemStatusProvider = ({ children }) => {
     const grokKeys   = (c.grok_key   || '').split(',').map(k => k.trim()).filter(Boolean);
 
     if (geminiKeys.length === 0) setStatus(prev => ({ ...prev, gemini: 'offline' }));
-    if (gptKeys.length === 0)    setStatus(prev => ({ ...prev, openai: 'offline' }));
-    if (grokKeys.length === 0)   setStatus(prev => ({ ...prev, grok: 'offline' }));
+    if (gptKeys.length    === 0) setStatus(prev => ({ ...prev, openai: 'offline' }));
+    if (grokKeys.length   === 0) setStatus(prev => ({ ...prev, grok:   'offline' }));
 
     const checks = [];
     if (geminiKeys.length > 0) checks.push(checkBulkKeys('gemini', geminiKeys));
-    if (gptKeys.length > 0)    checks.push(checkBulkKeys('openai', gptKeys));
-    if (grokKeys.length > 0)   checks.push(checkBulkKeys('grok', grokKeys));
+    if (gptKeys.length    > 0) checks.push(checkBulkKeys('openai', gptKeys));
+    if (grokKeys.length   > 0) checks.push(checkBulkKeys('grok',   grokKeys));
 
     await Promise.allSettled(checks);
   }, [checkBulkKeys]);
 
-  // ── MASTER: server → configs → keys (sequential, correct order) ───
+  // ── MASTER: server → configs → keys ───────────────────────────────
   const checkConnectivity = useCallback(async () => {
     await checkServer();
     const freshConfigs = await loadConfigs();
-    if (freshConfigs) {
-      await checkAllApiKeys(freshConfigs);
-    }
+    if (freshConfigs) await checkAllApiKeys(freshConfigs);
     setIsInitialized(true);
   }, [checkServer, loadConfigs, checkAllApiKeys]);
 
-  // ── updateConfig: save to Supabase using real auth email ─────────
+  // ── updateConfig: save to Supabase — uses emailRef (always current) ─
   const updateConfig = useCallback(async (newConfig) => {
+    const email = emailRef.current;
+    if (!email) {
+      console.warn('[updateConfig] Nenhum email autenticado — config não salva.');
+      return false;
+    }
     try {
-      const email = userEmail;
-      if (!email) {
-        console.warn('updateConfig: usuário não autenticado.');
-        return false;
-      }
       const res = await fetch(resolveApiUrl('/api/config'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, ...newConfig })
+        body: JSON.stringify({ email, ...newConfig }),
       });
       if (res.ok) {
         const merged = { ...configsRef.current, ...newConfig };
         setConfigs(merged);
         configsRef.current = merged;
-        // Keep local cache in sync
         try { localStorage.setItem('guru_configs_cache', JSON.stringify(merged)); } catch {}
         window.dispatchEvent(new Event('guru_config_updated'));
         await checkAllApiKeys(merged);
         return true;
       }
     } catch (err) {
-      console.error('Erro ao salvar configuração:', err);
+      console.error('[updateConfig] Erro ao salvar:', err);
     }
     return false;
-  }, [userEmail, checkAllApiKeys]);
+  }, [checkAllApiKeys]); // emailRef is a ref — no dep needed
 
   const rotateKey = useCallback((provider) => {
     setActiveIndices(prev => {
@@ -241,16 +251,14 @@ export const SystemStatusProvider = ({ children }) => {
     window.dispatchEvent(new CustomEvent('guru_manual_key_select', { detail: { provider, index } }));
   }, [updateConfig]);
 
-  // ── Key rotation event listeners ───────────────────────────────────
+  // ── Key rotation listeners ─────────────────────────────────────────
   useEffect(() => {
     const handleRotation = (e) => {
       const { provider, index } = e.detail;
       setActiveIndices(prev => ({ ...prev, [provider]: index }));
       showToast(`🔄 Rodando chave ${provider}: #${index + 1}`, 'success');
     };
-    const handleFallback = (e) => {
-      showToast(`⚡ ${e.detail.message}`, 'warning');
-    };
+    const handleFallback = (e) => showToast(`⚡ ${e.detail.message}`, 'warning');
     window.addEventListener('guru_key_rotated', handleRotation);
     window.addEventListener('guru_fallback_triggered', handleFallback);
     return () => {
@@ -259,7 +267,7 @@ export const SystemStatusProvider = ({ children }) => {
     };
   }, [showToast]);
 
-  // ── Autonomous background key rotation every 25s ───────────────────
+  // ── Auto background rotation every 25s ────────────────────────────
   useEffect(() => {
     if (!isInitialized) return;
     const checkAndRotate = async () => {
@@ -267,7 +275,7 @@ export const SystemStatusProvider = ({ children }) => {
       const providers = [
         { name: 'gemini', keys: (c.gemini_key || '').split(',').map(k => k.trim()).filter(Boolean) },
         { name: 'openai', keys: (c.gpt_key    || '').split(',').map(k => k.trim()).filter(Boolean) },
-        { name: 'grok',   keys: (c.grok_key   || '').split(',').map(k => k.trim()).filter(Boolean) }
+        { name: 'grok',   keys: (c.grok_key   || '').split(',').map(k => k.trim()).filter(Boolean) },
       ];
       for (const { name, keys } of providers) {
         if (keys.length === 0) continue;
@@ -277,7 +285,6 @@ export const SystemStatusProvider = ({ children }) => {
           const nextValid = statuses.findIndex(s => s === 'online');
           if (nextValid !== -1 && nextValid !== currentIdx) {
             setManualActiveIndex(name, nextValid);
-            console.log(`[Auto-Rotate] ${name} chave #${currentIdx} → #${nextValid}`);
           }
         }
       }
@@ -287,25 +294,28 @@ export const SystemStatusProvider = ({ children }) => {
     return () => { clearInterval(interval); clearTimeout(timeout); };
   }, [isInitialized, checkBulkKeys, setManualActiveIndex, activeIndices]);
 
-  // ── Reload configs whenever user changes (login / logout / new machine) ──
+  // ── Reload configs when user logs in / switches account ───────────
   const prevEmailRef = useRef('');
   useEffect(() => {
-    if (userEmail && userEmail !== prevEmailRef.current) {
-      // New user logged in — fetch their configs from Supabase immediately
-      prevEmailRef.current = userEmail;
+    const email = user?.email || '';
+    if (email && email !== prevEmailRef.current) {
+      prevEmailRef.current = email;
+      emailRef.current = email;
       checkConnectivity();
-    } else if (!userEmail && prevEmailRef.current) {
-      // User logged out — clear configs so next user starts fresh
+    } else if (!email && prevEmailRef.current) {
       prevEmailRef.current = '';
+      emailRef.current = '';
       setConfigs(DEFAULTS);
       configsRef.current = DEFAULTS;
       try { localStorage.removeItem('guru_configs_cache'); } catch {}
     }
-  }, [userEmail]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Initial boot (ping server + start 30s health interval) ────────
+  // ── Initial boot ───────────────────────────────────────────────────
   useEffect(() => {
-    checkServer();
+    // On first load: if user already in localStorage, load their configs
+    if (emailRef.current) checkConnectivity();
+    else checkServer();
     const interval = setInterval(checkServer, 30000);
     return () => clearInterval(interval);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -314,7 +324,7 @@ export const SystemStatusProvider = ({ children }) => {
     <SystemStatusContext.Provider value={{
       status, configs, checkConnectivity, updateConfig,
       isInitialized, activeIndices, rotateKey, setManualActiveIndex,
-      toast, showToast, keyStatuses, checkBulkKeys, lastLatency, isHealthy
+      toast, showToast, keyStatuses, checkBulkKeys, lastLatency, isHealthy,
     }}>
       {children}
     </SystemStatusContext.Provider>

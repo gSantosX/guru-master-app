@@ -221,58 +221,126 @@ export const DashboardTab = ({ setActiveTab }) => {
                  <div className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-neon-cyan animate-pulse shadow-[0_0_10px_#00f3ff]' : 'bg-red-500 shadow-[0_0_10px_#ef4444]'}`} />
               </div>
 
-              <div className="space-y-4">
-                 <div 
-                   className="flex items-center gap-3 cursor-pointer hover:opacity-100 transition-opacity"
-                   onClick={() => checkConnectivity({ force: true })}
-                 >
-                    <Activity className={`w-4 h-4 ${isHealthy ? 'text-neon-cyan' : 'text-red-500'}`} />
-                    <div>
-                       <p className="text-[10px] text-white font-bold">
-                          {isHealthy ? 'Operacional' : 'Anomalia Detectada'}
-                       </p>
-                       <p className="text-[9px] text-gray-500">Latência: {status.rendering === 'online' ? `${lastLatency}ms` : '---'}</p>
-                    </div>
+              {/* Server row */}
+              <div 
+                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity mb-4 pb-3 border-b border-white/5"
+                onClick={() => checkConnectivity({ force: true })}
+              >
+                 <Activity className={`w-4 h-4 ${isHealthy ? 'text-neon-cyan' : 'text-red-500'}`} />
+                 <div>
+                    <p className="text-[10px] text-white font-bold">
+                       {isHealthy ? 'Servidor Online' : 'Anomalia Detectada'}
+                    </p>
+                    <p className="text-[9px] text-gray-500">
+                      Latência: {status.rendering === 'online' ? `${lastLatency}ms` : '---'}
+                    </p>
                  </div>
-
-                 <div className="flex items-center gap-3">
-                    <Zap className={`w-4 h-4 ${status[configs.active_ai?.toLowerCase() === 'openai' ? 'openai' : configs.active_ai?.toLowerCase()]?.startsWith('online') ? 'text-neon-purple' : 'text-gray-600'}`} />
-                    <div>
-                       <p className="text-[10px] text-white font-bold">Motor Neural</p>
-                       <p className="text-[9px] text-gray-500 truncate max-w-[150px]">
-                          {configs.active_model || 'Buscando motor...'} 
-                          <span className={`ml-2 text-[8px] uppercase ${status[configs.active_ai?.toLowerCase() === 'openai' ? 'openai' : configs.active_ai?.toLowerCase()]?.startsWith('online') ? 'text-neon-cyan' : 'text-red-500'}`}>
-                             ({status[configs.active_ai?.toLowerCase() === 'openai' ? 'openai' : configs.active_ai?.toLowerCase()] || 'offline'})
-                          </span>
-                       </p>
-                    </div>
-                 </div>
-
-                 {/* Chave Exclusiva de Prompts */}
-                 {(() => {
-                   const hasPromptsKey = !!(configs.gemini_prompts_key && configs.gemini_prompts_key.trim() !== '');
-                   return (
-                     <div className="flex items-center gap-3">
-                       <Key className={`w-4 h-4 ${hasPromptsKey ? 'text-neon-pink' : 'text-gray-600'}`} />
-                       <div className="flex-1">
-                         <p className="text-[10px] text-white font-bold">Chave Exclusiva (Prompts)</p>
-                         <div className="flex items-center gap-1.5 mt-0.5">
-                           <div className={`w-1.5 h-1.5 rounded-full ${hasPromptsKey ? 'bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]' : 'bg-gray-600'}`} />
-                           <span className={`text-[9px] font-black uppercase tracking-wider ${hasPromptsKey ? 'text-emerald-400' : 'text-gray-500'}`}>
-                             {hasPromptsKey ? 'LIGADA' : 'DESLIGADA'}
-                           </span>
-                         </div>
-                       </div>
-                     </div>
-                   );
-                 })()}
-
-                 {!isHealthy && (
-                   <div className="pt-2">
-                     <p className="text-[8px] text-red-400 font-bold uppercase tracking-widest animate-bounce">Ação requerida na configuração</p>
-                   </div>
-                 )}
               </div>
+
+              {/* All keys grid */}
+              <div className="space-y-2">
+                {[
+                  {
+                    label: 'Gemini',
+                    icon: Zap,
+                    value: status.gemini,
+                    type: 'ping',
+                    color: 'text-neon-cyan',
+                  },
+                  {
+                    label: 'OpenAI',
+                    icon: Zap,
+                    value: status.openai,
+                    type: 'ping',
+                    color: 'text-emerald-400',
+                  },
+                  {
+                    label: 'Grok',
+                    icon: Zap,
+                    value: status.grok,
+                    type: 'ping',
+                    color: 'text-blue-400',
+                  },
+                  {
+                    label: 'Anthropic',
+                    icon: Key,
+                    value: configs.anthropic_key?.trim() ? 'configured' : 'unconfigured',
+                    type: 'presence',
+                    color: 'text-orange-400',
+                  },
+                  {
+                    label: 'DeepSeek',
+                    icon: Key,
+                    value: configs.deepseek_key?.trim() ? 'configured' : 'unconfigured',
+                    type: 'presence',
+                    color: 'text-purple-400',
+                  },
+                  {
+                    label: 'ElevenLabs',
+                    icon: Key,
+                    value: configs.elevenlabs_key?.trim() ? 'configured' : 'unconfigured',
+                    type: 'presence',
+                    color: 'text-yellow-400',
+                  },
+                  {
+                    label: 'Leonardo',
+                    icon: Key,
+                    value: configs.leonardo_key?.trim() ? 'configured' : 'unconfigured',
+                    type: 'presence',
+                    color: 'text-pink-400',
+                  },
+                  {
+                    label: 'YouTube API',
+                    icon: Key,
+                    value: configs.youtube_key?.trim() ? 'configured' : 'unconfigured',
+                    type: 'presence',
+                    color: 'text-red-400',
+                  },
+                  {
+                    label: 'Chave Prompts',
+                    icon: Key,
+                    value: configs.gemini_prompts_key?.trim() ? 'configured' : 'unconfigured',
+                    type: 'presence',
+                    color: 'text-neon-pink',
+                  },
+                ].map(({ label, icon: Icon, value, type, color }) => {
+                  const isOnline   = value === 'online';
+                  const isChecking = value === 'checking...';
+                  const isConfigured = value === 'configured';
+                  const isOffline  = value === 'offline' || value === 'unconfigured';
+
+                  let dotColor, labelText, labelColor;
+                  if (type === 'ping') {
+                    if (isOnline)   { dotColor = 'bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]'; labelText = 'ONLINE';    labelColor = 'text-emerald-400'; }
+                    else if (isChecking) { dotColor = 'bg-yellow-400 animate-pulse'; labelText = 'TESTANDO'; labelColor = 'text-yellow-400'; }
+                    else            { dotColor = 'bg-gray-600';                       labelText = 'OFFLINE';   labelColor = 'text-gray-500'; }
+                  } else {
+                    if (isConfigured) { dotColor = 'bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]'; labelText = 'LIGADA';     labelColor = 'text-emerald-400'; }
+                    else              { dotColor = 'bg-gray-600';                                            labelText = 'DESLIGADA'; labelColor = 'text-gray-500'; }
+                  }
+
+                  return (
+                    <div key={label} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Icon className={`w-3 h-3 ${isOnline || isConfigured ? color : 'text-gray-600'}`} />
+                        <span className="text-[10px] text-gray-300 font-medium">{label}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                        <span className={`text-[8px] font-black uppercase tracking-widest ${labelColor}`}>
+                          {labelText}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {!isHealthy && (
+                <div className="pt-3 mt-3 border-t border-red-500/20">
+                  <p className="text-[8px] text-red-400 font-bold uppercase tracking-widest animate-bounce">Ação requerida na configuração</p>
+                </div>
+              )}
            </div>
         </div>
 
