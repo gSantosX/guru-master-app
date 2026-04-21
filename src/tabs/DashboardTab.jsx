@@ -38,7 +38,7 @@ export const DashboardTab = ({ setActiveTab }) => {
 
   const shortcuts = [
     { id: 'create-script',     label: t('sidebar.create_script'),     desc: t('dashboard.scripts_desc'),    icon: PenTool,   color: 'text-neon-cyan',   bg: 'bg-neon-cyan/10' },
-    { id: 'whisk',             label: t('sidebar.whisk'),             desc: t('dashboard.whisk_desc'),      icon: Zap,       color: 'text-neon-purple', bg: 'bg-neon-purple/10' },
+    // { id: 'whisk',             label: t('sidebar.whisk'),             desc: t('dashboard.whisk_desc'),      icon: Zap,       color: 'text-neon-purple', bg: 'bg-neon-purple/10' },
     { id: 'capa-video',        label: t('sidebar.capa_video'),        desc: t('dashboard.capas_desc'),      icon: ImageIcon, color: 'text-neon-pink',   bg: 'bg-neon-pink/10' },
     { id: 'channel-monitoring',label: t('sidebar.channel_monitoring'),desc: t('dashboard.monitoring_desc'), icon: Youtube,   color: 'text-blue-400',    bg: 'bg-blue-400/10' },
     { id: 'channel-mining',    label: t('sidebar.channel_mining'),    desc: 'Encontre nichos promissores e canais em alta.', icon: Search,   color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
