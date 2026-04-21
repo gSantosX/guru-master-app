@@ -53,9 +53,6 @@ const VISUAL_STYLES = [
 export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const { status, configs } = useSystemStatus();
 
-  // Use dedicated prompts key if set, otherwise fall back to main Gemini key
-  const getPromptsApiKey = () => configs.gemini_prompts_key?.trim() || configs.gemini_key || '';
-
   const { promptState, setPromptState } = usePersistence();
   const { 
     file, 
@@ -161,7 +158,11 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       ROTEIRO PARA ANÁLISE:
       ${scriptToAnalyze.substring(0, 4500)}`;
 
-      const response = await callGemini(getPromptsApiKey(), analysisPrompt, { model: 'gemini-2.5-flash', temperature: 0.1 });
+      const response = await callAI(analysisPrompt, { 
+        model: 'gemini-2.0-flash', 
+        temperature: 0.1,
+        isPromptTask: true 
+      });
       const cleanJson = response.replace(/```json|```/g, '').trim();
       const dna = JSON.parse(cleanJson);
       setVisualDNA(dna);
