@@ -851,36 +851,12 @@ export const SettingsTab = () => {
                  error={status.gemini === 'offline' && geminiKeys.length > 0 ? 'Limite excedido ou chave inválida' : null}
                />
 
-               {/* Status da chave exclusiva de prompts */}
-               {promptsKeyStatus !== 'idle' && (
-                 <div className="p-3 rounded-xl border flex flex-col gap-1"
-                   style={{ background: 'rgba(255,44,182,0.04)', borderColor: 'rgba(255,44,182,0.2)' }}
-                 >
-                   <div className="flex items-center justify-between">
-                     <div className="flex items-center gap-3">
-                       <span className="text-xs" style={{ color: '#ff2cb6' }}>✦</span>
-                       <span className="text-sm text-gray-300">Chave de Prompts</span>
-                     </div>
-                     <span className={`text-[10px] px-2.5 py-0.5 rounded-lg font-black tracking-widest uppercase shadow-sm ${
-                       promptsKeyStatus === 'online'      ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-                       promptsKeyStatus === 'checking...' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' :
-                       'bg-red-500/10 text-red-400 border border-red-500/20'
-                     }`}>
-                       {promptsKeyStatus === 'online' ? 'LIGADO' : promptsKeyStatus === 'checking...' ? 'TESTANDO' : 'DESLIGADO'}
-                     </span>
-                   </div>
-                   {promptsKeyStatus === 'offline' && (
-                     <p className="text-[10px] text-red-400/80 mt-1 flex items-center gap-1">
-                       <AlertCircle className="w-3 h-3" /> Chave exclusiva inválida ou com cota esgotada
-                     </p>
-                   )}
-                   {promptsKeyStatus === 'online' && (
-                     <p className="text-[10px] mt-1" style={{ color: 'rgba(255,44,182,0.7)' }}>
-                       ✦ Apenas a aba Gerador de Prompts usa esta chave
-                     </p>
-                   )}
-                 </div>
-               )}
+               {/* Chave Exclusiva de Prompts — sempre visível */}
+               <StatusItem
+                 label="Chave Exclusiva (Prompts)"
+                 status={configs.gemini_prompts_key?.trim() ? 'configured' : 'unconfigured'}
+                 icon={Shield}
+               />
 
                <StatusItem 
                  label={t('settings.openai_connection')} 

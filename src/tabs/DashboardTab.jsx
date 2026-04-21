@@ -254,25 +254,6 @@ export const DashboardTab = ({ setActiveTab }) => {
                     </div>
                  </div>
 
-                 {/* Chave Exclusiva de Prompts */}
-                 {(() => {
-                   const hasKey = !!(configs.gemini_prompts_key?.trim());
-                   return (
-                     <div className="flex items-center gap-3">
-                       <Key className={`w-4 h-4 ${hasKey ? 'text-neon-pink' : 'text-gray-600'}`} />
-                       <div className="flex-1">
-                         <p className="text-[10px] text-white font-bold">Chave Exclusiva (Prompts)</p>
-                         <div className="flex items-center gap-1.5 mt-0.5">
-                           <div className={`w-1.5 h-1.5 rounded-full ${hasKey ? 'bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]' : 'bg-gray-600'}`} />
-                           <span className={`text-[9px] font-black uppercase tracking-wider ${hasKey ? 'text-emerald-400' : 'text-gray-500'}`}>
-                             {hasKey ? 'LIGADA' : 'DESLIGADA'}
-                           </span>
-                         </div>
-                       </div>
-                     </div>
-                   );
-                 })()}
-
                  {/* Hint para configurações */}
                  <button
                    onClick={() => setActiveTab('settings')}
