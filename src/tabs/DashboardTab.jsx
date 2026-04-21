@@ -28,7 +28,6 @@ export const DashboardTab = ({ setActiveTab }) => {
     if (!user) return null;
     if (user.is_lifetime) return 'vitalicio';
     if (!user.expires_at) return null;
-    
     const diffTime = new Date(user.expires_at) - new Date();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays > 0 ? diffDays : 0;
@@ -38,13 +37,16 @@ export const DashboardTab = ({ setActiveTab }) => {
   const userName = user?.name?.split(' ')[0] || 'Usuário';
 
   const shortcuts = [
-    { id: 'create-script', label: t('sidebar.create_script'), desc: t('dashboard.scripts_desc'), icon: PenTool, color: 'text-neon-cyan', bg: 'bg-neon-cyan/10' },
-    { id: 'whisk', label: t('sidebar.whisk'), desc: t('dashboard.whisk_desc'), icon: Zap, color: 'text-neon-purple', bg: 'bg-neon-purple/10' },
-    { id: 'capa-video', label: t('sidebar.capa_video'), desc: t('dashboard.capas_desc'), icon: ImageIcon, color: 'text-neon-pink', bg: 'bg-neon-pink/10' },
-    { id: 'channel-monitoring', label: t('sidebar.channel_monitoring'), desc: t('dashboard.monitoring_desc'), icon: Youtube, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-    { id: 'channel-mining', label: t('sidebar.channel_mining'), desc: 'Encontre nichos promissores e canais em alta.', icon: Search, color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
-    { id: 'niche-identifier', label: 'Identificador de Nichos', desc: 'Analise e valide ideias de conteúdo.', icon: Activity, color: 'text-orange-400', bg: 'bg-orange-400/10' }
+    { id: 'create-script',     label: t('sidebar.create_script'),     desc: t('dashboard.scripts_desc'),    icon: PenTool,   color: 'text-neon-cyan',   bg: 'bg-neon-cyan/10' },
+    { id: 'whisk',             label: t('sidebar.whisk'),             desc: t('dashboard.whisk_desc'),      icon: Zap,       color: 'text-neon-purple', bg: 'bg-neon-purple/10' },
+    { id: 'capa-video',        label: t('sidebar.capa_video'),        desc: t('dashboard.capas_desc'),      icon: ImageIcon, color: 'text-neon-pink',   bg: 'bg-neon-pink/10' },
+    { id: 'channel-monitoring',label: t('sidebar.channel_monitoring'),desc: t('dashboard.monitoring_desc'), icon: Youtube,   color: 'text-blue-400',    bg: 'bg-blue-400/10' },
+    { id: 'channel-mining',    label: t('sidebar.channel_mining'),    desc: 'Encontre nichos promissores e canais em alta.', icon: Search,   color: 'text-emerald-400', bg: 'bg-emerald-400/10' },
+    { id: 'niche-identifier',  label: 'Identificador de Nichos',      desc: 'Analise e valide ideias de conteúdo.',         icon: Activity, color: 'text-orange-400', bg: 'bg-orange-400/10' },
   ];
+
+  const activeAiKey = configs.active_ai?.toLowerCase() === 'openai' ? 'openai' : (configs.active_ai?.toLowerCase() || 'gemini');
+  const engineOnline = status[activeAiKey] === 'online';
 
   return (
     <div className="max-w-6xl mx-auto h-full flex flex-col overflow-y-auto custom-scrollbar pb-20">
@@ -110,7 +112,6 @@ export const DashboardTab = ({ setActiveTab }) => {
               </div>
             </div>
             
-            {/* Animated background gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-neon-cyan/5 via-transparent to-neon-purple/5 pointer-events-none" />
           </motion.div>
 
@@ -213,6 +214,7 @@ export const DashboardTab = ({ setActiveTab }) => {
               </button>
            </motion.div>
 
+           {/* Status do Sistema — resumo simples */}
            <div 
              className={`glass-card p-6 bg-gradient-to-br transition-all duration-500 border-[1px] ${isHealthy ? 'from-neon-cyan/10 to-transparent border-white/5' : 'from-red-500/10 to-transparent border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.1)]'}`}
            >
@@ -221,126 +223,57 @@ export const DashboardTab = ({ setActiveTab }) => {
                  <div className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-neon-cyan animate-pulse shadow-[0_0_10px_#00f3ff]' : 'bg-red-500 shadow-[0_0_10px_#ef4444]'}`} />
               </div>
 
-              {/* Server row */}
-              <div 
-                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity mb-4 pb-3 border-b border-white/5"
-                onClick={() => checkConnectivity({ force: true })}
-              >
-                 <Activity className={`w-4 h-4 ${isHealthy ? 'text-neon-cyan' : 'text-red-500'}`} />
-                 <div>
-                    <p className="text-[10px] text-white font-bold">
-                       {isHealthy ? 'Servidor Online' : 'Anomalia Detectada'}
-                    </p>
-                    <p className="text-[9px] text-gray-500">
-                      Latência: {status.rendering === 'online' ? `${lastLatency}ms` : '---'}
-                    </p>
-                 </div>
-              </div>
-
-              {/* All keys grid */}
-              <div className="space-y-2">
-                {[
-                  {
-                    label: 'Gemini',
-                    icon: Zap,
-                    value: status.gemini,
-                    type: 'ping',
-                    color: 'text-neon-cyan',
-                  },
-                  {
-                    label: 'OpenAI',
-                    icon: Zap,
-                    value: status.openai,
-                    type: 'ping',
-                    color: 'text-emerald-400',
-                  },
-                  {
-                    label: 'Grok',
-                    icon: Zap,
-                    value: status.grok,
-                    type: 'ping',
-                    color: 'text-blue-400',
-                  },
-                  {
-                    label: 'Anthropic',
-                    icon: Key,
-                    value: configs.anthropic_key?.trim() ? 'configured' : 'unconfigured',
-                    type: 'presence',
-                    color: 'text-orange-400',
-                  },
-                  {
-                    label: 'DeepSeek',
-                    icon: Key,
-                    value: configs.deepseek_key?.trim() ? 'configured' : 'unconfigured',
-                    type: 'presence',
-                    color: 'text-purple-400',
-                  },
-                  {
-                    label: 'ElevenLabs',
-                    icon: Key,
-                    value: configs.elevenlabs_key?.trim() ? 'configured' : 'unconfigured',
-                    type: 'presence',
-                    color: 'text-yellow-400',
-                  },
-                  {
-                    label: 'Leonardo',
-                    icon: Key,
-                    value: configs.leonardo_key?.trim() ? 'configured' : 'unconfigured',
-                    type: 'presence',
-                    color: 'text-pink-400',
-                  },
-                  {
-                    label: 'YouTube API',
-                    icon: Key,
-                    value: configs.youtube_key?.trim() ? 'configured' : 'unconfigured',
-                    type: 'presence',
-                    color: 'text-red-400',
-                  },
-                  {
-                    label: 'Chave Prompts',
-                    icon: Key,
-                    value: configs.gemini_prompts_key?.trim() ? 'configured' : 'unconfigured',
-                    type: 'presence',
-                    color: 'text-neon-pink',
-                  },
-                ].map(({ label, icon: Icon, value, type, color }) => {
-                  const isOnline   = value === 'online';
-                  const isChecking = value === 'checking...';
-                  const isConfigured = value === 'configured';
-                  const isOffline  = value === 'offline' || value === 'unconfigured';
-
-                  let dotColor, labelText, labelColor;
-                  if (type === 'ping') {
-                    if (isOnline)   { dotColor = 'bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]'; labelText = 'ONLINE';    labelColor = 'text-emerald-400'; }
-                    else if (isChecking) { dotColor = 'bg-yellow-400 animate-pulse'; labelText = 'TESTANDO'; labelColor = 'text-yellow-400'; }
-                    else            { dotColor = 'bg-gray-600';                       labelText = 'OFFLINE';   labelColor = 'text-gray-500'; }
-                  } else {
-                    if (isConfigured) { dotColor = 'bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399]'; labelText = 'LIGADA';     labelColor = 'text-emerald-400'; }
-                    else              { dotColor = 'bg-gray-600';                                            labelText = 'DESLIGADA'; labelColor = 'text-gray-500'; }
-                  }
-
-                  return (
-                    <div key={label} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Icon className={`w-3 h-3 ${isOnline || isConfigured ? color : 'text-gray-600'}`} />
-                        <span className="text-[10px] text-gray-300 font-medium">{label}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
-                        <span className={`text-[8px] font-black uppercase tracking-widest ${labelColor}`}>
-                          {labelText}
-                        </span>
-                      </div>
+              <div className="space-y-4">
+                 {/* Servidor */}
+                 <div 
+                   className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                   onClick={() => checkConnectivity()}
+                 >
+                    <Activity className={`w-4 h-4 ${isHealthy ? 'text-neon-cyan' : 'text-red-500'}`} />
+                    <div>
+                       <p className="text-[10px] text-white font-bold">
+                          {isHealthy ? 'Operacional' : 'Anomalia Detectada'}
+                       </p>
+                       <p className="text-[9px] text-gray-500">
+                         Latência: {status.rendering === 'online' ? `${lastLatency}ms` : '---'}
+                       </p>
                     </div>
-                  );
-                })}
-              </div>
+                 </div>
 
-              {!isHealthy && (
-                <div className="pt-3 mt-3 border-t border-red-500/20">
-                  <p className="text-[8px] text-red-400 font-bold uppercase tracking-widest animate-bounce">Ação requerida na configuração</p>
-                </div>
-              )}
+                 {/* Motor Neural */}
+                 <div className="flex items-center gap-3">
+                    <Zap className={`w-4 h-4 ${engineOnline ? 'text-neon-purple' : 'text-gray-600'}`} />
+                    <div>
+                       <p className="text-[10px] text-white font-bold">Motor Neural</p>
+                       <p className="text-[9px] text-gray-500 truncate max-w-[150px]">
+                          {configs.active_model || 'Aguardando...'}
+                          <span className={`ml-1 text-[8px] uppercase font-bold ${engineOnline ? 'text-neon-cyan' : 'text-gray-600'}`}>
+                            ({status[activeAiKey] || 'offline'})
+                          </span>
+                       </p>
+                    </div>
+                 </div>
+
+                 {/* Hint para configurações */}
+                 <button
+                   onClick={() => setActiveTab('settings')}
+                   className="flex items-center gap-2 pt-1 w-full text-left hover:opacity-80 transition-opacity"
+                 >
+                    <Key className="w-3 h-3 text-gray-600 shrink-0" />
+                    <p className="text-[9px] text-gray-500 italic">
+                       Ver status de todas as chaves em{' '}
+                       <span className="text-neon-cyan font-bold not-italic">Configurações</span>
+                    </p>
+                 </button>
+
+                 {!isHealthy && (
+                   <div className="pt-1 border-t border-red-500/20">
+                     <p className="text-[8px] text-red-400 font-bold uppercase tracking-widest animate-bounce">
+                       Ação requerida na configuração
+                     </p>
+                   </div>
+                 )}
+              </div>
            </div>
         </div>
 
@@ -362,7 +295,6 @@ export const DashboardTab = ({ setActiveTab }) => {
                   transition={{ delay: 0.1 + (idx * 0.05) }}
                   onClick={() => setActiveTab(item.id)}
                   className="glass-card p-6 text-left group hover:border-current transition-all duration-300 relative overflow-hidden"
-                  style={{ color: 'transparent' }} // Using style to inject CSS variable context if needed, but here we use tailwind colors
                 >
                   <div className={`p-3 w-fit rounded-xl ${item.bg} ${item.color} mb-4 group-hover:scale-110 transition-transform duration-500`}>
                     <item.icon className="w-6 h-6" />

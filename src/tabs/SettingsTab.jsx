@@ -313,13 +313,15 @@ export const SettingsTab = () => {
   };
 
   const StatusItem = ({ label, status, icon: Icon, error }) => {
+    const isOnline     = status === 'online' || status === 'configured';
+    const isChecking   = status === 'checking...';
+    const isOffline    = status === 'offline' || status === 'unconfigured' || (!isOnline && !isChecking);
+
+    let displayStatus = isOnline ? 'LIGADO' : isChecking ? 'TESTANDO' : 'DESLIGADO';
+    
     const provider = label.toLowerCase();
     const isAi = provider.includes('gemini') || provider.includes('openai') || provider.includes('grok');
-    
-    // User requested quota to show as "DESLIGADO"
-    let displayStatus = status === 'online' ? 'LIGADO' : status === 'checking...' ? 'TESTANDO' : 'DESLIGADO';
-    
-    if (isAi && status === 'online') {
+    if (isAi && isOnline && status === 'online') {
        const keyType = provider.includes('gemini') ? 'gemini' : provider.includes('openai') ? 'openai' : 'grok';
        const idx = activeIndices[keyType];
        displayStatus += idx === 0 ? ' (PRIME)' : ` (RES ${idx})`;
@@ -329,12 +331,12 @@ export const SettingsTab = () => {
       <div className="p-3 bg-dark/40 rounded-xl border border-white/5 flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Icon className={`w-4 h-4 ${status === 'online' ? 'text-green-400' : status === 'quota' ? 'text-orange-400' : status === 'checking...' ? 'text-yellow-400 animate-pulse' : 'text-red-400'}`} />
+            <Icon className={`w-4 h-4 ${isOnline ? 'text-green-400' : isChecking ? 'text-yellow-400 animate-pulse' : 'text-red-400'}`} />
             <span className="text-sm text-gray-300">{label}</span>
           </div>
           <span className={`text-[10px] px-2.5 py-0.5 rounded-lg font-black tracking-widest uppercase shadow-sm ${
-            status === 'online' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 
-            status === 'checking...' ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-4' :
+            isOnline    ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 
+            isChecking  ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-4' :
             'bg-red-500/10 text-red-400 border border-red-500/20'
           }`}>
             {displayStatus}
