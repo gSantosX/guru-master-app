@@ -115,7 +115,9 @@ export const SettingsTab = () => {
 
   // Check key statuses using the REAL configs values (not form field state)
   // This avoids showing "offline" when fields haven't been filled yet
+  const checkAllKeyStatuses = useCallback(async () => {
     await checkConnectivity();
+  }, [checkConnectivity]);
 
   // Run key check once configs are fully loaded (not just initialized)
   useEffect(() => {
