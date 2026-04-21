@@ -4,25 +4,26 @@ import { Sidebar } from '../components/Sidebar';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { Zap, Cpu, Shield, AlertTriangle, Check } from 'lucide-react';
+import { lazyWithRetry } from '../utils/apiUtils';
 
-// Lazy loading das abas migradas do aplicativo local
-const ScriptTab = React.lazy(() => import('../tabs/ScriptTab').then(m => ({ default: m.ScriptTab })));
-const ReadyScriptsTab = React.lazy(() => import('../tabs/ReadyScriptsTab').then(m => ({ default: m.ReadyScriptsTab })));
-const ImagePromptsTab = React.lazy(() => import('../tabs/ImagePromptsTab').then(m => ({ default: m.ImagePromptsTab })));
-const VideoCoverTab = React.lazy(() => import('../tabs/VideoCoverTab').then(m => ({ default: m.VideoCoverTab })));
-const VideoTab = React.lazy(() => import('../tabs/VideoTab').then(m => ({ default: m.VideoTab })));
-const ProgressTab = React.lazy(() => import('../tabs/ProgressTab').then(m => ({ default: m.ProgressTab })));
-const CompletedTab = React.lazy(() => import('../tabs/CompletedTab').then(m => ({ default: m.CompletedTab })));
-const SettingsTab = React.lazy(() => import('../tabs/SettingsTab').then(m => ({ default: m.SettingsTab })));
-const ProfileTab = React.lazy(() => import('../tabs/ProfileTab').then(m => ({ default: m.ProfileTab })));
-const WhiskTab = React.lazy(() => import('../tabs/WhiskTab').then(m => ({ default: m.WhiskTab })));
-const ChannelMonitoringTab = React.lazy(() => import('../tabs/ChannelMonitoringTab').then(m => ({ default: m.ChannelMonitoringTab })));
-const ChannelModelerTab = React.lazy(() => import('../tabs/ChannelModelerTab').then(m => ({ default: m.ChannelModelerTab })));
-const ChannelMiningTab = React.lazy(() => import('../tabs/ChannelMiningTab').then(m => ({ default: m.ChannelMiningTab })));
-const NicheIdentifierTab = React.lazy(() => import('../tabs/NicheIdentifierTab').then(m => ({ default: m.NicheIdentifierTab })));
-const AdminTab = React.lazy(() => import('../tabs/AdminTab').then(m => ({ default: m.AdminTab })));
-const DashboardTab = React.lazy(() => import('../tabs/DashboardTab').then(m => ({ default: m.DashboardTab })));
-const HelpTab = React.lazy(() => import('../tabs/HelpTab').then(m => ({ default: m.HelpTab })));
+// Lazy loading das abas migradas do aplicativo local usando retry resiliente
+const ScriptTab = lazyWithRetry(() => import('../tabs/ScriptTab').then(m => ({ default: m.ScriptTab })));
+const ReadyScriptsTab = lazyWithRetry(() => import('../tabs/ReadyScriptsTab').then(m => ({ default: m.ReadyScriptsTab })));
+const ImagePromptsTab = lazyWithRetry(() => import('../tabs/ImagePromptsTab').then(m => ({ default: m.ImagePromptsTab })));
+const VideoCoverTab = lazyWithRetry(() => import('../tabs/VideoCoverTab').then(m => ({ default: m.VideoCoverTab })));
+const VideoTab = lazyWithRetry(() => import('../tabs/VideoTab').then(m => ({ default: m.VideoTab })));
+const ProgressTab = lazyWithRetry(() => import('../tabs/ProgressTab').then(m => ({ default: m.ProgressTab })));
+const CompletedTab = lazyWithRetry(() => import('../tabs/CompletedTab').then(m => ({ default: m.CompletedTab })));
+const SettingsTab = lazyWithRetry(() => import('../tabs/SettingsTab').then(m => ({ default: m.SettingsTab })));
+const ProfileTab = lazyWithRetry(() => import('../tabs/ProfileTab').then(m => ({ default: m.ProfileTab })));
+const WhiskTab = lazyWithRetry(() => import('../tabs/WhiskTab').then(m => ({ default: m.WhiskTab })));
+const ChannelMonitoringTab = lazyWithRetry(() => import('../tabs/ChannelMonitoringTab').then(m => ({ default: m.ChannelMonitoringTab })));
+const ChannelModelerTab = lazyWithRetry(() => import('../tabs/ChannelModelerTab').then(m => ({ default: m.ChannelModelerTab })));
+const ChannelMiningTab = lazyWithRetry(() => import('../tabs/ChannelMiningTab').then(m => ({ default: m.ChannelMiningTab })));
+const NicheIdentifierTab = lazyWithRetry(() => import('../tabs/NicheIdentifierTab').then(m => ({ default: m.NicheIdentifierTab })));
+const AdminTab = lazyWithRetry(() => import('../tabs/AdminTab').then(m => ({ default: m.AdminTab })));
+const DashboardTab = lazyWithRetry(() => import('../tabs/DashboardTab').then(m => ({ default: m.DashboardTab })));
+const HelpTab = lazyWithRetry(() => import('../tabs/HelpTab').then(m => ({ default: m.HelpTab })));
 
 const tabComponents = {
   'dashboard': DashboardTab,

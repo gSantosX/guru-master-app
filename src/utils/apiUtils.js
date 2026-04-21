@@ -5,6 +5,35 @@
  * @param {string} path - The API path (e.g., '/api/system/check')
  * @returns {string} - The resolved URL
  */
+import React from 'react';
+
+/**
+ * A wrapper for React.lazy that retries the import if it fails.
+ * Useful for handling "Failed to fetch dynamically imported module" errors after a new deploy.
+ */
+export const lazyWithRetry = (componentImport) =>
+  React.lazy(async () => {
+    const pageHasAlreadyBeenForceRefreshed = JSON.parse(
+      window.sessionStorage.getItem('page-has-been-force-refreshed') || 'false'
+    );
+
+    try {
+      const component = await componentImport();
+      window.sessionStorage.setItem('page-has-been-force-refreshed', 'false');
+      return component;
+    } catch (error) {
+      if (!pageHasAlreadyBeenForceRefreshed) {
+        // A falha de importação dinâmica é comum após um novo deploy.
+        // Recarregamos a página uma vez para tentar obter a nova versão.
+        window.sessionStorage.setItem('page-has-been-force-refreshed', 'true');
+        return window.location.reload();
+      }
+
+      // Se já recarregamos e ainda falhou, jogamos o erro para o Error Boundary.
+      throw error;
+    }
+  });
+
 export const resolveApiUrl = (path) => {
   // If we're running from a local file (packaged Electron), 
   // or if we're in an context where the standard relative path won't hit our backend properly,
