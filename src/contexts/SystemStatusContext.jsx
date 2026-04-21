@@ -253,8 +253,8 @@ export const SystemStatusProvider = ({ children }) => {
       await checkServer();
       const freshConfigs = await loadConfigs();
       if (freshConfigs) await checkAllApiKeys(freshConfigs);
-    } catch (err) {
-      console.error('[SystemStatus] Boot check failed:', err);
+    } catch (e) {
+      console.error('[SystemStatus] Connectivity check failed:', e);
     } finally {
       setIsInitialized(true);
     }
@@ -374,18 +374,33 @@ export const SystemStatusProvider = ({ children }) => {
 
   // ── Initial boot ───────────────────────────────────────────────────
   useEffect(() => {
+    // Fail-Safe: Destrava a UI em no máximo 6 segundos, ignorando lentidão de rede
+    const failSafe = setTimeout(() => {
+      setIsInitialized(prev => {
+        if (!prev) console.warn('[SystemStatus] Fail-safe ativado: forçando inicialização após timeout.');
+        return true;
+      });
+    }, 6000);
+
     const boot = async () => {
-      // On first load: if user already in localStorage, load their configs
-      if (emailRef.current) {
-        await checkConnectivity();
-      } else {
-        await checkServer();
-        setIsInitialized(true);
+      try {
+        // On first load: if user already in localStorage, load their configs
+        if (emailRef.current) {
+          await checkConnectivity();
+        } else {
+          await checkServer();
+          setIsInitialized(true);
+        }
+      } finally {
+        clearTimeout(failSafe);
       }
     };
     boot();
     const interval = setInterval(checkServer, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(failSafe);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
