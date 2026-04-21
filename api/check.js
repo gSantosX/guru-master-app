@@ -78,6 +78,17 @@ async function pingKey(provider, key) {
       if (res.status === 429) return { status: 'quota', reason: 'rate_limited_429' };
       return { status: 'offline', reason: `http_${res.status}` };
     }
+    if (provider === 'youtube') {
+      const res = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=id&chart=mostPopular&maxResults=1&key=${key}`,
+        { signal: AbortSignal.timeout(12000) }
+      );
+      if (res.ok) return { status: 'online', reason: `http_${res.status}` };
+      if (res.status === 429) return { status: 'quota', reason: 'rate_limited_429' };
+      let body = '';
+      try { body = await res.text(); } catch {}
+      return { status: 'offline', reason: `http_${res.status}_${body.substring(0, 100)}` };
+    }
     return { status: 'offline', reason: 'unknown_provider' };
   } catch (err) {
     const reason = err?.name === 'TimeoutError' ? 'timeout_12s' :

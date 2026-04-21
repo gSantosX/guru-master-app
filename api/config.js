@@ -49,17 +49,18 @@ export default async function handler(req, res) {
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      // Fallback: buscar gemini_prompts_key da tabela guru_user_data
+      // Fallback: buscar chaves resilientes da tabela guru_user_data
       const { data: userData } = await supabase
         .from('guru_user_data')
-        .select('data_value')
+        .select('data_key, data_value')
         .eq('email', email)
-        .eq('data_key', 'gemini_prompts_key')
-        .single();
+        .in('data_key', ['gemini_prompts_key', 'youtube_key']);
 
       const baseConfig = data || { ...DEFAULTS, email };
-      if (userData?.data_value) {
-        baseConfig.gemini_prompts_key = userData.data_value;
+      if (userData?.length > 0) {
+        userData.forEach(row => {
+          baseConfig[row.data_key] = row.data_value;
+        });
       }
 
       return res.status(200).json(baseConfig);
@@ -71,9 +72,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { email: _e, gemini_prompts_key, ...rest } = req.body;
+      const { email: _e, gemini_prompts_key, youtube_key, ...rest } = req.body;
       
-      // 1. Salvar config principal (removendo gemini_prompts_key para evitar erro de coluna inexistente)
+      // 1. Salvar config principal (removendo chaves extras para evitar erro de coluna inexistente)
       const payload = { email, ...rest, updated_at: new Date().toISOString() };
       const { error } = await supabase
         .from(TABLE)
@@ -81,20 +82,23 @@ export default async function handler(req, res) {
 
       if (error) throw error;
 
-      // 2. Salvar gemini_prompts_key na tabela flexível guru_user_data
-      if (gemini_prompts_key !== undefined) {
-        const { error: err2 } = await supabase
-          .from('guru_user_data')
-          .upsert(
-            { 
-              email, 
-              data_key: 'gemini_prompts_key', 
-              data_value: gemini_prompts_key, 
-              updated_at: new Date().toISOString() 
-            },
-            { onConflict: 'email,data_key' }
-          );
-        if (err2) console.error('Error saving prompts key fallback:', err2);
+      // 2. Salvar chaves resilientes na tabela flexível guru_user_data
+      const fallbackKeys = { gemini_prompts_key, youtube_key };
+      for (const [key, value] of Object.entries(fallbackKeys)) {
+        if (value !== undefined) {
+          const { error: errF } = await supabase
+            .from('guru_user_data')
+            .upsert(
+              { 
+                email, 
+                data_key: key, 
+                data_value: value, 
+                updated_at: new Date().toISOString() 
+              },
+              { onConflict: 'email,data_key' }
+            );
+          if (errF) console.error(`Error saving fallback key ${key}:`, errF);
+        }
       }
 
       return res.status(200).json({ success: true });

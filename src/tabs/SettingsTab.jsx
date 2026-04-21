@@ -518,13 +518,30 @@ export const SettingsTab = () => {
 
               <div className="pt-2 border-t border-white/5">
                 <label className="text-sm font-medium text-gray-300 block mb-1">{t('settings.youtube_key')}</label>
-                <input 
-                  type="password" 
-                  value={youtubeKey}
-                  onChange={(e) => setYoutubeKey(e.target.value)}
-                  placeholder="AIza..."
-                  className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
-                />
+                <div className="relative">
+                  <input 
+                    type="password" 
+                    value={youtubeKey}
+                    onChange={(e) => setYoutubeKey(e.target.value)}
+                    placeholder="AIza..."
+                    className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 pr-20 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-sm font-mono"
+                  />
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <button
+                      onClick={async () => {
+                        if (!youtubeKey.trim()) return;
+                        setIsSaving(true);
+                        await updateConfig({ youtube_key: youtubeKey.trim() });
+                        await checkConnectivity();
+                        setIsSaving(false);
+                        showToast('Teste de conexão YouTube concluído', 'info');
+                      }}
+                      className="text-[8px] px-2 py-1 rounded bg-neon-cyan/20 text-neon-cyan font-black uppercase tracking-wider border border-neon-cyan/30 hover:bg-neon-cyan/30 transition-colors"
+                    >
+                      {status.youtube === 'checking...' ? '...' : 'Testar'}
+                    </button>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-300 block mb-1">Google Client ID (OAuth)</label>
@@ -851,12 +868,12 @@ export const SettingsTab = () => {
                  error={status.leonardo === 'offline' && leonardoKey ? 'Chave Leonardo inválida' : null}
                />
 
-               <StatusItem 
-                 label={t('settings.youtube_connection')} 
-                 status={status.youtube} 
-                 icon={Youtube} 
-                 error={status.youtube === 'offline' && youtubeKey ? (status.details.youtube_error || 'Chave de API do YouTube inválida') : null}
-               />
+                <StatusItem 
+                  label={t('settings.youtube_connection')} 
+                  status={status.youtube} 
+                  icon={Youtube} 
+                  error={status.youtube === 'offline' && configs.youtube_key ? (status.details.youtube_error || 'Chave de API do YouTube inválida') : null}
+                />
 
                {isAdmin && (
                <StatusItem 

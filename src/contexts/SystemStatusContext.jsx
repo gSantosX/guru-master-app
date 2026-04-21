@@ -180,16 +180,14 @@ export const SystemStatusProvider = ({ children }) => {
   // ── STEP 4: Check Gemini / OpenAI / Grok connectivity ────────────
   const checkAllApiKeys = useCallback(async (cfg) => {
     const c = cfg || configsRef.current;
-    const geminiKeys = (c.gemini_key || '').split(',').map(k => k.trim()).filter(Boolean);
-    const gptKeys    = (c.gpt_key    || '').split(',').map(k => k.trim()).filter(Boolean);
-    const grokKeys   = (c.grok_key   || '').split(',').map(k => k.trim()).filter(Boolean);
-
     const promptsKey = (c.gemini_prompts_key || '').trim();
+    const youtubeKey = (c.youtube_key || '').trim();
 
     if (geminiKeys.length === 0) setStatus(prev => ({ ...prev, gemini: 'offline' }));
     if (gptKeys.length    === 0) setStatus(prev => ({ ...prev, openai: 'offline' }));
     if (grokKeys.length   === 0) setStatus(prev => ({ ...prev, grok:   'offline' }));
     if (!promptsKey)           setStatus(prev => ({ ...prev, prompts_key: 'unconfigured' }));
+    if (!youtubeKey)           setStatus(prev => ({ ...prev, youtube:     'unconfigured' }));
 
     const checks = [];
     if (geminiKeys.length > 0) checks.push(checkBulkKeys('gemini', geminiKeys));
@@ -217,6 +215,31 @@ export const SystemStatusProvider = ({ children }) => {
           }
         } catch (e) {
           setStatus(prev => ({ ...prev, prompts_key: 'offline' }));
+        }
+      })());
+    }
+
+    // Check YouTube key
+    if (youtubeKey) {
+      checks.push((async () => {
+        try {
+          const res = await fetch(resolveApiUrl('/api/check'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider: 'youtube', keys: [youtubeKey] }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const best = data.statuses?.[0] || 'offline';
+            const reason = data.debug?.[0] || '';
+            setStatus(prev => ({ 
+              ...prev, 
+              youtube: best,
+              details: { ...prev.details, youtube_error: reason }
+            }));
+          }
+        } catch (e) {
+          setStatus(prev => ({ ...prev, youtube: 'offline' }));
         }
       })());
     }
