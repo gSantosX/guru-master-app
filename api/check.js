@@ -48,7 +48,7 @@ export default async function handler(req, res) {
 
 async function pingKey(provider, key) {
   try {
-    if (provider === 'gemini') {
+    if (provider === 'gemini' || provider === 'prompts_key') {
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models?key=${key}&pageSize=1`,
         { signal: AbortSignal.timeout(12000) }
