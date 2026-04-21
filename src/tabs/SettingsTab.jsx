@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Settings, Key, Palette, HardDrive, Shield, CheckCircle, Cpu, AlertCircle, Info, Zap, RefreshCw, Layout, Plus, Minus, Youtube, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
+import { resolveApiUrl } from '../utils/apiUtils';
 import { t } from '../utils/i18n';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -65,39 +66,7 @@ export const SettingsTab = () => {
     setTimeout(() => { syncingFromCloud.current = false; }, 3000);
   }, [configs]);
 
-  // Auto-save logic — only fires when USER types (not during cloud sync)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      // Skip if we're syncing from cloud to avoid overwriting with stale data
-      if (syncingFromCloud.current) return;
-
-      const gmnStr = typeof geminiKeys === 'string' ? geminiKeys : '';
-      const gptStr = typeof gptKeys === 'string' ? gptKeys : '';
-      const grkStr = typeof grokKeys === 'string' ? grokKeys : '';
-
-      const hasChanges =
-        gmnStr !== (configs.gemini_key || '') ||
-        gptStr !== (configs.gpt_key || '') ||
-        grkStr !== (configs.grok_key || '') ||
-        geminiPromptsKey.trim() !== (configs.gemini_prompts_key || '') ||
-        anthropicKey !== (configs.anthropic_key || '') ||
-        deepseekKey !== (configs.deepseek_key || '') ||
-        elevenlabsKey !== (configs.elevenlabs_key || '') ||
-        leonardoKey !== (configs.leonardo_key || '') ||
-        youtubeKey !== (configs.youtube_key || '') ||
-        googleClientId !== (configs.google_client_id || '') ||
-        smtpUser !== (configs.smtp_user || '') ||
-        smtpPass !== (configs.smtp_password || '') ||
-        ffmpegPath !== (configs.ffmpeg_path || 'ffmpeg') ||
-        ffprobePath !== (configs.ffprobe_path || 'ffprobe') ||
-        flowDownloadsPath !== (configs.flow_downloads_path || '');
-
-      if (hasChanges && isInitialized) {
-        handleSaveKeys();
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [geminiKeys, grokKeys, gptKeys, geminiPromptsKey, anthropicKey, deepseekKey, elevenlabsKey, leonardoKey, youtubeKey, googleClientId, smtpUser, smtpPass, ffmpegPath, ffprobePath, flowDownloadsPath]);
+  // Auto-save removed — user must click SALVAR to persist (avoids loop with syncingFromCloud)
 
   const fetchStorageInfo = async () => {
     // Storage info only available in local Electron/desktop mode
@@ -605,25 +574,28 @@ export const SettingsTab = () => {
               </div>
               )}
 
-              <div className="flex items-center gap-2 pt-2">
-                 <div className="flex-1 h-[1px] bg-white/5"></div>
-                 <span className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter">Salvamento Automático Ativo</span>
-                 <div className="flex-1 h-[1px] bg-white/5"></div>
+              {/* ── BOTÃO SALVAR ──────────────────────────────────── */}
+              <div className="pt-2">
+                <button
+                  onClick={handleSaveKeys}
+                  disabled={isSaving}
+                  className={`w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
+                    isSaved
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/40 shadow-[0_0_15px_rgba(74,222,128,0.2)]'
+                      : isSaving
+                      ? 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 opacity-70 cursor-not-allowed'
+                      : 'bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/40 hover:bg-neon-cyan/25 hover:shadow-[0_0_20px_rgba(0,243,255,0.3)] active:scale-[0.98]'
+                  }`}
+                >
+                  {isSaving ? (
+                    <><RefreshCw className="w-4 h-4 animate-spin" /> Salvando...</>
+                  ) : isSaved ? (
+                    <><CheckCircle className="w-4 h-4" /> Chaves Salvas com Sucesso!</>
+                  ) : (
+                    <><Key className="w-4 h-4" /> Salvar Todas as Chaves</>
+                  )}
+                </button>
               </div>
-
-              {isSaving && (
-                <div className="flex items-center justify-center gap-2 py-2 text-neon-cyan animate-pulse">
-                  <RefreshCw className="w-3 h-3 animate-spin" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest italic">Sincronizando Chaves...</span>
-                </div>
-              )}
-
-              {isSaved && !isSaving && (
-                <div className="flex items-center justify-center gap-2 py-2 text-green-400">
-                  <CheckCircle className="w-3 h-3" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Conexões Atualizadas</span>
-                </div>
-              )}
             </div>
           </div>
 
