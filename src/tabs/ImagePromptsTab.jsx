@@ -126,6 +126,28 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
 
       if (script) {
         scriptToAnalyze = script.content;
+        
+        // AUTO-INJECT VEO FROM SCRIPT IF NO FILE IS PRESENT
+        if (!file && script.content) {
+          let veoData = script.veoContent;
+          if (!veoData) {
+            const lines = script.content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
+            veoData = "";
+            lines.forEach((line, idx) => {
+              veoData += `${idx + 1}\n00:00:00,000 --> 00:00:02,000\n${line}\n\n`;
+            });
+          }
+           const parts = veoData.split(/\n\s*\n/).filter(p => p.trim());
+           const blocks = parts.map(p => {
+             const lines = p.trim().split('\n');
+             if (lines.length >= 3) return lines.slice(2).join(' ').trim();
+             return p.trim();
+           });
+           setSubtitleBlocks(blocks);
+           setSubtitleCount(blocks.length);
+           setFile({ name: `Legenda_VEO_${script.title || targetId}.veo`, size: veoData.length });
+           setPrompts("");
+        }
       }
     } else if (subtitleBlocks.length > 0) {
       scriptToAnalyze = subtitleBlocks.slice(0, 50).join('\n');
@@ -194,6 +216,11 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         setSelectedScriptId(triggerId);
         localStorage.removeItem('guru_image_prompt_trigger_id');
         
+        const veoContent = localStorage.getItem('guru_image_prompt_veo_content');
+        if (veoContent) {
+           localStorage.removeItem('guru_image_prompt_veo_content');
+        }
+
         if (autoAnalyze === 'true') {
           localStorage.removeItem('guru_image_prompt_auto_analyze');
           const currentScripts = loadScripts(); 

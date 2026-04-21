@@ -97,6 +97,45 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     }
   };
 
+  const handleDownloadVeo = async (scriptToDownload) => {
+    const target = (scriptToDownload && scriptToDownload.id) ? scriptToDownload : activeScript;
+    if (!target) return;
+    
+    try {
+        let veoData = target.veoContent;
+        if (!veoData) {
+          const lines = target.content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
+          veoData = "";
+          lines.forEach((line, idx) => {
+             const startSec = idx * 2;
+             const endSec = startSec + 2;
+             const formatTime = (secs) => {
+               const h = Math.floor(secs / 3600);
+               const m = Math.floor((secs % 3600) / 60);
+               const s = secs % 60;
+               return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},000`;
+             };
+             veoData += `${idx + 1}\n${formatTime(startSec)} --> ${formatTime(endSec)}\n${line}\n\n`;
+          });
+        }
+
+        if (window.electronAPI?.saveFile) {
+            await window.electronAPI.saveFile(veoData, `${target.title.replace(/ /g, '_')}.veo`);
+            return;
+        }
+
+        const blob = new Blob([veoData], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${target.title.replace(/ /g, '_')}.veo`;
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        alert("Erro ao gerar VEO: " + err.message);
+    }
+  };
+
   const handleExportPdf = async (scriptToExport) => {
     const target = (scriptToExport && scriptToExport.id) ? scriptToExport : activeScript;
     if (!target) return;
@@ -165,6 +204,25 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     // Set triggers for ImagePromptsTab
     localStorage.setItem('guru_image_prompt_trigger_id', target.id.toString());
     localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
+    if (target.veoContent) {
+       localStorage.setItem('guru_image_prompt_veo_content', target.veoContent);
+    } else {
+       // On the fly generation if it doesn't exist
+       const lines = target.content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
+       let veoData = "";
+       lines.forEach((line, idx) => {
+          const startSec = idx * 2;
+          const endSec = startSec + 2;
+          const formatTime = (secs) => {
+            const h = Math.floor(secs / 3600);
+            const m = Math.floor((secs % 3600) / 60);
+            const s = secs % 60;
+            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},000`;
+          };
+          veoData += `${idx + 1}\n${formatTime(startSec)} --> ${formatTime(endSec)}\n${line}\n\n`;
+       });
+       localStorage.setItem('guru_image_prompt_veo_content', veoData);
+    }
     
     // Switch Tab
     setActiveTab('image-prompts');
@@ -216,6 +274,9 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
             </button>
             <button onClick={() => handleDownloadSrt()} className="flex-1 py-3 md:py-4 rounded-xl bg-dark-lighter border border-white/10 hover:border-white/30 text-white font-bold flex items-center justify-center gap-2 transition-all hover:bg-white/5 hover:scale-[1.01] shadow-lg text-sm md:text-base">
               <FileJson className="w-5 h-5 text-neon-pink" /> Baixar SRT
+            </button>
+            <button onClick={() => handleDownloadVeo()} className="flex-1 py-3 md:py-4 rounded-xl bg-dark-lighter border border-white/10 hover:border-white/30 text-white font-bold flex items-center justify-center gap-2 transition-all hover:bg-white/5 hover:scale-[1.01] shadow-lg text-sm md:text-base">
+              <FileJson className="w-5 h-5 text-neon-purple" /> Baixar VEO
             </button>
             <button 
                onClick={() => handleGoToPrompts()}
@@ -385,6 +446,12 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
                         className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-500 hover:text-white text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
                       >
                         <FileJson className="w-3 h-3 text-neon-pink" /> .SRT
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDownloadVeo(script); }}
+                        className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-500 hover:text-white text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <FileJson className="w-3 h-3 text-neon-purple" /> .VEO
                       </button>
                     </div>
                   </div>

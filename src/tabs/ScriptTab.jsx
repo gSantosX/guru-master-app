@@ -257,13 +257,23 @@ CONTEXTO FINAL:
       setGenerationProgress(90);
       setStatusMessage('Polimento Final de Fluxo...');
       
+      // --- GERAR VEO ---
+      const veoLines = cleanedContent.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
+      let veoData = "";
+      veoLines.forEach((line, idx) => {
+        veoData += `${idx + 1}\n`;
+        veoData += `00:00:${String(idx*2).padStart(2,'0')},000 --> 00:00:${String((idx*2)+2).padStart(2,'0')},000\n`;
+        veoData += `${line}\n\n`;
+      });
+      
       const finalScript = {
         title: titulo,
         niche: nicho,
         content: cleanedContent,
         date: new Date().toLocaleString(),
         dna,
-        alma
+        alma,
+        veoContent: veoData
       };
 
       setGeneratedScript(finalScript);
@@ -306,6 +316,26 @@ CONTEXTO FINAL:
       if (scripts.length > 0) {
         localStorage.setItem('guru_image_prompt_trigger_id', scripts[0].id.toString());
         localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
+        if (scripts[0]?.veoContent) {
+          localStorage.setItem('guru_image_prompt_veo_content', scripts[0].veoContent);
+        } else if (scripts[0]?.content) {
+           const lines = scripts[0].content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
+           let veoData = "";
+           lines.forEach((line, idx) => {
+             const startSec = idx * 2;
+             const endSec = startSec + 2;
+             
+             const formatTime = (secs) => {
+               const h = Math.floor(secs / 3600);
+               const m = Math.floor((secs % 3600) / 60);
+               const s = secs % 60;
+               return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},000`;
+             };
+
+             veoData += `${idx + 1}\n${formatTime(startSec)} --> ${formatTime(endSec)}\n${line}\n\n`;
+           });
+           localStorage.setItem('guru_image_prompt_veo_content', veoData);
+        }
         setActiveTab('image-prompts');
         return;
       }
@@ -315,6 +345,26 @@ CONTEXTO FINAL:
     
     localStorage.setItem('guru_image_prompt_trigger_id', lastSavedId.toString());
     localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
+    if (generatedScript?.veoContent) {
+      localStorage.setItem('guru_image_prompt_veo_content', generatedScript.veoContent);
+    } else if (generatedScript?.content) {
+       const lines = generatedScript.content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
+       let veoData = "";
+       lines.forEach((line, idx) => {
+             const startSec = idx * 2;
+             const endSec = startSec + 2;
+             
+             const formatTime = (secs) => {
+               const h = Math.floor(secs / 3600);
+               const m = Math.floor((secs % 3600) / 60);
+               const s = secs % 60;
+               return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},000`;
+             };
+
+             veoData += `${idx + 1}\n${formatTime(startSec)} --> ${formatTime(endSec)}\n${line}\n\n`;
+       });
+       localStorage.setItem('guru_image_prompt_veo_content', veoData);
+    }
     setActiveTab('image-prompts');
   };
 
