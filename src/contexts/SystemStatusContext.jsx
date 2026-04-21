@@ -369,9 +369,16 @@ export const SystemStatusProvider = ({ children }) => {
 
   // ── Initial boot ───────────────────────────────────────────────────
   useEffect(() => {
-    // On first load: if user already in localStorage, load their configs
-    if (emailRef.current) checkConnectivity();
-    else checkServer();
+    const boot = async () => {
+      // On first load: if user already in localStorage, load their configs
+      if (emailRef.current) {
+        await checkConnectivity();
+      } else {
+        await checkServer();
+        setIsInitialized(true);
+      }
+    };
+    boot();
     const interval = setInterval(checkServer, 30000);
     return () => clearInterval(interval);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
