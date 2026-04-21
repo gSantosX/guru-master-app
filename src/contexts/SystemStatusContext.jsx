@@ -207,11 +207,14 @@ export const SystemStatusProvider = ({ children }) => {
 
   // ── updateConfig: save to Supabase — uses emailRef (always current) ─
   const updateConfig = useCallback(async (newConfig) => {
-    const email = emailRef.current;
+    // Triple-fallback to always get the email, regardless of render timing:
+    const email = emailRef.current || user?.email || getEmailFromStorage();
     if (!email) {
       console.warn('[updateConfig] Nenhum email autenticado — config não salva.');
       return false;
     }
+    // Keep ref in sync if it was empty
+    if (!emailRef.current) emailRef.current = email;
     try {
       const res = await fetch(resolveApiUrl('/api/config'), {
         method: 'POST',
@@ -226,12 +229,15 @@ export const SystemStatusProvider = ({ children }) => {
         window.dispatchEvent(new Event('guru_config_updated'));
         await checkAllApiKeys(merged);
         return true;
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        console.error('[updateConfig] Erro HTTP:', res.status, errData);
       }
     } catch (err) {
       console.error('[updateConfig] Erro ao salvar:', err);
     }
     return false;
-  }, [checkAllApiKeys]); // emailRef is a ref — no dep needed
+  }, [user, checkAllApiKeys]); // user added so triple-fallback is reactive
 
   const rotateKey = useCallback((provider) => {
     setActiveIndices(prev => {
