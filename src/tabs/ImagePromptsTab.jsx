@@ -695,7 +695,7 @@ ${generateLabel}`;
                 
                 GERAR PROMPT VEO 3.1:`;
                 
-                const subResp = await callGemini(getPromptsApiKey(), subPrompt, { model: 'gemini-2.5-flash' });
+                const subResp = await callGemini(getPromptsApiKey(), subPrompt, { model: 'gemini-1.5-flash' });
                 // Clean and ensure single line
                 let cleanedSub = subResp.trim().replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
                 const line = cleanedSub.split('\n').find(l => l.includes('[PROMPT]:')) || cleanedSub;
@@ -712,7 +712,7 @@ ${generateLabel}`;
                 statuses: [...chunkStatuses], 
                 step: globalRetry > 0 ? `Corrigindo Bloco ${i+1}...` : `Processando Bloco ${i+1}/${totalChunks}...` 
               }));
-              responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.5-flash' });
+              responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-1.5-flash' });
             }
 
             success = true;

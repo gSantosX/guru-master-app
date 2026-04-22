@@ -118,6 +118,11 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
     try {
       const modelsToTry = [];
       
+      // If a specific model is requested, try it first
+      if (options.model) {
+        modelsToTry.push(options.model);
+      }
+
       if (cachedGeminiModels) {
         modelsToTry.push(...cachedGeminiModels);
       } else {
@@ -128,18 +133,14 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
             const modelsData = await modelsRes.json();
             if (modelsData.models) {
               const list = [];
-              // Priority: 3.1-flash-lite (500/day FREE) > 2.5-flash (20/day FREE) > 2.5-flash-lite (20/day)
-              const lite31 = modelsData.models.find(m => m.name.includes('gemini-3.1-flash-lite') && m.supportedGenerationMethods?.includes('generateContent'));
-              const flash25 = modelsData.models.find(m => m.name.includes('gemini-2.5-flash') && !m.name.includes('lite') && m.supportedGenerationMethods?.includes('generateContent'));
-              const lite25 = modelsData.models.find(m => m.name.includes('gemini-2.5-flash-lite') && m.supportedGenerationMethods?.includes('generateContent'));
-              const flash8b = modelsData.models.find(m => m.name.includes('gemini-1.5-flash-8b') && m.supportedGenerationMethods?.includes('generateContent'));
-              const flash20 = modelsData.models.find(m => m.name === 'models/gemini-2.0-flash' && m.supportedGenerationMethods?.includes('generateContent'));
+              // Priority: 2.0-flash > 1.5-flash > 1.5-pro
+              const flash20 = modelsData.models.find(m => m.name.includes('gemini-2.0-flash') && m.supportedGenerationMethods?.includes('generateContent'));
+              const flash15 = modelsData.models.find(m => m.name.includes('gemini-1.5-flash') && !m.name.includes('8b') && m.supportedGenerationMethods?.includes('generateContent'));
+              const pro15 = modelsData.models.find(m => m.name.includes('gemini-1.5-pro') && m.supportedGenerationMethods?.includes('generateContent'));
               
-              if (lite31) list.push(lite31.name);
-              if (flash25 && !list.includes(flash25.name)) list.push(flash25.name);
-              if (lite25 && !list.includes(lite25.name)) list.push(lite25.name);
-              if (flash8b && !list.includes(flash8b.name)) list.push(flash8b.name);
-              if (flash20 && !list.includes(flash20.name)) list.push(flash20.name);
+              if (flash20) list.push(flash20.name);
+              if (flash15) list.push(flash15.name);
+              if (pro15) list.push(pro15.name);
               
               cachedGeminiModels = list;
               modelsToTry.push(...list);
@@ -150,8 +151,8 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
         }
       }
 
-      // Fallbacks: current models with free quotas (as of 2026)
-      const fallbacks = ["models/gemini-3.1-flash-lite", "models/gemini-2.5-flash", "models/gemini-2.5-flash-lite"];
+      // Real Fallbacks (2024/2025 standard models)
+      const fallbacks = ["models/gemini-2.0-flash", "models/gemini-1.5-flash", "models/gemini-1.5-pro"];
       fallbacks.forEach(f => { if (!modelsToTry.includes(f)) modelsToTry.push(f); });
 
       for (const modelPath of modelsToTry) {
@@ -507,9 +508,17 @@ export const callAI = async (prompt, options = {}) => {
   const activeAI = localStorage.getItem('guru_active_ai') || 'Gemini';
   
   if (activeAI === 'Gemini') {
-    const keys = localStorage.getItem('guru_gemini_key') || '';
+    // Prioritize exclusive prompts key if this is a prompt task
+    const promptsKey = localStorage.getItem('guru_gemini_prompts_key') || '';
+    const mainKeys = localStorage.getItem('guru_gemini_key') || '';
+    
+    if (options.isPromptTask && promptsKey) {
+      console.log('💎 Using Exclusive Prompts Key for this task');
+      return await callGemini(promptsKey, prompt, { ...options, forcedIndex: 0 });
+    }
+    
     const idx = parseInt(localStorage.getItem('guru_gemini_active_idx') || '0');
-    return await callGemini(keys, prompt, { ...options, forcedIndex: idx });
+    return await callGemini(mainKeys, prompt, { ...options, forcedIndex: idx });
   } else if (activeAI === 'OpenAI' || activeAI === 'GPT') {
     const keys = localStorage.getItem('guru_gpt_key') || '';
     const idx = parseInt(localStorage.getItem('guru_gpt_active_idx') || '0');
