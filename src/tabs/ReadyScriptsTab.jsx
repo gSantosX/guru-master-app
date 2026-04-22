@@ -73,10 +73,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     if (!target) return;
     
     try {
-        let srtData = target.veoContent;
-        if (!srtData) {
-          srtData = generateVeoContent(target.content);
-        }
+        const srtData = generateVeoContent(target.content);
 
         if (window.electronAPI?.saveFile) {
             await window.electronAPI.saveFile(srtData, `${target.title.replace(/ /g, '_')}.srt`);
@@ -100,10 +97,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     if (!target) return;
     
     try {
-        let veoData = target.veoContent;
-        if (!veoData) {
-          veoData = generateVeoContent(target.content);
-        }
+        const veoData = generateVeoContent(target.content);
 
         if (window.electronAPI?.saveFile) {
             await window.electronAPI.saveFile(veoData, `${target.title.replace(/ /g, '_')}.veo`);
@@ -190,13 +184,8 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     // Set triggers for ImagePromptsTab
     localStorage.setItem('guru_image_prompt_trigger_id', target.id.toString());
     localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
-    if (target.veoContent) {
-       localStorage.setItem('guru_image_prompt_veo_content', target.veoContent);
-    } else {
-       // On the fly generation if it doesn't exist
-       const veoData = generateVeoContent(target.content);
-       localStorage.setItem('guru_image_prompt_veo_content', veoData);
-    }
+    const veoData = generateVeoContent(target.content);
+    localStorage.setItem('guru_image_prompt_veo_content', veoData);
     
     // Switch Tab
     setActiveTab('image-prompts');

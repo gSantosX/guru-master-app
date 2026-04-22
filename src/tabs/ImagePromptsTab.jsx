@@ -137,10 +137,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         
         // AUTO-INJECT VEO FROM SCRIPT IF NO FILE IS PRESENT
         if (!file && script.content) {
-          let veoData = script.veoContent;
-          if (!veoData) {
-            veoData = generateVeoContent(script.content);
-          }
+          const veoData = generateVeoContent(script.content);
            const parts = veoData.split(/\n\s*\n/).filter(p => p.trim());
            const blocks = parts.map(p => {
              const lines = p.trim().split('\n');

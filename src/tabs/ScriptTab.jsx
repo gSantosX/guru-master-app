@@ -311,9 +311,7 @@ CONTEXTO FINAL:
       if (scripts.length > 0) {
         localStorage.setItem('guru_image_prompt_trigger_id', scripts[0].id.toString());
         localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
-        if (scripts[0]?.veoContent) {
-          localStorage.setItem('guru_image_prompt_veo_content', scripts[0].veoContent);
-        } else if (scripts[0]?.content) {
+        if (scripts[0]?.content) {
            const veoData = generateVeoContent(scripts[0].content);
            localStorage.setItem('guru_image_prompt_veo_content', veoData);
         }
@@ -326,9 +324,7 @@ CONTEXTO FINAL:
     
     localStorage.setItem('guru_image_prompt_trigger_id', lastSavedId.toString());
     localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
-    if (generatedScript?.veoContent) {
-      localStorage.setItem('guru_image_prompt_veo_content', generatedScript.veoContent);
-    } else if (generatedScript?.content) {
+    if (generatedScript?.content) {
        const veoData = generateVeoContent(generatedScript.content);
        localStorage.setItem('guru_image_prompt_veo_content', veoData);
     }
