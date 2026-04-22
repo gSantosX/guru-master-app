@@ -37,14 +37,14 @@ if (typeof window !== 'undefined') {
   window.addEventListener('guru_manual_key_select', (e) => {
     const { provider, index } = e.detail;
     if (sessionIndices.hasOwnProperty(provider)) {
-      console.log(`🎯 Manual Selection: Setting ${provider} to index ${index}`);
+      console.log(`ðŸŽ¯ Manual Selection: Setting ${provider} to index ${index}`);
       sessionIndices[provider] = index;
     }
   });
 
   // Reset model cache when API key is updated so the new key can discover models fresh
   window.addEventListener('guru_config_updated', () => {
-    console.log('🔄 Config updated — clearing Gemini model cache.');
+    console.log('ðŸ”„ Config updated â€” clearing Gemini model cache.');
     cachedGeminiModels = null;
   });
 }
@@ -107,12 +107,12 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
     // PREEMPTIVE CHECK
     const usage = getRollingUsage(apiKey);
     if ((usage.rpm >= SAFE_RPM_LIMIT || usage.rpd >= SAFE_RPD_LIMIT) && i < iterations - 1) {
-       console.warn(`🔄 Gemini Tracker: Chave ${kIdx} bateu no teto de segurança (RPM: ${usage.rpm}). Pulando preventiva...`);
+       console.warn(`ðŸ”„ Gemini Tracker: Chave ${kIdx} bateu no teto de seguranÃ§a (RPM: ${usage.rpm}). Pulando preventiva...`);
        continue;
     }
     
     if (kIdx !== startIndex && usage.rpm < SAFE_RPM_LIMIT) {
-        console.warn(`🔄 Gemini: Entrando na próxima chave (Index ${kIdx})...`);
+        console.warn(`ðŸ”„ Gemini: Entrando na prÃ³xima chave (Index ${kIdx})...`);
     }
 
     try {
@@ -127,23 +127,24 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
         modelsToTry.push(...cachedGeminiModels);
       } else {
         try {
-          // v1beta is only for listing models, NOT for generateContent
           const modelsRes = await fetch(resolveApiUrl(`/api/gemini/v1beta/models?key=${apiKey}`));
           if (modelsRes.ok) {
             const modelsData = await modelsRes.json();
             if (modelsData.models) {
               const list = [];
-              // Priority: 2.0-flash > 1.5-flash > 1.5-pro
-              const flash20 = modelsData.models.find(m => m.name.includes('gemini-2.0-flash') && m.supportedGenerationMethods?.includes('generateContent'));
-              const flash15 = modelsData.models.find(m => m.name.includes('gemini-1.5-flash') && !m.name.includes('8b') && m.supportedGenerationMethods?.includes('generateContent'));
-              const pro15 = modelsData.models.find(m => m.name.includes('gemini-1.5-pro') && m.supportedGenerationMethods?.includes('generateContent'));
+              // Only models confirmed to work on v1beta generateContent endpoint
+              const flash20 = modelsData.models.find(m => m.name === 'models/gemini-2.0-flash' && m.supportedGenerationMethods?.includes('generateContent'));
+              const flash20lite = modelsData.models.find(m => m.name === 'models/gemini-2.0-flash-lite' && m.supportedGenerationMethods?.includes('generateContent'));
+              const flash15latest = modelsData.models.find(m => m.name === 'models/gemini-1.5-flash-latest' && m.supportedGenerationMethods?.includes('generateContent'));
               
               if (flash20) list.push(flash20.name);
-              if (flash15) list.push(flash15.name);
-              if (pro15) list.push(pro15.name);
+              if (flash20lite) list.push(flash20lite.name);
+              if (flash15latest) list.push(flash15latest.name);
               
-              cachedGeminiModels = list;
-              modelsToTry.push(...list);
+              if (list.length > 0) {
+                cachedGeminiModels = list;
+                modelsToTry.push(...list);
+              }
             }
           }
         } catch (e) {
@@ -151,8 +152,12 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
         }
       }
 
-      // Real Fallbacks (2024/2025 standard models)
-      const fallbacks = ["models/gemini-2.0-flash", "models/gemini-1.5-flash", "models/gemini-1.5-pro"];
+      // Hardcoded fallbacks â€” confirmed working on v1beta (April 2025)
+      const fallbacks = [
+        "models/gemini-2.0-flash",
+        "models/gemini-2.0-flash-lite",
+        "models/gemini-1.5-flash-latest"
+      ];
       fallbacks.forEach(f => { if (!modelsToTry.includes(f)) modelsToTry.push(f); });
 
       for (const modelPath of modelsToTry) {
@@ -189,6 +194,13 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
             if (data.error) {
               const errorMsg = data.error.message || "Unknown error";
               
+              // 404 = model not found / deprecated — clear cache and try next model
+              if (res.status === 404) {
+                console.warn(`⚠️ [Gemini]: Modelo ${modelPath} não encontrado (404). Tentando próximo...`);
+                cachedGeminiModels = null; // reset cache so we re-fetch
+                break; // break while loop, continue for-loop to next model
+              }
+              
               if (isQuotaError(null, data)) {
                 if (attempts === 1) {
                   await new Promise(r => setTimeout(r, 2000));
@@ -222,12 +234,12 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
     } catch (e) {
       lastError = e;
       if (isQuotaError(e) && i < iterations - 1) {
-        console.warn(`🔄 [Gemini]: Rotacionando para próxima chave devido a limite de quota...`);
+        console.warn(`ðŸ”„ [Gemini]: Rotacionando para prÃ³xima chave devido a limite de quota...`);
         continue;
       }
       // If it's an Auth error, we might still want to try the next key in case only one is bad
       if (isAuthError(e) && i < iterations - 1) {
-        console.warn(`🔄 [Gemini]: Chave inválida détectada (Index ${kIdx}). Tentando próxima...`);
+        console.warn(`ðŸ”„ [Gemini]: Chave invÃ¡lida dÃ©tectada (Index ${kIdx}). Tentando prÃ³xima...`);
         continue;
       }
       break;
@@ -245,9 +257,9 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
 
   if (gptKey && isQuotaReached) {
     try {
-      console.warn("🚨 Todas as chaves Gemini exauridas (ou bloqueadas). Acionando Fallback Crítico para GPT...");
+      console.warn("ðŸš¨ Todas as chaves Gemini exauridas (ou bloqueadas). Acionando Fallback CrÃ­tico para GPT...");
       window.dispatchEvent(new CustomEvent('guru_fallback_triggered', { 
-        detail: { message: "Gemini esgotado. Acionando GPT de emergência..." } 
+        detail: { message: "Gemini esgotado. Acionando GPT de emergÃªncia..." } 
       }));
       // Try with GPT-4o-mini as it is reliable and cheaper for emergency recovery
       return await callGPT(gptKey, prompt, "gpt-4o-mini", options);
@@ -260,7 +272,7 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
     throw lastError;
   }
 
-  throw new Error("Não foi possível obter resposta do Gemini após tentar todas as chaves.");
+  throw new Error("NÃ£o foi possÃ­vel obter resposta do Gemini apÃ³s tentar todas as chaves.");
 };
 
 
@@ -283,7 +295,7 @@ export const callGeminiImage = async (apiKeys, prompt, options = {}) => {
 
     try {
       if (kIdx !== startIndex) {
-          console.warn(`🔄 Gemini Imagem: Tentando próxima chave (Index ${kIdx})...`);
+          console.warn(`ðŸ”„ Gemini Imagem: Tentando prÃ³xima chave (Index ${kIdx})...`);
       }
 
       const modelPath = options.model || "models/imagen-3.0-generate-001";
@@ -315,7 +327,7 @@ export const callGeminiImage = async (apiKeys, prompt, options = {}) => {
       }
 
       if (isQuotaError(null, data) && i < keyList.length - 1) {
-        console.warn(`⚠️ [Gemini Imagem]: Cota atingida na chave ${kIdx}. Rotacionando...`);
+        console.warn(`âš ï¸ [Gemini Imagem]: Cota atingida na chave ${kIdx}. Rotacionando...`);
         continue;
       }
 
@@ -327,7 +339,7 @@ export const callGeminiImage = async (apiKeys, prompt, options = {}) => {
     } catch (e) {
       lastError = e;
       if (isQuotaError(e) && i < keyList.length - 1) {
-        console.warn(`🔄 [Gemini Imagem]: Rotacionando para próxima chave...`);
+        console.warn(`ðŸ”„ [Gemini Imagem]: Rotacionando para prÃ³xima chave...`);
         continue;
       }
       console.error("Gemini Image generation failure on index " + kIdx, e);
@@ -335,10 +347,10 @@ export const callGeminiImage = async (apiKeys, prompt, options = {}) => {
   }
 
   if (isQuotaError(lastError)) {
-    throw new Error("Limite Google API Key diário excedido");
+    throw new Error("Limite Google API Key diÃ¡rio excedido");
   }
 
-  throw lastError || new Error("Falha total na geração de imagem Gemini após tentar todas as chaves.");
+  throw lastError || new Error("Falha total na geraÃ§Ã£o de imagem Gemini apÃ³s tentar todas as chaves.");
 };
 
 /**
@@ -363,7 +375,7 @@ export const callGPT = async (apiKeys, prompt, model = "gpt-4o-mini", options = 
     
     try {
       if (kIdx !== startIndex) {
-        console.warn(`🔄 GPT: Tentando próxima chave (Index ${kIdx})...`);
+        console.warn(`ðŸ”„ GPT: Tentando prÃ³xima chave (Index ${kIdx})...`);
       }
 
       const response = await fetch(resolveApiUrl("/api/openai/v1/chat/completions"), {
@@ -383,7 +395,7 @@ export const callGPT = async (apiKeys, prompt, model = "gpt-4o-mini", options = 
       const data = await response.json();
       if (!response.ok) {
         if (isQuotaError(null, data) || response.status === 429) {
-          console.warn(`⚠️ [OpenAI]: 429/Quota na chave ${kIdx}. Rotacionando para próxima...`);
+          console.warn(`âš ï¸ [OpenAI]: 429/Quota na chave ${kIdx}. Rotacionando para prÃ³xima...`);
           const err = new Error(data.error?.message || "OpenAI Rate Limit");
           err.status = 429;
           throw err; // Trigger the catch rotation
@@ -396,21 +408,21 @@ export const callGPT = async (apiKeys, prompt, model = "gpt-4o-mini", options = 
     } catch (e) {
       lastError = e;
       if (isQuotaError(e) && i < keyList.length - 1) {
-        console.warn(`🔄 [OpenAI]: Ativando rotação devido a limite de quota...`);
+        console.warn(`ðŸ”„ [OpenAI]: Ativando rotaÃ§Ã£o devido a limite de quota...`);
         continue; 
       }
       break;
     }
   }
 
-  throw lastError || new Error("Não foi possível obter resposta do GPT.");
+  throw lastError || new Error("NÃ£o foi possÃ­vel obter resposta do GPT.");
 };
 
 /**
  * Translates SRT content while preserving timestamps and structure.
  */
 export const translateSRT = async (srtText, targetLang, apiKeys, provider = 'gemini') => {
-  if (!apiKeys) throw new Error("API Key ausente para tradução!");
+  if (!apiKeys) throw new Error("API Key ausente para traduÃ§Ã£o!");
 
   const prompt = `Translate the following SRT file content into ${targetLang}. 
   STRICT RULES:
@@ -452,7 +464,7 @@ export const callGrok = async (apiKeys, prompt, model = "grok-beta", options = {
 
     try {
       if (kIdx !== startIndex) {
-        console.warn(`🔄 Grok: Tentando próxima chave (Index ${kIdx})...`);
+        console.warn(`ðŸ”„ Grok: Tentando prÃ³xima chave (Index ${kIdx})...`);
       }
 
       const response = await fetch(resolveApiUrl("/api/grok/v1/chat/completions"), {
@@ -473,7 +485,7 @@ export const callGrok = async (apiKeys, prompt, model = "grok-beta", options = {
       const data = await response.json();
       if (!response.ok) {
         if (response.status === 429 && i < keyList.length - 1) {
-          console.warn(`⚠️ Grok Cota atingida na chave ${kIdx}.`);
+          console.warn(`âš ï¸ Grok Cota atingida na chave ${kIdx}.`);
           continue; 
         }
         const err = new Error(data.error?.message || response.statusText);
@@ -497,7 +509,7 @@ export const callGrok = async (apiKeys, prompt, model = "grok-beta", options = {
     }
   }
 
-  throw lastError || new Error("Não foi possível obter resposta do Grok.");
+  throw lastError || new Error("NÃ£o foi possÃ­vel obter resposta do Grok.");
 };
 
 /**
@@ -513,7 +525,7 @@ export const callAI = async (prompt, options = {}) => {
     const mainKeys = localStorage.getItem('guru_gemini_key') || '';
     
     if (options.isPromptTask && promptsKey) {
-      console.log('💎 Using Exclusive Prompts Key for this task');
+      console.log('ðŸ’Ž Using Exclusive Prompts Key for this task');
       return await callGemini(promptsKey, prompt, { ...options, forcedIndex: 0 });
     }
     
@@ -533,3 +545,4 @@ export const callAI = async (prompt, options = {}) => {
   const defaultKeys = localStorage.getItem('guru_gemini_key') || '';
   return await callGemini(defaultKeys, prompt, options);
 };
+

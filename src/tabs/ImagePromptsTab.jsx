@@ -205,7 +205,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       ${scriptToAnalyze.substring(0, 4500)}`;
 
       const response = await callGemini(getPromptsApiKey(configs), analysisPrompt, { 
-        model: 'gemini-1.5-flash', 
+        model: 'gemini-2.0-flash-lite', 
         temperature: 0.1
       });
       const cleanJson = response.replace(/```json\n?|```/g, '').trim();
@@ -451,7 +451,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         Repair these blocks keeping original descriptions in English:
         ${repaired}`;
         
-        const aiRepaired = await callGemini(getPromptsApiKey(configs), repairPrompt, { model: 'gemini-1.5-flash' });
+        const aiRepaired = await callGemini(getPromptsApiKey(configs), repairPrompt, { model: 'gemini-2.0-flash-lite' });
         repaired = aiRepaired.trim();
         setRepairLogs(prev => [...prev, "âœ“ Reparo de Estrutura via IA ConcluÃ­do"]);
       }
@@ -721,7 +721,7 @@ ${generateLabel}`;
                 
                 GERAR PROMPT VEO 3.1:`;
                 
-                const subResp = await callGemini(getPromptsApiKey(configs), subPrompt, { model: 'gemini-1.5-flash' });
+                const subResp = await callGemini(getPromptsApiKey(configs), subPrompt, { model: 'gemini-2.0-flash-lite' });
                 // Clean and ensure single line
                 let cleanedSub = subResp.trim().replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
                 const line = cleanedSub.split('\n').find(l => l.includes('[PROMPT]:')) || cleanedSub;
@@ -738,7 +738,7 @@ ${generateLabel}`;
                 statuses: [...chunkStatuses], 
                 step: globalRetry > 0 ? `Corrigindo Bloco ${i+1}...` : `Processando Bloco ${i+1}/${totalChunks}...` 
               }));
-              responseText = await callGemini(getPromptsApiKey(configs), promptParam, { model: 'gemini-1.5-flash' });
+              responseText = await callGemini(getPromptsApiKey(configs), promptParam, { model: 'gemini-2.0-flash-lite' });
             }
 
             success = true;
@@ -1791,5 +1791,6 @@ ${generateLabel}`;
     </div>
   );
 };
+
 
 
