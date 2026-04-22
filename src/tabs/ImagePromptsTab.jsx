@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { 
   UploadCloud, 
   File, 
@@ -31,10 +31,16 @@ import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 import { generateVeoContent } from '../utils/veoUtils';
 
-const getPromptsApiKey = () => {
+const getPromptsApiKey = (configs) => {
+  // Priority: exclusive prompts key > gemini key from localStorage > configs object
   const exclusiveKey = localStorage.getItem('guru_gemini_prompts_key');
   if (exclusiveKey) return exclusiveKey;
-  return localStorage.getItem('guru_gemini_key') || '';
+  const geminiKey = localStorage.getItem('guru_gemini_key');
+  if (geminiKey) return geminiKey.split(',')[0].trim(); // first key if multiple
+  // Fallback to configs object (loaded from Supabase via SystemStatusContext)
+  if (configs?.gemini_prompts_key) return configs.gemini_prompts_key;
+  if (configs?.gemini_key) return configs.gemini_key.split(',')[0].trim();
+  return '';
 };
 
 
@@ -95,8 +101,8 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   };
 
   const loadScripts = () => {
-    // Agora o dropdown utilizará "cloudScripts" que já é um estado reativo,
-    // mas mantemos este utilitário para caso o hook demore, ele ter fallback instantâneo.
+    // Agora o dropdown utilizarÃ¡ "cloudScripts" que jÃ¡ Ã© um estado reativo,
+    // mas mantemos este utilitÃ¡rio para caso o hook demore, ele ter fallback instantÃ¢neo.
     const savedScripts = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
     const scriptsArray = Array.isArray(savedScripts) ? savedScripts : [];
     setAvailableScripts(scriptsArray);
@@ -106,65 +112,84 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const analyzeVisualIdentity = async (forceScriptId = null, overrideScripts = null) => {
     let scriptToAnalyze = "";
     const targetId = forceScriptId || selectedScriptId;
-    const scriptsList = overrideScripts || availableScripts;
 
-    console.log("🔍 [DNA_DEBUG] Iniciando análise para ID:", targetId);
+    console.log("ðŸ” [DNA_DEBUG] Iniciando anÃ¡lise para ID:", targetId);
 
     if (targetId) {
-      let script = scriptsList.find(s => String(s.id) === String(targetId));
-      
+      // Look in all possible sources: cloudScripts hook, availableScripts state, and localStorage
+      const allSources = [
+        ...(overrideScripts || []),
+        ...(cloudScripts || []),
+        ...(availableScripts || []),
+      ];
+
+      // Deduplicate by id, keeping first occurrence
+      const seen = new Set();
+      const merged = allSources.filter(s => {
+        if (!s?.id) return false;
+        const k = String(s.id);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+
+      let script = merged.find(s => String(s.id) === String(targetId));
+
       if (!script) {
-        console.warn("⚠️ [DNA_DEBUG] Script não encontrado no estado. Lendo localStorage...");
+        console.warn("âš ï¸ [DNA_DEBUG] Script nÃ£o encontrado no estado. Lendo localStorage...");
         const freshScripts = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
         script = freshScripts.find(s => String(s.id) === String(targetId));
       }
 
       if (script) {
         scriptToAnalyze = script.content;
-        
+
         // AUTO-INJECT VEO FROM SCRIPT IF NO FILE IS PRESENT
         if (!file && script.content) {
           const veoData = generateVeoContent(script.content);
-           const parts = veoData.split(/\n\s*\n/).filter(p => p.trim());
-           const blocks = parts.map(p => {
-             const lines = p.trim().split('\n');
-             if (lines.length >= 3) return lines.slice(2).join(' ').trim();
-             return p.trim();
-           });
-           setSubtitleBlocks(blocks);
-           setSubtitleCount(blocks.length);
-           setFile({ name: `Legenda_VEO_${script.title || targetId}.veo`, size: veoData.length });
-           setPrompts("");
+          const parts = veoData.split(/\n\s*\n/).filter(p => p.trim());
+          const blocks = parts.map(p => {
+            const lines = p.trim().split('\n');
+            if (lines.length >= 3) return lines.slice(2).join(' ').trim();
+            return p.trim();
+          });
+          setSubtitleBlocks(blocks);
+          setSubtitleCount(blocks.length);
+          setFile({ name: `Legenda_VEO_${script.title || targetId}.veo`, size: veoData.length });
+          setPrompts("");
         }
+      } else {
+        console.error("âŒ [DNA_DEBUG] Script ID nÃ£o encontrado em nenhuma fonte:", targetId);
       }
     } else if (subtitleBlocks.length > 0) {
       scriptToAnalyze = subtitleBlocks.slice(0, 50).join('\n');
     }
 
+
     if (!scriptToAnalyze) {
-      alert("⚠️ Selecione um roteiro ou carregue uma legenda primeiro.");
+      alert("âš ï¸ Selecione um roteiro ou carregue uma legenda primeiro.");
       return;
     }
 
     setIsAnalyzing(true);
     try {
-      const analysisPrompt = `Você é um Diretor de Arte e de Fotografia de elite especializado em Cinema. 
-      ANALISE O ROTEIRO ABAIXO PARA EXTRAIR A IDENTIDADE VISUAL MESTRE E RECOMENDAR OS PARÂMETROS CINEMATOGRÁFICOS IDEAIS.
+      const analysisPrompt = `VocÃª Ã© um Diretor de Arte e de Fotografia de elite especializado em Cinema. 
+      ANALISE O ROTEIRO ABAIXO PARA EXTRAIR A IDENTIDADE VISUAL MESTRE E RECOMENDAR OS PARÃ‚METROS CINEMATOGRÃFICOS IDEAIS.
       
-      FOCO DA ANÁLISE:
-      1. CENÁRIOS: Identifique os locais, arquitetura, texturas dominantes.
-      2. ÉPOCA/AMBIENTE: Período exato ou estilo temporal.
+      FOCO DA ANÃLISE:
+      1. CENÃRIOS: Identifique os locais, arquitetura, texturas dominantes.
+      2. Ã‰POCA/AMBIENTE: PerÃ­odo exato ou estilo temporal.
       3. ATMOSFERA (MOOD): Carga emocional visual.
-      4. ILUMINAÇÃO: Estilo de luz e temperatura.
+      4. ILUMINAÃ‡ÃƒO: Estilo de luz e temperatura.
       5. PALETA: 3 cores mestre.
-      6. CÂMERA: Lentes e movimentos recomendados.
+      6. CÃ‚MERA: Lentes e movimentos recomendados.
 
-      ALÉM DISSO, selecione as TAGS mais adequadas entre estas opções (responda exatamente os nomes das tags):
-      - GÊNERO: Ficção científica, Film noir, Terror, Animação 3D, Documentário, Fantasia épica, Retrato cinematográfico, Anime
-      - CÂMERA: Vista aérea, Na altura dos olhos, Vista de cima, Vista de baixo, Travelling, Câmera lenta, Zoom in, Pan lateral
-      - COMPOSIÇÃO: Plano geral, Close-up, Plano médio, Retrato, Plano único, Plano duplo
+      ALÃ‰M DISSO, selecione as TAGS mais adequadas entre estas opÃ§Ãµes (responda exatamente os nomes das tags):
+      - GÃŠNERO: FicÃ§Ã£o cientÃ­fica, Film noir, Terror, AnimaÃ§Ã£o 3D, DocumentÃ¡rio, Fantasia Ã©pica, Retrato cinematogrÃ¡fico, Anime
+      - CÃ‚MERA: Vista aÃ©rea, Na altura dos olhos, Vista de cima, Vista de baixo, Travelling, CÃ¢mera lenta, Zoom in, Pan lateral
+      - COMPOSIÃ‡ÃƒO: Plano geral, Close-up, Plano mÃ©dio, Retrato, Plano Ãºnico, Plano duplo
       - FOCO: Foco raso, Foco profundo, Lente macro, Grande-angular, Filtro difusor, Teleobjetiva
-      - ATMOSFERA: Tons azuis frios, Tons quentes dourados, Noite estrelada, Luz neon, Pôr do sol, Névoa, Chuva, Alta exposição
+      - ATMOSFERA: Tons azuis frios, Tons quentes dourados, Noite estrelada, Luz neon, PÃ´r do sol, NÃ©voa, Chuva, Alta exposiÃ§Ã£o
 
       RETORNE APENAS UM JSON NO FORMATO:
       {
@@ -179,13 +204,13 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       ROTEIRO:
       ${scriptToAnalyze.substring(0, 4500)}`;
 
-      const response = await callGemini(getPromptsApiKey(), analysisPrompt, { 
+      const response = await callGemini(getPromptsApiKey(configs), analysisPrompt, { 
         model: 'gemini-1.5-flash', 
         temperature: 0.1
       });
       const cleanJson = response.replace(/```json\n?|```/g, '').trim();
       const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('Resposta da IA não contém JSON válido.');
+      if (!jsonMatch) throw new Error('Resposta da IA nÃ£o contÃ©m JSON vÃ¡lido.');
       const dna = JSON.parse(jsonMatch[0]);
       
       setVisualDNA(dna);
@@ -198,8 +223,8 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       if (dna.rec_atmosfera) setAtmosferaLuz(dna.rec_atmosfera);
 
     } catch (error) {
-      console.error("Erro na análise visual:", error);
-      alert("❌ Falha na Análise Critica: " + error.message);
+      console.error("Erro na anÃ¡lise visual:", error);
+      alert("âŒ Falha na AnÃ¡lise Critica: " + error.message);
     } finally {
       setIsAnalyzing(false);
     }
@@ -292,7 +317,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         rawText = text;
       }
 
-      // FORÇAR A REGRA ABSOLUTA DE 16-22 PALAVRAS EM ARQUIVOS ANEXADOS!
+      // FORÃ‡AR A REGRA ABSOLUTA DE 16-22 PALAVRAS EM ARQUIVOS ANEXADOS!
       const veoData = generateVeoContent(rawText);
       const newParts = veoData.split(/\n\s*\n/).filter(p => p.trim());
       const blocks = newParts.map(p => {
@@ -363,7 +388,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     setIsRepairing(true);
     setShowScanner(true);
     setErrorCount(0);
-    setRepairLogs(["Iniciando Agente de Diagnóstico..."]);
+    setRepairLogs(["Iniciando Agente de DiagnÃ³stico..."]);
     
     try {
       await new Promise(r => setTimeout(r, 400)); // Visual "processing" delay
@@ -387,7 +412,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         // Ensure each [PROMPT]: (except the first) has exactly two newlines before it
         repaired = repaired.replace(/([^\n]+)\s*(\[PROMPT\]:)/gi, '$1\n\n$2');
         
-        logs.push("✓ Normalizando estrutura e espaçamento Veo 3.1");
+        logs.push("âœ“ Normalizando estrutura e espaÃ§amento Veo 3.1");
       } else {
         // Fix 1: Legacy format - If NEGATIVE PROMPT is on its own separate line, join it to the previous PROMPT line
         repaired = repaired.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
@@ -398,13 +423,13 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         // Fix 2: Remove any extra blank lines WITHIN a prompt block
         repaired = repaired.replace(/(PROMPT:.*?)\s*\n+\s*(NEGATIVE PROMPT:)/gim, '$1 $2');
         
-        logs.push("✓ Normalizando estrutura de blocos Legados");
+        logs.push("âœ“ Normalizando estrutura de blocos Legados");
       }
 
       // Fix: Ensure exactly one blank line between blocks (remove 3+ newlines)
       repaired = repaired.replace(/\n{3,}/g, '\n\n');
       repaired = repaired.trim();
-      logs.push("✓ Garantindo linha em branco entre prompts");
+      logs.push("âœ“ Garantindo linha em branco entre prompts");
 
       setRepairLogs(prev => [...prev, ...logs]);
       await new Promise(r => setTimeout(r, 600));
@@ -412,7 +437,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       // PHASE 2: AI REPAIR (Fallback)
       const res = await runFastVerification(repaired);
       if (!res.allOk) {
-        setRepairLogs(prev => [...prev, "🚨 Inconsistência Crítica: Acionando Reparo via IA..."]);
+        setRepairLogs(prev => [...prev, "ðŸš¨ InconsistÃªncia CrÃ­tica: Acionando Reparo via IA..."]);
         
         const repairFormat = isVeoFormat
           ? `[PROMPT]: [Text] [NEGATIVO]: [Text] (SAME LINE, with exactly one space between them). Pular uma linha entre cada conjunto.`
@@ -426,20 +451,20 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         Repair these blocks keeping original descriptions in English:
         ${repaired}`;
         
-        const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-2.5-flash' });
+        const aiRepaired = await callGemini(getPromptsApiKey(configs), repairPrompt, { model: 'gemini-1.5-flash' });
         repaired = aiRepaired.trim();
-        setRepairLogs(prev => [...prev, "✓ Reparo de Estrutura via IA Concluído"]);
+        setRepairLogs(prev => [...prev, "âœ“ Reparo de Estrutura via IA ConcluÃ­do"]);
       }
 
       setPrompts(repaired);
       setIsVerified(true);
       setErrorCount(0);
-      setRepairLogs(prev => [...prev, "✨ Integridade Garantida: Pronto para Copiar/Baixar!"]);
+      setRepairLogs(prev => [...prev, "âœ¨ Integridade Garantida: Pronto para Copiar/Baixar!"]);
       await new Promise(r => setTimeout(r, 1000));
       return repaired;
     } catch (e) {
       console.error("Repair error:", e);
-      setRepairLogs(prev => [...prev, "✖ Erro no Reparo: Informe suporte."]);
+      setRepairLogs(prev => [...prev, "âœ– Erro no Reparo: Informe suporte."]);
       return content;
     } finally {
       setIsRepairing(false);
@@ -456,37 +481,37 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   };
 
   // Cine param data
-  const GENERO_TAGS = ['Ultra-realista', 'Cinema (Blockbuster)', 'Cartoon / Animação', 'Documentário', 'Film Noir', 'Ficção Científica', 'Terror / Dark', 'Fantasia Épica', 'Anime'];
-  const CAMERA_TAGS = ['Vista aérea', 'Na altura dos olhos', 'Vista de cima', 'Vista de baixo', 'Travelling', 'Câmera lenta', 'Zoom in', 'Pan lateral'];
-  const COMPOSICAO_TAGS = ['Plano geral', 'Close-up', 'Plano médio', 'Retrato', 'Plano único', 'Plano duplo'];
+  const GENERO_TAGS = ['Ultra-realista', 'Cinema (Blockbuster)', 'Cartoon / AnimaÃ§Ã£o', 'DocumentÃ¡rio', 'Film Noir', 'FicÃ§Ã£o CientÃ­fica', 'Terror / Dark', 'Fantasia Ã‰pica', 'Anime'];
+  const CAMERA_TAGS = ['Vista aÃ©rea', 'Na altura dos olhos', 'Vista de cima', 'Vista de baixo', 'Travelling', 'CÃ¢mera lenta', 'Zoom in', 'Pan lateral'];
+  const COMPOSICAO_TAGS = ['Plano geral', 'Close-up', 'Plano mÃ©dio', 'Retrato', 'Plano Ãºnico', 'Plano duplo'];
   const FOCO_TAGS = ['Foco raso', 'Foco profundo', 'Lente macro', 'Grande-angular', 'Filtro difusor', 'Teleobjetiva'];
-  const ATMOSFERA_TAGS = ['Tons azuis frios', 'Tons quentes dourados', 'Noite estrelada', 'Luz neon', 'Pôr do sol', 'Névoa', 'Chuva', 'Alta exposição'];
+  const ATMOSFERA_TAGS = ['Tons azuis frios', 'Tons quentes dourados', 'Noite estrelada', 'Luz neon', 'PÃ´r do sol', 'NÃ©voa', 'Chuva', 'Alta exposiÃ§Ã£o'];
 
   const getSystemPrompt = () => {
     // Build cinematographic brief from selected parameters
     const cineParams = [
-      genero ? `- Estilo/Gênero: ${genero}` : '',
-      cameraMovimento?.length ? `- Câmera & Movimento: ${cameraMovimento.join(', ')}` : '',
-      composicao?.length ? `- Composição: ${composicao.join(', ')}` : '',
+      genero ? `- Estilo/GÃªnero: ${genero}` : '',
+      cameraMovimento?.length ? `- CÃ¢mera & Movimento: ${cameraMovimento.join(', ')}` : '',
+      composicao?.length ? `- ComposiÃ§Ã£o: ${composicao.join(', ')}` : '',
       focoLente?.length ? `- Foco & Lente: ${focoLente.join(', ')}` : '',
       atmosferaLuz?.length ? `- Atmosfera & Luz: ${atmosferaLuz.join(', ')}` : '',
     ].filter(Boolean).join('\n    ');
 
     const dnaContext = `
-    ## PILAR VISUAL OBRIGATÓRIO (FUNDAÇÃO DO VÍDEO)
-    - ESTILO BASE: ${genero || 'Ultra-realista (Padrão)'}
-    - REGRA DE CONSISTÊNCIA: 100% dos prompts devem seguir este estilo. É PROIBIDO variar o estilo visual entre as cenas. O vídeo deve parecer ter sido filmado/criado em uma única produção coerente.
+    ## PILAR VISUAL OBRIGATÃ“RIO (FUNDAÃ‡ÃƒO DO VÃDEO)
+    - ESTILO BASE: ${genero || 'Ultra-realista (PadrÃ£o)'}
+    - REGRA DE CONSISTÃŠNCIA: 100% dos prompts devem seguir este estilo. Ã‰ PROIBIDO variar o estilo visual entre as cenas. O vÃ­deo deve parecer ter sido filmado/criado em uma Ãºnica produÃ§Ã£o coerente.
 
-    ## DNA VISUAL DO ROTEIRO (REGRAS INVIOLÁVEIS)
-    - Cenário e Arquitetura: ${visualDNA.scenario || 'A ser definido'}
-    - Época/Ambiente: ${visualDNA.era || 'A ser definido'}
+    ## DNA VISUAL DO ROTEIRO (REGRAS INVIOLÃVEIS)
+    - CenÃ¡rio e Arquitetura: ${visualDNA.scenario || 'A ser definido'}
+    - Ã‰poca/Ambiente: ${visualDNA.era || 'A ser definido'}
     - Mood Emocional: ${visualDNA.mood || 'A ser definido'}
-    - Iluminação Mestre: ${visualDNA.lighting || 'A ser definido'}
+    - IluminaÃ§Ã£o Mestre: ${visualDNA.lighting || 'A ser definido'}
     - Paleta de Cores: ${visualDNA.palette || 'A ser definido'}
-    - Linguagem de Câmera base: ${visualDNA.camera || 'A ser definido'}
+    - Linguagem de CÃ¢mera base: ${visualDNA.camera || 'A ser definido'}
 
-    ## PARÂMETROS CINEMATOGRÁFICOS SELECIONADOS (PRIORIDADE MÁXIMA)
-    ${cineParams || '- Nenhum parâmetro específico selecionado — use criatividade baseada no DNA acima'}
+    ## PARÃ‚METROS CINEMATOGRÃFICOS SELECIONADOS (PRIORIDADE MÃXIMA)
+    ${cineParams || '- Nenhum parÃ¢metro especÃ­fico selecionado â€” use criatividade baseada no DNA acima'}
     `;
 
     const speechInstruction = promptState.speechMode === 'true' 
@@ -494,85 +519,85 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       : "ABSOLUTE FORBIDDEN SPEECH: DO NOT include any dialogue, speaking actions, or mouth movements. The subject must NOT be speaking. Focus on silence and atmosphere.";
 
     const realismInstruction = `
-      ## LEIS DA FÍSICA E REALISMO (CRÍTICO)
-      1. REALISMO ULTRA: O visual deve ser indistinguível da realidade atual. Proibido elementos de ficção ou tecnologia impossível.
-      2. LOGICA DA FÍSICA: Respeite a gravidade e a luz natural. Nada flutua.
-      3. ZERO FANTASIA: Sem efeitos mágicos ou brilhos irreais.
+      ## LEIS DA FÃSICA E REALISMO (CRÃTICO)
+      1. REALISMO ULTRA: O visual deve ser indistinguÃ­vel da realidade atual. Proibido elementos de ficÃ§Ã£o ou tecnologia impossÃ­vel.
+      2. LOGICA DA FÃSICA: Respeite a gravidade e a luz natural. Nada flutua.
+      3. ZERO FANTASIA: Sem efeitos mÃ¡gicos ou brilhos irreais.
     `;
 
     const dynamismEngine = `
-      ## MOTOR DE DINAMISMO CINEMATOGRÁFICO (REGRAS DE OURO)
-      1. ANTI-MONOTONIA: Varie os ângulos e tipos de plano entre as cenas (Ex: Se a cena anterior foi Close-up, a atual deve ser Plano Geral ou Médio). Crie um ritmo de montagem profissional.
-      2. CAMADAS DE DETALHAMENTO (OBRIGATÓRIO):
-         - Camada Sensorial: Descreva o ambiente físico (temperatura, partículas de poeira no ar, reflexos em superfícies, texturas de tecidos).
-         - Camada de Engenharia Óptica: Use termos técnicos reais (lentes 35mm f/1.4, bokeh orgânico, grão de filme 35mm).
-         - Camada de Intenção Narrativa: Descreva a emoção da cena através de movimentos físicos (hesitação, pressa, tensão muscular).
+      ## MOTOR DE DINAMISMO CINEMATOGRÃFICO (REGRAS DE OURO)
+      1. ANTI-MONOTONIA: Varie os Ã¢ngulos e tipos de plano entre as cenas (Ex: Se a cena anterior foi Close-up, a atual deve ser Plano Geral ou MÃ©dio). Crie um ritmo de montagem profissional.
+      2. CAMADAS DE DETALHAMENTO (OBRIGATÃ“RIO):
+         - Camada Sensorial: Descreva o ambiente fÃ­sico (temperatura, partÃ­culas de poeira no ar, reflexos em superfÃ­cies, texturas de tecidos).
+         - Camada de Engenharia Ã“ptica: Use termos tÃ©cnicos reais (lentes 35mm f/1.4, bokeh orgÃ¢nico, grÃ£o de filme 35mm).
+         - Camada de IntenÃ§Ã£o Narrativa: Descreva a emoÃ§Ã£o da cena atravÃ©s de movimentos fÃ­sicos (hesitaÃ§Ã£o, pressa, tensÃ£o muscular).
     `;
 
     if (genMode === 'fast') {
       if (promptType === 'video') {
         // Fast Veo 3.1 format
-        return `Você é um Diretor Cinematográfico AI de elite especialista em Veo 3.1.
+        return `VocÃª Ã© um Diretor CinematogrÃ¡fico AI de elite especialista em Veo 3.1.
       COMANDO: GERE PROMPTS EXTREMAMENTE ROBUSTOS (80-150 PALAVRAS) PARA VEO 3.1.
       ${dnaContext}
       ${realismInstruction}
       ${dynamismEngine}
-      REGRA ABSOLUTA: Cada prompt DEVE conter: 1. Sujeito Detalhado, 2. Ação Física, 3. Cenário/Ambiente, 4. Estilo de Câmera/Lente e 5. Iluminação/Atmosfera.
+      REGRA ABSOLUTA: Cada prompt DEVE conter: 1. Sujeito Detalhado, 2. AÃ§Ã£o FÃ­sica, 3. CenÃ¡rio/Ambiente, 4. Estilo de CÃ¢mera/Lente e 5. IluminaÃ§Ã£o/Atmosfera.
       ${speechInstruction}
-      PROIBIDO: NÃO ADICIONE TÍTULOS OU CABEÇALHOS. Responda em INGLÊS.
+      PROIBIDO: NÃƒO ADICIONE TÃTULOS OU CABEÃ‡ALHOS. Responda em INGLÃŠS.
       
-      ## FORMATO OBRIGATÓRIO:
+      ## FORMATO OBRIGATÃ“RIO:
       [PROMPT]: [Content in one line][NEGATIVO]: [Negative list]
       [linha em branco]
       
-      ${outputFormat === 'json' ? `SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}. 
-      REGRA DE EXTENSÃO: Cada prompt deve ser extremamente robusto, com 80-150 palavras (Prompt + Negativo).`;
+      ${outputFormat === 'json' ? `SAÃDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÃDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}. 
+      REGRA DE EXTENSÃƒO: Cada prompt deve ser extremamente robusto, com 80-150 palavras (Prompt + Negativo).`;
       } else {
         return `You are an ELITE Image Prompt Engineer.
       COMMAND: PRODUCE FAST, HIGH-QUALITY IMAGE PROMPTS.
       ${dnaContext}
       STRICT RULE: Every prompt MUST respect the Visual DNA above. Response MUST be in ENGLISH.
-      ${outputFormat === 'json' ? `SAÍDA FINAL: JSON [ { "id": X, "prompt": "..." }, ... ]` : `SAÍDA FINAL: ID|PROMPT (one per line)`}`;
+      ${outputFormat === 'json' ? `SAÃDA FINAL: JSON [ { "id": X, "prompt": "..." }, ... ]` : `SAÃDA FINAL: ID|PROMPT (one per line)`}`;
       }
     } else {
       // MODO QUALIDADE ELITE
       if (promptType === 'video') {
-        // VEO 3.1 GOLD STANDARD — Instruções completas
+        // VEO 3.1 GOLD STANDARD â€” InstruÃ§Ãµes completas
         const veoExample = `[PROMPT]: A middle-aged man in a realistic blue denim shirt sitting at a wooden table in a dimly lit, contemporary kitchen, resting his chin on his hand while looking out the window at a rainy street, raindrops splashing realistically against the glass pane according to physics, natural cold lighting from the overcast sky outside, hyper-realistic skin textures including pores and fine wrinkles, cinematic drama style with realistic lens blur, 35mm photography aesthetic, ambient sound of rain hitting the roof and the distant sound of a car driving by on a wet road.[NEGATIVO]: fiction, fantasy, sci-fi, magical elements, glowing eyes, floating objects, impossible physics, bright neon colors, anime, cartoon, 3D render, CGI look, smooth plastic skin, missing textures, distorted anatomy, talking, moving mouth, speech bubbles, text, watermark.`;
 
-        return `Você é o SUPREMO Diretor Cinematográfico AI e Engenheiro de Prompts para Veo 3.1.
-      COMANDO: GERE PROMPTS CINEMATOGRÁFICOS MAGISTRAIS SEGUINDO O PADRÃO OURO VEO 3.1.
-      PROIBIDO: NÃO ADICIONE TÍTULOS, NOMES DE CENAS OU CABEÇALHOS.
+        return `VocÃª Ã© o SUPREMO Diretor CinematogrÃ¡fico AI e Engenheiro de Prompts para Veo 3.1.
+      COMANDO: GERE PROMPTS CINEMATOGRÃFICOS MAGISTRAIS SEGUINDO O PADRÃƒO OURO VEO 3.1.
+      PROIBIDO: NÃƒO ADICIONE TÃTULOS, NOMES DE CENAS OU CABEÃ‡ALHOS.
       ${speechInstruction}
       ${realismInstruction}
       ${dynamismEngine}
 
-      ## EXEMPLO PADRÃO OURO (HIPER-REALISMO):
+      ## EXEMPLO PADRÃƒO OURO (HIPER-REALISMO):
       ${veoExample}
 
       ${dnaContext}
 
-      ## REGRAS DE CONSTRUÇÃO DO PROMPT (OBRIGATÓRIO — nesta ordem):
-      Cada prompt deve conter TODOS os elementos abaixo em frase contínua e fluida em INGLÊS:
-      1. SUJEITO — máximo detalhe físico, vestuário, expressão facial e características únicas.
-      2. AÇÃO — verbos precisos e advérbios expressivos (ex: "caminha lentamente", "vira a cabeça de forma brusca").
-      3. CENÁRIO — ambiente, época, arquitetura, vegetação, clima e elementos de fundo.
-      4. ESTILO CINEMATOGRÁFICO — gênero, referências de direção e sensação geral.
-      5. MOVIMENTO DE CÂMERA — tipo de plano, ângulo e movimento (ex: travelling lateral, drone, altura dos olhos).
-      6. COMPOSIÇÃO — plano geral, close-up, plano médio, retrato, plano único ou duplo.
-      7. FOCO E LENTE — bokeh, lente macro, grande-angular, teleobjetiva, filtro difusor.
-      8. ATMOSFERA E ILUMINAÇÃO — hora do dia, tipo de luz, temperatura de cor, sombras, contraste.
-      9. ÁUDIO — ${promptState.speechMode === 'true' ? 'Inclua diálogos autênticos entre aspas e ambiência real.' : 'PROIBIDO FALAS. Apenas ambiência física e sons mecânicos reais.'}
+      ## REGRAS DE CONSTRUÃ‡ÃƒO DO PROMPT (OBRIGATÃ“RIO â€” nesta ordem):
+      Cada prompt deve conter TODOS os elementos abaixo em frase contÃ­nua e fluida em INGLÃŠS:
+      1. SUJEITO â€” mÃ¡ximo detalhe fÃ­sico, vestuÃ¡rio, expressÃ£o facial e caracterÃ­sticas Ãºnicas.
+      2. AÃ‡ÃƒO â€” verbos precisos e advÃ©rbios expressivos (ex: "caminha lentamente", "vira a cabeÃ§a de forma brusca").
+      3. CENÃRIO â€” ambiente, Ã©poca, arquitetura, vegetaÃ§Ã£o, clima e elementos de fundo.
+      4. ESTILO CINEMATOGRÃFICO â€” gÃªnero, referÃªncias de direÃ§Ã£o e sensaÃ§Ã£o geral.
+      5. MOVIMENTO DE CÃ‚MERA â€” tipo de plano, Ã¢ngulo e movimento (ex: travelling lateral, drone, altura dos olhos).
+      6. COMPOSIÃ‡ÃƒO â€” plano geral, close-up, plano mÃ©dio, retrato, plano Ãºnico ou duplo.
+      7. FOCO E LENTE â€” bokeh, lente macro, grande-angular, teleobjetiva, filtro difusor.
+      8. ATMOSFERA E ILUMINAÃ‡ÃƒO â€” hora do dia, tipo de luz, temperatura de cor, sombras, contraste.
+      9. ÃUDIO â€” ${promptState.speechMode === 'true' ? 'Inclua diÃ¡logos autÃªnticos entre aspas e ambiÃªncia real.' : 'PROIBIDO FALAS. Apenas ambiÃªncia fÃ­sica e sons mecÃ¢nicos reais.'}
 
-      ## REGRAS DO PROMPT NEGATIVO (EM INGLÊS):
-      Liste separados por vírgula: problemas técnicos + problemas visuais específicos da cena + elementos de conteúdo indesejados + inconsistências de estilo + movimentos não naturais.
+      ## REGRAS DO PROMPT NEGATIVO (EM INGLÃŠS):
+      Liste separados por vÃ­rgula: problemas tÃ©cnicos + problemas visuais especÃ­ficos da cena + elementos de conteÃºdo indesejados + inconsistÃªncias de estilo + movimentos nÃ£o naturais.
 
-      ## CONSISTÊNCIA VISUAL:
-      Mantenha rigorosamente o mesmo estilo, paleta e atmosfera em TODOS os prompts para garantir coesão visual absoluta em todo o vídeo.
+      ## CONSISTÃŠNCIA VISUAL:
+      Mantenha rigorosamente o mesmo estilo, paleta e atmosfera em TODOS os prompts para garantir coesÃ£o visual absoluta em todo o vÃ­deo.
 
-      NÍVEL DE DETALHE (REGRA ABSOLUTA): 80-150 PALAVRAS por prompt (Prompt + Negativo). Evite termos vagos — use descritores concretos, sensoriais e técnicos.
-      IDIOMA: SEMPRE Inglês (English).
-      ${outputFormat === 'json' ? `## SAÍDA FINAL: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA FINAL: UM BLOCO POR LEGENDA — [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
+      NÃVEL DE DETALHE (REGRA ABSOLUTA): 80-150 PALAVRAS por prompt (Prompt + Negativo). Evite termos vagos â€” use descritores concretos, sensoriais e tÃ©cnicos.
+      IDIOMA: SEMPRE InglÃªs (English).
+      ${outputFormat === 'json' ? `## SAÃDA FINAL: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÃDA FINAL: UM BLOCO POR LEGENDA â€” [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
       } else {
         // Image Gold Standard (legacy format)
         const eliteExample = `PROMPT: A slow, deliberate tracking shot moves through a claustrophobic corridor within the Brocken Sendeanlage in 1978, revealing a scene of technological decay and encroaching dread; the cold, raw concrete walls, stained with streaks of dampness and peeling lead paint, are a dominant grey-blue, contrasted by thick bundles of olive-green, rubber-coated cables snaking across the floor and up the walls, all showing signs of age and neglect; 8K resolution, 35mm film grain, hyper-realistic textures, dramatic chiaroscuro. NEGATIVE PROMPT: bright colors, neon, saturation, sunshine, blue sky, people, modern technology, clean surfaces, CGI, 3D render, cartoon, anime, watercolor, text, watermark, signature, logo.`;
@@ -625,7 +650,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
 
       for (const i of chunksToProcess) {
         if (cancelRef.current) {
-          setGenerationProgress(prev => ({ ...prev, step: 'Geração Cancelada Cedo.' }));
+          setGenerationProgress(prev => ({ ...prev, step: 'GeraÃ§Ã£o Cancelada Cedo.' }));
           break;
         }
         
@@ -640,16 +665,16 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         const isJson = outputFormat === 'json';
         const isVeoVideoMode = promptType === 'video' && genMode === 'quality';
         const countRuleLang = isVeoVideoMode
-          ? `REGRA OBRIGATÓRIA: Gere EXATAMENTE ${chunkSubtitleCount} prompts. NÃO ADICIONE TÍTULOS, INTRODUÇÕES, CONCLUSÕES OU CABEÇALHOS. Responda APENAS com os blocos [PROMPT]: e [NEGATIVO]:.`
+          ? `REGRA OBRIGATÃ“RIA: Gere EXATAMENTE ${chunkSubtitleCount} prompts. NÃƒO ADICIONE TÃTULOS, INTRODUÃ‡Ã•ES, CONCLUSÃ•ES OU CABEÃ‡ALHOS. Responda APENAS com os blocos [PROMPT]: e [NEGATIVO]:.`
           : `MANDATORY RULE: Generate EXACTLY ${chunkSubtitleCount} prompts. DO NOT ADD TITLES, HEADERS, OR INTROS. Respond ONLY with the prompt blocks.`;
         const generateLabel = isVeoVideoMode
-          ? `GERE EXATAMENTE ${chunkSubtitleCount} PROMPTS VEO 3.1 MAGISTRAIS (PORTUGUÊS DO BRASIL):`
+          ? `GERE EXATAMENTE ${chunkSubtitleCount} PROMPTS VEO 3.1 MAGISTRAIS (PORTUGUÃŠS DO BRASIL):`
           : `GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
         const promptParam = `${getSystemPrompt()}
 
 ---
 ${countRuleLang}
-VOCÊ DEVE GERAR EXATAMENTE ${chunkSubtitleCount} BLOCOS. NEM MAIS, NEM MENOS.
+VOCÃŠ DEVE GERAR EXATAMENTE ${chunkSubtitleCount} BLOCOS. NEM MAIS, NEM MENOS.
 CADA BLOCO DEVE CORRESPONDER A UMA DAS ${chunkSubtitleCount} LEGENDAS ABAIXO.
 ---
 
@@ -671,7 +696,7 @@ ${generateLabel}`;
               setGenerationProgress(prev => ({ 
                 ...prev, 
                 statuses: [...chunkStatuses], 
-                step: retryCount === 3 ? `Modo de Segurança: Processando legendas individualmente no Bloco ${i+1}...` : (isRateLimit ? `Cota da API Cheia. Pausa Tática (${delayTime/1000}s) para Bloco ${i+1}...` : `Tentando novamente Bloco ${i+1} (Tentativa ${retryCount})...`) 
+                step: retryCount === 3 ? `Modo de SeguranÃ§a: Processando legendas individualmente no Bloco ${i+1}...` : (isRateLimit ? `Cota da API Cheia. Pausa TÃ¡tica (${delayTime/1000}s) para Bloco ${i+1}...` : `Tentando novamente Bloco ${i+1} (Tentativa ${retryCount})...`) 
               }));
               await new Promise(r => setTimeout(r, delayTime));
             } else if (i > 0 || globalRetry > 0) {
@@ -696,14 +721,14 @@ ${generateLabel}`;
                 
                 GERAR PROMPT VEO 3.1:`;
                 
-                const subResp = await callGemini(getPromptsApiKey(), subPrompt, { model: 'gemini-1.5-flash' });
+                const subResp = await callGemini(getPromptsApiKey(configs), subPrompt, { model: 'gemini-1.5-flash' });
                 // Clean and ensure single line
                 let cleanedSub = subResp.trim().replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
                 const line = cleanedSub.split('\n').find(l => l.includes('[PROMPT]:')) || cleanedSub;
                 individualText += (individualText ? "\n\n" : "") + line;
                 
                 // Show progress
-                setGenerationProgress(prev => ({ ...prev, step: `Segurança: Processando ${subIdx+1}/${currentChunk.length} do Bloco ${i+1}...` }));
+                setGenerationProgress(prev => ({ ...prev, step: `SeguranÃ§a: Processando ${subIdx+1}/${currentChunk.length} do Bloco ${i+1}...` }));
               }
               responseText = individualText;
             } else {
@@ -713,7 +738,7 @@ ${generateLabel}`;
                 statuses: [...chunkStatuses], 
                 step: globalRetry > 0 ? `Corrigindo Bloco ${i+1}...` : `Processando Bloco ${i+1}/${totalChunks}...` 
               }));
-              responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-1.5-flash' });
+              responseText = await callGemini(getPromptsApiKey(configs), promptParam, { model: 'gemini-1.5-flash' });
             }
 
             success = true;
@@ -814,14 +839,14 @@ ${generateLabel}`;
       if (!verif.allOk) {
         setGenerationProgress(prev => ({ 
            ...prev, 
-           step: `🚨 TRAMA CORROMPIDA: Corrigindo ${verif.issues.length} blocos com formatação inválida...` 
+           step: `ðŸš¨ TRAMA CORROMPIDA: Corrigindo ${verif.issues.length} blocos com formataÃ§Ã£o invÃ¡lida...` 
         }));
         finalContent = await handleAutomaticRepair(finalOutput);
       }
 
       setPrompts(finalContent);
       setGenerationProgress({ 
-        step: 'Geração Concluída!', 
+        step: 'GeraÃ§Ã£o ConcluÃ­da!', 
         current: totalChunks, 
         total: totalChunks, 
         statuses: chunkStatuses 
@@ -842,7 +867,7 @@ ${generateLabel}`;
 
     } catch (error) {
       console.error(error);
-      alert("Erro na geração paralela: " + error.message);
+      alert("Erro na geraÃ§Ã£o paralela: " + error.message);
     } finally {
       setIsGenerating(false);
       setGenerationProgress({ step: '', current: 0, total: 0 });
@@ -864,7 +889,7 @@ ${generateLabel}`;
       const totalBlocks = Math.ceil(scriptSegments.length / batchSize);
       
       setGenerationProgress({ 
-        step: 'Iniciando Geração Paralela...', 
+        step: 'Iniciando GeraÃ§Ã£o Paralela...', 
         current: 0, 
         total: totalBlocks,
         statuses: new Array(totalBlocks).fill("pending")
@@ -884,7 +909,7 @@ ${generateLabel}`;
         const promptBatchQuery = `${getSystemPrompt()}\n\nSCRIPT SEGMENT (BLOCK ${i+1}):\n"${segment}"\n\nGENERATE ELITE PROMPTS (ENGLISH ONLY):`;
  
         try {
-          const batchResult = await callGemini(getPromptsApiKey(), promptBatchQuery);
+          const batchResult = await callGemini(getPromptsApiKey(configs), promptBatchQuery);
           
           let processedBatch = "";
           if (genMode === 'quality') {
@@ -936,7 +961,7 @@ ${generateLabel}`;
       };
       setPromptPools(stackPush('guru_image_prompt_pools', newPool));
     } catch (error) {
-      alert("Erro na geração paralela de roteiro: " + error.message);
+      alert("Erro na geraÃ§Ã£o paralela de roteiro: " + error.message);
     } finally {
       setIsGenerating(false);
       setGenerationProgress({ step: '', current: 0, total: 0 });
@@ -1000,7 +1025,7 @@ ${generateLabel}`;
           Gerador de Prompts
         </h2>
         <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-pink pl-4 ml-2 italic">
-          Engenharia de Prompts de Alta Fidelidade para Vídeos e Imagens
+          Engenharia de Prompts de Alta Fidelidade para VÃ­deos e Imagens
         </p>
       </header>
 
@@ -1010,7 +1035,7 @@ ${generateLabel}`;
               <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20">
                  <FileText className="w-4 h-4 text-neon-purple" />
               </div>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fidelidade Máxima</span>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fidelidade MÃ¡xima</span>
            </div>
            
            <select 
@@ -1045,7 +1070,7 @@ ${generateLabel}`;
               <div className="text-left">
                 <span className="block leading-none">{isAnalyzing ? "Analisando..." : visualDNA.scenario ? "Identidade Analisada" : "Analisar Identidade Visual"}</span>
                 <span className={`block text-[8px] mt-0.5 ${visualDNA.scenario ? 'text-green-500/60' : 'text-gray-500'}`}>
-                  {visualDNA.scenario ? "DNA Cinematográfico Pronto" : "Obrigatório para Gerar Prompts"}
+                  {visualDNA.scenario ? "DNA CinematogrÃ¡fico Pronto" : "ObrigatÃ³rio para Gerar Prompts"}
                 </span>
               </div>
             </button>
@@ -1064,9 +1089,9 @@ ${generateLabel}`;
                 <header>
                   <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
                     <Zap className="w-4 h-4 text-neon-cyan" /> 
-                    Painel de Pré-Produção — <span className="text-neon-cyan">Identidade Visual Confirmada</span>
+                    Painel de PrÃ©-ProduÃ§Ã£o â€” <span className="text-neon-cyan">Identidade Visual Confirmada</span>
                   </h3>
-                  <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">O Diretor AI definiu as leis visuais do seu projeto. Ajuste se necessário.</p>
+                  <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">O Diretor AI definiu as leis visuais do seu projeto. Ajuste se necessÃ¡rio.</p>
                 </header>
                 <button onClick={() => setVisualDNA({ scenario: '', era: '', mood: '', lighting: '', palette: '', camera: '' })} className="text-gray-500 hover:text-white transition-colors">
                   <X className="w-5 h-5" />
@@ -1075,12 +1100,12 @@ ${generateLabel}`;
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[
-                  { id: 'scenario', label: 'Cenário Global', icon: ImageIcon },
-                  { id: 'era', label: 'Época/Ambiente', icon: FileText },
+                  { id: 'scenario', label: 'CenÃ¡rio Global', icon: ImageIcon },
+                  { id: 'era', label: 'Ã‰poca/Ambiente', icon: FileText },
                   { id: 'mood', label: 'Atmosfera/Mood', icon: Sparkles },
-                  { id: 'lighting', label: 'Iluminação Master', icon: Zap },
+                  { id: 'lighting', label: 'IluminaÃ§Ã£o Master', icon: Zap },
                   { id: 'palette', label: 'Paleta de Cores', icon: File },
-                  { id: 'camera', label: 'Linguagem de Câmera', icon: Wand2 }
+                  { id: 'camera', label: 'Linguagem de CÃ¢mera', icon: Wand2 }
                 ].map(field => (
                   <div key={field.id} className="space-y-2">
                     <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
@@ -1099,7 +1124,7 @@ ${generateLabel}`;
                  <div className="w-8 h-8 rounded-lg bg-neon-cyan/20 flex items-center justify-center shrink-0">
                     <CheckCircle className="w-4 h-4 text-neon-cyan" />
                  </div>
-                 <p className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Identidade Visual Ativa. Todos os <b>{subtitleCount} prompts</b> seguirão estas diretrizes.</p>
+                 <p className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Identidade Visual Ativa. Todos os <b>{subtitleCount} prompts</b> seguirÃ£o estas diretrizes.</p>
               </div>
             </motion.div>
           )}
@@ -1110,7 +1135,7 @@ ${generateLabel}`;
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-white/10 pb-4 mb-0">
           <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-neon-pink" /> 
-            Formato de Saída
+            Formato de SaÃ­da
           </h3>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -1134,7 +1159,7 @@ ${generateLabel}`;
                     : 'text-gray-500 hover:text-white'
                 }`}
               >
-                <Video className="w-4 h-4" /> Vídeo
+                <Video className="w-4 h-4" /> VÃ­deo
               </button>
             </div>
 
@@ -1189,16 +1214,16 @@ ${generateLabel}`;
         </div>
       </div>
 
-      {/* ── Cinematographic Parameters ──────────────────────────── */}
+      {/* â”€â”€ Cinematographic Parameters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        {/* ESTILO / GÊNERO — obrigatório */}
+        {/* ESTILO / GÃŠNERO â€” obrigatÃ³rio */}
         <div className="glass-card p-5 border border-white/10 space-y-3 md:col-span-2">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-neon-pink/20 text-neon-pink border border-neon-pink/30 uppercase tracking-widest">Obrigatório</span>
-            <h3 className="text-xs font-black text-white uppercase tracking-widest">Estilo / Gênero</h3>
+            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-neon-pink/20 text-neon-pink border border-neon-pink/30 uppercase tracking-widest">ObrigatÃ³rio</span>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest">Estilo / GÃªnero</h3>
           </div>
-          <p className="text-[10px] text-gray-500 -mt-1">Direção criativa do vídeo</p>
+          <p className="text-[10px] text-gray-500 -mt-1">DireÃ§Ã£o criativa do vÃ­deo</p>
           <div className="flex flex-wrap gap-2">
             {GENERO_TAGS.map(tag => (
               <button
@@ -1223,11 +1248,11 @@ ${generateLabel}`;
           />
         </div>
 
-        {/* CÂMERA & MOVIMENTO */}
+        {/* CÃ‚MERA & MOVIMENTO */}
         <div className="glass-card p-5 border border-white/10 space-y-3">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[9px] font-black px-2 py-0.5 rounded bg-white/5 text-gray-500 border border-white/10 uppercase tracking-widest">Opcional</span>
-            <h3 className="text-xs font-black text-white uppercase tracking-widest">Câmera &amp; Movimento</h3>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest">CÃ¢mera &amp; Movimento</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             {CAMERA_TAGS.map(tag => (
@@ -1246,11 +1271,11 @@ ${generateLabel}`;
           </div>
         </div>
 
-        {/* COMPOSIÇÃO */}
+        {/* COMPOSIÃ‡ÃƒO */}
         <div className="glass-card p-5 border border-white/10 space-y-3">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[9px] font-black px-2 py-0.5 rounded bg-white/5 text-gray-500 border border-white/10 uppercase tracking-widest">Opcional</span>
-            <h3 className="text-xs font-black text-white uppercase tracking-widest">Composição</h3>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest">ComposiÃ§Ã£o</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             {COMPOSICAO_TAGS.map(tag => (
@@ -1321,15 +1346,15 @@ ${generateLabel}`;
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* Left: Upload and Controls */}
         <div className="space-y-6">
-          {/* MODO DE PRODUÇÃO — apenas Elite Qualidade */}
+          {/* MODO DE PRODUÃ‡ÃƒO â€” apenas Elite Qualidade */}
           <div className="glass-card p-4 border-neon-pink/20 bg-neon-pink/5">
             <div className="flex items-center gap-3">
                <div className="w-8 h-8 rounded-lg bg-neon-pink/20 flex items-center justify-center shrink-0">
                   <Sparkles className="w-4 h-4 text-neon-pink" />
                </div>
                <div>
-                  <h3 className="text-[10px] font-black text-neon-pink uppercase tracking-widest">Elite Qualidade — Modo Ativo</h3>
-                  <p className="text-[9px] text-gray-500 mt-0.5">💎 Prompts ultra detalhados com lentes, cinematografia analógica e negativos incluídos.</p>
+                  <h3 className="text-[10px] font-black text-neon-pink uppercase tracking-widest">Elite Qualidade â€” Modo Ativo</h3>
+                  <p className="text-[9px] text-gray-500 mt-0.5">ðŸ’Ž Prompts ultra detalhados com lentes, cinematografia analÃ³gica e negativos incluÃ­dos.</p>
                </div>
             </div>
           </div>
@@ -1356,7 +1381,7 @@ ${generateLabel}`;
                 <div className="absolute inset-0 bg-green-500/5 pointer-events-none" />
                 <CheckCircle className="w-12 h-12 text-green-400 mb-3" />
                 <h3 className="text-lg font-bold text-green-400">{file.name}</h3>
-                <p className="text-green-400/70 mt-1 text-sm">{subtitleCount} cenas encontradas — clique para trocar</p>
+                <p className="text-green-400/70 mt-1 text-sm">{subtitleCount} cenas encontradas â€” clique para trocar</p>
               </>
             ) : (
               <>
@@ -1412,7 +1437,7 @@ ${generateLabel}`;
                 onClick={() => {
                    if (file) handleGenerate();
                    else if (selectedScriptId) handleGenerateFromScript();
-                   else alert("⚠️ Carregue uma legenda ou selecione um roteiro.");
+                   else alert("âš ï¸ Carregue uma legenda ou selecione um roteiro.");
                 }}
                 disabled={(isGenerating || !visualDNA.scenario) || (!file && !selectedScriptId)}
                 className={`flex-1 py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 ${
@@ -1429,7 +1454,7 @@ ${generateLabel}`;
                 ) : (
                   <>
                     {!visualDNA.scenario ? <X className="w-5 h-5 text-red-500" /> : <Wand2 className="w-5 h-5 shadow-neon animate-pulse" />} 
-                    {!visualDNA.scenario ? "Bloqueado: Requer Análise Visual" : `Gerar Prompts do Projeto`}
+                    {!visualDNA.scenario ? "Bloqueado: Requer AnÃ¡lise Visual" : `Gerar Prompts do Projeto`}
                   </>
                 )}
               </button>
@@ -1446,7 +1471,7 @@ ${generateLabel}`;
                  <button
                    onClick={() => { cancelRef.current = true; setIsCopied(true); setTimeout(() => setIsCopied(false), 2000); }}
                    className="px-4 py-4 rounded-xl flex items-center justify-center gap-2 font-bold bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/30 transition-all hover:text-white hover:bg-red-500"
-                   title="Cancelar Geração"
+                   title="Cancelar GeraÃ§Ã£o"
                  >
                    {isCopied ? <CheckCircle className="w-5 h-5" /> : <X className="w-5 h-5" />}
                  </button>
@@ -1454,7 +1479,7 @@ ${generateLabel}`;
             </div>
 
             <div className={`w-full py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 border border-white/5 bg-white/5 text-gray-500`}>
-              <ImageIcon className="w-5 h-5 opacity-30" /> Pronto para Produção Visual
+              <ImageIcon className="w-5 h-5 opacity-30" /> Pronto para ProduÃ§Ã£o Visual
             </div>
           </div>
         </div>
@@ -1464,7 +1489,7 @@ ${generateLabel}`;
           <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
             <h3 className="font-bold text-white flex items-center gap-2 text-xs uppercase tracking-widest">
               <File className="w-5 h-5 text-neon-pink" />
-              Saída Gerada
+              SaÃ­da Gerada
             </h3>
             <div className="flex gap-2">
               {prompts && (
@@ -1489,7 +1514,7 @@ ${generateLabel}`;
                 <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border ${isVerified ? 'bg-green-500/10 border-green-500/30 text-green-500' : 'bg-red-500/10 border-red-500/30 text-red-500'}`}>
                    {isVerified ? <CheckCircle className="w-3 h-3" /> : <X className="w-3 h-3" />}
                    <span className="text-[8px] font-black uppercase tracking-widest">
-                     {isVerified ? 'Fidelidade Máxima: OK' : `Encontrado: ${errorCount} Erros de Formato`}
+                     {isVerified ? 'Fidelidade MÃ¡xima: OK' : `Encontrado: ${errorCount} Erros de Formato`}
                    </span>
                 </div>
               )}
@@ -1550,7 +1575,7 @@ ${generateLabel}`;
                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                          <div className="w-2 h-2 rounded-full bg-neon-pink animate-pulse" />
-                         <span className="text-[10px] font-black text-white uppercase tracking-widest">Agente de Integridade: Diagnóstico</span>
+                         <span className="text-[10px] font-black text-white uppercase tracking-widest">Agente de Integridade: DiagnÃ³stico</span>
                       </div>
                       <span className="text-[9px] font-black text-neon-pink/50 uppercase tracking-widest italic">{isRepairing ? "Corrigindo..." : "Finalizado"}</span>
                    </div>
@@ -1558,7 +1583,7 @@ ${generateLabel}`;
                       {repairLogs.map((log, idx) => (
                         <div key={idx} className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
                            <div className="w-1 h-1 rounded-full bg-white/20" />
-                           <p className={`text-[10px] font-bold ${log.includes('✓') || log.includes('✨') ? 'text-green-400' : log.includes('🚨') ? 'text-neon-pink' : 'text-gray-400'}`}>
+                           <p className={`text-[10px] font-bold ${log.includes('âœ“') || log.includes('âœ¨') ? 'text-green-400' : log.includes('ðŸš¨') ? 'text-neon-pink' : 'text-gray-400'}`}>
                              {log}
                            </p>
                         </div>
@@ -1594,7 +1619,7 @@ ${generateLabel}`;
                 ) : (
                   <>
                     <ImageIcon className="w-12 h-12 opacity-20" />
-                    <p className="text-[10px] uppercase tracking-widest">Seus prompts aparecerão aqui...</p>
+                    <p className="text-[10px] uppercase tracking-widest">Seus prompts aparecerÃ£o aqui...</p>
                   </>
                 )}
               </div>
@@ -1623,7 +1648,7 @@ ${generateLabel}`;
                      </div>
                      <div>
                         <h2 className="text-3xl font-black text-white italic uppercase tracking-tight">Pool de Prompts Gerado</h2>
-                        <p className="text-[10px] font-black text-neon-pink uppercase tracking-widest mt-1">Alta Fidelidade & Coesão Visual Ativada</p>
+                        <p className="text-[10px] font-black text-neon-pink uppercase tracking-widest mt-1">Alta Fidelidade & CoesÃ£o Visual Ativada</p>
                      </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -1654,9 +1679,9 @@ ${generateLabel}`;
                {/* Modal Footer Actions */}
                <div className="p-8 bg-dark/60 border-t border-white/5 flex flex-col md:flex-row gap-6 backdrop-blur-xl">
                    <div className="flex-1 space-y-1">
-                      <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Total de Sequências</p>
+                      <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Total de SequÃªncias</p>
                       <p className="text-xl font-black text-white text-glow-pink">
-                         {(prompts || "").split('\n\n').filter(p => p.trim()).length} Peças Visuais
+                         {(prompts || "").split('\n\n').filter(p => p.trim()).length} PeÃ§as Visuais
                       </p>
                    </div>
                   <div className="flex items-center gap-4">
@@ -1688,7 +1713,7 @@ ${generateLabel}`;
             {promptPools.length > 0 && (
                <button 
                   onClick={() => {
-                     if(confirm("Limpar todo o histórico?")) {
+                     if(confirm("Limpar todo o histÃ³rico?")) {
                         localStorage.setItem('guru_image_prompt_pools', '[]');
                         setPromptPools([]);
                      }
@@ -1757,7 +1782,7 @@ ${generateLabel}`;
                ) : (
                   <div key={`empty-${idx}`} className="h-[220px] rounded-[32px] border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-gray-800 opacity-20">
                      <ImageIcon className="w-8 h-8 mb-2" />
-                     <span className="text-[9px] font-black uppercase tracking-widest">Slot Disponível</span>
+                     <span className="text-[9px] font-black uppercase tracking-widest">Slot DisponÃ­vel</span>
                   </div>
                )
             ))}
@@ -1766,3 +1791,5 @@ ${generateLabel}`;
     </div>
   );
 };
+
+
