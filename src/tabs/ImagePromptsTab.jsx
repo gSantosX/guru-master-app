@@ -322,8 +322,8 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
             const hasPrompt = block.toLowerCase().includes('prompt:');
             const hasNegative = block.toLowerCase().includes('negative prompt:');
             // New rule: PROMPT and NEGATIVE PROMPT must be on the same line
-            const promptLine = block.split('\n').find(l => l.trim().toLowerCase().startsWith('prompt:'));
-            const singleLine = promptLine && promptLine.toLowerCase().includes('negative prompt:');
+            const promptLine = block.split('\n').find(l => /PROMPT:/i.test(l));
+            const singleLine = promptLine && /NEGATIVE PROMPT:/i.test(promptLine);
             if (!hasPrompt || !hasNegative || !singleLine) {
               invalidCount++;
               issues.push(idx);
@@ -581,11 +581,14 @@ GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
                 chunkText = parsed;
 
                 // Validate count: check how many prompts were generated
-                const generatedCount = (parsed.match(/^PROMPT:/gim) || []).length;
+                const allPrompts = (parsed.match(/PROMPT:/gi) || []).length;
+                const allNegatives = (parsed.match(/NEGATIVE PROMPT:/gi) || []).length;
+                const generatedCount = allPrompts - allNegatives;
+                
                 if (generatedCount < chunkSubtitleCount) {
                   console.warn(`[Chunk ${i+1}] Expected ${chunkSubtitleCount} prompts, got ${generatedCount}. Flagging for retry.`);
                   // Don't mark as error yet — the global retry loop will pick it up
-                  if (generatedCount === 0) {
+                  if (generatedCount <= 0) {
                     throw new Error(`Nenhum prompt gerado no bloco ${i+1}. Contagem esperada: ${chunkSubtitleCount}`);
                   }
                 }
