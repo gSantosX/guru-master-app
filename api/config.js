@@ -25,13 +25,6 @@ const DEFAULTS = {
   grok_active_idx: 0,
 };
 
-// DATABASE SCHEME SAFE-LIST: Apenas estas colunas existem na tabela principal guru_user_configs
-const SAFE_COLUMNS = [
-  'email', 'gemini_key', 'gpt_key', 'grok_key', 
-  'active_ai', 'active_model', 
-  'gemini_active_idx', 'gpt_active_idx', 'grok_active_idx'
-];
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -56,15 +49,16 @@ export default async function handler(req, res) {
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      // Fallback: buscar TODAS as chaves extras da tabela guru_user_data para este usuário
-      const { data: extraData } = await supabase
+      // Fallback: buscar chaves resilientes da tabela guru_user_data
+      const { data: userData } = await supabase
         .from('guru_user_data')
         .select('data_key, data_value')
-        .eq('email', email);
+        .eq('email', email)
+        .in('data_key', ['gemini_prompts_key', 'youtube_key']);
 
       const baseConfig = data || { ...DEFAULTS, email };
-      if (extraData?.length > 0) {
-        extraData.forEach(row => {
+      if (userData?.length > 0) {
+        userData.forEach(row => {
           baseConfig[row.data_key] = row.data_value;
         });
       }
@@ -78,47 +72,34 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { email: _e, ...rest } = req.body;
+      const { email: _e, gemini_prompts_key, youtube_key, ...rest } = req.body;
       
-      // Separar o que é coluna segura do que é campo dinâmico/novo
-      const safePayload = { email, updated_at: new Date().toISOString() };
-      const extraPayload = {};
-      
-      Object.keys(rest).forEach(key => {
-        if (SAFE_COLUMNS.includes(key)) {
-          safePayload[key] = rest[key];
-        } else {
-          extraPayload[key] = rest[key];
-        }
-      });
-
-      // 1. Salvar na tabela principal (Apenas colunas Whitelisted)
+      // 1. Salvar config principal (removendo chaves extras para evitar erro de coluna inexistente)
+      const payload = { email, ...rest, updated_at: new Date().toISOString() };
       const { error } = await supabase
         .from(TABLE)
-        .upsert(safePayload, { onConflict: 'email' });
+        .upsert(payload, { onConflict: 'email' });
 
-      if (error) {
-        console.error('Core config save error:', error);
-        // Continuamos mesmo se o core falhar, tentando ao menos salvar o extra
+      if (error) throw error;
+
+      // 2. Salvar chaves resilientes na tabela flexível guru_user_data
+      const fallbackKeys = { gemini_prompts_key, youtube_key };
+      for (const [key, value] of Object.entries(fallbackKeys)) {
+        if (value !== undefined) {
+          const { error: errF } = await supabase
+            .from('guru_user_data')
+            .upsert(
+              { 
+                email, 
+                data_key: key, 
+                data_value: value, 
+                updated_at: new Date().toISOString() 
+              },
+              { onConflict: 'email,data_key' }
+            );
+          if (errF) console.error(`Error saving fallback key ${key}:`, errF);
+        }
       }
-
-      // 2. Salvar campos extras na tabela flexível guru_user_data
-      const fallbackPromises = Object.entries(extraPayload).map(([key, value]) => {
-        if (value === undefined) return Promise.resolve();
-        return supabase
-          .from('guru_user_data')
-          .upsert(
-            { 
-              email, 
-              data_key: key, 
-              data_value: value, 
-              updated_at: new Date().toISOString() 
-            },
-            { onConflict: 'email,data_key' }
-          );
-      });
-
-      await Promise.allSettled(fallbackPromises);
 
       return res.status(200).json({ success: true });
     } catch (err) {

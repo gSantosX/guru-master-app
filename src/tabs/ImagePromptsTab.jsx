@@ -29,6 +29,7 @@ import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { useCloudStorage } from '../hooks/useCloudStorage';
+import { generateVeoContent } from '../utils/veoUtils';
 
 const VISUAL_STYLES = [
   { id: 'ultra-realista',    label: '📷 Ultra-Realista',      desc: 'Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita' },
@@ -51,6 +52,13 @@ const VISUAL_STYLES = [
   { id: 'documentario',      label: '🎥 Documentário',          desc: 'Documentário ultra realista, extremamente polido, rico em detalhes minuciosos e sem contradições visuais, com iluminação cinematográfica autêntica' },
   { id: 'religioso',         label: '🕊️ Religioso / Espiritual', desc: 'Crença cristã focada em pureza extrema, obrigatoriamente exibindo Jesus, anjos ou estética bíblica, com forte iluminação divina' },
 ];
+
+const getPromptsApiKey = () => {
+  const exclusiveKey = localStorage.getItem('guru_gemini_prompts_key');
+  if (exclusiveKey) return exclusiveKey;
+  return localStorage.getItem('guru_gemini_key') || '';
+};
+
 export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const { status, configs } = useSystemStatus();
   const [cloudScripts] = useCloudStorage('scripts', []);
@@ -131,11 +139,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         if (!file && script.content) {
           let veoData = script.veoContent;
           if (!veoData) {
-            const lines = script.content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
-            veoData = "";
-            lines.forEach((line, idx) => {
-              veoData += `${idx + 1}\n00:00:00,000 --> 00:00:02,000\n${line}\n\n`;
-            });
+            veoData = generateVeoContent(script.content);
           }
            const parts = veoData.split(/\n\s*\n/).filter(p => p.trim());
            const blocks = parts.map(p => {

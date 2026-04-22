@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Trash2, AlertTriangle, ChevronRight, ArrowLeft, Download, FileJson, File as FilePdf, Copy, Check, Wand2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useCloudStorage } from '../hooks/useCloudStorage';
+import { generateVeoContent } from '../utils/veoUtils';
 
 export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
   const [scripts, setScripts] = useCloudStorage('scripts', []);
@@ -72,13 +73,10 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     if (!target) return;
     
     try {
-        const lines = target.content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
-        let srtData = "";
-        lines.forEach((line, idx) => {
-          srtData += `${idx + 1}\n`;
-          srtData += `00:00:${String(idx*2).padStart(2,'0')},000 --> 00:00:${String((idx*2)+2).padStart(2,'0')},000\n`;
-          srtData += `${line}\n\n`;
-        });
+        let srtData = target.veoContent;
+        if (!srtData) {
+          srtData = generateVeoContent(target.content);
+        }
 
         if (window.electronAPI?.saveFile) {
             await window.electronAPI.saveFile(srtData, `${target.title.replace(/ /g, '_')}.srt`);
@@ -104,19 +102,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     try {
         let veoData = target.veoContent;
         if (!veoData) {
-          const lines = target.content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
-          veoData = "";
-          lines.forEach((line, idx) => {
-             const startSec = idx * 2;
-             const endSec = startSec + 2;
-             const formatTime = (secs) => {
-               const h = Math.floor(secs / 3600);
-               const m = Math.floor((secs % 3600) / 60);
-               const s = secs % 60;
-               return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},000`;
-             };
-             veoData += `${idx + 1}\n${formatTime(startSec)} --> ${formatTime(endSec)}\n${line}\n\n`;
-          });
+          veoData = generateVeoContent(target.content);
         }
 
         if (window.electronAPI?.saveFile) {
@@ -208,19 +194,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
        localStorage.setItem('guru_image_prompt_veo_content', target.veoContent);
     } else {
        // On the fly generation if it doesn't exist
-       const lines = target.content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
-       let veoData = "";
-       lines.forEach((line, idx) => {
-          const startSec = idx * 2;
-          const endSec = startSec + 2;
-          const formatTime = (secs) => {
-            const h = Math.floor(secs / 3600);
-            const m = Math.floor((secs % 3600) / 60);
-            const s = secs % 60;
-            return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},000`;
-          };
-          veoData += `${idx + 1}\n${formatTime(startSec)} --> ${formatTime(endSec)}\n${line}\n\n`;
-       });
+       const veoData = generateVeoContent(target.content);
        localStorage.setItem('guru_image_prompt_veo_content', veoData);
     }
     
