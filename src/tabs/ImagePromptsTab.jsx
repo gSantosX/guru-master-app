@@ -485,8 +485,15 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     `;
 
     const speechInstruction = promptState.speechMode === 'true' 
-      ? "INCLUA DIÁLOGOS: Se a legenda contiver falas ou diálogos entre aspas, incorpore-os obrigatoriamente no prompt (ex: Sujeito diz: '...')."
-      : "SEM DIÁLOGOS: Ignore qualquer fala ou diálogo presente na legenda. Foque apenas na descrição visual e sonora do ambiente.";
+      ? "MANDATORY DIALOGUE: Include specific dialogue between quotation marks in the prompt. If the subtitle has quotes, use them exactly."
+      : "ABSOLUTE FORBIDDEN SPEECH: DO NOT include any dialogue, speaking actions, or mouth movements. The subject must NOT be speaking. Focus on silence and atmosphere.";
+
+    const realismInstruction = `
+      ## LEIS DA FÍSICA E REALISMO (CRÍTICO)
+      1. REALISMO ULTRA: O visual deve ser indistinguível da realidade atual. Proibido elementos de ficção ou tecnologia impossível.
+      2. LOGICA DA FÍSICA: Respeite a gravidade e a luz natural. Nada flutua.
+      3. ZERO FANTASIA: Sem efeitos mágicos ou brilhos irreais.
+    `;
 
     if (genMode === 'fast') {
       if (promptType === 'video') {
@@ -494,6 +501,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         return `Você é um Diretor Cinematográfico AI de elite especialista em Veo 3.1.
       COMANDO: GERE PROMPTS CINEMATOGRÁFICOS RÁPIDOS E PRECISOS PARA VEO 3.1.
       ${dnaContext}
+      ${realismInstruction}
       REGRA ABSOLUTA: Cada prompt DEVE respeitar o DNA Visual acima. Responda SEMPRE em INGLÊS (English).
       ${speechInstruction}
       PROIBIDO: NÃO ADICIONE TÍTULOS, CABEÇALHOS OU TEXTO EXTRA.
@@ -515,14 +523,15 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       // MODO QUALIDADE ELITE
       if (promptType === 'video') {
         // VEO 3.1 GOLD STANDARD — Instruções completas
-        const veoExample = `[PROMPT]: A middle-aged female astronomer with graying hair tied in a messy bun and tired brown eyes, wearing a worn orange space jumpsuit with patches on the sleeves, floats slowly in zero gravity inside an abandoned space station, holding a faded photograph with both hands as spherical tears detach from her eyes and float around her face, in the background circular windows reveal the black void of space with the blue Earth in the distance, intimate science drama style with influences from Alfonso Cuarón, camera in smooth tracking shot approaching in a circular arc at eye level, closed-up portrait composition, shallow focus with deep bokeh blurring the starry background, cold and bluish lighting coming from the windows contrasting with the amber warmth of a blinking emergency light, ambient sound of heavy breathing inside the helmet and a low, continuous electrical hum in the background.[NEGATIVO]: low quality, blurred, distortion, pixelated, compression artifacts, shaky camera, incorrect anatomy, distorted hands, deformed face, artificial facial expression, robotic movements, unreal physics, text on screen, watermark, subtitle, cheap CGI, excessive artificial lighting, over-exposure, artificially saturated colors, multiple unrequested characters.`;
+        const veoExample = `[PROMPT]: A middle-aged man in a realistic blue denim shirt sitting at a wooden table in a dimly lit, contemporary kitchen, resting his chin on his hand while looking out the window at a rainy street, raindrops splashing realistically against the glass pane according to physics, natural cold lighting from the overcast sky outside, hyper-realistic skin textures including pores and fine wrinkles, cinematic drama style with realistic lens blur, 35mm photography aesthetic, ambient sound of rain hitting the roof and the distant sound of a car driving by on a wet road.[NEGATIVO]: fiction, fantasy, sci-fi, magical elements, glowing eyes, floating objects, impossible physics, bright neon colors, anime, cartoon, 3D render, CGI look, smooth plastic skin, missing textures, distorted anatomy, talking, moving mouth, speech bubbles, text, watermark.`;
 
         return `Você é o SUPREMO Diretor Cinematográfico AI e Engenheiro de Prompts para Veo 3.1.
       COMANDO: GERE PROMPTS CINEMATOGRÁFICOS MAGISTRAIS SEGUINDO O PADRÃO OURO VEO 3.1.
       PROIBIDO: NÃO ADICIONE TÍTULOS, NOMES DE CENAS OU CABEÇALHOS.
       ${speechInstruction}
+      ${realismInstruction}
 
-      ## EXEMPLO PADRÃO OURO VEO 3.1 (EM INGLÊS):
+      ## EXEMPLO PADRÃO OURO (HIPER-REALISMO):
       ${veoExample}
 
       ${dnaContext}
@@ -537,7 +546,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       6. COMPOSIÇÃO — plano geral, close-up, plano médio, retrato, plano único ou duplo.
       7. FOCO E LENTE — bokeh, lente macro, grande-angular, teleobjetiva, filtro difusor.
       8. ATMOSFERA E ILUMINAÇÃO — hora do dia, tipo de luz, temperatura de cor, sombras, contraste.
-      9. ÁUDIO — obrigatoriamente inclua: diálogo entre aspas, efeitos sonoros OU ruído ambiente detalhado.
+      9. ÁUDIO — ${promptState.speechMode === 'true' ? 'Inclua diálogos autênticos entre aspas e ambiência real.' : 'PROIBIDO FALAS. Apenas ambiência física e sons mecânicos reais.'}
 
       ## REGRAS DO PROMPT NEGATIVO (EM INGLÊS):
       Liste separados por vírgula: problemas técnicos + problemas visuais específicos da cena + elementos de conteúdo indesejados + inconsistências de estilo + movimentos não naturais.
