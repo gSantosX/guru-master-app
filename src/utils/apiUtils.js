@@ -69,16 +69,20 @@ const getUserEmail = () => {
 };
 
 /**
- * Builds a YouTube API proxy URL with the user email attached,
- * so the server can look up the user's YouTube API key from Supabase.
+ * Builds a YouTube API proxy URL.
+ * Calls /api/youtube directly with 'path' as a query param to avoid Vercel rewrite conflicts.
  *
- * @param {string} ytPath - YouTube endpoint path (e.g., 'search', 'channels', 'videos')
- * @param {Record<string, string>} params - Query parameters for YouTube API
+ * @param {string} ytPath - YouTube endpoint (e.g., 'search', 'channels', 'videos', 'commentThreads')
+ * @param {Record<string, string>} params - YouTube API query parameters
  * @returns {string} - Full proxy URL with email param
  */
 export const buildYouTubeUrl = (ytPath, params = {}) => {
   const email = getUserEmail();
-  const base = resolveApiUrl(`/api/youtube/${ytPath}`);
-  const qs = new URLSearchParams({ ...params, ...(email ? { email } : {}) });
+  const base = resolveApiUrl('/api/youtube');
+  const qs = new URLSearchParams({
+    path: ytPath,
+    ...params,
+    ...(email ? { email } : {})
+  });
   return `${base}?${qs.toString()}`;
 };
