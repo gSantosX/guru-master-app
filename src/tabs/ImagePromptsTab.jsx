@@ -149,27 +149,34 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     setIsAnalyzing(true);
     try {
       const analysisPrompt = `Você é um Diretor de Arte e de Fotografia de elite especializado em Cinema. 
-      ANALISE O ROTEIRO ABAIXO PARA EXTRAIR A IDENTIDADE VISUAL MESTRE (OS PADRÕES VISUAIS QUE CONECTAM TUDO).
+      ANALISE O ROTEIRO ABAIXO PARA EXTRAIR A IDENTIDADE VISUAL MESTRE E RECOMENDAR OS PARÂMETROS CINEMATOGRÁFICOS IDEAIS.
       
       FOCO DA ANÁLISE:
-      1. CENÁRIOS: Identifique os locais, arquitetura, texturas dominantes (ex: mármore frio, madeira rústica, metal oxidado).
-      2. ÉPOCA/AMBIENTE: Identifique se é histórico, contemporâneo, cyber, vintage. Seja específico sobre a era.
-      3. ATMOSFERA (MOOD): Identifique a carga emocional visual (sombrio, esperançoso, épico, melancólico).
-      4. ILUMINAÇÃO: Defina o estilo de luz (ex: luz lateral dramática, luz suave de manhã, néon frio, chiaroscuro).
-      5. PALETA: Defina as 3 cores mestre que dominam o visual.
-      6. CÂMERA: Sugira o movimento (ex: tracking lento, handheld documental, close-ups extremos).
+      1. CENÁRIOS: Identifique os locais, arquitetura, texturas dominantes.
+      2. ÉPOCA/AMBIENTE: Período exato ou estilo temporal.
+      3. ATMOSFERA (MOOD): Carga emocional visual.
+      4. ILUMINAÇÃO: Estilo de luz e temperatura.
+      5. PALETA: 3 cores mestre.
+      6. CÂMERA: Lentes e movimentos recomendados.
+
+      ALÉM DISSO, selecione as TAGS mais adequadas entre estas opções (responda exatamente os nomes das tags):
+      - GÊNERO: Ficção científica, Film noir, Terror, Animação 3D, Documentário, Fantasia épica, Retrato cinematográfico, Anime
+      - CÂMERA: Vista aérea, Na altura dos olhos, Vista de cima, Vista de baixo, Travelling, Câmera lenta, Zoom in, Pan lateral
+      - COMPOSIÇÃO: Plano geral, Close-up, Plano médio, Retrato, Plano único, Plano duplo
+      - FOCO: Foco raso, Foco profundo, Lente macro, Grande-angular, Filtro difusor, Teleobjetiva
+      - ATMOSFERA: Tons azuis frios, Tons quentes dourados, Noite estrelada, Luz neon, Pôr do sol, Névoa, Chuva, Alta exposição
 
       RETORNE APENAS UM JSON NO FORMATO:
       {
-        "scenario": "detalhes arquitetônicos e locais principais",
-        "era": "período exato ou estilo temporal definido",
-        "mood": "vibe emocional visual específica",
-        "lighting": "direção de fotografia e estilo de luz",
-        "palette": "esquema de cores cinematográfico",
-        "camera": "lentes e movimentos de câmera recomendados"
+        "scenario": "...", "era": "...", "mood": "...", "lighting": "...", "palette": "...", "camera": "...",
+        "rec_genero": "uma tag",
+        "rec_camera": ["tag1", "tag2"],
+        "rec_composicao": ["tag1"],
+        "rec_foco": ["tag1"],
+        "rec_atmosfera": ["tag1", "tag2"]
       }
 
-      ROTEIRO PARA ANÁLISE:
+      ROTEIRO:
       ${scriptToAnalyze.substring(0, 4500)}`;
 
       const response = await callAI(analysisPrompt, { 
@@ -179,7 +186,16 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       });
       const cleanJson = response.replace(/```json|```/g, '').trim();
       const dna = JSON.parse(cleanJson);
+      
       setVisualDNA(dna);
+      
+      // AUTO-SELECT RECOMMENDED TAGS
+      if (dna.rec_genero) setGenero(dna.rec_genero);
+      if (dna.rec_camera) setCameraMovimento(dna.rec_camera);
+      if (dna.rec_composicao) setComposicao(dna.rec_composicao);
+      if (dna.rec_foco) setFocoLente(dna.rec_foco);
+      if (dna.rec_atmosfera) setAtmosferaLuz(dna.rec_atmosfera);
+
     } catch (error) {
       console.error("Erro na análise visual:", error);
       alert("❌ Falha na Análise Critica: " + error.message);
@@ -309,22 +325,27 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
           const isVeoFormat = content.includes('[PROMPT]:') || content.includes('[NEGATIVO]:');
           
           blocks.forEach((block, idx) => {
+            const wordCount = block.split(/\s+/).filter(w => w.length > 0).length;
+            
             if (isVeoFormat) {
               // Veo 3.1 format: [PROMPT]: and [NEGATIVO]: must exist on the same line
               const promptLine = block.split('\n').find(l => /\[PROMPT\]:/i.test(l));
               const singleLine = promptLine && /\[NEGATIVO\]:/i.test(promptLine);
-              if (!promptLine || !singleLine) { invalidCount++; issues.push(idx); }
+              if (!promptLine || !singleLine || wordCount < 80) { invalidCount++; issues.push(idx); }
             } else {
               // Legacy format: PROMPT: and NEGATIVE PROMPT: on same line
               const hasPrompt = block.toLowerCase().includes('prompt:');
               const hasNegative = block.toLowerCase().includes('negative prompt:');
               const promptLine = block.split('\n').find(l => /PROMPT:/i.test(l));
               const singleLine = promptLine && /NEGATIVE PROMPT:/i.test(promptLine);
-              if (!hasPrompt || !hasNegative || !singleLine) { invalidCount++; issues.push(idx); }
+              if (!hasPrompt || !hasNegative || !singleLine || wordCount < 80) { invalidCount++; issues.push(idx); }
             }
           });
         } else {
-          blocks.forEach((block, idx) => { if (block.length < 10) { invalidCount++; issues.push(idx); } });
+          blocks.forEach((block, idx) => { 
+            const wordCount = block.split(/\s+/).filter(w => w.length > 0).length;
+            if (block.length < 10 || wordCount < 80) { invalidCount++; issues.push(idx); } 
+          });
         }
 
         const ok = invalidCount === 0;
@@ -396,9 +417,10 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
           ? `[PROMPT]: [Text] [NEGATIVO]: [Text] (SAME LINE, with exactly one space between them). Pular uma linha entre cada conjunto.`
           : `PROMPT: [Text] NEGATIVE PROMPT: [Text] (SAME LINE). Pular uma linha entre cada conjunto.`;
         
-        const repairPrompt = `URGENT REPAIR: One or more blocks are poorly formatted. 
+        const repairPrompt = `URGENT REPAIR: One or more blocks are poorly formatted or too short. 
         STRICT FORMAT: ${repairFormat}.
         Every block MUST be on a single continuous line.
+        MANDATORY LENGTH: Every prompt MUST have at least 80-100 words (including negative).
         Separate each complete block with ONE empty line.
         Repair these blocks keeping original descriptions in English:
         ${repaired}`;
@@ -474,7 +496,8 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       [PROMPT]: [English content here in one line][NEGATIVO]: [English negative list here]
       [linha em branco]
       
-      ${outputFormat === 'json' ? `SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
+      ${outputFormat === 'json' ? `SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}. 
+      REGRA DE EXTENSÃO: Cada prompt deve ser rico e detalhado, com no MÍNIMO 80-100 palavras.` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
       } else {
         return `You are an ELITE Image Prompt Engineer.
       COMMAND: PRODUCE FAST, HIGH-QUALITY IMAGE PROMPTS.
@@ -511,14 +534,10 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       ## REGRAS DO PROMPT NEGATIVO (EM INGLÊS):
       Liste separados por vírgula: problemas técnicos + problemas visuais específicos da cena + elementos de conteúdo indesejados + inconsistências de estilo + movimentos não naturais.
 
-      ## DNA VISUAL INVIOLÁVEL DO ROTEIRO:
-      ${dnaContext}
+      ## CONSISTÊNCIA VISUAL:
+      Mantenha rigorosamente o mesmo estilo, paleta e atmosfera em TODOS os prompts para garantir coesão visual absoluta em todo o vídeo.
 
-      ## FORMATO OBRIGATÓRIO (ZERO QUEBRAS DE LINHA INTERNAS):
-      [PROMPT]: [texto completo em uma única linha contínua][NEGATIVO]: [lista separada por vírgula em uma linha]
-      [LINHA EM BRANCO]
-
-      NÍVEL DE DETALHE: 80–150 palavras por prompt. Evite termos vagos — use descritores concretos e sensoriais.
+      NÍVEL DE DETALHE (REGRA ABSOLUTA): MÍNIMO DE 80 PALAVRAS por prompt (Prompt + Negativo). Evite termos vagos — use descritores concretos, sensoriais e técnicos.
       IDIOMA: SEMPRE Inglês (English).
       ${outputFormat === 'json' ? `## SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA: UM BLOCO POR LEGENDA — [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
       } else {
