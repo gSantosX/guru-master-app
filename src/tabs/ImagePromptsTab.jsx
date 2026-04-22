@@ -275,17 +275,28 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target.result;
-      let blocks = [];
-      if (file.name.toLowerCase().endsWith('.srt')) {
+      let rawText = "";
+      if (file.name.toLowerCase().endsWith('.srt') || file.name.toLowerCase().endsWith('.veo')) {
         const parts = text.split(/\n\s*\n/).filter(p => p.trim());
-        blocks = parts.map(p => {
+        const rawBlocks = parts.map(p => {
           const lines = p.trim().split('\n');
           if (lines.length >= 3) return lines.slice(2).join(' ').trim();
           return p.trim();
         });
+        rawText = rawBlocks.join(' ');
       } else {
-        blocks = text.split('\n').filter(p => p.trim());
+        rawText = text;
       }
+
+      // FORÇAR A REGRA ABSOLUTA DE 16-22 PALAVRAS EM ARQUIVOS ANEXADOS!
+      const veoData = generateVeoContent(rawText);
+      const newParts = veoData.split(/\n\s*\n/).filter(p => p.trim());
+      const blocks = newParts.map(p => {
+        const lines = p.trim().split('\n');
+        if (lines.length >= 3) return lines.slice(2).join(' ').trim();
+        return p.trim();
+      });
+
       setSubtitleBlocks(blocks);
       setSubtitleCount(blocks.length);
       setPrompts("");
