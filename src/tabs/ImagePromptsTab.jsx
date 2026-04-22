@@ -484,6 +484,10 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     ${cineParams || '- Nenhum parâmetro específico selecionado — use criatividade baseada no DNA acima'}
     `;
 
+    const speechInstruction = promptState.speechMode === 'true' 
+      ? "INCLUA DIÁLOGOS: Se a legenda contiver falas ou diálogos entre aspas, incorpore-os obrigatoriamente no prompt (ex: Sujeito diz: '...')."
+      : "SEM DIÁLOGOS: Ignore qualquer fala ou diálogo presente na legenda. Foque apenas na descrição visual e sonora do ambiente.";
+
     if (genMode === 'fast') {
       if (promptType === 'video') {
         // Fast Veo 3.1 format
@@ -491,6 +495,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       COMANDO: GERE PROMPTS CINEMATOGRÁFICOS RÁPIDOS E PRECISOS PARA VEO 3.1.
       ${dnaContext}
       REGRA ABSOLUTA: Cada prompt DEVE respeitar o DNA Visual acima. Responda SEMPRE em INGLÊS (English).
+      ${speechInstruction}
       PROIBIDO: NÃO ADICIONE TÍTULOS, CABEÇALHOS OU TEXTO EXTRA.
       
       ## FORMATO OBRIGATÓRIO (cada prompt em uma única linha contínua):
@@ -504,7 +509,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       COMMAND: PRODUCE FAST, HIGH-QUALITY IMAGE PROMPTS.
       ${dnaContext}
       STRICT RULE: Every prompt MUST respect the Visual DNA above. Response MUST be in ENGLISH.
-      ${outputFormat === 'json' ? `OUTPUT: JSON [ { "id": X, "prompt": "..." }, ... ]` : `OUTPUT: ID|PROMPT (one per line)`}`;
+      ${outputFormat === 'json' ? `SAÍDA FINAL: JSON [ { "id": X, "prompt": "..." }, ... ]` : `SAÍDA FINAL: ID|PROMPT (one per line)`}`;
       }
     } else {
       // MODO QUALIDADE ELITE
@@ -515,6 +520,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         return `Você é o SUPREMO Diretor Cinematográfico AI e Engenheiro de Prompts para Veo 3.1.
       COMANDO: GERE PROMPTS CINEMATOGRÁFICOS MAGISTRAIS SEGUINDO O PADRÃO OURO VEO 3.1.
       PROIBIDO: NÃO ADICIONE TÍTULOS, NOMES DE CENAS OU CABEÇALHOS.
+      ${speechInstruction}
 
       ## EXEMPLO PADRÃO OURO VEO 3.1 (EM INGLÊS):
       ${veoExample}
@@ -541,7 +547,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
 
       NÍVEL DE DETALHE (REGRA ABSOLUTA): MÍNIMO DE 80 PALAVRAS por prompt (Prompt + Negativo). Evite termos vagos — use descritores concretos, sensoriais e técnicos.
       IDIOMA: SEMPRE Inglês (English).
-      ${outputFormat === 'json' ? `## SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA: UM BLOCO POR LEGENDA — [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
+      ${outputFormat === 'json' ? `## SAÍDA FINAL: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA FINAL: UM BLOCO POR LEGENDA — [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
       } else {
         // Image Gold Standard (legacy format)
         const eliteExample = `PROMPT: A slow, deliberate tracking shot moves through a claustrophobic corridor within the Brocken Sendeanlage in 1978, revealing a scene of technological decay and encroaching dread; the cold, raw concrete walls, stained with streaks of dampness and peeling lead paint, are a dominant grey-blue, contrasted by thick bundles of olive-green, rubber-coated cables snaking across the floor and up the walls, all showing signs of age and neglect; 8K resolution, 35mm film grain, hyper-realistic textures, dramatic chiaroscuro. NEGATIVE PROMPT: bright colors, neon, saturation, sunshine, blue sky, people, modern technology, clean surfaces, CGI, 3D render, cartoon, anime, watercolor, text, watermark, signature, logo.`;
@@ -558,7 +564,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       PROMPT: [Details] NEGATIVE PROMPT: [Details]
       [EMPTY LINE AFTER EACH BLOCK]
 
-      ${outputFormat === 'json' ? `## OUTPUT: JSON [ { "id": X, "prompt": "...", "negative": "..." }, ... ]` : `## OUTPUT: SINGLE LINE PER PROMPT BLOCK`}`;
+      ${outputFormat === 'json' ? `## OUTPUT: JSON [ { "id": X, "prompt": "...", "negative": "..." }, ... ]` : `## OUTPUT: SINGLE LINE PER PROMPT BLOCK (PROMPT: ... NEGATIVE PROMPT: ...)`}`;
       }
     }
   };
