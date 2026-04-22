@@ -1,5 +1,5 @@
 /**
- * Guru Master — YouTube Data API v3 Proxy
+ * Guru Master — YouTube Data API v3 Proxy  [v2 - 2026-04-22]
  * Route: /api/youtube?path=<endpoint>&part=...&email=user@example.com
  *
  * Reads the user's youtube_key from Supabase and proxies to YouTube Data API v3.
