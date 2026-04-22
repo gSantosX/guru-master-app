@@ -497,7 +497,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       [linha em branco]
       
       ${outputFormat === 'json' ? `SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}. 
-      REGRA DE EXTENSÃO: Cada prompt deve ser rico e detalhado, com no MÍNIMO 80-100 palavras.` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
+      REGRA DE EXTENSÃO: Cada prompt deve ser rico e detalhado, com no MÍNIMO 80-100 palavras.`;
       } else {
         return `You are an ELITE Image Prompt Engineer.
       COMMAND: PRODUCE FAST, HIGH-QUALITY IMAGE PROMPTS.
