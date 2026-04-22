@@ -36,7 +36,24 @@ export const Login = ({ onClose, isAppContext }) => {
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
-  // ... (checkBackend useEffect remains same)
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const res = await fetch(resolveApiUrl('/api/check'));
+        if (res.ok) {
+           const data = await res.json();
+           setBackendStatus(data.online ? 'online' : 'offline');
+        } else {
+           setBackendStatus('offline');
+        }
+      } catch {
+        setBackendStatus('offline');
+      }
+    };
+    checkBackend();
+    const timer = setInterval(checkBackend, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

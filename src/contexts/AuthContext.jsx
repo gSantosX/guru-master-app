@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { supabase } from '../utils/supabase';
+import { preloadUserCloudData } from '../hooks/useCloudStorage';
 
 const AuthContext = createContext();
 
@@ -9,14 +10,18 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user should be remembered
     const remember = localStorage.getItem('guru_remember') === 'true';
     const storedUser = localStorage.getItem('guru_user');
     const activeSession = sessionStorage.getItem('guru_active_session') === 'true';
 
     if (storedUser && (remember || activeSession)) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+        // Keep session alive through this tab's lifetime
+        sessionStorage.setItem('guru_active_session', 'true');
+        // Preload ALL cloud data (scripts, history, etc.) in background
+        if (parsed?.email) preloadUserCloudData(parsed.email);
       } catch (e) {
         localStorage.removeItem('guru_user');
       }
@@ -47,8 +52,9 @@ export const AuthProvider = ({ children }) => {
       const userData = { 
         name: data.name, 
         email: data.email, 
-        is_admin: data.is_admin,
-        is_lifetime: data.is_lifetime,
+        is_active: !!data.is_active,
+        is_admin: !!data.is_admin,
+        is_lifetime: !!data.is_lifetime,
         expires_at: data.expires_at,
         picture: data.profile_picture 
       };
@@ -56,7 +62,10 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       localStorage.setItem('guru_user', JSON.stringify(userData));
       localStorage.setItem('guru_remember', remember ? 'true' : 'false');
+      // Always keep session alive in this tab
       sessionStorage.setItem('guru_active_session', 'true');
+      // Preload cloud data on login too
+      if (userData?.email) preloadUserCloudData(userData.email);
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
@@ -96,11 +105,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const checkReferralCode = async (code) => {
+    try {
+      const { data, error } = await supabase
+        .from('guru_access_codes')
+        .select('*')
+        .eq('code', code)
+        .eq('is_used', false)
+        .single();
+        
+      if (error || !data) return { success: false, error: "Código inválido ou já utilizado." };
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, error: "Erro de conexão com o Banco de Dados." };
+    }
+  };
+
   const register = async (name, email, password, verificationCode, referralCode, remember = false) => {
     try {
-      // 1. Verify code again
-      const verifyRes = await verifyCode(email, verificationCode);
-      if (!verifyRes.success) throw new Error(verifyRes.error);
+      // Note: verificationCode is already verified in the Step 2 of the UI (handleVerifyCode)
+      // and deleted from the database by the serverless function. 
+      // Re-verifying here causes "Invalid Code" errors.
+      
+      if (!verificationCode && !referralCode) {
+        throw new Error("Verificação ou indicação é obrigatória para cadastro.");
+      }
 
       // 2. Check if user already exists (maybe created via webhook)
       const { data: existingUser } = await supabase
@@ -128,8 +157,9 @@ export const AuthProvider = ({ children }) => {
         userData = { 
           name: data.name, 
           email: data.email, 
-          is_admin: data.is_admin,
-          is_lifetime: data.is_lifetime,
+          is_active: !!data.is_active,
+          is_admin: !!data.is_admin,
+          is_lifetime: !!data.is_lifetime,
           expires_at: data.expires_at,
           picture: data.profile_picture 
         };
@@ -166,8 +196,8 @@ export const AuthProvider = ({ children }) => {
         userData = { 
           name: newUser.name, 
           email: newUser.email, 
-          is_admin: newUser.is_admin,
-          is_lifetime: newUser.is_lifetime 
+          is_admin: !!newUser.is_admin,
+          is_lifetime: !!newUser.is_lifetime 
         };
       }
       
@@ -201,9 +231,15 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
+    // Clear auth
     localStorage.removeItem('guru_user');
     localStorage.removeItem('guru_remember');
     sessionStorage.removeItem('guru_active_session');
+    // Clear all config and cloud caches so next user starts fresh
+    const keysToRemove = Object.keys(localStorage).filter(k =>
+      k.startsWith('guru_cloud_') || k === 'guru_configs_cache'
+    );
+    keysToRemove.forEach(k => localStorage.removeItem(k));
     window.location.reload();
   };
 
@@ -215,6 +251,7 @@ export const AuthProvider = ({ children }) => {
       logout, 
       sendVerificationCode,
       verifyCode,
+      checkReferralCode,
       updateConfig,
       isAuthenticated: !!user, 
       loading 
