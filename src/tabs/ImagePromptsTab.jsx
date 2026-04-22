@@ -646,7 +646,7 @@ ${generateLabel}`;
         let success = false;
         let lastError = null;
 
-        while (!success && retryCount < 3 && !cancelRef.current) {
+        while (!success && retryCount < 4 && !cancelRef.current) {
           try {
             if (retryCount > 0) {
               const isRateLimit = lastError && (lastError.message.includes('quota') || lastError.message.includes('429') || lastError.message.includes('exhausted'));
@@ -655,21 +655,51 @@ ${generateLabel}`;
               setGenerationProgress(prev => ({ 
                 ...prev, 
                 statuses: [...chunkStatuses], 
-                step: isRateLimit ? `Cota da API Cheia. Pausa Tática (${delayTime/1000}s) para Bloco ${i+1}...` : `Tentando novamemte Bloco ${i+1}...` 
+                step: retryCount === 3 ? `Modo de Segurança: Processando legendas individualmente no Bloco ${i+1}...` : (isRateLimit ? `Cota da API Cheia. Pausa Tática (${delayTime/1000}s) para Bloco ${i+1}...` : `Tentando novamente Bloco ${i+1} (Tentativa ${retryCount})...`) 
               }));
               await new Promise(r => setTimeout(r, delayTime));
             } else if (i > 0 || globalRetry > 0) {
               await new Promise(r => setTimeout(r, 4000));
             }
 
-            chunkStatuses[i] = "generating";
-            setGenerationProgress(prev => ({ 
-              ...prev, 
-              statuses: [...chunkStatuses], 
-              step: globalRetry > 0 ? `Corrigindo Bloco ${i+1}...` : `Processando Bloco ${i+1}/${totalChunks}...` 
-            }));
+            let responseText = "";
+            
+            // INDIVIDUAL FALLBACK MODE (Retry 3)
+            if (retryCount === 3) {
+              let individualText = "";
+              for (let subIdx = 0; subIdx < currentChunk.length; subIdx++) {
+                const sub = currentChunk[subIdx];
+                const subId = startIdx + subIdx + 1;
+                const subPrompt = `${getSystemPrompt()}
+                
+                ---
+                REGRA ABSOLUTA: Gere APENAS UM PROMPT para a legenda abaixo.
+                FORMATO: [PROMPT]: ... [NEGATIVO]: ...
+                ---
+                LEGENDA [ID ${subId}]: ${sub}
+                
+                GERAR PROMPT VEO 3.1:`;
+                
+                const subResp = await callGemini(getPromptsApiKey(), subPrompt, { model: 'gemini-2.5-flash' });
+                // Clean and ensure single line
+                let cleanedSub = subResp.trim().replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
+                const line = cleanedSub.split('\n').find(l => l.includes('[PROMPT]:')) || cleanedSub;
+                individualText += (individualText ? "\n\n" : "") + line;
+                
+                // Show progress
+                setGenerationProgress(prev => ({ ...prev, step: `Segurança: Processando ${subIdx+1}/${currentChunk.length} do Bloco ${i+1}...` }));
+              }
+              responseText = individualText;
+            } else {
+              chunkStatuses[i] = "generating";
+              setGenerationProgress(prev => ({ 
+                ...prev, 
+                statuses: [...chunkStatuses], 
+                step: globalRetry > 0 ? `Corrigindo Bloco ${i+1}...` : `Processando Bloco ${i+1}/${totalChunks}...` 
+              }));
+              responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.5-flash' });
+            }
 
-            const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.5-flash' });
             success = true;
             
             // Success processing
@@ -684,62 +714,40 @@ ${generateLabel}`;
             } else {
               if (genMode === 'quality') {
                 let parsed = responseText.trim();
-                // Detect if Veo 3.1 format or legacy
                 const isVeoFmt = parsed.includes('[PROMPT]:') || parsed.includes('[NEGATIVO]:');
                 
                 if (isVeoFmt) {
-                  // Veo 3.1: Rejoin [NEGATIVO]: if needed
                   parsed = parsed.replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
-                  
-                  // CLEANUP: Filter only lines containing [PROMPT]:
                   const lines = parsed.split('\n').filter(line => line.includes('[PROMPT]:'));
                   const generatedCount = lines.length;
-                  if (generatedCount !== chunkSubtitleCount) {
-                    throw new Error(`Contagem Errada: Esperado ${chunkSubtitleCount}, mas a AI gerou ${generatedCount}. Forçando reprocessamento.`);
+                  
+                  if (retryCount < 3 && generatedCount !== chunkSubtitleCount) {
+                    throw new Error(`Contagem Errada: Esperado ${chunkSubtitleCount}, mas a AI gerou ${generatedCount}.`);
                   }
                   chunkText = lines.join('\n\n');
                 } else {
-                  // Legacy PROMPT: / NEGATIVE PROMPT: format
                   parsed = parsed.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
-                  
-                  // CLEANUP: Filter only lines containing PROMPT:
                   const lines = parsed.split('\n').filter(line => line.toLowerCase().includes('prompt:'));
                   const generatedCount = lines.length;
-                  if (generatedCount !== chunkSubtitleCount) {
-                    throw new Error(`Wrong Count: Expected ${chunkSubtitleCount}, AI got ${generatedCount}. Retrying.`);
+                  if (retryCount < 3 && generatedCount !== chunkSubtitleCount) {
+                    throw new Error(`Wrong Count: Expected ${chunkSubtitleCount}, got ${generatedCount}.`);
                   }
                   chunkText = lines.join('\n\n');
                 }
               } else {
-                const rawLines = responseText.split('\n').filter(l => l.includes('|'));
-                currentChunk.forEach((_, idx) => {
-                  const expectedId = startIdx + idx + 1;
-                  const matchedLine = rawLines.find(l => {
-                    const parts = l.split('|');
-                    return parts.length >= 2 && parseInt(parts[0].trim()) === expectedId;
-                  });
-                  if (matchedLine) {
-                    chunkText += (chunkText ? "\n\n" : "") + matchedLine.split('|')[1].trim();
-                  } else {
-                    const fallbackLine = rawLines[idx] ? rawLines[idx].split('|')[1]?.trim() : null;
-                    chunkText += (chunkText ? "\n\n" : "") + (fallbackLine || "Elite prompt generation failure.");
-                  }
-                });
+                chunkText = responseText;
               }
             }
 
             resultsStorage[i] = chunkText;
             chunkStatuses[i] = "done";
-            
-            // Update LIVE UI
-            const liveText = resultsStorage.filter(Boolean).join('\n\n');
-            setPrompts(liveText);
+            setPrompts(resultsStorage.filter(Boolean).join('\n\n'));
 
           } catch (err) {
             console.error(`Error in chunk ${i+1}:`, err);
             lastError = err;
             retryCount++;
-            if (retryCount >= 3) {
+            if (retryCount >= 4) {
               resultsStorage[i] = `[ERRO BLOCO ${i+1}: ${err.message}]`;
               chunkStatuses[i] = "error";
               nextFailedChunks.push(i);
