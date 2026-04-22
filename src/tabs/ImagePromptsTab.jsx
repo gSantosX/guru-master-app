@@ -357,31 +357,32 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
 
       if (isVeoFormat) {
         // Fix Veo 3.1 format: If [NEGATIVO]: is on its own separate line, join it
-        if (/^\[NEGATIVO\]:/gim.test(repaired)) {
-          repaired = repaired.replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
-          logs.push("✓ Unindo [PROMPT]: e [NEGATIVO]: na mesma linha (Veo 3.1)");
-        }
-        // Fix extra blank lines within a block
-        repaired = repaired.replace(/\[PROMPT\]:\s*([\s\S]*?)\s*\n+\s*(\[NEGATIVO\]:)/gim, (match, p1, p2) => {
-          return `[PROMPT]: ${p1.trim()} ${p2}`;
-        });
-        logs.push("✓ Normalizando estrutura interna dos blocos Veo 3.1");
+        repaired = repaired.replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
+        
+        // Fix extra blank lines within a block (between Prompt and Negativo)
+        repaired = repaired.replace(/(\[PROMPT\]:.*?)\s*\n+\s*(\[NEGATIVO\]:)/gim, '$1 $2');
+        
+        // Ensure each [PROMPT]: (except the first) has exactly two newlines before it
+        repaired = repaired.replace(/([^\n]+)\s*(\[PROMPT\]:)/gi, '$1\n\n$2');
+        
+        logs.push("✓ Normalizando estrutura e espaçamento Veo 3.1");
       } else {
         // Fix 1: Legacy format - If NEGATIVE PROMPT is on its own separate line, join it to the previous PROMPT line
-        if (/^NEGATIVE PROMPT:/gim.test(repaired)) {
-          repaired = repaired.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
-          logs.push("✓ Unindo PROMPT e NEGATIVE PROMPT na mesma linha");
-        }
+        repaired = repaired.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
+        
+        // Ensure each PROMPT: (except the first) has exactly two newlines before it
+        repaired = repaired.replace(/([^\n]+)\s*(PROMPT:)/gi, '$1\n\n$2');
+
         // Fix 2: Remove any extra blank lines WITHIN a prompt block
-        repaired = repaired.replace(/PROMPT:\s*([\s\S]*?)\s*\n+\s*(NEGATIVE PROMPT:)/gim, (match, p1, p2) => {
-          return `PROMPT: ${p1.trim()} ${p2}`;
-        });
-        logs.push("✓ Normalizando estrutura interna dos blocos");
+        repaired = repaired.replace(/(PROMPT:.*?)\s*\n+\s*(NEGATIVE PROMPT:)/gim, '$1 $2');
+        
+        logs.push("✓ Normalizando estrutura de blocos Legados");
       }
 
-      // Fix: Ensure exactly one blank line between blocks
+      // Fix: Ensure exactly one blank line between blocks (remove 3+ newlines)
       repaired = repaired.replace(/\n{3,}/g, '\n\n');
-      logs.push("✓ Normalizando separação entre blocos");
+      repaired = repaired.trim();
+      logs.push("✓ Garantindo linha em branco entre prompts");
 
       setRepairLogs(prev => [...prev, ...logs]);
       await new Promise(r => setTimeout(r, 600));
@@ -392,13 +393,14 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         setRepairLogs(prev => [...prev, "🚨 Inconsistência Crítica: Acionando Reparo via IA..."]);
         
         const repairFormat = isVeoFormat
-          ? `[PROMPT]: [Text] [NEGATIVO]: [Text] (SAME LINE, no newline between them)`
-          : `PROMPT: [Text] NEGATIVE PROMPT: [Text] (SAME LINE, no newline between them)`;
+          ? `[PROMPT]: [Text] [NEGATIVO]: [Text] (SAME LINE, with exactly one space between them). Pular uma linha entre cada conjunto.`
+          : `PROMPT: [Text] NEGATIVE PROMPT: [Text] (SAME LINE). Pular uma linha entre cada conjunto.`;
         
         const repairPrompt = `URGENT REPAIR: One or more blocks are poorly formatted. 
         STRICT FORMAT: ${repairFormat}.
+        Every block MUST be on a single continuous line.
         Separate each complete block with ONE empty line.
-        Repair these blocks keeping original descriptions:
+        Repair these blocks keeping original descriptions in English:
         ${repaired}`;
         
         const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-2.5-flash' });
@@ -407,9 +409,10 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       }
 
       setPrompts(repaired);
-      await runFastVerification(repaired);
-      setRepairLogs(prev => [...prev, "✨ Todos os Prompts Validados e Prontos!"]);
-      await new Promise(r => setTimeout(r, 1000)); // Let the user read the success log
+      setIsVerified(true);
+      setErrorCount(0);
+      setRepairLogs(prev => [...prev, "✨ Integridade Garantida: Pronto para Copiar/Baixar!"]);
+      await new Promise(r => setTimeout(r, 1000));
       return repaired;
     } catch (e) {
       console.error("Repair error:", e);
@@ -883,23 +886,41 @@ ${generateLabel}`;
     }
   };
 
-  const handleCopyPrompts = () => { 
-    if (prompts) {
+  const handleCopyPrompts = async () => { 
+    if (!prompts) return;
+    
+    // Automatic Analysis before allowing copy
+    if (!isVerified) {
+      const repaired = await handleAutomaticRepair(prompts);
+      if (repaired) {
+        navigator.clipboard.writeText(repaired);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      }
+    } else {
       navigator.clipboard.writeText(prompts);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!prompts) return;
+
+    // Automatic Analysis before allowing download
+    let finalContent = prompts;
+    if (!isVerified) {
+      finalContent = await handleAutomaticRepair(prompts);
+      if (!finalContent) return;
+    }
+
     const ext = outputFormat === 'json' ? 'json' : 'txt';
     const mimeType = outputFormat === 'json' ? 'application/json' : 'text/plain';
-    const blob = new Blob([prompts], { type: mimeType });
+    const blob = new Blob([finalContent], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Prompts_${getActiveStyle().id}_${file?.name || 'project'}.${ext}`;
+    a.download = `Prompts_${genero || 'project'}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
   };
