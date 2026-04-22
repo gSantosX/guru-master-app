@@ -1,9 +1,9 @@
 /**
- * Guru Master — YouTube Data API v3 Proxy
- * Route: /api/youtube/[endpoint] (dynamic route — catches search, channels, videos, commentThreads, etc.)
+ * Guru Master — YouTube Data API v3 Proxy (Index)
+ * Route: /api/youtube  (handles ?path=search|channels|videos|commentThreads)
  *
- * Reads the user's youtube_key from Supabase using the email query param,
- * then proxies the request to the real YouTube Data API v3.
+ * This file handles calls to /api/youtube?path=<endpoint>&...params
+ * The frontend calls this directly to avoid Vercel routing conflicts.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -22,11 +22,11 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // ── 1. Determine which YouTube endpoint to call ──────────────────
-  // Vercel passes the dynamic segment as req.query.endpoint
-  const endpoint = req.query.endpoint || 'search';
+  // ── 1. Determine YouTube endpoint ─────────────────────────────────
+  // Called as /api/youtube?path=search&part=snippet&...
+  const endpoint = req.query.path || 'search';
 
-  // ── 2. Get the user's youtube_key from Supabase ──────────────────
+  // ── 2. Look up youtube_key from Supabase ──────────────────────────
   let apiKey = null;
   const email = (req.query.email || '').toLowerCase().trim();
 
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
       if (userData?.data_value) {
         apiKey = userData.data_value;
       } else {
-        // Fallback: guru_user_configs table
+        // Fallback: guru_user_configs
         const { data: configData } = await supabase
           .from('guru_user_configs')
           .select('youtube_key')
@@ -55,11 +55,11 @@ export default async function handler(req, res) {
         }
       }
     } catch (err) {
-      console.error('[youtube proxy] Supabase lookup failed:', err.message);
+      console.error('[youtube/index] Supabase lookup failed:', err.message);
     }
   }
 
-  // Server-wide fallback key (optional env var)
+  // Optional: server-wide env var fallback
   if (!apiKey && process.env.YOUTUBE_API_KEY) {
     apiKey = process.env.YOUTUBE_API_KEY;
   }
@@ -75,22 +75,20 @@ export default async function handler(req, res) {
   }
 
   // ── 3. Build YouTube API URL ─────────────────────────────────────
-  // Strip internal params, pass everything else to YouTube
-  const { endpoint: _endpoint, email: _email, ...ytParams } = req.query;
+  const { path: _path, email: _email, ...ytParams } = req.query;
   const params = new URLSearchParams({ ...ytParams, key: apiKey });
   const ytUrl = `${YT_BASE}/${endpoint}?${params.toString()}`;
 
-  // ── 4. Proxy the request ─────────────────────────────────────────
+  // ── 4. Proxy to YouTube ───────────────────────────────────────────
   try {
     const ytRes = await fetch(ytUrl, {
       signal: AbortSignal.timeout(15000),
     });
-
     const body = await ytRes.json();
     return res.status(ytRes.status).json(body);
   } catch (err) {
     const isTimeout = err?.name === 'TimeoutError' || err?.name === 'AbortError';
-    console.error('[youtube proxy] Fetch error:', err.message);
+    console.error('[youtube/index] Fetch error:', err.message);
     return res.status(503).json({
       error: {
         code: 503,
