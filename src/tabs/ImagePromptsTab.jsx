@@ -499,6 +499,15 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       3. ZERO FANTASIA: Sem efeitos mágicos ou brilhos irreais.
     `;
 
+    const dynamismEngine = `
+      ## MOTOR DE DINAMISMO CINEMATOGRÁFICO (REGRAS DE OURO)
+      1. ANTI-MONOTONIA: Varie os ângulos e tipos de plano entre as cenas (Ex: Se a cena anterior foi Close-up, a atual deve ser Plano Geral ou Médio). Crie um ritmo de montagem profissional.
+      2. CAMADAS DE DETALHAMENTO (OBRIGATÓRIO):
+         - Camada Sensorial: Descreva o ambiente físico (temperatura, partículas de poeira no ar, reflexos em superfícies, texturas de tecidos).
+         - Camada de Engenharia Óptica: Use termos técnicos reais (lentes 35mm f/1.4, bokeh orgânico, grão de filme 35mm).
+         - Camada de Intenção Narrativa: Descreva a emoção da cena através de movimentos físicos (hesitação, pressa, tensão muscular).
+    `;
+
     if (genMode === 'fast') {
       if (promptType === 'video') {
         // Fast Veo 3.1 format
@@ -506,6 +515,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       COMANDO: GERE PROMPTS EXTREMAMENTE ROBUSTOS (80-150 PALAVRAS) PARA VEO 3.1.
       ${dnaContext}
       ${realismInstruction}
+      ${dynamismEngine}
       REGRA ABSOLUTA: Cada prompt DEVE conter: 1. Sujeito Detalhado, 2. Ação Física, 3. Cenário/Ambiente, 4. Estilo de Câmera/Lente e 5. Iluminação/Atmosfera.
       ${speechInstruction}
       PROIBIDO: NÃO ADICIONE TÍTULOS OU CABEÇALHOS. Responda em INGLÊS.
@@ -534,6 +544,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       PROIBIDO: NÃO ADICIONE TÍTULOS, NOMES DE CENAS OU CABEÇALHOS.
       ${speechInstruction}
       ${realismInstruction}
+      ${dynamismEngine}
 
       ## EXEMPLO PADRÃO OURO (HIPER-REALISMO):
       ${veoExample}
