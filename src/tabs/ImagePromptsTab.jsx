@@ -491,6 +491,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       COMANDO: GERE PROMPTS CINEMATOGRÁFICOS RÁPIDOS E PRECISOS PARA VEO 3.1.
       ${dnaContext}
       REGRA ABSOLUTA: Cada prompt DEVE respeitar o DNA Visual acima. Responda SEMPRE em INGLÊS (English).
+      PROIBIDO: NÃO ADICIONE TÍTULOS, CABEÇALHOS OU TEXTO EXTRA.
       
       ## FORMATO OBRIGATÓRIO (cada prompt em uma única linha contínua):
       [PROMPT]: [English content here in one line][NEGATIVO]: [English negative list here]
@@ -513,6 +514,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
 
         return `Você é o SUPREMO Diretor Cinematográfico AI e Engenheiro de Prompts para Veo 3.1.
       COMANDO: GERE PROMPTS CINEMATOGRÁFICOS MAGISTRAIS SEGUINDO O PADRÃO OURO VEO 3.1.
+      PROIBIDO: NÃO ADICIONE TÍTULOS, NOMES DE CENAS OU CABEÇALHOS.
 
       ## EXEMPLO PADRÃO OURO VEO 3.1 (EM INGLÊS):
       ${veoExample}
@@ -607,8 +609,8 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         const isJson = outputFormat === 'json';
         const isVeoVideoMode = promptType === 'video' && genMode === 'quality';
         const countRuleLang = isVeoVideoMode
-          ? `REGRA OBRIGATÓRIA DE CONTAGEM: Gere EXATAMENTE ${chunkSubtitleCount} prompts. Um prompt por bloco de legenda abaixo. Não pule, não junte e não resuma nenhum bloco. Cada [ID X] deve ter seu próprio [PROMPT]:.`
-          : `MANDATORY COUNT RULE: You MUST generate EXACTLY ${chunkSubtitleCount} prompts. One prompt per subtitle/legend block below. Do NOT skip, merge, or summarize any block. Each [ID X] must have its own corresponding PROMPT.`;
+          ? `REGRA OBRIGATÓRIA: Gere EXATAMENTE ${chunkSubtitleCount} prompts. NÃO ADICIONE TÍTULOS, INTRODUÇÕES, CONCLUSÕES OU CABEÇALHOS. Responda APENAS com os blocos [PROMPT]: e [NEGATIVO]:.`
+          : `MANDATORY RULE: Generate EXACTLY ${chunkSubtitleCount} prompts. DO NOT ADD TITLES, HEADERS, OR INTROS. Respond ONLY with the prompt blocks.`;
         const generateLabel = isVeoVideoMode
           ? `GERE EXATAMENTE ${chunkSubtitleCount} PROMPTS VEO 3.1 MAGISTRAIS (PORTUGUÊS DO BRASIL):`
           : `GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
@@ -670,30 +672,30 @@ ${generateLabel}`;
                 const isVeoFmt = parsed.includes('[PROMPT]:') || parsed.includes('[NEGATIVO]:');
                 
                 if (isVeoFmt) {
-                  // Veo 3.1: If [NEGATIVO]: is on a separate line, rejoin it
+                  // Veo 3.1: Rejoin [NEGATIVO]: if needed
                   parsed = parsed.replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
-                  // Count prompts
-                  const generatedCount = (parsed.match(/\[PROMPT\]:/gi) || []).length;
-                  chunkText = parsed;
+                  
+                  // CLEANUP: Filter only lines containing [PROMPT]:
+                  const lines = parsed.split('\n').filter(line => line.includes('[PROMPT]:'));
+                  chunkText = lines.join('\n\n');
+
+                  const generatedCount = lines.length;
                   if (generatedCount < chunkSubtitleCount) {
-                    console.warn(`[Chunk ${i+1}] Veo 3.1: Esperado ${chunkSubtitleCount} prompts, gerado ${generatedCount}. Marcando para retry.`);
-                    if (generatedCount <= 0) {
-                      throw new Error(`Nenhum prompt Veo 3.1 gerado no bloco ${i+1}. Contagem esperada: ${chunkSubtitleCount}`);
-                    }
+                    console.warn(`[Chunk ${i+1}] Veo 3.1: Esperado ${chunkSubtitleCount}, gerado ${generatedCount}.`);
+                    if (generatedCount <= 0) throw new Error(`Nenhum prompt Veo 3.1 gerado no bloco ${i+1}.`);
                   }
                 } else {
                   // Legacy PROMPT: / NEGATIVE PROMPT: format
                   parsed = parsed.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
-                  chunkText = parsed;
-                  // Validate count
-                  const allPrompts = (parsed.match(/PROMPT:/gi) || []).length;
-                  const allNegatives = (parsed.match(/NEGATIVE PROMPT:/gi) || []).length;
-                  const generatedCount = allPrompts - allNegatives;
+                  
+                  // CLEANUP: Filter only lines containing PROMPT:
+                  const lines = parsed.split('\n').filter(line => line.toLowerCase().includes('prompt:'));
+                  chunkText = lines.join('\n\n');
+
+                  const generatedCount = lines.length;
                   if (generatedCount < chunkSubtitleCount) {
-                    console.warn(`[Chunk ${i+1}] Expected ${chunkSubtitleCount} prompts, got ${generatedCount}. Flagging for retry.`);
-                    if (generatedCount <= 0) {
-                      throw new Error(`Nenhum prompt gerado no bloco ${i+1}. Contagem esperada: ${chunkSubtitleCount}`);
-                    }
+                    console.warn(`[Chunk ${i+1}] Expected ${chunkSubtitleCount}, got ${generatedCount}.`);
+                    if (generatedCount <= 0) throw new Error(`Nenhum prompt gerado no bloco ${i+1}.`);
                   }
                 }
               } else {
