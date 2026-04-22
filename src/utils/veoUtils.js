@@ -5,32 +5,19 @@ export const generateVeoContent = (scriptContent) => {
   const cleanText = scriptContent.replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '').replace(/\n+/g, ' ').trim();
   const words = cleanText.split(/\s+/).filter(Boolean);
   
+  const totalWords = words.length;
+  let numChunks = Math.max(1, Math.round(totalWords / 19));
+  
+  const baseSize = Math.floor(totalWords / numChunks);
+  const remainder = totalWords % numChunks;
+  
   const chunks = [];
-  let currentChunk = [];
+  let currentIndex = 0;
   
-  for (let i = 0; i < words.length; i++) {
-    currentChunk.push(words[i]);
-    
-    // We aim for 16-22 words. Let's make a natural break around 18-20 words
-    if (currentChunk.length >= 18) {
-      // Try to break at punctuation if within 18-22
-      const isPunctuation = /[\.\!\?\,:;]$/.test(words[i]);
-      if (isPunctuation || currentChunk.length >= 21) {
-        chunks.push(currentChunk.join(' '));
-        currentChunk = [];
-      }
-    }
-  }
-  
-  if (currentChunk.length > 0) {
-    if (chunks.length > 0 && currentChunk.length < 10) {
-      // Merge with the last chunk if it's too small, though it might exceed 22 slightly.
-      // But user requested STRICT 16-22, so we just push it as its own chunk even if it's small, 
-      // or we merge it. Let's just push it to guarantee we don't drastically exceed the 22 limit.
-      chunks.push(currentChunk.join(' '));
-    } else {
-      chunks.push(currentChunk.join(' '));
-    }
+  for (let i = 0; i < numChunks; i++) {
+    const currentChunkSize = baseSize + (i < remainder ? 1 : 0);
+    chunks.push(words.slice(currentIndex, currentIndex + currentChunkSize).join(' '));
+    currentIndex += currentChunkSize;
   }
 
   let veoData = "";
