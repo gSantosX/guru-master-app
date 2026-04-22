@@ -585,7 +585,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     setIsGenerating(true);
     setPrompts("");
     
-    const CHUNK_SIZE = 15;
+    const CHUNK_SIZE = 10;
     const totalChunks = Math.ceil(subtitleBlocks.length / CHUNK_SIZE);
     setGenerationProgress({ step: 'Processando Legendas...', current: 0, total: totalChunks, statuses: new Array(totalChunks).fill("pending") });
  
@@ -633,7 +633,8 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
 
 ---
 ${countRuleLang}
-Do NOT generate more or fewer than ${chunkSubtitleCount} prompts.
+VOCÊ DEVE GERAR EXATAMENTE ${chunkSubtitleCount} BLOCOS. NEM MAIS, NEM MENOS.
+CADA BLOCO DEVE CORRESPONDER A UMA DAS ${chunkSubtitleCount} LEGENDAS ABAIXO.
 ---
 
 INPUT (CHUNK ${i+1}) - ${chunkSubtitleCount} SUBTITLES:
@@ -692,26 +693,22 @@ ${generateLabel}`;
                   
                   // CLEANUP: Filter only lines containing [PROMPT]:
                   const lines = parsed.split('\n').filter(line => line.includes('[PROMPT]:'));
-                  chunkText = lines.join('\n\n');
-
                   const generatedCount = lines.length;
-                  if (generatedCount < chunkSubtitleCount) {
-                    console.warn(`[Chunk ${i+1}] Veo 3.1: Esperado ${chunkSubtitleCount}, gerado ${generatedCount}.`);
-                    if (generatedCount <= 0) throw new Error(`Nenhum prompt Veo 3.1 gerado no bloco ${i+1}.`);
+                  if (generatedCount !== chunkSubtitleCount) {
+                    throw new Error(`Contagem Errada: Esperado ${chunkSubtitleCount}, mas a AI gerou ${generatedCount}. Forçando reprocessamento.`);
                   }
+                  chunkText = lines.join('\n\n');
                 } else {
                   // Legacy PROMPT: / NEGATIVE PROMPT: format
                   parsed = parsed.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
                   
                   // CLEANUP: Filter only lines containing PROMPT:
                   const lines = parsed.split('\n').filter(line => line.toLowerCase().includes('prompt:'));
-                  chunkText = lines.join('\n\n');
-
                   const generatedCount = lines.length;
-                  if (generatedCount < chunkSubtitleCount) {
-                    console.warn(`[Chunk ${i+1}] Expected ${chunkSubtitleCount}, got ${generatedCount}.`);
-                    if (generatedCount <= 0) throw new Error(`Nenhum prompt gerado no bloco ${i+1}.`);
+                  if (generatedCount !== chunkSubtitleCount) {
+                    throw new Error(`Wrong Count: Expected ${chunkSubtitleCount}, AI got ${generatedCount}. Retrying.`);
                   }
+                  chunkText = lines.join('\n\n');
                 }
               } else {
                 const rawLines = responseText.split('\n').filter(l => l.includes('|'));
