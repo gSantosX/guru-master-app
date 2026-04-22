@@ -42,7 +42,6 @@ export const PersistenceProvider = ({ children }) => {
     file: null,
     subtitleBlocks: [],
     prompts: "",
-    selectedStyle: 'ultra-realista',
     selectedScriptId: '',
     promptPools: [],
     selectedPoolId: null,
@@ -55,7 +54,13 @@ export const PersistenceProvider = ({ children }) => {
       palette: '',
       camera: ''
     },
-    speechMode: 'true' // 'true' = Com Fala, 'false' = Sem Fala
+    speechMode: 'true', // 'true' = Com Fala, 'false' = Sem Fala
+    // Veo 3.1 Cinematographic Parameters
+    genero: '',             // Required: style/genre (text, can be custom)
+    cameraMovimento: [],    // Optional: array of selected camera tags
+    composicao: [],         // Optional: array of selected composition tags
+    focoLente: [],          // Optional: array of selected focus/lens tags
+    atmosferaLuz: []        // Optional: array of selected atmosphere/light tags
   });
   
   // 4. Video Cover Global State (Titles, ShockWords, Covers)
