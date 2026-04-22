@@ -55,6 +55,7 @@ export const PersistenceProvider = ({ children }) => {
       camera: ''
     },
     speechMode: 'true', // 'true' = Com Fala, 'false' = Sem Fala
+    genMode: 'quality', // always Elite Quality — Speed mode removed
     // Veo 3.1 Cinematographic Parameters
     genero: '',             // Required: style/genre (text, can be custom)
     cameraMovimento: [],    // Optional: array of selected camera tags

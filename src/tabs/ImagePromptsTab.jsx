@@ -179,13 +179,14 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       ROTEIRO:
       ${scriptToAnalyze.substring(0, 4500)}`;
 
-      const response = await callAI(analysisPrompt, { 
-        model: 'gemini-2.0-flash', 
-        temperature: 0.1,
-        isPromptTask: true 
+      const response = await callGemini(getPromptsApiKey(), analysisPrompt, { 
+        model: 'gemini-1.5-flash', 
+        temperature: 0.1
       });
-      const cleanJson = response.replace(/```json|```/g, '').trim();
-      const dna = JSON.parse(cleanJson);
+      const cleanJson = response.replace(/```json\n?|```/g, '').trim();
+      const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('Resposta da IA não contém JSON válido.');
+      const dna = JSON.parse(jsonMatch[0]);
       
       setVisualDNA(dna);
       
@@ -1320,45 +1321,16 @@ ${generateLabel}`;
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* Left: Upload and Controls */}
         <div className="space-y-6">
-          {/* MODO DE PRODUÇÃO SELECTOR */}
-          <div className="glass-card p-4 border-white/5 bg-white/[0.02]">
-            <div className="flex items-center justify-between mb-4">
+          {/* MODO DE PRODUÇÃO — apenas Elite Qualidade */}
+          <div className="glass-card p-4 border-neon-pink/20 bg-neon-pink/5">
+            <div className="flex items-center gap-3">
+               <div className="w-8 h-8 rounded-lg bg-neon-pink/20 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-neon-pink" />
+               </div>
                <div>
-                  <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                     <Wand2 className="w-3 h-3" /> Modo de Produção
-                  </h3>
-                  <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mt-0.5">Defina o equilíbrio entre rapidez e fidelidade</p>
+                  <h3 className="text-[10px] font-black text-neon-pink uppercase tracking-widest">Elite Qualidade — Modo Ativo</h3>
+                  <p className="text-[9px] text-gray-500 mt-0.5">💎 Prompts ultra detalhados com lentes, cinematografia analógica e negativos incluídos.</p>
                </div>
-               <div className="flex gap-2">
-                  <button 
-                    onClick={() => setGenMode('fast')}
-                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
-                      (genMode === 'fast' || !genMode) 
-                        ? 'bg-neon-cyan/20 border-neon-cyan text-neon-cyan shadow-[0_0_15px_rgba(0,243,255,0.2)]' 
-                        : 'bg-white/5 border-white/10 text-gray-500 hover:text-white'
-                    } border`}
-                  >
-                    <Zap className="w-3 h-3" /> Velocidade
-                  </button>
-                  <button 
-                    onClick={() => setGenMode('quality')}
-                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
-                      genMode === 'quality' 
-                        ? 'bg-neon-pink/20 border-neon-pink text-neon-pink shadow-[0_0_15px_rgba(255,44,182,0.2)]' 
-                        : 'bg-white/5 border-white/10 text-gray-500 hover:text-white'
-                    } border`}
-                  >
-                    <Sparkles className="w-3 h-3" /> Elite Qualidade
-                  </button>
-               </div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-dark-lighter/50 border border-white/5">
-               <p className="text-[9px] text-gray-400 italic">
-                  {genMode === 'fast' 
-                    ? "🚀 Modo Velocidade: Gera prompts concisos e cinematográficos otimizados para rapidez de produção." 
-                    : "💎 Modo Elite Qualidade: Gera prompts ultra detalhados (Gold Standard) com especificações de lentes, cinematografia analógica e prompts negativos incluídos."}
-               </p>
             </div>
           </div>
 
