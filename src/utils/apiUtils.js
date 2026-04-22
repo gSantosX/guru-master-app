@@ -55,3 +55,30 @@ export const resolveApiUrl = (path) => {
   
   return path;
 };
+
+/**
+ * Gets the current user's email from localStorage.
+ * Used to authenticate YouTube API proxy requests.
+ */
+const getUserEmail = () => {
+  try {
+    const stored = localStorage.getItem('guru_user');
+    if (stored) return (JSON.parse(stored).email || '').toLowerCase();
+  } catch {}
+  return '';
+};
+
+/**
+ * Builds a YouTube API proxy URL with the user email attached,
+ * so the server can look up the user's YouTube API key from Supabase.
+ *
+ * @param {string} ytPath - YouTube endpoint path (e.g., 'search', 'channels', 'videos')
+ * @param {Record<string, string>} params - Query parameters for YouTube API
+ * @returns {string} - Full proxy URL with email param
+ */
+export const buildYouTubeUrl = (ytPath, params = {}) => {
+  const email = getUserEmail();
+  const base = resolveApiUrl(`/api/youtube/${ytPath}`);
+  const qs = new URLSearchParams({ ...params, ...(email ? { email } : {}) });
+  return `${base}?${qs.toString()}`;
+};

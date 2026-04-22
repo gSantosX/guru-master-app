@@ -4,6 +4,7 @@
   "trailingSlash": false,
   "rewrites": [
     { "source": "/api/gemini/:path*", "destination": "/api/gemini?path=:path*" },
+    { "source": "/api/youtube/:path*", "destination": "/api/youtube?path=:path*" },
     { "source": "/api/auth/send-code", "destination": "/api/auth?action=send-code" },
     { "source": "/api/auth/verify-code", "destination": "/api/auth?action=verify-code" },
     { "source": "/api/auth/forgot-password", "destination": "/api/auth?action=forgot-password" },

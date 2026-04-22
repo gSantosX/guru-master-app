@@ -152,8 +152,11 @@ export const SystemStatusProvider = ({ children }) => {
     if (configs.gpt_key) localStorage.setItem('guru_gpt_key', configs.gpt_key);
     if (configs.grok_key) localStorage.setItem('guru_grok_key', configs.grok_key);
     if (configs.gemini_prompts_key) localStorage.setItem('guru_gemini_prompts_key', configs.gemini_prompts_key);
+    if (configs.youtube_key) localStorage.setItem('guru_youtube_key', configs.youtube_key);
     if (configs.active_ai) localStorage.setItem('guru_active_ai', configs.active_ai);
     if (configs.gemini_active_idx !== undefined) localStorage.setItem('guru_gemini_active_idx', configs.gemini_active_idx.toString());
+    // Always persist full configs in cache so they survive refreshes and browser switches
+    try { localStorage.setItem('guru_configs_cache', JSON.stringify({ ...configs })); } catch {}
   }, [configs]);
 
   // ── STEP 3: Ping API keys for Gemini / OpenAI / Grok ──────────────

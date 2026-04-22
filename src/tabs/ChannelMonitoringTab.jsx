@@ -3,7 +3,7 @@ import { Search, Plus, Trash2, ExternalLink, TrendingUp, BarChart2, Sparkles, Br
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
-import { resolveApiUrl } from '../utils/apiUtils';
+import { resolveApiUrl, buildYouTubeUrl } from '../utils/apiUtils';
 import { callAI } from '../utils/aiUtils';
 import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
@@ -230,7 +230,7 @@ Rules:
       
       // If handle, first find the channel ID
       if (info.type === 'handle') {
-        const searchRes = await fetch(resolveApiUrl(`/api/youtube/search?part=snippet&type=channel&q=${info.value}`));
+        const searchRes = await fetch(buildYouTubeUrl('search', { part: 'snippet', type: 'channel', q: info.value }));
         const searchData = await searchRes.json();
         if (searchData.items && searchData.items.length > 0) {
           channelId = searchData.items[0].id.channelId;
@@ -240,7 +240,7 @@ Rules:
       }
 
       // Fetch channel details
-      const channelRes = await fetch(resolveApiUrl(`/api/youtube/channels?part=snippet,statistics&id=${channelId}`));
+      const channelRes = await fetch(buildYouTubeUrl('channels', { part: 'snippet,statistics', id: channelId }));
       const channelData = await channelRes.json();
       
       if (!channelData.items || channelData.items.length === 0) {
@@ -251,11 +251,11 @@ Rules:
       const stats = channelData.items[0].statistics;
 
       // Fetch trending/viral videos (by view count)
-      const viralRes = await fetch(resolveApiUrl(`/api/youtube/search?part=snippet&channelId=${channelId}&order=viewCount&type=video&maxResults=5`));
+      const viralRes = await fetch(buildYouTubeUrl('search', { part: 'snippet', channelId, order: 'viewCount', type: 'video', maxResults: '5' }));
       const viralData = await viralRes.json();
 
       // Fetch latest videos (by date)
-      const latestRes = await fetch(resolveApiUrl(`/api/youtube/search?part=snippet&channelId=${channelId}&order=date&type=video&maxResults=5`));
+      const latestRes = await fetch(buildYouTubeUrl('search', { part: 'snippet', channelId, order: 'date', type: 'video', maxResults: '5' }));
       const latestData = await latestRes.json();
       
       // Fetch statistics for all these videos
@@ -266,7 +266,7 @@ Rules:
 
       let videoStats = {};
       if (videoIds) {
-        const statsRes = await fetch(resolveApiUrl(`/api/youtube/videos?part=statistics&id=${videoIds}`));
+        const statsRes = await fetch(buildYouTubeUrl('videos', { part: 'statistics', id: videoIds }));
         const statsData = await statsRes.json();
         (statsData.items || []).forEach(v => {
           videoStats[v.id] = v.statistics.viewCount;
@@ -277,7 +277,7 @@ Rules:
       let audienceFeedback = [];
       try {
         // Call 1: Global Channel Comments (most relevant)
-        const globalCommentsRes = await fetch(resolveApiUrl(`/api/youtube/commentThreads?allThreadsRelatedToChannelId=${channelId}&part=snippet&maxResults=20&order=relevance`));
+        const globalCommentsRes = await fetch(buildYouTubeUrl('commentThreads', { allThreadsRelatedToChannelId: channelId, part: 'snippet', maxResults: '20', order: 'relevance' }));
         const globalCommentsData = await globalCommentsRes.json();
         (globalCommentsData.items || []).forEach(item => {
           audienceFeedback.push({
@@ -290,7 +290,7 @@ Rules:
         // Call 2: Viral Comments (surgical critique)
         const topViralId = viralData.items?.[0]?.id?.videoId;
         if (topViralId) {
-          const viralCommentsRes = await fetch(resolveApiUrl(`/api/youtube/commentThreads?videoId=${topViralId}&part=snippet&maxResults=20&order=relevance`));
+          const viralCommentsRes = await fetch(buildYouTubeUrl('commentThreads', { videoId: topViralId, part: 'snippet', maxResults: '20', order: 'relevance' }));
           const viralCommentsData = await viralCommentsRes.json();
           (viralCommentsData.items || []).forEach(item => {
             audienceFeedback.push({

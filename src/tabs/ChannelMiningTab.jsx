@@ -22,7 +22,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { t } from '../utils/i18n';
-import { resolveApiUrl } from '../utils/apiUtils';
+import { resolveApiUrl, buildYouTubeUrl } from '../utils/apiUtils';
 import { usePersistence } from '../contexts/PersistenceContext';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { callAI } from '../utils/aiUtils';
@@ -133,9 +133,15 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
       // 3. Construct Search Query
       // Using quotes around niche term forces the engine to respect the core topic
       const query = encodeURIComponent(`"${nicheTerm}" viral popular channel`).trim();
-      const searchUrl = resolveApiUrl(`/api/youtube/search?part=snippet&type=video&q=${query}&relevanceLanguage=${langCode}&regionCode=${selectedLang.region}&maxResults=50&order=viewCount`);
-      
-      const res = await fetch(searchUrl);
+      const res = await fetch(buildYouTubeUrl('search', {
+        part: 'snippet',
+        type: 'video',
+        q: query,
+        relevanceLanguage: langCode,
+        regionCode: selectedLang.region,
+        maxResults: '50',
+        order: 'viewCount'
+      }));
       const data = await res.json();
       
       if (!res.ok) {
@@ -151,8 +157,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
       const channelIds = [...new Set(data.items.map(item => item.snippet.channelId))].slice(0, 40);
       
       // 4. Get detailed channel stats and snippet
-      const channelsUrl = resolveApiUrl(`/api/youtube/channels?part=snippet,statistics&id=${channelIds.join(',')}`);
-      const channelsRes = await fetch(channelsUrl);
+      const channelsRes = await fetch(buildYouTubeUrl('channels', { part: 'snippet,statistics', id: channelIds.join(',') }));
       const channelsData = await channelsRes.json();
 
       if (!channelsRes.ok) {
@@ -215,8 +220,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
 
     try {
       // 1. Fetch Top 15 Videos for the channel
-      const vidsUrl = resolveApiUrl(`/api/youtube/search?part=snippet&channelId=${channel.id}&order=viewCount&type=video&maxResults=15`);
-      const vidsRes = await fetch(vidsUrl);
+      const vidsRes = await fetch(buildYouTubeUrl('search', { part: 'snippet', channelId: channel.id, order: 'viewCount', type: 'video', maxResults: '15' }));
       const vidsData = await vidsRes.json();
 
       if (!vidsRes.ok) throw new Error("Falha ao buscar vídeos do canal.");
