@@ -2,33 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Trash2, AlertTriangle, ChevronRight, ArrowLeft, Download, FileJson, File as FilePdf, Copy, Check, Wand2 } from 'lucide-react';
 import jsPDF from 'jspdf';
+import { useCloudStorage } from '../hooks/useCloudStorage';
+import { generateVeoContent } from '../utils/veoUtils';
 
 export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
-  const [scripts, setScripts] = useState([]);
+  const [scripts, setScripts] = useCloudStorage('scripts', []);
   const [activeScript, setActiveScript] = useState(null);
   const [copyingId, setCopyingId] = useState(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  const loadScripts = () => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
-      setScripts(Array.isArray(saved) ? saved : []);
-    } catch (e) {
-      console.error("Error loading scripts:", e);
-      setScripts([]);
-    }
-  };
-
+  // Refresh scripts from cloud when event fires (e.g., after ScriptTab saves)
   useEffect(() => {
-    loadScripts();
-    // Listen for auto-saves from ScriptTab so the list updates in real time
-    window.addEventListener('guru_scripts_updated', loadScripts);
-    return () => window.removeEventListener('guru_scripts_updated', loadScripts);
+    const refresh = () => {}; // useCloudStorage auto-loads; no-op keeps compatibility
+    window.addEventListener('guru_scripts_updated', refresh);
+    return () => window.removeEventListener('guru_scripts_updated', refresh);
   }, [isActive]);
 
   const saveScripts = (newScripts) => {
     setScripts(newScripts);
-    localStorage.setItem('guru_scripts', JSON.stringify(newScripts));
   };
 
   const handleDelete = (id, e) => {
@@ -82,13 +73,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     if (!target) return;
     
     try {
-        const lines = target.content.split('\n').filter(l => l.trim().length > 0 && !l.startsWith('['));
-        let srtData = "";
-        lines.forEach((line, idx) => {
-          srtData += `${idx + 1}\n`;
-          srtData += `00:00:${String(idx*2).padStart(2,'0')},000 --> 00:00:${String((idx*2)+2).padStart(2,'0')},000\n`;
-          srtData += `${line}\n\n`;
-        });
+        const srtData = generateVeoContent(target.content);
 
         if (window.electronAPI?.saveFile) {
             await window.electronAPI.saveFile(srtData, `${target.title.replace(/ /g, '_')}.srt`);
@@ -104,6 +89,30 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
         URL.revokeObjectURL(url);
     } catch (err) {
         alert("Erro ao gerar SRT: " + err.message);
+    }
+  };
+
+  const handleDownloadVeo = async (scriptToDownload) => {
+    const target = (scriptToDownload && scriptToDownload.id) ? scriptToDownload : activeScript;
+    if (!target) return;
+    
+    try {
+        const veoData = generateVeoContent(target.content);
+
+        if (window.electronAPI?.saveFile) {
+            await window.electronAPI.saveFile(veoData, `${target.title.replace(/ /g, '_')}.veo`);
+            return;
+        }
+
+        const blob = new Blob([veoData], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${target.title.replace(/ /g, '_')}.veo`;
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        alert("Erro ao gerar VEO: " + err.message);
     }
   };
 
@@ -175,6 +184,8 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     // Set triggers for ImagePromptsTab
     localStorage.setItem('guru_image_prompt_trigger_id', target.id.toString());
     localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
+    const veoData = generateVeoContent(target.content);
+    localStorage.setItem('guru_image_prompt_veo_content', veoData);
     
     // Switch Tab
     setActiveTab('image-prompts');
@@ -226,6 +237,9 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
             </button>
             <button onClick={() => handleDownloadSrt()} className="flex-1 py-3 md:py-4 rounded-xl bg-dark-lighter border border-white/10 hover:border-white/30 text-white font-bold flex items-center justify-center gap-2 transition-all hover:bg-white/5 hover:scale-[1.01] shadow-lg text-sm md:text-base">
               <FileJson className="w-5 h-5 text-neon-pink" /> Baixar SRT
+            </button>
+            <button onClick={() => handleDownloadVeo()} className="flex-1 py-3 md:py-4 rounded-xl bg-dark-lighter border border-white/10 hover:border-white/30 text-white font-bold flex items-center justify-center gap-2 transition-all hover:bg-white/5 hover:scale-[1.01] shadow-lg text-sm md:text-base">
+              <FileJson className="w-5 h-5 text-neon-purple" /> Baixar VEO
             </button>
             <button 
                onClick={() => handleGoToPrompts()}
@@ -395,6 +409,12 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
                         className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-500 hover:text-white text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
                       >
                         <FileJson className="w-3 h-3 text-neon-pink" /> .SRT
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDownloadVeo(script); }}
+                        className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-500 hover:text-white text-[8px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <FileJson className="w-3 h-3 text-neon-purple" /> .VEO
                       </button>
                     </div>
                   </div>

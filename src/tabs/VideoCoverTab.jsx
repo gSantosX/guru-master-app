@@ -349,7 +349,7 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
 
     if (!selectedScript) {
         return (
-            <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto custom-scrollbar">
+            <div className="p-4 md:p-8 w-full max-w-[1600px] mx-auto min-h-full md:h-full flex flex-col overflow-y-auto custom-scrollbar">
                 <header className="mb-12">
                     <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
                         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(176,38,255,0.3)]">
@@ -403,7 +403,7 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
     }
 
     return (
-        <div className="p-4 md:p-8 max-w-6xl mx-auto h-full flex flex-col overflow-y-auto custom-scrollbar pb-20">
+        <div className="p-4 md:p-8 w-full max-w-[1600px] mx-auto h-full flex flex-col overflow-y-auto custom-scrollbar pb-20">
                 <header className="mb-12">
                     <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
                         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(176,38,255,0.3)]">

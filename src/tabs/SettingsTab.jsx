@@ -32,7 +32,6 @@ export const SettingsTab = () => {
   const [theme, setTheme] = useState(localStorage.getItem('guru_theme') || 'neon');
   const [reduceMotion, setReduceMotion] = useState(localStorage.getItem('guru_reduce_motion') === 'true');
   const [isReconnecting, setIsReconnecting] = useState(false);
-  const [appZoom, setAppZoom] = useState(Number(localStorage.getItem('guru_app_zoom')) || 1);
   const [appFontSize, setAppFontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);
   const [storageInfo, setStorageInfo] = useState({ cache_size: 0, total_space: 21474836480, free_space: 0 }); 
 
@@ -704,42 +703,6 @@ export const SettingsTab = () => {
                        <span className="text-xs font-bold text-white uppercase tracking-wider">{t('settings.accessibility_title')}</span>
                     </div>
                     
-                    {/* App Zoom Controls */}
-                    <div>
-                       <div className="flex justify-between items-center mb-2">
-                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('settings.app_zoom')}</label>
-                          <span className="text-[10px] font-mono text-neon-cyan px-2 py-0.5 rounded bg-neon-cyan/10 border border-neon-cyan/20">
-                             {Math.round(appZoom * 100)}%
-                          </span>
-                       </div>
-                       <div className="flex items-center gap-2">
-                          <button 
-                             onClick={() => {
-                                const newVal = Math.max(0.5, appZoom - 0.1);
-                                setAppZoom(newVal);
-                                localStorage.setItem('guru_app_zoom', newVal);
-                                window.dispatchEvent(new Event('guru_zoom_change'));
-                             }}
-                             className="flex-1 flex justify-center py-2 bg-dark hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
-                             title={t('settings.zoom_out')}
-                          >
-                             <Minus className="w-4 h-4" />
-                          </button>
-                          <button 
-                             onClick={() => {
-                                const newVal = Math.min(1.5, appZoom + 0.1);
-                                setAppZoom(newVal);
-                                localStorage.setItem('guru_app_zoom', newVal);
-                                window.dispatchEvent(new Event('guru_zoom_change'));
-                             }}
-                             className="flex-1 flex justify-center py-2 bg-dark hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
-                             title={t('settings.zoom_in')}
-                          >
-                             <Plus className="w-4 h-4" />
-                          </button>
-                       </div>
-                    </div>
-
                     {/* Font Size Controls */}
                     <div>
                        <div className="flex justify-between items-center mb-2">

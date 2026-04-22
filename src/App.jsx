@@ -52,7 +52,6 @@ function AppContent() {
   const [activeTab, setActiveTab] = useState('create-script');
   const [theme, setTheme] = useState(localStorage.getItem('guru_theme') || 'neon');
   const [reduceMotion, setReduceMotion] = useState(localStorage.getItem('guru_reduce_motion') === 'true');
-  const [zoom, setZoom] = useState(Number(localStorage.getItem('guru_app_zoom')) || 1);
   const [fontSize, setFontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);
   const [language, setLanguage] = useState(localStorage.getItem('guru_app_lang') || 'Português (BR)');
   const [updateStatus, setUpdateStatus] = useState({ available: false, progress: 0, downloaded: false, version: '' });
@@ -88,20 +87,17 @@ function AppContent() {
       applyThemeToRoot();
     };
     const handleMotion = () => setReduceMotion(localStorage.getItem('guru_reduce_motion') === 'true');
-    const handleZoom = () => setZoom(Number(localStorage.getItem('guru_app_zoom')) || 1);
     const handleFontSize = () => setFontSize(Number(localStorage.getItem('guru_app_font_size')) || 16);
     const handleLanguage = () => setLanguage(localStorage.getItem('guru_app_lang') || 'Português (BR)');
 
     window.addEventListener('guru_theme_change', handleTheme);
     window.addEventListener('guru_motion_change', handleMotion);
-    window.addEventListener('guru_zoom_change', handleZoom);
     window.addEventListener('guru_font_size_change', handleFontSize);
     window.addEventListener('guru_language_change', handleLanguage);
 
     return () => {
       window.removeEventListener('guru_theme_change', handleTheme);
       window.removeEventListener('guru_motion_change', handleMotion);
-      window.removeEventListener('guru_zoom_change', handleZoom);
       window.removeEventListener('guru_font_size_change', handleFontSize);
       window.removeEventListener('guru_language_change', handleLanguage);
     };
@@ -122,16 +118,7 @@ function AppContent() {
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
       <div 
-        className={`flex flex-col md:flex-row h-screen w-full bg-dark overflow-hidden font-sans theme-${theme} ${reduceMotion ? 'reduce-motion' : ''}`}
-        style={{
-          transform: `scale(${zoom})`,
-          transformOrigin: 'top left',
-          width: `${100 / zoom}%`,
-          height: `${100 / zoom}vh`,
-          position: 'absolute',
-          top: 0,
-          left: 0
-        }}
+        className={`flex h-screen w-full bg-dark overflow-hidden font-sans theme-${theme} ${reduceMotion ? 'reduce-motion' : ''} flex-row`}
       >
         
         <AnimatePresence>

@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { Layout, PenTool, FileText, Image as ImageIcon, Video, Activity, CheckCircle, Settings, RefreshCw, User, Zap, Youtube, Clock, Compass, Infinity, HelpCircle, LogOut, Shield } from 'lucide-react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { motion } from 'framer-motion';
@@ -98,8 +99,8 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
   const GITHUB_RELEASE_URL = 'https://github.com/gSantosX/guru-master-app/releases/latest';
 
   return (
-    <div className="w-full md:w-64 h-auto md:h-full glass-panel flex flex-col md:flex-col p-2 md:p-4 flex-shrink-0 z-10 border-b md:border-b-0 border-white/10 md:rounded-xl shadow-2xl">
-      <div className="hidden md:flex flex-col items-center justify-center mb-12 px-2 mt-8 space-y-4">
+    <div className="w-64 h-full glass-panel flex flex-col p-4 flex-shrink-0 z-10 border-r border-white/10 shadow-2xl relative">
+      <div className="flex flex-col items-center justify-center mb-12 px-2 mt-8 space-y-4">
         <div className="w-32 h-32 rounded-full p-1 bg-gradient-to-br from-neon-purple via-neon-cyan to-blue-600 shadow-[0_0_50px_rgba(0,243,255,0.45),inset_0_0_25px_rgba(255,255,255,0.25)] transform transition-transform hover:scale-110 duration-500 overflow-hidden border-[3px] border-white/10 relative group">
           <div className="absolute inset-0 bg-neon-cyan/20 opacity-0 group-hover:opacity-100 transition-opacity blur-2xl"></div>
           <img src="logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-full shadow-2xl relative z-10" />
@@ -107,7 +108,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
         <div className="w-16 h-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent rounded-full opacity-50 shadow-[0_0_10px_rgba(0,243,255,0.2)]"></div>
       </div>
 
-      <nav className="flex-1 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto pb-10 md:pb-10 items-center md:items-stretch custom-scrollbar">
+      <nav className="flex-1 flex flex-col gap-2 overflow-y-auto pb-10 items-stretch custom-scrollbar">
         {getNavItems(user).map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
@@ -124,14 +125,14 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
                    setActiveTab(item.id);
                 }
               }}
-              className={`w-auto md:w-full flex-shrink-0 flex items-center gap-2 md:gap-3 px-4 py-2 md:py-2.5 rounded-xl transition-all duration-300 relative group overflow-hidden
+              className={`w-full flex-shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 relative group overflow-hidden
                 ${isActive ? 'bg-white/10 text-white shadow-inner' : 'text-gray-400 hover:text-white hover:bg-white/5'}
               `}
             >
               <div className={`transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
                 <Icon className={`w-4 h-4 ${isActive ? item.color : 'text-gray-500 group-hover:' + item.color} transition-colors duration-300`} />
               </div>
-              <span className={`font-bold whitespace-nowrap text-sm md:text-[14px] tracking-tight transition-all duration-300 ${isActive ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
+              <span className={`font-bold whitespace-nowrap text-[14px] tracking-tight transition-all duration-300 ${isActive ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
                 {item.label}
               </span>
               
@@ -151,7 +152,7 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
         })}
       </nav>
 
-      <div className="hidden md:block mt-auto px-3 py-3 border-t border-white/5 bg-black/20">
+      <div className="block mt-auto px-3 py-3 border-t border-white/5 bg-black/20">
         {!isElectron && (
           <a
             href={GITHUB_RELEASE_URL}

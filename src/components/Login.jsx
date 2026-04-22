@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -36,6 +36,12 @@ export const Login = ({ onClose, isAppContext }) => {
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
   // ... (checkBackend useEffect remains same)
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (error) setError('');
+    if (success) setSuccess('');
+  };
 
   const handleSendCode = async () => {
     if (!formData.email || (!recoveryMode && !formData.name)) {

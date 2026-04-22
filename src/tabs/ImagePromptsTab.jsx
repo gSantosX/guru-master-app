@@ -23,57 +23,55 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { resolveApiUrl } from '../utils/apiUtils';
-import { callAI } from '../utils/aiUtils';
+import { callAI, callGemini } from '../utils/aiUtils';
 import { stackPush, stackRead, stackRemove } from '../utils/stackUtils';
 import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
+import { useCloudStorage } from '../hooks/useCloudStorage';
+import { generateVeoContent } from '../utils/veoUtils';
 
-const VISUAL_STYLES = [
-  { id: 'ultra-realista',    label: '📷 Ultra-Realista',      desc: 'Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita' },
-  { id: 'cartoon',           label: '🎨 Cartoon',              desc: 'Ilustração estilo cartoon colorido, traços expressivos e vibrantes' },
-  { id: 'vista-aerea',       label: '🚁 Vista Aérea',          desc: 'Tomada aérea de drone em altitude, perspectiva de cima para baixo' },
-  { id: 'cinematografico',   label: '🎬 Cinematográfico',      desc: 'Cena de filme com profundidade de campo, bokeh e luz dourada' },
-  { id: 'anime',             label: '⛩️ Anime',                desc: 'Estilo anime japonês, cores vibrantes, grandes olhos expressivos' },
-  { id: 'aquarela',          label: '🖌️ Aquarela',             desc: 'Pintura em aquarela suave com bordas difusas e cores translúcidas' },
-  { id: 'minimalista',       label: '⬜ Minimalista',          desc: 'Composição limpa, fundo simples, poucos elementos, espaço em branco' },
-  { id: 'steampunk',         label: '⚙️ Steampunk',            desc: 'Estética vitoriana com engrenagens, vapor e metais envelhecidos' },
-  { id: 'sci-fi',            label: '🚀 Sci-Fi / Futurista',   desc: 'Cenário futurista com néon, cyberpunk, hologramas e tecnologia avançada' },
-  { id: 'fantasia',          label: '🧙 Alta Fantasia',         desc: 'Mundo mágico épico, criaturas, magia e paisagens fantásticas' },
-  { id: 'noir',              label: '🕵️ Film Noir',            desc: 'Preto e branco dramático, sombras duras, atmosfera de mistério' },
-  { id: 'macro',             label: '🔬 Fotografia Macro',     desc: 'Close-up extremo em detalhes minúsculos com foco seletivo preciso' },
-  { id: 'retrô',             label: '📻 Retrô / Vintage',      desc: 'Estética anos 70-80, cores desbotadas, granulação de filme antigo' },
-  { id: 'isometrico',        label: '📐 Isométrico',            desc: 'Perspectiva isométrica estilo videogame, objetos em ângulo 45°' },
-  { id: 'pintura-oleo',      label: '🖼️ Pintura a Óleo',       desc: 'Pinceladas visíveis, texturas ricas, estilo renascentista clássico' },
-  { id: 'neon-glow',         label: '💜 Neon Glow',            desc: 'Luzes neon vibrantes brilhando no escuro, estética synthwave/cyberpunk' },
-  { id: 'flat-design',       label: '📱 Flat Design',           desc: 'Ilustração vetorial plana, sem sombras 3D, paleta de cores limpa' },
-  { id: 'documentario',      label: '🎥 Documentário',          desc: 'Documentário ultra realista, extremamente polido, rico em detalhes minuciosos e sem contradições visuais, com iluminação cinematográfica autêntica' },
-  { id: 'religioso',         label: '🕊️ Religioso / Espiritual', desc: 'Crença cristã focada em pureza extrema, obrigatoriamente exibindo Jesus, anjos ou estética bíblica, com forte iluminação divina' },
-];
+const getPromptsApiKey = () => {
+  const exclusiveKey = localStorage.getItem('guru_gemini_prompts_key');
+  if (exclusiveKey) return exclusiveKey;
+  return localStorage.getItem('guru_gemini_key') || '';
+};
+
+
 export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const { status, configs } = useSystemStatus();
+  const [cloudScripts] = useCloudStorage('scripts', []);
+
   const { promptState, setPromptState } = usePersistence();
   const { 
     file, 
     subtitleBlocks, 
     prompts, 
-    selectedStyle, 
     selectedScriptId, 
     promptPools,
     availableScripts,
     visualDNA,
-    genMode
+    genMode,
+    genero,
+    cameraMovimento,
+    composicao,
+    focoLente,
+    atmosferaLuz
   } = promptState;
 
   const setFile = (val) => setPromptState(prev => ({ ...prev, file: typeof val === 'function' ? val(prev.file) : val }));
   const setSubtitleBlocks = (val) => setPromptState(prev => ({ ...prev, subtitleBlocks: typeof val === 'function' ? val(prev.subtitleBlocks) : val }));
   const setPrompts = (val) => setPromptState(prev => ({ ...prev, prompts: typeof val === 'function' ? val(prev.prompts) : val }));
-  const setSelectedStyle = (val) => setPromptState(prev => ({ ...prev, selectedStyle: typeof val === 'function' ? val(prev.selectedStyle) : val }));
   const setSelectedScriptId = (val) => setPromptState(prev => ({ ...prev, selectedScriptId: typeof val === 'function' ? val(prev.selectedScriptId) : val }));
   const setPromptPools = (val) => setPromptState(prev => ({ ...prev, promptPools: typeof val === 'function' ? val(prev.promptPools) : val }));
   const setAvailableScripts = (val) => setPromptState(prev => ({ ...prev, availableScripts: typeof val === 'function' ? val(prev.availableScripts) : val }));
   const setVisualDNA = (val) => setPromptState(prev => ({ ...prev, visualDNA: typeof val === 'function' ? val(prev.visualDNA) : val }));
   const setGenMode = (val) => setPromptState(prev => ({ ...prev, genMode: typeof val === 'function' ? val(prev.genMode) : val }));
+  const setGenero = (val) => setPromptState(prev => ({ ...prev, genero: val }));
+  const setCameraMovimento = (val) => setPromptState(prev => ({ ...prev, cameraMovimento: typeof val === 'function' ? val(prev.cameraMovimento) : val }));
+  const setComposicao = (val) => setPromptState(prev => ({ ...prev, composicao: typeof val === 'function' ? val(prev.composicao) : val }));
+  const setFocoLente = (val) => setPromptState(prev => ({ ...prev, focoLente: typeof val === 'function' ? val(prev.focoLente) : val }));
+  const setAtmosferaLuz = (val) => setPromptState(prev => ({ ...prev, atmosferaLuz: typeof val === 'function' ? val(prev.atmosferaLuz) : val }));
 
   const [isDragging, setIsDragging] = useState(false);
   const [subtitleCount, setSubtitleCount] = useState(subtitleBlocks.length);
@@ -97,7 +95,9 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   };
 
   const loadScripts = () => {
-    const savedScripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+    // Agora o dropdown utilizará "cloudScripts" que já é um estado reativo,
+    // mas mantemos este utilitário para caso o hook demore, ele ter fallback instantâneo.
+    const savedScripts = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
     const scriptsArray = Array.isArray(savedScripts) ? savedScripts : [];
     setAvailableScripts(scriptsArray);
     return scriptsArray;
@@ -115,12 +115,27 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       
       if (!script) {
         console.warn("⚠️ [DNA_DEBUG] Script não encontrado no estado. Lendo localStorage...");
-        const freshScripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+        const freshScripts = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
         script = freshScripts.find(s => String(s.id) === String(targetId));
       }
 
       if (script) {
         scriptToAnalyze = script.content;
+        
+        // AUTO-INJECT VEO FROM SCRIPT IF NO FILE IS PRESENT
+        if (!file && script.content) {
+          const veoData = generateVeoContent(script.content);
+           const parts = veoData.split(/\n\s*\n/).filter(p => p.trim());
+           const blocks = parts.map(p => {
+             const lines = p.trim().split('\n');
+             if (lines.length >= 3) return lines.slice(2).join(' ').trim();
+             return p.trim();
+           });
+           setSubtitleBlocks(blocks);
+           setSubtitleCount(blocks.length);
+           setFile({ name: `Legenda_VEO_${script.title || targetId}.veo`, size: veoData.length });
+           setPrompts("");
+        }
       }
     } else if (subtitleBlocks.length > 0) {
       scriptToAnalyze = subtitleBlocks.slice(0, 50).join('\n');
@@ -157,7 +172,11 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       ROTEIRO PARA ANÁLISE:
       ${scriptToAnalyze.substring(0, 4500)}`;
 
-      const response = await callAI(analysisPrompt, { model: 'gemini-2.5-flash', temperature: 0.1 });
+      const response = await callAI(analysisPrompt, { 
+        model: 'gemini-2.0-flash', 
+        temperature: 0.1,
+        isPromptTask: true 
+      });
       const cleanJson = response.replace(/```json|```/g, '').trim();
       const dna = JSON.parse(cleanJson);
       setVisualDNA(dna);
@@ -185,6 +204,11 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         setSelectedScriptId(triggerId);
         localStorage.removeItem('guru_image_prompt_trigger_id');
         
+        const veoContent = localStorage.getItem('guru_image_prompt_veo_content');
+        if (veoContent) {
+           localStorage.removeItem('guru_image_prompt_veo_content');
+        }
+
         if (autoAnalyze === 'true') {
           localStorage.removeItem('guru_image_prompt_auto_analyze');
           const currentScripts = loadScripts(); 
@@ -238,17 +262,28 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target.result;
-      let blocks = [];
-      if (file.name.toLowerCase().endsWith('.srt')) {
+      let rawText = "";
+      if (file.name.toLowerCase().endsWith('.srt') || file.name.toLowerCase().endsWith('.veo')) {
         const parts = text.split(/\n\s*\n/).filter(p => p.trim());
-        blocks = parts.map(p => {
+        const rawBlocks = parts.map(p => {
           const lines = p.trim().split('\n');
           if (lines.length >= 3) return lines.slice(2).join(' ').trim();
           return p.trim();
         });
+        rawText = rawBlocks.join(' ');
       } else {
-        blocks = text.split('\n').filter(p => p.trim());
+        rawText = text;
       }
+
+      // FORÇAR A REGRA ABSOLUTA DE 16-22 PALAVRAS EM ARQUIVOS ANEXADOS!
+      const veoData = generateVeoContent(rawText);
+      const newParts = veoData.split(/\n\s*\n/).filter(p => p.trim());
+      const blocks = newParts.map(p => {
+        const lines = p.trim().split('\n');
+        if (lines.length >= 3) return lines.slice(2).join(' ').trim();
+        return p.trim();
+      });
+
       setSubtitleBlocks(blocks);
       setSubtitleCount(blocks.length);
       setPrompts("");
@@ -270,15 +305,22 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         const issues = [];
 
         if (genMode === 'quality') {
+          // Detect Veo 3.1 format [PROMPT]: / [NEGATIVO]: vs legacy PROMPT: / NEGATIVE PROMPT:
+          const isVeoFormat = content.includes('[PROMPT]:') || content.includes('[NEGATIVO]:');
+          
           blocks.forEach((block, idx) => {
-            const hasPrompt = block.toLowerCase().includes('prompt:');
-            const hasNegative = block.toLowerCase().includes('negative prompt:');
-            // New rule: PROMPT and NEGATIVE PROMPT must be on the same line
-            const promptLine = block.split('\n').find(l => l.trim().toLowerCase().startsWith('prompt:'));
-            const singleLine = promptLine && promptLine.toLowerCase().includes('negative prompt:');
-            if (!hasPrompt || !hasNegative || !singleLine) {
-              invalidCount++;
-              issues.push(idx);
+            if (isVeoFormat) {
+              // Veo 3.1 format: [PROMPT]: and [NEGATIVO]: must exist on the same line
+              const promptLine = block.split('\n').find(l => /\[PROMPT\]:/i.test(l));
+              const singleLine = promptLine && /\[NEGATIVO\]:/i.test(promptLine);
+              if (!promptLine || !singleLine) { invalidCount++; issues.push(idx); }
+            } else {
+              // Legacy format: PROMPT: and NEGATIVE PROMPT: on same line
+              const hasPrompt = block.toLowerCase().includes('prompt:');
+              const hasNegative = block.toLowerCase().includes('negative prompt:');
+              const promptLine = block.split('\n').find(l => /PROMPT:/i.test(l));
+              const singleLine = promptLine && /NEGATIVE PROMPT:/i.test(promptLine);
+              if (!hasPrompt || !hasNegative || !singleLine) { invalidCount++; issues.push(idx); }
             }
           });
         } else {
@@ -304,25 +346,40 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     try {
       await new Promise(r => setTimeout(r, 400)); // Visual "processing" delay
       
+      // Detect format
+      const isVeoFormat = content.includes('[PROMPT]:') || content.includes('[NEGATIVO]:');
+      
       // PHASE 1: REGEX REPAIR (Aggressive)
       setRepairLogs(prev => [...prev, "Analisando estrutura de blocos..."]);
       
       let repaired = content.trim();
       let logs = [];
 
-      // Fix 1: If NEGATIVE PROMPT is on its own separate line, join it to the previous PROMPT line
-      if (/^NEGATIVE PROMPT:/gim.test(repaired)) {
-        repaired = repaired.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
-        logs.push("✓ Unindo PROMPT e NEGATIVE PROMPT na mesma linha");
+      if (isVeoFormat) {
+        // Fix Veo 3.1 format: If [NEGATIVO]: is on its own separate line, join it
+        if (/^\[NEGATIVO\]:/gim.test(repaired)) {
+          repaired = repaired.replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
+          logs.push("✓ Unindo [PROMPT]: e [NEGATIVO]: na mesma linha (Veo 3.1)");
+        }
+        // Fix extra blank lines within a block
+        repaired = repaired.replace(/\[PROMPT\]:\s*([\s\S]*?)\s*\n+\s*(\[NEGATIVO\]:)/gim, (match, p1, p2) => {
+          return `[PROMPT]: ${p1.trim()} ${p2}`;
+        });
+        logs.push("✓ Normalizando estrutura interna dos blocos Veo 3.1");
+      } else {
+        // Fix 1: Legacy format - If NEGATIVE PROMPT is on its own separate line, join it to the previous PROMPT line
+        if (/^NEGATIVE PROMPT:/gim.test(repaired)) {
+          repaired = repaired.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
+          logs.push("✓ Unindo PROMPT e NEGATIVE PROMPT na mesma linha");
+        }
+        // Fix 2: Remove any extra blank lines WITHIN a prompt block
+        repaired = repaired.replace(/PROMPT:\s*([\s\S]*?)\s*\n+\s*(NEGATIVE PROMPT:)/gim, (match, p1, p2) => {
+          return `PROMPT: ${p1.trim()} ${p2}`;
+        });
+        logs.push("✓ Normalizando estrutura interna dos blocos");
       }
 
-      // Fix 2: Remove any extra blank lines WITHIN a prompt block (between prompt text and negative)
-      repaired = repaired.replace(/PROMPT:\s*([\s\S]*?)\s*\n+\s*(NEGATIVE PROMPT:)/gim, (match, p1, p2) => {
-        return `PROMPT: ${p1.trim()} ${p2}`;
-      });
-      logs.push("✓ Normalizando estrutura interna dos blocos");
-
-      // Fix 3: Ensure exactly one blank line between blocks
+      // Fix: Ensure exactly one blank line between blocks
       repaired = repaired.replace(/\n{3,}/g, '\n\n');
       logs.push("✓ Normalizando separação entre blocos");
 
@@ -334,13 +391,17 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       if (!res.allOk) {
         setRepairLogs(prev => [...prev, "🚨 Inconsistência Crítica: Acionando Reparo via IA..."]);
         
+        const repairFormat = isVeoFormat
+          ? `[PROMPT]: [Text] [NEGATIVO]: [Text] (SAME LINE, no newline between them)`
+          : `PROMPT: [Text] NEGATIVE PROMPT: [Text] (SAME LINE, no newline between them)`;
+        
         const repairPrompt = `URGENT REPAIR: One or more blocks are poorly formatted. 
-        STRICT FORMAT: PROMPT: [Text] NEGATIVE PROMPT: [Text] (SAME LINE, no newline between them).
+        STRICT FORMAT: ${repairFormat}.
         Separate each complete block with ONE empty line.
         Repair these blocks keeping original descriptions:
         ${repaired}`;
         
-        const aiRepaired = await callAI(repairPrompt, { model: 'gemini-2.5-flash' });
+        const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-2.5-flash' });
         repaired = aiRepaired.trim();
         setRepairLogs(prev => [...prev, "✓ Reparo de Estrutura via IA Concluído"]);
       }
@@ -361,57 +422,107 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     }
   };
 
-  const getActiveStyle = () => VISUAL_STYLES.find(s => s.id === selectedStyle) || VISUAL_STYLES[0];
+  const getActiveStyle = () => ({ label: genero || 'Livre', desc: '' });
+
+  // Tag toggle helper
+  const toggleTag = (setter, current, tag) => {
+    setter(current.includes(tag) ? current.filter(t => t !== tag) : [...current, tag]);
+  };
+
+  // Cine param data
+  const GENERO_TAGS = ['Ficção científica', 'Film noir', 'Terror', 'Animação 3D', 'Documentário', 'Fantasia épica', 'Retrato cinematográfico', 'Anime'];
+  const CAMERA_TAGS = ['Vista aérea', 'Na altura dos olhos', 'Vista de cima', 'Vista de baixo', 'Travelling', 'Câmera lenta', 'Zoom in', 'Pan lateral'];
+  const COMPOSICAO_TAGS = ['Plano geral', 'Close-up', 'Plano médio', 'Retrato', 'Plano único', 'Plano duplo'];
+  const FOCO_TAGS = ['Foco raso', 'Foco profundo', 'Lente macro', 'Grande-angular', 'Filtro difusor', 'Teleobjetiva'];
+  const ATMOSFERA_TAGS = ['Tons azuis frios', 'Tons quentes dourados', 'Noite estrelada', 'Luz neon', 'Pôr do sol', 'Névoa', 'Chuva', 'Alta exposição'];
 
   const getSystemPrompt = () => {
-    const styleInfo = getActiveStyle();
-    
+    // Build cinematographic brief from selected parameters
+    const cineParams = [
+      genero ? `- Estilo/Gênero: ${genero}` : '',
+      cameraMovimento?.length ? `- Câmera & Movimento: ${cameraMovimento.join(', ')}` : '',
+      composicao?.length ? `- Composição: ${composicao.join(', ')}` : '',
+      focoLente?.length ? `- Foco & Lente: ${focoLente.join(', ')}` : '',
+      atmosferaLuz?.length ? `- Atmosfera & Luz: ${atmosferaLuz.join(', ')}` : '',
+    ].filter(Boolean).join('\n    ');
+
     const dnaContext = `
-    ## VISUAL DNA (INVIOLABLE RULES)
-    - Scenario Architecture: ${visualDNA.scenario}
-    - Historical Era/Environment: ${visualDNA.era}
-    - Emotional Mood: ${visualDNA.mood}
-    - Master Lighting: ${visualDNA.lighting}
-    - Color Palette: ${visualDNA.palette}
-    - Camera Language: ${visualDNA.camera}
-    - Style Foundation: ${styleInfo.label} — ${styleInfo.desc}
+    ## DNA VISUAL DO ROTEIRO (REGRAS INVIOLÁVEIS)
+    - Cenário e Arquitetura: ${visualDNA.scenario || 'A ser definido'}
+    - Época/Ambiente: ${visualDNA.era || 'A ser definido'}
+    - Mood Emocional: ${visualDNA.mood || 'A ser definido'}
+    - Iluminação Mestre: ${visualDNA.lighting || 'A ser definido'}
+    - Paleta de Cores: ${visualDNA.palette || 'A ser definido'}
+    - Linguagem de Câmera base: ${visualDNA.camera || 'A ser definido'}
+
+    ## PARÂMETROS CINEMATOGRÁFICOS SELECIONADOS (PRIORIDADE MÁXIMA)
+    ${cineParams || '- Nenhum parâmetro específico selecionado — use criatividade baseada no DNA acima'}
     `;
 
     if (genMode === 'fast') {
-      return promptType === 'video' ? `You are an ELITE Cinematic AI Director. 
-      COMMAND: PRODUCE FAST, HIGH-QUALITY VIDEO PROMPTS.
+      if (promptType === 'video') {
+        // Fast Veo 3.1 format
+        return `Você é um Diretor Cinematográfico AI de elite especialista em Veo 3.1.
+      COMANDO: GERE PROMPTS CINEMATOGRÁFICOS RÁPIDOS E PRECISOS PARA VEO 3.1.
       ${dnaContext}
-      STRICT RULE: Every prompt MUST respect the Visual DNA above. No modernization if the era is historical. No daylight if the lighting is dark.
-      ${outputFormat === 'json' ? `OUTPUT: JSON [ { "id": X, "prompt": "..." }, ... ]` : `OUTPUT: ID|PROMPT (one per line)`}` : `You are an ELITE Image Prompt Engineer.
+      REGRA ABSOLUTA: Cada prompt DEVE respeitar o DNA Visual acima. Responda SEMPRE em Português.
+      
+      ## FORMATO OBRIGATÓRIO (cada prompt em uma única linha contínua):
+      [PROMPT]: [conteúdo completo aqui em uma linha][NEGATIVO]: [lista de elementos indesejados aqui]
+      [linha em branco]
+      
+      ${outputFormat === 'json' ? `SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
+      } else {
+        return `You are an ELITE Image Prompt Engineer.
       COMMAND: PRODUCE FAST, HIGH-QUALITY IMAGE PROMPTS.
       ${dnaContext}
       STRICT RULE: Every prompt MUST respect the Visual DNA above.
       ${outputFormat === 'json' ? `OUTPUT: JSON [ { "id": X, "prompt": "..." }, ... ]` : `OUTPUT: ID|PROMPT (one per line)`}`;
+      }
     } else {
-      // MODO QUALIDADE ELITE (GOLD STANDARD)
-      const eliteExample = `PROMPT: A slow, deliberate tracking shot moves through a claustrophobic corridor within the Brocken Sendeanlage in 1978, revealing a scene of technological decay and encroaching dread; the cold, raw concrete walls, stained with streaks of dampness and peeling lead paint, are a dominant grey-blue, contrasted by thick bundles of olive-green, rubber-coated cables snaking across the floor and up the walls, all showing signs of age and neglect; overhead, a series of fluorescent lights flicker violently, casting a strobe-like, unstable illumination that exaggerates the shadows and the texture of the rough concrete, creating a disorienting visual rhythm; the air is heavy with the acrid scent of failing electrical components and the persistent dampness of the mountain; a series of small, utilitarian 1970s-era monitors on a cart display fragmented, static-filled images, their screens intermittently flashing an ominous red-orange hue; the camera uses a Sony Venice 2 with a Zeiss Master Prime 35mm lens, f/2.8, ISO 320, capturing the confined space and the tangible sense of a system collapsing, the shallow depth of field keeping the immediate environment in sharp focus while blurring the deeper, darker recesses of the corridor; 8K resolution, 35mm film grain, hyper-realistic textures, dramatic chiaroscuro, a growing sense of reality unraveling. NEGATIVE PROMPT: bright colors, neon, saturation, sunshine, blue sky, people, human figures, modern technology, clean surfaces, plastic, CGI, 3D render, digital art, cartoon, anime, illustration, watercolor, symmetry, artificial bokeh, lens flare, motion blur, sharp digital edges, text, watermark, signature, logo, border, frame, urban cityscape, cars, synthetic materials, horror gore, fantasy elements.`;
+      // MODO QUALIDADE ELITE
+      if (promptType === 'video') {
+        // VEO 3.1 GOLD STANDARD — Instruções completas
+        const veoExample = `[PROMPT]: Uma astrônoma de meia-idade com cabelos grisalhos presos em um coque descuidado e olhos castanhos cansados, vestindo um macacão espacial laranja desgastado com remendos nas mangas, flutua lentamente em gravidade zero dentro de uma estação espacial abandonada, segurando com as duas mãos uma fotografia desbotada enquanto lágrimas esféricas se desprendem de seus olhos e flutuam ao redor de seu rosto, ao fundo janelas circulares revelam o vazio negro do espaço com a Terra azul ao longe, estilo drama científico intimista com influências de Alfonso Cuarón, câmera em travelling suave se aproximando em arco circular ao nível dos olhos, composição em retrato fechado, foco raso com bokeh profundo desfocando o fundo estrelado, iluminação fria e azulada vinda das janelas contrastando com o calor âmbar de uma luz de emergência piscando, som ambiente de respiração pesada dentro do capacete e um zumbido elétrico baixo e contínuo ao fundo.[NEGATIVO]: baixa qualidade, borrado, distorção, pixelado, artefatos de compressão, câmera tremida, anatomia incorreta, mãos distorcidas, rosto deformado, expressão facial artificial, movimentos robóticos, física irreal, texto na tela, marca d'água, legenda, CGI barato, iluminação artificial excessiva, super-exposição, cores saturadas artificialmente, múltiplos personagens não solicitados.`;
 
-      return promptType === 'video' ? `You are the ULTIMATE Cinematic AI Director and World-Class Video Prompt Engineer. 
-      COMMAND: PRODUCE PROMPTS THAT ARE EXTREMELY DETAILED AND WITHOUT FLAWS (OFFICIAL GOLD STANDARD).
+        return `Você é o SUPREMO Diretor Cinematográfico AI e Engenheiro de Prompts para Veo 3.1.
+      COMANDO: GERE PROMPTS CINEMATOGRÁFICOS MAGISTRAIS SEGUINDO O PADRÃO OURO VEO 3.1.
 
-      ## GOLD STANDARD EXAMPLE (DEPTH, TEXTURE, CAMERA):
-      ${eliteExample}
+      ## EXEMPLO PADRÃO OURO VEO 3.1:
+      ${veoExample}
 
       ${dnaContext}
 
-      ## ELITE FIDELITY REQUIREMENTS:
-      1. SENSORY DEPTH: Describe specific weather, microscopic surface textures (rust, moss, moisture).
-      2. CAMERA ARCHITECTURE: Specify professional lenses (Zeiss Master Prime, Sony Venice 2, etc.), f-stops, ISO, and cinematic motion. 
-      3. DNA FIDELITY: Every prompt MUST adhere to the Era and Scenario defined in DNA. No contradictions.
-      4. ZERO LINE BREAKS: The PROMPT and NEGATIVE PROMPT MUST be on the SAME LINE. No newlines between them.
-      5. DOUBLE LINE SPACING: ALWAYS leave an EMPTY LINE between different prompts.
-      6. LANGUAGE: Always English.
+      ## REGRAS DE CONSTRUÇÃO DO PROMPT (OBRIGATÓRIO — nesta ordem):
+      Cada prompt deve conter TODOS os elementos abaixo em frase contínua e fluida em PORTUGUÊS:
+      1. SUJEITO — máximo detalhe físico, vestuário, expressão facial e características únicas.
+      2. AÇÃO — verbos precisos e advérbios expressivos (ex: "caminha lentamente", "vira a cabeça de forma brusca").
+      3. CENÁRIO — ambiente, época, arquitetura, vegetação, clima e elementos de fundo.
+      4. ESTILO CINEMATOGRÁFICO — gênero, referências de direção e sensação geral.
+      5. MOVIMENTO DE CÂMERA — tipo de plano, ângulo e movimento (ex: travelling lateral, drone, altura dos olhos).
+      6. COMPOSIÇÃO — plano geral, close-up, plano médio, retrato, plano único ou duplo.
+      7. FOCO E LENTE — bokeh, lente macro, grande-angular, teleobjetiva, filtro difusor.
+      8. ATMOSFERA E ILUMINAÇÃO — hora do dia, tipo de luz, temperatura de cor, sombras, contraste.
+      9. ÁUDIO — obrigatoriamente inclua: diálogo entre aspas, efeitos sonoros OU ruído ambiente detalhado.
 
-      ## FORMAT (STRICT):
-      PROMPT: [Ultra-detailed text] NEGATIVE PROMPT: [Technical anti-quality list]
-      [EMPTY LINE]
+      ## REGRAS DO PROMPT NEGATIVO:
+      Liste separados por vírgula: problemas técnicos + problemas visuais específicos da cena + elementos de conteúdo indesejados + inconsistências de estilo + movimentos não naturais.
 
-      ${outputFormat === 'json' ? `## OUTPUT: JSON [ { "id": X, "prompt": "...", "negative": "..." }, ... ]` : `## OUTPUT: SINGLE LINE PER PROMPT BLOCK`}` : `You are the ULTIMATE Image Prompt Engineer.
+      ## DNA VISUAL INVIOLÁVEL DO ROTEIRO:
+      ${dnaContext}
+
+      ## FORMATO OBRIGATÓRIO (ZERO QUEBRAS DE LINHA INTERNAS):
+      [PROMPT]: [texto completo em uma única linha contínua][NEGATIVO]: [lista separada por vírgula em uma linha]
+      [LINHA EM BRANCO]
+
+      NÍVEL DE DETALHE: 80–150 palavras por prompt. Evite termos vagos — use descritores concretos e sensoriais.
+      IDIOMA: SEMPRE Português do Brasil.
+      ${outputFormat === 'json' ? `## SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA: UM BLOCO POR LEGENDA — [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
+      } else {
+        // Image Gold Standard (legacy format)
+        const eliteExample = `PROMPT: A slow, deliberate tracking shot moves through a claustrophobic corridor within the Brocken Sendeanlage in 1978, revealing a scene of technological decay and encroaching dread; the cold, raw concrete walls, stained with streaks of dampness and peeling lead paint, are a dominant grey-blue, contrasted by thick bundles of olive-green, rubber-coated cables snaking across the floor and up the walls, all showing signs of age and neglect; 8K resolution, 35mm film grain, hyper-realistic textures, dramatic chiaroscuro. NEGATIVE PROMPT: bright colors, neon, saturation, sunshine, blue sky, people, modern technology, clean surfaces, CGI, 3D render, cartoon, anime, watercolor, text, watermark, signature, logo.`;
+
+        return `You are the ULTIMATE Image Prompt Engineer.
       COMMAND: PRODUCE PROMPTS THAT ARE EXTREMELY DETAILED (GOLD STANDARD).
 
       ## GOLD STANDARD EXAMPLE:
@@ -424,6 +535,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       [EMPTY LINE AFTER EACH BLOCK]
 
       ${outputFormat === 'json' ? `## OUTPUT: JSON [ { "id": X, "prompt": "...", "negative": "..." }, ... ]` : `## OUTPUT: SINGLE LINE PER PROMPT BLOCK`}`;
+      }
     }
   };
   
@@ -471,19 +583,24 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses] }));
 
         const isJson = outputFormat === 'json';
+        const isVeoVideoMode = promptType === 'video' && genMode === 'quality';
+        const countRuleLang = isVeoVideoMode
+          ? `REGRA OBRIGATÓRIA DE CONTAGEM: Gere EXATAMENTE ${chunkSubtitleCount} prompts. Um prompt por bloco de legenda abaixo. Não pule, não junte e não resuma nenhum bloco. Cada [ID X] deve ter seu próprio [PROMPT]:.`
+          : `MANDATORY COUNT RULE: You MUST generate EXACTLY ${chunkSubtitleCount} prompts. One prompt per subtitle/legend block below. Do NOT skip, merge, or summarize any block. Each [ID X] must have its own corresponding PROMPT.`;
+        const generateLabel = isVeoVideoMode
+          ? `GERE EXATAMENTE ${chunkSubtitleCount} PROMPTS VEO 3.1 MAGISTRAIS (PORTUGUÊS DO BRASIL):`
+          : `GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
         const promptParam = `${getSystemPrompt()}
 
 ---
-## MANDATORY COUNT RULE:
-You MUST generate EXACTLY ${chunkSubtitleCount} prompts. One prompt per subtitle/legend block below.
-Do NOT skip, merge, or summarize any block. Each [ID X] must have its own corresponding PROMPT.
+${countRuleLang}
 Do NOT generate more or fewer than ${chunkSubtitleCount} prompts.
 ---
 
 INPUT (CHUNK ${i+1}) - ${chunkSubtitleCount} SUBTITLES:
 ${formattedInput}
 
-GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
+${generateLabel}`;
 
         let retryCount = 0;
         let success = false;
@@ -512,7 +629,7 @@ GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
               step: globalRetry > 0 ? `Corrigindo Bloco ${i+1}...` : `Processando Bloco ${i+1}/${totalChunks}...` 
             }));
 
-            const responseText = await callAI(promptParam, { model: 'gemini-2.5-flash' });
+            const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.5-flash' });
             success = true;
             
             // Success processing
@@ -526,19 +643,35 @@ GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
               } catch { chunkText = responseText; }
             } else {
               if (genMode === 'quality') {
-                // Ensure PROMPT and NEGATIVE PROMPT are on the same line
                 let parsed = responseText.trim();
-                // If they are on separate lines, rejoin them
-                parsed = parsed.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
-                chunkText = parsed;
-
-                // Validate count: check how many prompts were generated
-                const generatedCount = (parsed.match(/^PROMPT:/gim) || []).length;
-                if (generatedCount < chunkSubtitleCount) {
-                  console.warn(`[Chunk ${i+1}] Expected ${chunkSubtitleCount} prompts, got ${generatedCount}. Flagging for retry.`);
-                  // Don't mark as error yet — the global retry loop will pick it up
-                  if (generatedCount === 0) {
-                    throw new Error(`Nenhum prompt gerado no bloco ${i+1}. Contagem esperada: ${chunkSubtitleCount}`);
+                // Detect if Veo 3.1 format or legacy
+                const isVeoFmt = parsed.includes('[PROMPT]:') || parsed.includes('[NEGATIVO]:');
+                
+                if (isVeoFmt) {
+                  // Veo 3.1: If [NEGATIVO]: is on a separate line, rejoin it
+                  parsed = parsed.replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
+                  // Count prompts
+                  const generatedCount = (parsed.match(/\[PROMPT\]:/gi) || []).length;
+                  chunkText = parsed;
+                  if (generatedCount < chunkSubtitleCount) {
+                    console.warn(`[Chunk ${i+1}] Veo 3.1: Esperado ${chunkSubtitleCount} prompts, gerado ${generatedCount}. Marcando para retry.`);
+                    if (generatedCount <= 0) {
+                      throw new Error(`Nenhum prompt Veo 3.1 gerado no bloco ${i+1}. Contagem esperada: ${chunkSubtitleCount}`);
+                    }
+                  }
+                } else {
+                  // Legacy PROMPT: / NEGATIVE PROMPT: format
+                  parsed = parsed.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
+                  chunkText = parsed;
+                  // Validate count
+                  const allPrompts = (parsed.match(/PROMPT:/gi) || []).length;
+                  const allNegatives = (parsed.match(/NEGATIVE PROMPT:/gi) || []).length;
+                  const generatedCount = allPrompts - allNegatives;
+                  if (generatedCount < chunkSubtitleCount) {
+                    console.warn(`[Chunk ${i+1}] Expected ${chunkSubtitleCount} prompts, got ${generatedCount}. Flagging for retry.`);
+                    if (generatedCount <= 0) {
+                      throw new Error(`Nenhum prompt gerado no bloco ${i+1}. Contagem esperada: ${chunkSubtitleCount}`);
+                    }
                   }
                 }
               } else {
@@ -691,7 +824,7 @@ GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
         const promptBatchQuery = `${getSystemPrompt()}\n\nSCRIPT SEGMENT (BLOCK ${i+1}):\n"${segment}"\n\nGENERATE ELITE PROMPTS (ENGLISH ONLY):`;
  
         try {
-          const batchResult = await callAI(promptBatchQuery);
+          const batchResult = await callGemini(getPromptsApiKey(), promptBatchQuery);
           
           let processedBatch = "";
           if (genMode === 'quality') {
@@ -807,8 +940,8 @@ GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
               onChange={(e) => setSelectedScriptId(e.target.value)}
               className="flex-1 min-w-[200px] bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-gray-400 focus:outline-none focus:border-neon-purple/50 hover:bg-white/10 transition-all cursor-pointer"
            >
-              <option value="">-- Meus Projetos Salvos --</option>
-              {availableScripts.map(s => (
+              <option value="">-- MEUS PROJETOS SALVOS --</option>
+              {(cloudScripts.length > 0 ? cloudScripts : availableScripts).map(s => (
                  <option key={s.id} value={s.id} className="bg-dark text-white">{s.title}</option>
               ))}
            </select>
@@ -894,9 +1027,9 @@ GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
           )}
         </AnimatePresence>
 
-      {/* Style Selector */}
-      <div className="glass-card p-6 space-y-6">
-        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-white/10 pb-4">
+      {/* Output Format Controls */}
+      <div className="glass-card p-5 space-y-0">
+        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-white/10 pb-4 mb-0">
           <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-neon-pink" /> 
             Formato de Saída
@@ -976,46 +1109,134 @@ GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
             </div>
           </div>
         </div>
+      </div>
 
-        <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-neon-pink" /> 
-          Estilo Visual — <span className="text-neon-pink">{getActiveStyle().label}</span>
-        </h3>
-        
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-16 gap-1.5">
-          {VISUAL_STYLES.map(style => {
-            const [emoji, ...textParts] = style.label.split(' ');
-            const labelText = textParts.join(' ');
-            const isSelected = selectedStyle === style.id;
-            
-            return (
+      {/* ── Cinematographic Parameters ──────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {/* ESTILO / GÊNERO — obrigatório */}
+        <div className="glass-card p-5 border border-white/10 space-y-3 md:col-span-2">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-neon-pink/20 text-neon-pink border border-neon-pink/30 uppercase tracking-widest">Obrigatório</span>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest">Estilo / Gênero</h3>
+          </div>
+          <p className="text-[10px] text-gray-500 -mt-1">Direção criativa do vídeo</p>
+          <div className="flex flex-wrap gap-2">
+            {GENERO_TAGS.map(tag => (
               <button
-                key={style.id}
-                onClick={() => setSelectedStyle(style.id)}
-                title={style.desc}
-                className={`flex flex-col items-center justify-center gap-0.5 p-1.5 aspect-square rounded-lg transition-all duration-300 border group ${
-                  isSelected
-                    ? 'bg-neon-pink/20 border-neon-pink text-neon-pink shadow-[0_0_10px_rgba(255,44,182,0.2)]'
-                    : 'bg-white/5 border-white/10 text-gray-500 hover:border-white/30 hover:bg-white/10 hover:text-white'
+                key={tag}
+                onClick={() => setGenero(genero === tag ? '' : tag)}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all duration-200 ${
+                  genero === tag
+                    ? 'bg-neon-pink/20 border-neon-pink text-neon-pink shadow-[0_0_8px_rgba(255,44,182,0.25)]'
+                    : 'bg-white/5 border-white/15 text-gray-400 hover:border-white/40 hover:text-white hover:bg-white/10'
                 }`}
               >
-                <span className={`text-base transition-transform duration-300 ${isSelected ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  {emoji}
-                </span>
-                <span className={`text-[8px] font-black uppercase tracking-tighter text-center line-clamp-2 leading-[1.05] ${isSelected ? 'text-neon-pink' : 'text-gray-400 group-hover:text-white'}`}>
-                  {labelText}
-                </span>
+                {tag}
               </button>
-            );
-          })}
-        </div>
-        
-        <div className="flex items-center gap-3 p-3 bg-neon-pink/5 border border-neon-pink/10 rounded-xl">
-          <div className="w-8 h-8 rounded-lg bg-neon-pink/20 flex items-center justify-center shrink-0">
-             <Zap className="w-4 h-4 text-neon-pink" />
+            ))}
           </div>
-          <p className="text-xs text-gray-300 font-medium italic">{getActiveStyle().desc}</p>
+          <input
+            type="text"
+            value={GENERO_TAGS.includes(genero) ? '' : genero}
+            onChange={e => setGenero(e.target.value)}
+            placeholder="ou escreva seu estilo..."
+            className="w-full bg-dark/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-neon-pink/40 transition-all"
+          />
         </div>
+
+        {/* CÂMERA & MOVIMENTO */}
+        <div className="glass-card p-5 border border-white/10 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-white/5 text-gray-500 border border-white/10 uppercase tracking-widest">Opcional</span>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest">Câmera &amp; Movimento</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {CAMERA_TAGS.map(tag => (
+              <button
+                key={tag}
+                onClick={() => toggleTag(setCameraMovimento, cameraMovimento || [], tag)}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all duration-200 ${
+                  (cameraMovimento || []).includes(tag)
+                    ? 'bg-neon-purple/20 border-neon-purple text-neon-purple shadow-[0_0_8px_rgba(176,38,255,0.2)]'
+                    : 'bg-white/5 border-white/15 text-gray-400 hover:border-white/40 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* COMPOSIÇÃO */}
+        <div className="glass-card p-5 border border-white/10 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-white/5 text-gray-500 border border-white/10 uppercase tracking-widest">Opcional</span>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest">Composição</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {COMPOSICAO_TAGS.map(tag => (
+              <button
+                key={tag}
+                onClick={() => toggleTag(setComposicao, composicao || [], tag)}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all duration-200 ${
+                  (composicao || []).includes(tag)
+                    ? 'bg-neon-cyan/20 border-neon-cyan text-neon-cyan shadow-[0_0_8px_rgba(0,243,255,0.2)]'
+                    : 'bg-white/5 border-white/15 text-gray-400 hover:border-white/40 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* FOCO & LENTE */}
+        <div className="glass-card p-5 border border-white/10 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-white/5 text-gray-500 border border-white/10 uppercase tracking-widest">Opcional</span>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest">Foco &amp; Lente</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {FOCO_TAGS.map(tag => (
+              <button
+                key={tag}
+                onClick={() => toggleTag(setFocoLente, focoLente || [], tag)}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all duration-200 ${
+                  (focoLente || []).includes(tag)
+                    ? 'bg-blue-500/20 border-blue-400 text-blue-300 shadow-[0_0_8px_rgba(96,165,250,0.2)]'
+                    : 'bg-white/5 border-white/15 text-gray-400 hover:border-white/40 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ATMOSFERA & LUZ */}
+        <div className="glass-card p-5 border border-white/10 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-white/5 text-gray-500 border border-white/10 uppercase tracking-widest">Opcional</span>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest">Atmosfera &amp; Luz</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {ATMOSFERA_TAGS.map(tag => (
+              <button
+                key={tag}
+                onClick={() => toggleTag(setAtmosferaLuz, atmosferaLuz || [], tag)}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all duration-200 ${
+                  (atmosferaLuz || []).includes(tag)
+                    ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.2)]'
+                    : 'bg-white/5 border-white/15 text-gray-400 hover:border-white/40 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+
       </div>
 
       {/* Generation Area Grid */}

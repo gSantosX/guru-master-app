@@ -14,7 +14,7 @@
 
 @layer base {
   body {
-    @apply bg-dark text-gray-200 antialiased h-screen overflow-hidden select-none cursor-default;
+    @apply bg-dark text-gray-200 antialiased h-screen w-screen overflow-hidden select-none cursor-default;
     font-family: var(--font-inter);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     scroll-behavior: smooth;
@@ -74,7 +74,8 @@
   }
 
   .glass-panel {
-    @apply bg-dark-lighter/50 backdrop-blur-2xl border-r border-white/5 transition-colors duration-500;
+    @apply bg-dark-lighter/50 backdrop-blur-3xl border-r border-white/5 transition-all duration-500 h-full;
+    box-shadow: 10px 0 30px rgba(0,0,0,0.5);
   }
 }
 

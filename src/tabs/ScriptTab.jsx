@@ -9,6 +9,8 @@ import { resolveApiUrl } from '../utils/apiUtils';
 import { callAI } from '../utils/aiUtils';
 import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
+import { useCloudStorage } from '../hooks/useCloudStorage';
+import { generateVeoContent } from '../utils/veoUtils';
 
 const DNA_OPTIONS = [
   "Linear Tradicional", "Jornada do Herói", "O Grande Mistério", "Ponto vs Contraponto",
@@ -69,6 +71,7 @@ const FORMALITY_OPTIONS = ["Baixo", "Médio", "Alto"];
 export const ScriptTab = ({ setActiveTab }) => {
   const { configs, showToast } = useSystemStatus();
   const { scriptState, setScriptState } = usePersistence();
+  const [cloudScripts, setCloudScripts] = useCloudStorage('scripts', []);
   
   const {
     titulo, dna, alma, cta, nicho, idioma, formato, natureza, 
@@ -117,7 +120,8 @@ export const ScriptTab = ({ setActiveTab }) => {
 
       const response = await callAI(prompt, { 
         model: configs.active_model,
-        temperature: 0.1 
+        temperature: 0.1,
+        isPromptTask: true
       });
       
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -217,7 +221,8 @@ RESPONDA APENAS COM O TEXTO DA NARRAÇÃO.`;
       let response = await callAI(fullPrompt, {
         model: configs.active_model,
         maxOutputTokens: estimatedTokens,
-        temperature: 0.7
+        temperature: 0.7,
+        isPromptTask: true
       });
 
       let cleanedContent = cleanScript(response);
@@ -243,7 +248,8 @@ CONTEXTO FINAL:
         const expandedResponse = await callAI(expansionPrompt, {
           model: configs.active_model,
           maxOutputTokens: 8192,
-          temperature: 0.8
+          temperature: 0.8,
+          isPromptTask: true
         });
 
         cleanedContent = cleanedContent + "\n\n" + cleanScript(expandedResponse);
@@ -252,24 +258,30 @@ CONTEXTO FINAL:
       setGenerationProgress(90);
       setStatusMessage('Polimento Final de Fluxo...');
       
+      // --- GERAR VEO ---
+      const veoData = generateVeoContent(cleanedContent);
+      
       const finalScript = {
         title: titulo,
         niche: nicho,
         content: cleanedContent,
         date: new Date().toLocaleString(),
         dna,
-        alma
+        alma,
+        veoContent: veoData
       };
 
       setGeneratedScript(finalScript);
       setGenerationProgress(100);
       setStatusMessage('Roteiro Magistral Concluído!');
       
-      // AUTO-SAVE: sempre salva cada roteiro gerado com ID único
+      // AUTO-SAVE to cloud (per-user account)
       const generatedId = Date.now();
-      const existingScripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
       const toSave = { ...finalScript, id: generatedId, length: cleanedContent.length };
-      localStorage.setItem('guru_scripts', JSON.stringify([toSave, ...existingScripts].slice(0, 6)));
+      setCloudScripts(prev => {
+        const existing = Array.isArray(prev) ? prev : [];
+        return [toSave, ...existing].slice(0, 30); // Keep up to 30 scripts per user
+      });
       setLastSavedId(generatedId);
       window.dispatchEvent(new Event('guru_scripts_updated'));
       showToast("✅ Roteiro salvo em Roteiros Prontos!", "success");
@@ -294,11 +306,15 @@ CONTEXTO FINAL:
 
   const handleGoToPrompts = () => {
     if (!generatedScript || !lastSavedId) {
-      // If for some reason we lost the ID, try to find the most recent one
-      const scripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
+      // If for some reason we lost the ID, try to find the most recent one from cloud
+      const scripts = Array.isArray(cloudScripts) ? cloudScripts : [];
       if (scripts.length > 0) {
         localStorage.setItem('guru_image_prompt_trigger_id', scripts[0].id.toString());
         localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
+        if (scripts[0]?.content) {
+           const veoData = generateVeoContent(scripts[0].content);
+           localStorage.setItem('guru_image_prompt_veo_content', veoData);
+        }
         setActiveTab('image-prompts');
         return;
       }
@@ -308,6 +324,10 @@ CONTEXTO FINAL:
     
     localStorage.setItem('guru_image_prompt_trigger_id', lastSavedId.toString());
     localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
+    if (generatedScript?.content) {
+       const veoData = generateVeoContent(generatedScript.content);
+       localStorage.setItem('guru_image_prompt_veo_content', veoData);
+    }
     setActiveTab('image-prompts');
   };
 
@@ -327,7 +347,7 @@ CONTEXTO FINAL:
   return (
     <div className="flex flex-col h-auto min-h-full animate-in fade-in duration-500 pb-10">
       
-      <header className="mb-8 w-full lg:w-7/12">
+      <header className="mb-8 w-full max-w-4xl">
         <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(0,243,255,0.3)]">
             <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
@@ -346,7 +366,7 @@ CONTEXTO FINAL:
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="w-full lg:w-7/12 flex flex-col"
+          className="w-full xl:w-8/12 flex flex-col"
         >
 
         <div className="glass-card p-8 border border-white/10 shadow-2xl relative overflow-hidden group h-full">
@@ -567,7 +587,7 @@ CONTEXTO FINAL:
       <motion.div 
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="w-full lg:w-5/12 flex"
+        className="w-full xl:w-4/12 flex"
       >
         <div className="glass-card flex flex-col h-full border border-white/10 shadow-2xl relative overflow-hidden">
           <div className="p-6 border-b border-white/5 bg-black/20 flex justify-between items-center z-10 backdrop-blur-md">
