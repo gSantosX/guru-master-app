@@ -455,7 +455,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   };
 
   // Cine param data
-  const GENERO_TAGS = ['Ficção científica', 'Film noir', 'Terror', 'Animação 3D', 'Documentário', 'Fantasia épica', 'Retrato cinematográfico', 'Anime'];
+  const GENERO_TAGS = ['Ultra-realista', 'Cinema (Blockbuster)', 'Cartoon / Animação', 'Documentário', 'Film Noir', 'Ficção Científica', 'Terror / Dark', 'Fantasia Épica', 'Anime'];
   const CAMERA_TAGS = ['Vista aérea', 'Na altura dos olhos', 'Vista de cima', 'Vista de baixo', 'Travelling', 'Câmera lenta', 'Zoom in', 'Pan lateral'];
   const COMPOSICAO_TAGS = ['Plano geral', 'Close-up', 'Plano médio', 'Retrato', 'Plano único', 'Plano duplo'];
   const FOCO_TAGS = ['Foco raso', 'Foco profundo', 'Lente macro', 'Grande-angular', 'Filtro difusor', 'Teleobjetiva'];
@@ -472,6 +472,10 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     ].filter(Boolean).join('\n    ');
 
     const dnaContext = `
+    ## PILAR VISUAL OBRIGATÓRIO (FUNDAÇÃO DO VÍDEO)
+    - ESTILO BASE: ${genero || 'Ultra-realista (Padrão)'}
+    - REGRA DE CONSISTÊNCIA: 100% dos prompts devem seguir este estilo. É PROIBIDO variar o estilo visual entre as cenas. O vídeo deve parecer ter sido filmado/criado em uma única produção coerente.
+
     ## DNA VISUAL DO ROTEIRO (REGRAS INVIOLÁVEIS)
     - Cenário e Arquitetura: ${visualDNA.scenario || 'A ser definido'}
     - Época/Ambiente: ${visualDNA.era || 'A ser definido'}
