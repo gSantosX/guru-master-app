@@ -465,10 +465,10 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         return `Você é um Diretor Cinematográfico AI de elite especialista em Veo 3.1.
       COMANDO: GERE PROMPTS CINEMATOGRÁFICOS RÁPIDOS E PRECISOS PARA VEO 3.1.
       ${dnaContext}
-      REGRA ABSOLUTA: Cada prompt DEVE respeitar o DNA Visual acima. Responda SEMPRE em Português.
+      REGRA ABSOLUTA: Cada prompt DEVE respeitar o DNA Visual acima. Responda SEMPRE em INGLÊS (English).
       
       ## FORMATO OBRIGATÓRIO (cada prompt em uma única linha contínua):
-      [PROMPT]: [conteúdo completo aqui em uma linha][NEGATIVO]: [lista de elementos indesejados aqui]
+      [PROMPT]: [English content here in one line][NEGATIVO]: [English negative list here]
       [linha em branco]
       
       ${outputFormat === 'json' ? `SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
@@ -476,25 +476,25 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         return `You are an ELITE Image Prompt Engineer.
       COMMAND: PRODUCE FAST, HIGH-QUALITY IMAGE PROMPTS.
       ${dnaContext}
-      STRICT RULE: Every prompt MUST respect the Visual DNA above.
+      STRICT RULE: Every prompt MUST respect the Visual DNA above. Response MUST be in ENGLISH.
       ${outputFormat === 'json' ? `OUTPUT: JSON [ { "id": X, "prompt": "..." }, ... ]` : `OUTPUT: ID|PROMPT (one per line)`}`;
       }
     } else {
       // MODO QUALIDADE ELITE
       if (promptType === 'video') {
         // VEO 3.1 GOLD STANDARD — Instruções completas
-        const veoExample = `[PROMPT]: Uma astrônoma de meia-idade com cabelos grisalhos presos em um coque descuidado e olhos castanhos cansados, vestindo um macacão espacial laranja desgastado com remendos nas mangas, flutua lentamente em gravidade zero dentro de uma estação espacial abandonada, segurando com as duas mãos uma fotografia desbotada enquanto lágrimas esféricas se desprendem de seus olhos e flutuam ao redor de seu rosto, ao fundo janelas circulares revelam o vazio negro do espaço com a Terra azul ao longe, estilo drama científico intimista com influências de Alfonso Cuarón, câmera em travelling suave se aproximando em arco circular ao nível dos olhos, composição em retrato fechado, foco raso com bokeh profundo desfocando o fundo estrelado, iluminação fria e azulada vinda das janelas contrastando com o calor âmbar de uma luz de emergência piscando, som ambiente de respiração pesada dentro do capacete e um zumbido elétrico baixo e contínuo ao fundo.[NEGATIVO]: baixa qualidade, borrado, distorção, pixelado, artefatos de compressão, câmera tremida, anatomia incorreta, mãos distorcidas, rosto deformado, expressão facial artificial, movimentos robóticos, física irreal, texto na tela, marca d'água, legenda, CGI barato, iluminação artificial excessiva, super-exposição, cores saturadas artificialmente, múltiplos personagens não solicitados.`;
+        const veoExample = `[PROMPT]: A middle-aged female astronomer with graying hair tied in a messy bun and tired brown eyes, wearing a worn orange space jumpsuit with patches on the sleeves, floats slowly in zero gravity inside an abandoned space station, holding a faded photograph with both hands as spherical tears detach from her eyes and float around her face, in the background circular windows reveal the black void of space with the blue Earth in the distance, intimate science drama style with influences from Alfonso Cuarón, camera in smooth tracking shot approaching in a circular arc at eye level, closed-up portrait composition, shallow focus with deep bokeh blurring the starry background, cold and bluish lighting coming from the windows contrasting with the amber warmth of a blinking emergency light, ambient sound of heavy breathing inside the helmet and a low, continuous electrical hum in the background.[NEGATIVO]: low quality, blurred, distortion, pixelated, compression artifacts, shaky camera, incorrect anatomy, distorted hands, deformed face, artificial facial expression, robotic movements, unreal physics, text on screen, watermark, subtitle, cheap CGI, excessive artificial lighting, over-exposure, artificially saturated colors, multiple unrequested characters.`;
 
         return `Você é o SUPREMO Diretor Cinematográfico AI e Engenheiro de Prompts para Veo 3.1.
       COMANDO: GERE PROMPTS CINEMATOGRÁFICOS MAGISTRAIS SEGUINDO O PADRÃO OURO VEO 3.1.
 
-      ## EXEMPLO PADRÃO OURO VEO 3.1:
+      ## EXEMPLO PADRÃO OURO VEO 3.1 (EM INGLÊS):
       ${veoExample}
 
       ${dnaContext}
 
       ## REGRAS DE CONSTRUÇÃO DO PROMPT (OBRIGATÓRIO — nesta ordem):
-      Cada prompt deve conter TODOS os elementos abaixo em frase contínua e fluida em PORTUGUÊS:
+      Cada prompt deve conter TODOS os elementos abaixo em frase contínua e fluida em INGLÊS:
       1. SUJEITO — máximo detalhe físico, vestuário, expressão facial e características únicas.
       2. AÇÃO — verbos precisos e advérbios expressivos (ex: "caminha lentamente", "vira a cabeça de forma brusca").
       3. CENÁRIO — ambiente, época, arquitetura, vegetação, clima e elementos de fundo.
@@ -505,7 +505,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       8. ATMOSFERA E ILUMINAÇÃO — hora do dia, tipo de luz, temperatura de cor, sombras, contraste.
       9. ÁUDIO — obrigatoriamente inclua: diálogo entre aspas, efeitos sonoros OU ruído ambiente detalhado.
 
-      ## REGRAS DO PROMPT NEGATIVO:
+      ## REGRAS DO PROMPT NEGATIVO (EM INGLÊS):
       Liste separados por vírgula: problemas técnicos + problemas visuais específicos da cena + elementos de conteúdo indesejados + inconsistências de estilo + movimentos não naturais.
 
       ## DNA VISUAL INVIOLÁVEL DO ROTEIRO:
@@ -516,7 +516,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       [LINHA EM BRANCO]
 
       NÍVEL DE DETALHE: 80–150 palavras por prompt. Evite termos vagos — use descritores concretos e sensoriais.
-      IDIOMA: SEMPRE Português do Brasil.
+      IDIOMA: SEMPRE Inglês (English).
       ${outputFormat === 'json' ? `## SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA: UM BLOCO POR LEGENDA — [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
       } else {
         // Image Gold Standard (legacy format)
