@@ -499,19 +499,19 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       if (promptType === 'video') {
         // Fast Veo 3.1 format
         return `Você é um Diretor Cinematográfico AI de elite especialista em Veo 3.1.
-      COMANDO: GERE PROMPTS CINEMATOGRÁFICOS RÁPIDOS E PRECISOS PARA VEO 3.1.
+      COMANDO: GERE PROMPTS EXTREMAMENTE ROBUSTOS (80-150 PALAVRAS) PARA VEO 3.1.
       ${dnaContext}
       ${realismInstruction}
-      REGRA ABSOLUTA: Cada prompt DEVE respeitar o DNA Visual acima. Responda SEMPRE em INGLÊS (English).
+      REGRA ABSOLUTA: Cada prompt DEVE conter: 1. Sujeito Detalhado, 2. Ação Física, 3. Cenário/Ambiente, 4. Estilo de Câmera/Lente e 5. Iluminação/Atmosfera.
       ${speechInstruction}
-      PROIBIDO: NÃO ADICIONE TÍTULOS, CABEÇALHOS OU TEXTO EXTRA.
+      PROIBIDO: NÃO ADICIONE TÍTULOS OU CABEÇALHOS. Responda em INGLÊS.
       
-      ## FORMATO OBRIGATÓRIO (cada prompt em uma única linha contínua):
-      [PROMPT]: [English content here in one line][NEGATIVO]: [English negative list here]
+      ## FORMATO OBRIGATÓRIO:
+      [PROMPT]: [Content in one line][NEGATIVO]: [Negative list]
       [linha em branco]
       
       ${outputFormat === 'json' ? `SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}. 
-      REGRA DE EXTENSÃO: Cada prompt deve ser rico e detalhado, com no MÍNIMO 80-100 palavras.`;
+      REGRA DE EXTENSÃO: Cada prompt deve ser extremamente robusto, com 80-150 palavras (Prompt + Negativo).`;
       } else {
         return `You are an ELITE Image Prompt Engineer.
       COMMAND: PRODUCE FAST, HIGH-QUALITY IMAGE PROMPTS.
@@ -554,7 +554,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       ## CONSISTÊNCIA VISUAL:
       Mantenha rigorosamente o mesmo estilo, paleta e atmosfera em TODOS os prompts para garantir coesão visual absoluta em todo o vídeo.
 
-      NÍVEL DE DETALHE (REGRA ABSOLUTA): MÍNIMO DE 80 PALAVRAS por prompt (Prompt + Negativo). Evite termos vagos — use descritores concretos, sensoriais e técnicos.
+      NÍVEL DE DETALHE (REGRA ABSOLUTA): 80-150 PALAVRAS por prompt (Prompt + Negativo). Evite termos vagos — use descritores concretos, sensoriais e técnicos.
       IDIOMA: SEMPRE Inglês (English).
       ${outputFormat === 'json' ? `## SAÍDA FINAL: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA FINAL: UM BLOCO POR LEGENDA — [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
       } else {
