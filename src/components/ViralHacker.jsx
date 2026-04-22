@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Globe, Loader2, Copy, Check, ShieldCheck, XCircle, TrendingUp, AlertCircle, CheckCircle, Sparkles, Youtube } from 'lucide-react';
+import { Zap, Globe, Loader2, Copy, Check, ShieldCheck, XCircle, TrendingUp, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { callGemini, callGPT, callAI } from '../utils/aiUtils';
 import { resolveApiUrl } from '../utils/apiUtils';
