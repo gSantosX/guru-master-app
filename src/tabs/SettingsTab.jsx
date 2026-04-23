@@ -592,12 +592,19 @@ export const SettingsTab = () => {
               </div>
               )}
 
-              {/* ── BOTÃO SALVAR ──────────────────────────────────── */}
-              <div className="pt-2">
+              {/* ── BOTÃO SALVAR E EXCLUIR ──────────────────────────────────── */}
+              <div className="pt-4 flex gap-3">
+                <button
+                  onClick={handleClearAllKeys}
+                  title="Excluir Todas as Chaves"
+                  className="px-5 py-3 rounded-xl bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 hover:text-white transition-colors flex items-center justify-center shrink-0 active:scale-95"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
                 <button
                   onClick={handleSaveKeys}
                   disabled={isSaving}
-                  className={`w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
+                  className={`flex-1 py-3 rounded-xl font-black text-sm uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${
                     isSaved
                       ? 'bg-green-500/20 text-green-400 border border-green-500/40 shadow-[0_0_15px_rgba(74,222,128,0.2)]'
                       : isSaving
@@ -912,7 +919,7 @@ export const SettingsTab = () => {
             <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
               <Shield className="text-gray-400 w-5 h-5" /> {t('settings.about_title')}
             </h3>
-            <p className="text-sm text-gray-400 mb-4">{t('settings.about_desc')} v2.5.0</p>
+            <p className="text-sm text-gray-400 mb-4">{t('settings.about_desc')} v2.5.1</p>
             <div className="text-xs text-gray-500 space-y-1">
                <p>Frontend: React, TailwindCSS, Framer Node</p>
                <p>Backend Engine: Local Python Workers</p>
