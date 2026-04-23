@@ -87,6 +87,8 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const [subtitleCount, setSubtitleCount] = useState(subtitleBlocks.length);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState("");
+
   const [isCopied, setIsCopied] = useState(false);
   const [promptType, setPromptType] = useState('image'); // 'image' or 'video'
   const [outputFormat, setOutputFormat] = useState('text'); // 'text' or 'json'
@@ -114,6 +116,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   };
 
   const analyzeVisualIdentity = async (forceScriptId = null, overrideScripts = null) => {
+    setAnalyzeError("");
     let scriptToAnalyze = "";
     const targetId = forceScriptId || selectedScriptId;
     const scriptsList = overrideScripts || availableScripts;
@@ -210,9 +213,12 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     } catch (error) {
       console.error("Erro na análise visual:", error);
       const isQuota = error?.status === 429 || (error?.message || '').toLowerCase().includes('quota');
-      alert(isQuota
-        ? '⚠️ Cota da API Gemini esgotada. Verifique suas chaves em Configurações.'
-        : '❌ Falha na Análise: ' + error.message);
+      const msg = isQuota
+        ? '⚠️ COTA ESGOTADA: As chaves da API (Exclusiva e Principal) atingiram o limite do Google. Vá na aba Configurações e adicione novas chaves.'
+        : '❌ Falha na Análise: ' + error.message;
+      setAnalyzeError(msg);
+      // Fallback for browsers
+      try { alert(msg); } catch(e){}
     } finally {
       setIsAnalyzing(false);
     }
@@ -1001,6 +1007,11 @@ ${generateLabel}`;
                 </span>
               </div>
             </button>
+            {analyzeError && (
+              <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs font-bold uppercase tracking-wider text-center animate-pulse">
+                {analyzeError}
+              </div>
+            )}
         </div>
 
         {/* Visual DNA Pre-Production Panel */}
