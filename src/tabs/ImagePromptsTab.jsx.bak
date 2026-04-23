@@ -31,20 +31,10 @@ import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 import { generateVeoContent } from '../utils/veoUtils';
 
-const getPromptsApiKey = (configs) => {
-  // Priority: exclusive prompts key > gemini key from localStorage > configs object
-  // Returns the FULL key string (supports comma-separated multi-key rotation inside callGemini)
+const getPromptsApiKey = () => {
   const exclusiveKey = localStorage.getItem('guru_gemini_prompts_key');
-  if (exclusiveKey && exclusiveKey.trim()) return exclusiveKey.trim();
-
-  // Fallback: use full main Gemini key list (enables rotation)
-  const geminiKey = localStorage.getItem('guru_gemini_key');
-  if (geminiKey && geminiKey.trim()) return geminiKey.trim();
-
-  // Last resort: configs object from Supabase (loaded via SystemStatusContext)
-  if (configs?.gemini_prompts_key?.trim()) return configs.gemini_prompts_key.trim();
-  if (configs?.gemini_key?.trim()) return configs.gemini_key.trim();
-  return '';
+  if (exclusiveKey) return exclusiveKey;
+  return localStorage.getItem('guru_gemini_key') || '';
 };
 
 
