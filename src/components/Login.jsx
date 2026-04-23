@@ -36,7 +36,24 @@ export const Login = ({ onClose, isAppContext }) => {
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
-  // ... (checkBackend useEffect remains same)
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const res = await fetch(resolveApiUrl('/api/check'));
+        if (res.ok) {
+           const data = await res.json();
+           setBackendStatus(data.online ? 'online' : 'offline');
+        } else {
+           setBackendStatus('offline');
+        }
+      } catch {
+        setBackendStatus('offline');
+      }
+    };
+    checkBackend();
+    const timer = setInterval(checkBackend, 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -109,19 +126,25 @@ export const Login = ({ onClose, isAppContext }) => {
 
   const handleFinalRegister = async (e) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      setError('As senhas não coincidem.');
+    const pass = formData.password?.trim();
+    const conf = formData.confirmPassword?.trim();
+
+    if (!pass || !conf) {
+      setError('Por favor, preencha a senha e a confirmação.');
       return;
     }
-    if (formData.password.length < 6) {
+    if (pass !== conf) {
+      setError('As senhas não coincidem. Verifique se digitou corretamente nos dois campos.');
+      return;
+    }
+    if (pass.length < 6) {
       setError('A senha deve ter pelo menos 6 caracteres.');
       return;
     }
 
     setIsSubmitting(true);
-    // If in referral mode, we send empty verificationCode because referralCode is the proof
     const vCode = isReferralMode ? '' : formData.code;
-    const res = await register(formData.name, formData.email, formData.password, vCode, formData.referralCode, rememberMe);
+    const res = await register(formData.name, formData.email, pass, vCode, formData.referralCode, rememberMe);
     setIsSubmitting(false);
     
     if (!res.success) {
@@ -365,11 +388,12 @@ export const Login = ({ onClose, isAppContext }) => {
                             type={showRegPassword ? "text" : "password"} 
                             name="password" 
                             placeholder="Senha" 
+                            required
                             value={formData.password} 
                             onChange={handleChange} 
                             className="w-full h-14 bg-white/5 border border-white/10 rounded-xl pl-10 pr-10 text-white text-sm outline-none focus:border-neon-pink transition-all" 
                           />
-                          <button type="button" onClick={() => setShowRegPassword(!showRegPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+                          <button type="button" onClick={() => setShowRegPassword(!showRegPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-cyan transition-colors">
                              {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
@@ -379,10 +403,14 @@ export const Login = ({ onClose, isAppContext }) => {
                             type={showRegConfirmPassword ? "text" : "password"} 
                             name="confirmPassword" 
                             placeholder="Repetir" 
+                            required
                             value={formData.confirmPassword} 
                             onChange={handleChange} 
                             className="w-full h-14 bg-white/5 border border-white/10 rounded-xl pl-10 pr-10 text-white text-sm outline-none focus:border-neon-pink transition-all" 
                           />
+                          <button type="button" onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-neon-cyan transition-colors">
+                             {showRegConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
                         </div>
                       </div>
                       <button onClick={handleFinalRegister} disabled={isSubmitting} className="w-full h-16 bg-gradient-to-r from-neon-cyan to-neon-purple text-black font-black uppercase tracking-widest rounded-2xl hover:shadow-lg transition-all">
@@ -427,6 +455,7 @@ export const Login = ({ onClose, isAppContext }) => {
                           type={showRegPassword ? "text" : "password"} 
                           name="password" 
                           placeholder="Nova Senha" 
+                          required
                           value={formData.password} 
                           onChange={handleChange} 
                           className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-pink transition-all" 
@@ -445,6 +474,7 @@ export const Login = ({ onClose, isAppContext }) => {
                           type={showRegConfirmPassword ? "text" : "password"} 
                           name="confirmPassword" 
                           placeholder="Confirmar Senha" 
+                          required
                           value={formData.confirmPassword} 
                           onChange={handleChange} 
                           className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl pl-14 pr-14 text-white outline-none focus:border-neon-pink transition-all" 

@@ -25,7 +25,22 @@ const DNA_OPTIONS = [
   "Desabafo Visceral", "Guia Definitivo Passo-a-passo", "Futuro e Previsões", 
   "Ponto de Inflexão (A Virada)", "Debate Múltiplas Visões", "Micro-Histórias Conectadas",
   "Investigação Cinematográfica", "Reconstrução Histórica (Timeline)", "O Lado Oculto (Deep Dive)",
-  "Efeito Borboleta Inverso", "O Vazio Cognitivo (Loops)", "A Anatomia de um Golpe", "Paradoxo Temporal", "Duelo de Titãs (Análise)"
+  "Efeito Borboleta Inverso", "O Vazio Cognitivo (Loops)", "A Anatomia de um Golpe", "Paradoxo Temporal", "Duelo de Titãs (Análise)",
+  "Ciclo Vital da Terra (Agrícola)", "Dossiê de Produção Rural", "A Revolução Verde (Evolução)", "Do Campo à Mesa (Logística)",
+  "A Luta contra a Escassez", "Mitos da Roça vs Realidade", "Genealogia de uma Família Real", "Ascensão e Queda de Impérios",
+  "O Dia que Mudou o Mundo", "Crônicas de uma Guerra Esquecida", "Arquivos Secretos do Vaticano", "A Biografia de um Objeto",
+  "O Testamento Perdido", "Expedição ao Desconhecido", "Sobrevivência Extrema (Relato)", "A Ciência por Trás do Fenômeno",
+  "Engenharia da Natureza", "O Código Genético da Sociedade", "Simulação de Cenário Distópico", "Análise de Impacto Global",
+  "O Preço do Progresso", "A Anatomia de uma Descoberta", "O Diário de um Explorador", "Relatos de uma Vila Isolada",
+  "O Segredo das Pirâmides (Teoria)", "A Economia da Fé", "Poder Oculto das Corporações", "A Batalha Final (Estratégia)",
+  "O Despertar de um Gigante", "Heranças Malditas da História", "O Protocolo da Crise", "Raízes Culturais (Documental)",
+  "A Era das Máquinas Inteligentes", "O Vazio da Solidão (Humano)", "Fragmentos de Memória", "O Custo Humano do Ouro",
+  "Fronteiras Invisíveis", "A Lei do Mais Forte (Natureza)", "Metamorfose Social", "O Eco do Passado",
+  "Labirinto de Intrigas Políticas", "A Última Fronteira Espacial", "Oceanos de Mistério (Profundezas)", "A Dança das Estações",
+  "Pelas Mãos do Artesão", "O Legado dos Ancestrais", "Visão Microscópica do Mundo", "A Teia da Vida (Ecossistema)",
+  "Sombras do Império", "O Renascimento de uma Ideia", "Anatomia de um Crime Perfeito", "O Código de Ética Samurai",
+  "O Poder da Mente Subconsciente", "A Geopolítica do Petróleo", "Ouro Branco: A História do Sal", "Cidades Perdidas e Lendas",
+  "O Mistério da Matéria Escura", "Evolução Tecnológica Acelerada", "A Psicologia das Massas", "O Império do Consumo"
 ];
 
 const ALMA_OPTIONS = [
@@ -41,7 +56,21 @@ const ALMA_OPTIONS = [
   "Conselheiro Sussurrado", "Persuasão Magnética", "Transformacional Raiz",
   "Sabedoria Anciã", "Razão Minimalista", "Documental Frio e Analítico", 
   "Autoridade Histórica Clássica", "Reportagem Investigativa Densa",
-  "Sussurros de Conspiração", "Autoridade Técnica Absoluta", "Entusiasmo Contagiante", "Ironia Sofisticada", "Mentor Provocativo"
+  "Sussurros de Conspiração", "Autoridade Técnica Absoluta", "Entusiasmo Contagiante", "Ironia Sofisticada", "Mentor Provocativo",
+  "Rústica e Terrena (Agrícola)", "Nostálgica e Campesina", "Técnica e Especializada", "Resiliente e Perseverante",
+  "Sábia e Ancestral", "Documental de Natureza", "Investigativa e Implacável", "Melodramática e Intensa",
+  "Filosófica e Questionadora", "Utopista e Sonhadora", "Sombria e Gótica", "Futurista e Tecnológica",
+  "Espiritual e Transcedental", "Épica e Lendária", "Militarista e Disciplinada", "Sarcástica e Satírica",
+  "Aventurada e Audaz", "Trágica e Comovente", "Inspiradora e Motivacional", "Gélida e Distante",
+  "Apaixonada e Fervorosa", "Crítica e Mordaz", "Engraçada e Irreverente", "Científica e Rigorosa",
+  "Mística e Enigmática", "Urgente e Alarmista", "Pacífica e Meditativa", "Paternal e Protetora",
+  "Rebelde e Revolucionária", "Sofisticada e Elegante", "Brutalista e Crua", "Infantil e Lúdica",
+  "Agressiva e Dominante", "Submissa e Cautelosa", "Eufórica e Contagiante", "Melancólica e Profunda",
+  "Cinematográfica Noir", "Jornalismo de Guerra", "Narrador de Fábulas", "Voz da Consciência",
+  "Explorador Curioso", "Detetive de Histórias", "Sobrevivente Calejado", "Guru de Autoconhecimento",
+  "Político Persuasivo", "Criança Curiosa", "Velho do Restelo (Sábio)", "Inteligência Artificial Fria",
+  "Poeta Maldito", "Entonação Profética", "Analista de Dados Frio", "Coach de Alta Performance",
+  "Narrador de Suspense", "Voz de Documentário BBC", "Explorador de Fronteiras", "Mestre de Cerimônias"
 ];
 
 const CTA_OPTIONS = [
@@ -52,7 +81,7 @@ const CTA_OPTIONS = [
 const NICHO_OPTIONS = [
   "Documentário", "História", "Finanças", "Mistérios", "Crimes reais", "Espiritualidade",
   "Motivação", "Educação", "Curiosidades", "Histórias emocionantes", "Relacionamentos",
-  "Saúde", "Tecnologia", "Outro"
+  "Saúde", "Tecnologia", "Agricultura", "Outro"
 ];
 
 const IDIOMA_OPTIONS = [

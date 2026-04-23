@@ -53,6 +53,22 @@ export default async function handler(req, res) {
     }
   }
 
+  if (!apiKey) {
+    // ── 2b. Global Fallback to Admin Key ─────────────────────────────
+    const ADMIN_EMAIL = 'suporte.gurumaster@gmail.com';
+    if (email !== ADMIN_EMAIL) {
+       try {
+          const { data: adminData } = await supabase
+            .from('guru_user_data')
+            .select('data_value')
+            .eq('email', ADMIN_EMAIL)
+            .eq('data_key', 'youtube_key')
+            .single();
+          if (adminData?.data_value) apiKey = adminData.data_value;
+       } catch {}
+    }
+  }
+
   if (!apiKey && process.env.YOUTUBE_API_KEY) {
     apiKey = process.env.YOUTUBE_API_KEY;
   }

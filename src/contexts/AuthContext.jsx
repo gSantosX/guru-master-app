@@ -123,13 +123,12 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (name, email, password, verificationCode, referralCode, remember = false) => {
     try {
-      // 1. Verify email code only if no referral code is provided or if standard registry is used
-      // If we have a referralCode but no verificationCode, we rely on referral validation
-      if (verificationCode) {
-        const verifyRes = await verifyCode(email, verificationCode);
-        if (!verifyRes.success) throw new Error(verifyRes.error);
-      } else if (!referralCode) {
-        throw new Error("Código de verificação ou indicação é obrigatório.");
+      // Note: verificationCode is already verified in the Step 2 of the UI (handleVerifyCode)
+      // and deleted from the database by the serverless function. 
+      // Re-verifying here causes "Invalid Code" errors.
+      
+      if (!verificationCode && !referralCode) {
+        throw new Error("Verificação ou indicação é obrigatória para cadastro.");
       }
 
       // 2. Check if user already exists (maybe created via webhook)
