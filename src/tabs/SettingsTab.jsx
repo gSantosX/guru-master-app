@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Settings, Key, Palette, HardDrive, Shield, CheckCircle, Cpu, AlertCircle, Info, Zap, RefreshCw, Layout, Plus, Minus, Youtube, Download } from 'lucide-react';
+import { Settings, Key, Palette, HardDrive, Shield, CheckCircle, Cpu, AlertCircle, Info, Zap, RefreshCw, Layout, Plus, Minus, Youtube, Download , Trash2} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { resolveApiUrl } from '../utils/apiUtils';
@@ -81,6 +81,22 @@ export const SettingsTab = () => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     if (i < 2) return '0.1 MB'; // Minimum display
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  };
+
+  
+  const handleClearAllKeys = () => {
+    if (confirm("Tem certeza que deseja excluir TODAS as chaves API da tela? Após excluir, clique em 'Salvar Todas as Chaves' para confirmar a exclusão na nuvem.")) {
+      setGeminiKeys('');
+      setGptKeys('');
+      setGrokKeys('');
+      setGeminiPromptsKey('');
+      setAnthropicKey('');
+      setDeepseekKey('');
+      setElevenlabsKey('');
+      setLeonardoKey('');
+      setYoutubeKey('');
+      showToast('As chaves foram apagadas da tela. Clique em Salvar para confirmar.', 'warning');
+    }
   };
 
   const handleSaveKeys = async () => {
