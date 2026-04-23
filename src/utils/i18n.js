@@ -18,7 +18,7 @@ const TRANSLATIONS = {
       settings: "Configurações",
       check_update: "Checar Update",
       wait: "Aguarde...",
-      version: "v2.4.1",
+      version: "v2.5.0",
       user_guru: "Usuário Guru",
       view_profile: "Perfil",
       pro_member: "Membro Pro",
@@ -146,7 +146,7 @@ const TRANSLATIONS = {
       youtube_connection: "Conexão YouTube (Data V3)",
       about_title: "Sobre o Sistema",
       about_desc: "GURU MASTER AI Pipeline",
-      version: "v2.4.1"
+      version: "v2.5.0"
     },
     whisk: {
       title: "Auto Flow",
@@ -251,7 +251,7 @@ const TRANSLATIONS = {
       settings: "Settings",
       check_update: "Check Update",
       wait: "Wait...",
-      version: "v2.4.1",
+      version: "v2.5.0",
       user_guru: "Guru User",
       view_profile: "Profile",
       pro_member: "Pro Member"
@@ -376,7 +376,7 @@ const TRANSLATIONS = {
       youtube_connection: "YouTube Connection",
       about_title: "About the System",
       about_desc: "GURU MASTER AI Pipeline",
-      version: "v2.4.1"
+      version: "v2.5.0"
     },
     whisk: {
       title: "Auto Flow",
@@ -481,7 +481,7 @@ const TRANSLATIONS = {
       settings: "Configuraciones",
       check_update: "Checar Actualización",
       wait: "Espere...",
-      version: "v2.4.1",
+      version: "v2.5.0",
       user_guru: "Usuario Guru",
       view_profile: "Perfil",
       pro_member: "Miembro Pro"
@@ -604,7 +604,7 @@ const TRANSLATIONS = {
       grok_connection: "Conexión Grok",
       about_title: "Acerca del Sistema",
       about_desc: "GURU MASTER AI Pipeline",
-      version: "v2.4.1"
+      version: "v2.5.0"
     },
     whisk: {
       title: "Auto Flow",
