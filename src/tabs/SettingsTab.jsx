@@ -7,7 +7,7 @@ import { t } from '../utils/i18n';
 import { useAuth } from '../contexts/AuthContext';
 
 export const SettingsTab = () => {
-  const { status, configs, checkConnectivity, updateConfig, isInitialized, activeIndices, checkBulkKeys } = useSystemStatus();
+  const { status, configs, checkConnectivity, updateConfig, isInitialized, activeIndices, checkBulkKeys, showToast } = useSystemStatus();
   const { user } = useAuth();
   const isAdmin = user?.email === 'suporte.gurumaster@gmail.com' || localStorage.getItem('guru_user_email') === 'suporte.gurumaster@gmail.com';
   
@@ -85,7 +85,6 @@ export const SettingsTab = () => {
 
   
   const handleClearAllKeys = () => {
-    if (confirm("Tem certeza que deseja excluir TODAS as chaves API da tela? Após excluir, clique em 'Salvar Todas as Chaves' para confirmar a exclusão na nuvem.")) {
       setGeminiKeys('');
       setGptKeys('');
       setGrokKeys('');
@@ -95,8 +94,9 @@ export const SettingsTab = () => {
       setElevenlabsKey('');
       setLeonardoKey('');
       setYoutubeKey('');
-      showToast('As chaves foram apagadas da tela. Clique em Salvar para confirmar.', 'warning');
-    }
+      if (showToast) {
+        showToast('As chaves foram apagadas da tela. Clique em Salvar para confirmar.', 'warning');
+      }
   };
 
   const handleSaveKeys = async () => {
@@ -919,7 +919,7 @@ export const SettingsTab = () => {
             <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
               <Shield className="text-gray-400 w-5 h-5" /> {t('settings.about_title')}
             </h3>
-            <p className="text-sm text-gray-400 mb-4">{t('settings.about_desc')} v2.5.1</p>
+            <p className="text-sm text-gray-400 mb-4">{t('settings.about_desc')} v2.5.2</p>
             <div className="text-xs text-gray-500 space-y-1">
                <p>Frontend: React, TailwindCSS, Framer Node</p>
                <p>Backend Engine: Local Python Workers</p>
