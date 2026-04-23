@@ -31,20 +31,10 @@ import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 import { generateVeoContent } from '../utils/veoUtils';
 
-const getPromptsApiKey = (configs) => {
-  // Priority: exclusive prompts key > gemini key from localStorage > configs object
-  // Returns the FULL key string (supports comma-separated multi-key rotation inside callGemini)
+const getPromptsApiKey = () => {
   const exclusiveKey = localStorage.getItem('guru_gemini_prompts_key');
-  if (exclusiveKey && exclusiveKey.trim()) return exclusiveKey.trim();
-
-  // Fallback: use full main Gemini key list (enables rotation)
-  const geminiKey = localStorage.getItem('guru_gemini_key');
-  if (geminiKey && geminiKey.trim()) return geminiKey.trim();
-
-  // Last resort: configs object from Supabase (loaded via SystemStatusContext)
-  if (configs?.gemini_prompts_key?.trim()) return configs.gemini_prompts_key.trim();
-  if (configs?.gemini_key?.trim()) return configs.gemini_key.trim();
-  return '';
+  if (exclusiveKey) return exclusiveKey;
+  return localStorage.getItem('guru_gemini_key') || '';
 };
 
 
@@ -162,26 +152,21 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       ANALISE O ROTEIRO ABAIXO PARA EXTRAIR A IDENTIDADE VISUAL MESTRE (OS PADRÕES VISUAIS QUE CONECTAM TUDO).
       
       FOCO DA ANÁLISE:
-      1. CENÁRIOS: Identifique os locais, arquitetura, texturas dominantes.
-      2. ÉPOCA/AMBIENTE: Identifique se é histórico, contemporâneo, cyber, vintage.
+      1. CENÁRIOS: Identifique os locais, arquitetura, texturas dominantes (ex: mármore frio, madeira rústica, metal oxidado).
+      2. ÉPOCA/AMBIENTE: Identifique se é histórico, contemporâneo, cyber, vintage. Seja específico sobre a era.
       3. ATMOSFERA (MOOD): Identifique a carga emocional visual (sombrio, esperançoso, épico, melancólico).
-      4. ILUMINAÇÃO: Defina o estilo de luz (ex: luz lateral dramática, néon frio, chiaroscuro).
+      4. ILUMINAÇÃO: Defina o estilo de luz (ex: luz lateral dramática, luz suave de manhã, néon frio, chiaroscuro).
       5. PALETA: Defina as 3 cores mestre que dominam o visual.
-      6. CÂMERA: Sugira o movimento (tracking lento, handheld, close-ups extremos).
+      6. CÂMERA: Sugira o movimento (ex: tracking lento, handheld documental, close-ups extremos).
 
-      IMPORTANTE: Tags disponíveis para rec_genero: "Ultra-realista", "Cinema (Blockbuster)", "Cartoon / Animação", "Documentário", "Film Noir", "Ficção Científica", "Terror / Dark", "Fantasia Épica", "Anime"
-      Tags de câmera disponíveis: "Vista aérea", "Na altura dos olhos", "Vista de cima", "Vista de baixo", "Travelling", "Câmera lenta", "Zoom in", "Pan lateral"
-
-      RETORNE APENAS O JSON PURO SEM NENHUM TEXTO ANTES OU DEPOIS:
+      RETORNE APENAS UM JSON NO FORMATO:
       {
         "scenario": "detalhes arquitetônicos e locais principais",
         "era": "período exato ou estilo temporal definido",
         "mood": "vibe emocional visual específica",
         "lighting": "direção de fotografia e estilo de luz",
         "palette": "esquema de cores cinematográfico",
-        "camera": "lentes e movimentos de câmera recomendados",
-        "rec_genero": "escolha UMA tag exata da lista acima",
-        "rec_camera": ["tag1", "tag2"]
+        "camera": "lentes e movimentos de câmera recomendados"
       }
 
       ROTEIRO PARA ANÁLISE:
@@ -192,27 +177,12 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         temperature: 0.1,
         isPromptTask: true 
       });
-
-      // Robust JSON extraction: handles markdown code blocks and extra text
-      const cleaned = response.replace(/```json\n?|```/g, '').trim();
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('A IA não retornou um JSON válido. Tente novamente.');
-      const dna = JSON.parse(jsonMatch[0]);
-
-      if (!dna.scenario) throw new Error('Análise incompleta: campo scenario ausente.');
-
+      const cleanJson = response.replace(/```json|```/g, '').trim();
+      const dna = JSON.parse(cleanJson);
       setVisualDNA(dna);
-
-      // Auto-select recommended tags
-      if (dna.rec_genero) setGenero(dna.rec_genero);
-      if (dna.rec_camera && Array.isArray(dna.rec_camera)) setCameraMovimento(dna.rec_camera);
-
     } catch (error) {
       console.error("Erro na análise visual:", error);
-      const isQuota = error?.status === 429 || (error?.message || '').toLowerCase().includes('quota');
-      alert(isQuota
-        ? '⚠️ Cota da API Gemini esgotada. Verifique suas chaves em Configurações.'
-        : '❌ Falha na Análise: ' + error.message);
+      alert("❌ Falha na Análise Critica: " + error.message);
     } finally {
       setIsAnalyzing(false);
     }
@@ -1747,3 +1717,4 @@ ${generateLabel}`;
     </div>
   );
 };
+  
