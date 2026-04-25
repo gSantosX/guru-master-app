@@ -42,10 +42,18 @@ if (typeof window !== 'undefined') {
     }
   });
 
-  // Reset model cache when API key is updated so the new key can discover models fresh
+  // Limpa cache de modelos E histórico de uso quando chaves são atualizadas
   window.addEventListener('guru_config_updated', () => {
-    console.log('🔄 Config updated — clearing Gemini model cache.');
+    console.log('🔄 Config atualizada — limpando cache de modelos e histórico de chamadas.');
     cachedGeminiModels = null;
+    // Limpa histórico do tracker para todas as chaves armazenadas
+    // Evita que o tracker bloqueie chaves novas com histórico de chaves antigas
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('guru_gemini_history_'))
+        .forEach(k => localStorage.removeItem(k));
+      console.log('✅ Histórico de uso das chaves Gemini limpo.');
+    } catch(e) { console.warn('Erro ao limpar histórico:', e); }
   });
 }
 

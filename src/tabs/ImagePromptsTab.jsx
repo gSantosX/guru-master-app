@@ -233,9 +233,12 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
 
     } catch (error) {
       console.error("Erro na análise visual:", error);
-      const isQuota = error?.status === 429 || (error?.message || '').toLowerCase().includes('quota');
+      const isQuota = error?.status === 429 || (error?.message || '').toLowerCase().includes('quota') || (error?.message || '').toLowerCase().includes('exhausted');
+      const isAuth  = error?.status === 401 || error?.status === 403 || error?.status === 400 || (error?.message || '').toLowerCase().includes('api key') || (error?.message || '').toLowerCase().includes('invalid') || (error?.message || '').toLowerCase().includes('permission') || (error?.message || '').toLowerCase().includes('disabled');
       const msg = isQuota
-        ? '⚠️ COTA ESGOTADA: As chaves da API (Exclusiva e Principal) atingiram o limite do Google. Vá na aba Configurações e adicione novas chaves.'
+        ? '⚠️ COTA ESGOTADA: A chave atingiu o limite diário do Google (1500 req/dia para Gemini 2.0). Aguarde 24h ou adicione outra chave nas Configurações.'
+        : isAuth
+        ? `❌ CHAVE INVÁLIDA ou API DESABILITADA: ${error.message}\n\nVerifique: 1) A chave está correta? 2) A API "Generative Language" está ativada no Google Cloud Console?`
         : '❌ Falha na Análise: ' + error.message;
       setAnalyzeError(msg);
       // Fallback for browsers
@@ -458,7 +461,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         Repair these blocks keeping original descriptions:
         ${repaired}`;
         
-        const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-2.5-flash' }); // usa chave exclusiva
+        const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-2.0-flash' }); // gemini-2.0-flash: 1500 req/dia vs 250 do 2.5-flash
         repaired = aiRepaired.trim();
         setRepairLogs(prev => [...prev, "✓ Reparo de Estrutura via IA Concluído"]);
       }
@@ -686,7 +689,7 @@ ${generateLabel}`;
               step: globalRetry > 0 ? `Corrigindo Bloco ${i+1}...` : `Processando Bloco ${i+1}/${totalChunks}...` 
             }));
 
-            const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.5-flash' }); // usa chave exclusiva
+            const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.0-flash' }); // gemini-2.0-flash: 1500 req/dia vs 250 do 2.5-flash
             success = true;
             
             // Success processing
