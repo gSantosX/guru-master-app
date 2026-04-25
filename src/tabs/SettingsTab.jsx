@@ -84,20 +84,43 @@ export const SettingsTab = () => {
   };
 
   
-  const handleClearAllKeys = () => {
-      setGeminiKeys('');
-      setGptKeys('');
-      setGrokKeys('');
-      setGeminiPromptsKey('');
-      setAnthropicKey('');
-      setDeepseekKey('');
-      setElevenlabsKey('');
-      setLeonardoKey('');
-      setYoutubeKey('');
-      if (showToast) {
-        showToast('As chaves foram apagadas da tela. Clique em Salvar para confirmar.', 'warning');
-      }
+  const handleClearAllKeys = async () => {
+    // Limpa os campos visuais imediatamente
+    setGeminiKeys('');
+    setGptKeys('');
+    setGrokKeys('');
+    setGeminiPromptsKey('');
+    setAnthropicKey('');
+    setDeepseekKey('');
+    setElevenlabsKey('');
+    setLeonardoKey('');
+    setYoutubeKey('');
+
+    // Persiste a limpeza no Supabase — sem isso as chaves voltam após refresh/login
+    setIsSaving(true);
+    const success = await updateConfig({
+      gemini_key: '',
+      gpt_key: '',
+      grok_key: '',
+      gemini_prompts_key: '',
+      anthropic_key: '',
+      deepseek_key: '',
+      elevenlabs_key: '',
+      leonardo_key: '',
+      youtube_key: '',
+    });
+    setIsSaving(false);
+
+    if (showToast) {
+      showToast(
+        success
+          ? '🗑️ Todas as chaves foram excluídas permanentemente.'
+          : '⚠️ Chaves apagadas da tela, mas houve erro ao salvar no servidor. Clique em Salvar.',
+        success ? 'warning' : 'error'
+      );
+    }
   };
+
 
   const handleSaveKeys = async () => {
     setIsSaving(true);

@@ -63,44 +63,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // --- GLOBAL MASTER KEY FALLBACK ---
-      // Se chaves essenciais estiverem vazias, buscar do admin (suporte.gurumaster@gmail.com)
-      const ADMIN_EMAIL = 'suporte.gurumaster@gmail.com';
-      if (email !== ADMIN_EMAIL) {
-         const needsGemini = !baseConfig.gemini_key?.trim();
-         const needsPrompts = !baseConfig.gemini_prompts_key?.trim();
-         const needsYoutube = !baseConfig.youtube_key?.trim();
-
-         if (needsGemini || needsPrompts || needsYoutube) {
-            // Buscar config do admin
-            const { data: adminConfig } = await supabase
-              .from(TABLE)
-              .select('gemini_key, gpt_key, grok_key')
-              .eq('email', ADMIN_EMAIL)
-              .single();
-            
-            // Buscar chaves resilientes do admin
-            const { data: adminData } = await supabase
-              .from('guru_user_data')
-              .select('data_key, data_value')
-              .eq('email', ADMIN_EMAIL)
-              .in('data_key', ['gemini_prompts_key', 'youtube_key']);
-
-            if (needsGemini && adminConfig?.gemini_key) {
-               baseConfig.gemini_key = adminConfig.gemini_key;
-            }
-            if (needsPrompts) {
-               const adminPromptKey = adminData?.find(d => d.data_key === 'gemini_prompts_key')?.data_value;
-               if (adminPromptKey) baseConfig.gemini_prompts_key = adminPromptKey;
-               else if (adminConfig?.gemini_key) baseConfig.gemini_prompts_key = adminConfig.gemini_key; // Double fallback
-            }
-            if (needsYoutube) {
-               const adminYoutubeKey = adminData?.find(d => d.data_key === 'youtube_key')?.data_value;
-               if (adminYoutubeKey) baseConfig.youtube_key = adminYoutubeKey;
-            }
-         }
-      }
-
       return res.status(200).json(baseConfig);
     } catch (err) {
       console.error('Config GET error:', err);
