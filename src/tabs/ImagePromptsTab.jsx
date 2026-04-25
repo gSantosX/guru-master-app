@@ -31,26 +31,47 @@ import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 import { generateVeoContent } from '../utils/veoUtils';
 
-const getPromptsApiKey = (configs) => {
-  // Priority: exclusive prompts key > gemini key from localStorage > configs object
-  // Returns the FULL key string (supports comma-separated multi-key rotation inside callGemini)
-  const exclusiveKey = localStorage.getItem('guru_gemini_prompts_key');
-  if (exclusiveKey && exclusiveKey.trim()) return exclusiveKey.trim();
-
-  // Fallback: use full main Gemini key list (enables rotation)
-  const geminiKey = localStorage.getItem('guru_gemini_key');
-  if (geminiKey && geminiKey.trim()) return geminiKey.trim();
-
-  // Last resort: configs object from Supabase (loaded via SystemStatusContext)
-  if (configs?.gemini_prompts_key?.trim()) return configs.gemini_prompts_key.trim();
-  if (configs?.gemini_key?.trim()) return configs.gemini_key.trim();
-  return '';
-};
+// ⚠️ getPromptsApiKey is intentionally defined INSIDE the component
+// so it has live access to `configs` from SystemStatusContext.
+// The module-level stub below is kept only so the file parses correctly —
+// it is overridden by the real hook inside the component.
+const _getPromptsApiKeyStub = () => '';
 
 
 export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
+  // ── Chave exclusiva de prompts ──────────────────────────────────────
+  // Prioridade: 1) configs.gemini_prompts_key (Supabase) > 2) localStorage > 3) chave principal
+  // Esta função vive dentro do componente para ter acesso live ao `configs`.
   const { status, configs } = useSystemStatus();
   const [cloudScripts] = useCloudStorage('scripts', []);
+
+  // ── Chave exclusiva de prompts ──────────────────────────────────────────────
+  // Prioridade: 1) configs.gemini_prompts_key (Supabase) > 2) localStorage > 3) chave principal
+  // DEVE ficar após useSystemStatus() para que `configs` já esteja disponível.
+  const getPromptsApiKey = React.useCallback(() => {
+    // 1ª prioridade: chave exclusiva salva no Supabase (via SystemStatusContext)
+    if (configs?.gemini_prompts_key?.trim()) {
+      console.log('🔑 [ImagePrompts] Usando chave EXCLUSIVA de prompts (Supabase/configs)');
+      return configs.gemini_prompts_key.trim();
+    }
+    // 2ª prioridade: chave exclusiva no localStorage (sincronizada pelo SystemStatusContext)
+    const lsExclusive = localStorage.getItem('guru_gemini_prompts_key');
+    if (lsExclusive?.trim()) {
+      console.log('🔑 [ImagePrompts] Usando chave EXCLUSIVA de prompts (localStorage)');
+      return lsExclusive.trim();
+    }
+    // 3ª prioridade (fallback): chave Gemini principal
+    if (configs?.gemini_key?.trim()) {
+      console.warn('⚠️ [ImagePrompts] Chave exclusiva NÃO configurada — usando chave Gemini principal como fallback.');
+      return configs.gemini_key.trim();
+    }
+    const lsMain = localStorage.getItem('guru_gemini_key');
+    if (lsMain?.trim()) {
+      console.warn('⚠️ [ImagePrompts] Usando chave Gemini principal do localStorage como último fallback.');
+      return lsMain.trim();
+    }
+    return '';
+  }, [configs]); // Re-calcula automaticamente sempre que configs mudar (ex: usuário salva nova chave)
 
   const { promptState, setPromptState } = usePersistence();
   const { 
@@ -437,7 +458,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
         Repair these blocks keeping original descriptions:
         ${repaired}`;
         
-        const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-2.5-flash' });
+        const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-2.5-flash' }); // usa chave exclusiva
         repaired = aiRepaired.trim();
         setRepairLogs(prev => [...prev, "✓ Reparo de Estrutura via IA Concluído"]);
       }
@@ -665,7 +686,7 @@ ${generateLabel}`;
               step: globalRetry > 0 ? `Corrigindo Bloco ${i+1}...` : `Processando Bloco ${i+1}/${totalChunks}...` 
             }));
 
-            const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.5-flash' });
+            const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.5-flash' }); // usa chave exclusiva
             success = true;
             
             // Success processing
@@ -860,7 +881,7 @@ ${generateLabel}`;
         const promptBatchQuery = `${getSystemPrompt()}\n\nSCRIPT SEGMENT (BLOCK ${i+1}):\n"${segment}"\n\nGENERATE ELITE PROMPTS (ENGLISH ONLY):`;
  
         try {
-          const batchResult = await callGemini(getPromptsApiKey(), promptBatchQuery);
+          const batchResult = await callGemini(getPromptsApiKey(), promptBatchQuery); // usa chave exclusiva
           
           let processedBatch = "";
           if (genMode === 'quality') {
