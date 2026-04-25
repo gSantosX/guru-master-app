@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     const fetchOptions = {
       method: req.method,
       headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(30000)
+      signal: AbortSignal.timeout(55000) // 55s — alinhado ao maxDuration:60 do vercel.json
     };
 
     if (req.method === 'POST' && req.body) {

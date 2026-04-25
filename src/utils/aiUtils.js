@@ -50,9 +50,10 @@ if (typeof window !== 'undefined') {
 }
 
 // --- GEMINI SMART USAGE TRACKER ---
-// Limits: 15 Requests Per Minute (RPM), approx 1480 safe daily.
-const SAFE_RPM_LIMIT = 14; 
-const SAFE_RPD_LIMIT = 1450;
+// Free tier real limits: 15 RPM, 1500 RPD for flash models.
+// We set safety margin slightly below to avoid hard blocks.
+const SAFE_RPM_LIMIT = 14;   // Google free = 15 RPM  → bloqueia em 14 para dar margem
+const SAFE_RPD_LIMIT = 1480; // Google free = 1500 RPD → era 1450, aumentado para 1480
 
 const getRollingUsage = (apiKey) => {
    if (typeof window === 'undefined') return { rpm: 0, rpd: 0 };
@@ -104,11 +105,15 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
     const kIdx = (startIndex + i) % keyList.length;
     const apiKey = keyList[kIdx];
     
-    // PREEMPTIVE CHECK
+    // PREEMPTIVE CHECK — só pula se houver OUTRA chave disponível
     const usage = getRollingUsage(apiKey);
     if ((usage.rpm >= SAFE_RPM_LIMIT || usage.rpd >= SAFE_RPD_LIMIT) && i < iterations - 1) {
-       console.warn(`🔄 Gemini Tracker: Chave ${kIdx} bateu no teto de segurança (RPM: ${usage.rpm}). Pulando preventiva...`);
+       console.warn(`🔄 [Tracker] Chave ${kIdx} no teto de segurança (RPM: ${usage.rpm}/${SAFE_RPM_LIMIT}, RPD: ${usage.rpd}/${SAFE_RPD_LIMIT}). Pulando para próxima chave...`);
        continue;
+    }
+    if (usage.rpm >= SAFE_RPM_LIMIT || usage.rpd >= SAFE_RPD_LIMIT) {
+       // Última chave disponível e está no limite — avisa mas tenta mesmo assim
+       console.warn(`⚠️ [Tracker] Chave ${kIdx} no teto mas é a única disponível. Tentando mesmo assim (o Google decide)...`);
     }
     
     if (kIdx !== startIndex && usage.rpm < SAFE_RPM_LIMIT) {
@@ -151,8 +156,13 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
         }
       }
 
-      // Real Fallbacks (2024/2025 standard models)
-      const fallbacks = ["models/gemini-2.0-flash", "models/gemini-1.5-flash", "models/gemini-1.5-pro"];
+      // Real Fallbacks — inclui 2.5-flash que é o modelo mais pedido pelo sistema
+      const fallbacks = [
+        "models/gemini-2.5-flash",   // adicionado: modelo padrão do ImagePromptsTab
+        "models/gemini-2.0-flash",
+        "models/gemini-1.5-flash",
+        "models/gemini-1.5-pro"
+      ];
       fallbacks.forEach(f => { if (!modelsToTry.includes(f)) modelsToTry.push(f); });
 
       for (const modelPath of modelsToTry) {
