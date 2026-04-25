@@ -128,6 +128,8 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
         console.warn(`🔄 Gemini: Entrando na próxima chave (Index ${kIdx})...`);
     }
 
+
+    try {
       // Modelos a tentar — ordem de prioridade.
       // NUNCA adicionar gemini-2.5-flash aqui: free tier = 250 req/dia (esgota rápido)
       // gemini-2.0-flash tem 1500 req/dia e gemini-1.5-flash tem 1500 req/dia
@@ -146,6 +148,7 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
         'models/gemini-1.5-pro',
       ];
       fallbacks.forEach(f => { if (!modelsToTry.includes(f)) modelsToTry.push(f); });
+
 
       for (const modelPath of modelsToTry) {
         let attempts = 0;
