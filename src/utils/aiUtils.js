@@ -128,48 +128,22 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
         console.warn(`🔄 Gemini: Entrando na próxima chave (Index ${kIdx})...`);
     }
 
-    try {
+      // Modelos a tentar — ordem de prioridade.
+      // NUNCA adicionar gemini-2.5-flash aqui: free tier = 250 req/dia (esgota rápido)
+      // gemini-2.0-flash tem 1500 req/dia e gemini-1.5-flash tem 1500 req/dia
       const modelsToTry = [];
-      
-      // If a specific model is requested, try it first
+
+      // 1. Modelo pedido explicitamente vem primeiro
       if (options.model) {
-        modelsToTry.push(options.model);
+        const m = options.model.startsWith('models/') ? options.model : `models/${options.model}`;
+        modelsToTry.push(m);
       }
 
-      if (cachedGeminiModels) {
-        modelsToTry.push(...cachedGeminiModels);
-      } else {
-        try {
-          // v1beta is only for listing models, NOT for generateContent
-          const modelsRes = await fetch(resolveApiUrl(`/api/gemini/v1beta/models?key=${apiKey}`));
-          if (modelsRes.ok) {
-            const modelsData = await modelsRes.json();
-            if (modelsData.models) {
-              const list = [];
-              // Priority: 2.0-flash > 1.5-flash > 1.5-pro
-              const flash20 = modelsData.models.find(m => m.name.includes('gemini-2.0-flash') && m.supportedGenerationMethods?.includes('generateContent'));
-              const flash15 = modelsData.models.find(m => m.name.includes('gemini-1.5-flash') && !m.name.includes('8b') && m.supportedGenerationMethods?.includes('generateContent'));
-              const pro15 = modelsData.models.find(m => m.name.includes('gemini-1.5-pro') && m.supportedGenerationMethods?.includes('generateContent'));
-              
-              if (flash20) list.push(flash20.name);
-              if (flash15) list.push(flash15.name);
-              if (pro15) list.push(pro15.name);
-              
-              cachedGeminiModels = list;
-              modelsToTry.push(...list);
-            }
-          }
-        } catch (e) {
-          console.error("Gemini model list error:", e);
-        }
-      }
-
-      // Real Fallbacks — inclui 2.5-flash que é o modelo mais pedido pelo sistema
+      // 2. Fallbacks confiáveis (só modelos com 1500 RPD no free tier)
       const fallbacks = [
-        "models/gemini-2.5-flash",   // adicionado: modelo padrão do ImagePromptsTab
-        "models/gemini-2.0-flash",
-        "models/gemini-1.5-flash",
-        "models/gemini-1.5-pro"
+        'models/gemini-2.0-flash',
+        'models/gemini-1.5-flash',
+        'models/gemini-1.5-pro',
       ];
       fallbacks.forEach(f => { if (!modelsToTry.includes(f)) modelsToTry.push(f); });
 
