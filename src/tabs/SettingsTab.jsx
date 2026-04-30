@@ -15,12 +15,16 @@ export const SettingsTab = () => {
   const [gptKeys, setGptKeys] = useState(configs.gpt_key || '');
   const [grokKeys, setGrokKeys] = useState(configs.grok_key || '');
   const [geminiPromptsKey, setGeminiPromptsKey] = useState(configs.gemini_prompts_key || '');
+  const [googleScriptKey, setGoogleScriptKey] = useState(configs.google_script_key || '');
+  const [youtubeKey, setYoutubeKey] = useState(configs.youtube_key || '');
+  // status de validação das chaves pessoais: null | 'checking' | 'valid' | 'invalid'
+  const [googleScriptKeyStatus, setGoogleScriptKeyStatus] = useState(null);
+  const [youtubeKeyStatus, setYoutubeKeyStatus] = useState(null);
   
   const [anthropicKey, setAnthropicKey] = useState(configs.anthropic_key || '');
   const [deepseekKey, setDeepseekKey] = useState(configs.deepseek_key || '');
   const [elevenlabsKey, setElevenlabsKey] = useState(configs.elevenlabs_key || '');
   const [leonardoKey, setLeonardoKey] = useState(configs.leonardo_key || '');
-  const [youtubeKey, setYoutubeKey] = useState(configs.youtube_key || '');
   const [googleClientId, setGoogleClientId] = useState(configs.google_client_id || '');
   const [smtpUser, setSmtpUser] = useState(configs.smtp_user || '');
   const [smtpPass, setSmtpPass] = useState(configs.smtp_password || '');
@@ -50,14 +54,20 @@ export const SettingsTab = () => {
     setGptKeys(configs.gpt_key || '');
     setGrokKeys(configs.grok_key || '');
     setGeminiPromptsKey(configs.gemini_prompts_key || '');
+    const gsk = configs.google_script_key || '';
+    const ytk = configs.youtube_key || '';
+    setGoogleScriptKey(gsk);
+    setYoutubeKey(ytk);
     setAnthropicKey(configs.anthropic_key || '');
     setDeepseekKey(configs.deepseek_key || '');
     setElevenlabsKey(configs.elevenlabs_key || '');
     setLeonardoKey(configs.leonardo_key || '');
-    setYoutubeKey(configs.youtube_key || '');
     setGoogleClientId(configs.google_client_id || '');
     setSmtpUser(configs.smtp_user || '');
     setSmtpPass(configs.smtp_password || '');
+    // Auto-valida se já tem chaves salvas
+    if (gsk) setTimeout(() => testGoogleScriptKey(gsk), 1200);
+    if (ytk) setTimeout(() => testYoutubeKey(ytk), 1600);
     if (configs.active_ai) setActiveAi(configs.active_ai);
     setFfmpegPath(configs.ffmpeg_path || 'ffmpeg');
     setFfprobePath(configs.ffprobe_path || 'ffprobe');
@@ -90,19 +100,20 @@ export const SettingsTab = () => {
     setGptKeys('');
     setGrokKeys('');
     setGeminiPromptsKey('');
+    setGoogleScriptKey('');
     setAnthropicKey('');
     setDeepseekKey('');
     setElevenlabsKey('');
     setLeonardoKey('');
     setYoutubeKey('');
 
-    // Persiste a limpeza no Supabase — sem isso as chaves voltam após refresh/login
     setIsSaving(true);
     const success = await updateConfig({
       gemini_key: '',
       gpt_key: '',
       grok_key: '',
       gemini_prompts_key: '',
+      google_script_key: '',
       anthropic_key: '',
       deepseek_key: '',
       elevenlabs_key: '',
@@ -129,6 +140,7 @@ export const SettingsTab = () => {
       gpt_key: typeof gptKeys === 'string' ? gptKeys.split(',').map(k => k.trim()).filter(Boolean).join(',') : '',
       grok_key: typeof grokKeys === 'string' ? grokKeys.split(',').map(k => k.trim()).filter(Boolean).join(',') : '',
       gemini_prompts_key: geminiPromptsKey.trim(),
+      google_script_key: googleScriptKey.trim(),
       anthropic_key: anthropicKey,
       deepseek_key: deepseekKey,
       elevenlabs_key: elevenlabsKey,
@@ -182,6 +194,74 @@ export const SettingsTab = () => {
     setReduceMotion(isChecked);
     localStorage.setItem('guru_reduce_motion', isChecked);
     window.dispatchEvent(new Event('guru_motion_change'));
+  };
+
+  // ── VALIDAÇÃO REAL DA CHAVE GOOGLE (Gemini) via /api/check ──────────────────
+  const testGoogleScriptKey = async (keyToTest) => {
+    const key = (keyToTest !== undefined ? keyToTest : googleScriptKey).trim();
+    if (!key) { setGoogleScriptKeyStatus(null); return false; }
+    setGoogleScriptKeyStatus('checking');
+    try {
+      const res = await fetch(resolveApiUrl('/api/check'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'gemini', keys: [key] })
+      });
+      if (!res.ok) { setGoogleScriptKeyStatus('invalid'); return false; }
+      const data = await res.json();
+      const st = data.statuses?.[0] || 'offline';
+      const valid = st === 'online';
+      setGoogleScriptKeyStatus(valid ? 'valid' : 'invalid');
+      return valid;
+    } catch {
+      setGoogleScriptKeyStatus('invalid');
+      return false;
+    }
+  };
+
+  // ── VALIDAÇÃO REAL DA CHAVE YOUTUBE via /api/check ────────────────────────
+  const testYoutubeKey = async (keyToTest) => {
+    const key = (keyToTest !== undefined ? keyToTest : youtubeKey).trim();
+    if (!key) { setYoutubeKeyStatus(null); return false; }
+    setYoutubeKeyStatus('checking');
+    try {
+      const res = await fetch(resolveApiUrl('/api/check'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'youtube', keys: [key] })
+      });
+      if (!res.ok) { setYoutubeKeyStatus('invalid'); return false; }
+      const data = await res.json();
+      const st = data.statuses?.[0] || 'offline';
+      const valid = st === 'online';
+      setYoutubeKeyStatus(valid ? 'valid' : 'invalid');
+      return valid;
+    } catch {
+      setYoutubeKeyStatus('invalid');
+      return false;
+    }
+  };
+
+  // ── SALVAR E VERIFICAR CHAVES PESSOAIS ────────────────────────────────────
+  const handleSavePersonalKeys = async () => {
+    setIsSaving(true);
+    // Valida ambas em paralelo antes de salvar
+    const [gOk, ytOk] = await Promise.all([
+      googleScriptKey.trim() ? testGoogleScriptKey(googleScriptKey) : Promise.resolve(null),
+      youtubeKey.trim()      ? testYoutubeKey(youtubeKey)           : Promise.resolve(null),
+    ]);
+    // Só salva se pelo menos a validação não retornou 'invalid' (null = campo vazio = ok)
+    const hasError = gOk === false || ytOk === false;
+    if (!hasError) {
+      await updateConfig({
+        google_script_key: googleScriptKey.trim(),
+        youtube_key: youtubeKey.trim(),
+      });
+      showToast('✅ Chaves verificadas e salvas com sucesso!', 'success');
+    } else {
+      showToast('❌ Uma ou mais chaves estão inválidas. Verifique e tente novamente.', 'error');
+    }
+    setIsSaving(false);
   };
 
   const handleClearCache = async () => {
@@ -348,6 +428,147 @@ export const SettingsTab = () => {
         
         {/* Left Column */}
         <div className="space-y-6">
+
+          {/* ── CARD PÚBLICO: SUAS CHAVES PESSOAIS (visível a TODOS) ────── */}
+          <div className="glass-card p-6 border border-neon-cyan/20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-neon-cyan/5 rounded-full blur-xl pointer-events-none" />
+            <h3 className="text-lg font-black text-white flex items-center gap-2 mb-1 uppercase tracking-widest">
+              <Key className="text-neon-cyan w-5 h-5" /> Suas Chaves Pessoais
+            </h3>
+            <p className="text-[10px] text-gray-500 mb-5 italic tracking-wide">
+              Estas chaves são exclusivas da sua conta e aumentam seus limites de uso.
+            </p>
+
+            <div className="space-y-5">
+              {/* GOOGLE API KEY para roteiros */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-br from-neon-cyan to-neon-purple" />
+                    <label className="text-xs font-black text-gray-300 uppercase tracking-widest">
+                      Google API Key — Criador de Roteiro
+                    </label>
+                  </div>
+                  {configs.google_script_key && (
+                    <button
+                      onClick={() => {
+                        if (confirm("Tem certeza que deseja excluir esta chave permanentemente de todas as suas máquinas?")) {
+                          setGoogleScriptKey('');
+                          setGoogleScriptKeyStatus(null);
+                          updateConfig({ google_script_key: '' });
+                          showToast("Chave do Google esquecida permanentemente.", "warning");
+                        }
+                      }}
+                      className="text-[9px] text-red-500 hover:text-red-400 font-bold uppercase flex items-center gap-1 transition-all"
+                    >
+                      <Trash2 className="w-3 h-3" /> Esquecer chave
+                    </button>
+                  )}
+                </div>
+                <p className="text-[9px] text-gray-500 italic mb-2 pl-5">
+                  Chave gratuita usada <span className="text-neon-cyan font-bold">exclusivamente</span> para gerar roteiros. Economiza a cota principal.
+                  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="ml-1 text-neon-cyan underline">Obter chave gratuita ↗</a>
+                </p>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={googleScriptKey}
+                    onChange={(e) => { setGoogleScriptKey(e.target.value); setGoogleScriptKeyStatus(null); }}
+                    placeholder="AIza... (chave gratuita do Google AI Studio)"
+                    className={`w-full bg-dark/50 rounded-lg p-2.5 pr-32 text-gray-300 focus:outline-none text-xs font-mono transition-all hover:bg-dark/70 border ${
+                      googleScriptKeyStatus === 'valid'    ? 'border-green-500/60 shadow-[0_0_16px_rgba(34,197,94,0.3)]' :
+                      googleScriptKeyStatus === 'invalid'  ? 'border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.2)]' :
+                      googleScriptKeyStatus === 'checking' ? 'border-yellow-500/40' :
+                      'border-neon-cyan/20 focus:border-neon-cyan/60'
+                    }`}
+                  />
+                  {/* Badge de status inline */}
+                  {googleScriptKeyStatus && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      {googleScriptKeyStatus === 'checking' && (
+                        <span className="text-[8px] px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 font-black uppercase border border-yellow-500/30 animate-pulse">Verificando...</span>
+                      )}
+                      {googleScriptKeyStatus === 'valid' && (
+                        <span className="text-[8px] px-2 py-1 rounded bg-green-500/20 text-green-400 font-black uppercase border border-green-500/30">✓ Conectada</span>
+                      )}
+                      {googleScriptKeyStatus === 'invalid' && (
+                        <span className="text-[8px] px-2 py-1 rounded bg-red-500/20 text-red-400 font-black uppercase border border-red-500/30">✗ Inválida</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* YOUTUBE API KEY */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Youtube className="w-3.5 h-3.5 text-red-400" />
+                    <label className="text-xs font-black text-gray-300 uppercase tracking-widest">
+                      YouTube API Key
+                    </label>
+                    {youtubeKeyStatus === 'valid' && (
+                      <span className="text-[8px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-black uppercase border border-green-500/30">✓ Online</span>
+                    )}
+                  </div>
+                  {configs.youtube_key && (
+                    <button
+                      onClick={() => {
+                        if (confirm("Tem certeza que deseja excluir esta chave permanentemente de todas as suas máquinas?")) {
+                          setYoutubeKey('');
+                          setYoutubeKeyStatus(null);
+                          updateConfig({ youtube_key: '' });
+                          showToast("Chave do YouTube esquecida permanentemente.", "warning");
+                        }
+                      }}
+                      className="text-[9px] text-red-500 hover:text-red-400 font-bold uppercase flex items-center gap-1 transition-all"
+                    >
+                      <Trash2 className="w-3 h-3" /> Esquecer chave
+                    </button>
+                  )}
+                </div>
+                <p className="text-[9px] text-gray-500 italic mb-2 pl-5">
+                  Necessária para o Modelador de Canais e Monitoramento.
+                  <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="ml-1 text-red-400 underline">Obter chave ↗</a>
+                </p>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={youtubeKey}
+                    onChange={(e) => { setYoutubeKey(e.target.value); setYoutubeKeyStatus(null); }}
+                    placeholder="AIza..."
+                    className={`w-full bg-dark/50 rounded-lg p-2.5 pr-10 text-gray-300 focus:outline-none text-xs font-mono transition-all hover:bg-dark/70 border ${
+                      youtubeKeyStatus === 'valid'    ? 'border-green-500/60 shadow-[0_0_12px_rgba(34,197,94,0.25)]' :
+                      youtubeKeyStatus === 'invalid'  ? 'border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.2)]' :
+                      youtubeKeyStatus === 'checking' ? 'border-yellow-500/40' :
+                      'border-white/10 focus:border-red-400/40'
+                    }`}
+                  />
+                  {youtubeKeyStatus === 'checking' && (
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                      <RefreshCw className="w-3.5 h-3.5 text-yellow-400 animate-spin" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* SALVAR E VERIFICAR */}
+              <button
+                onClick={handleSavePersonalKeys}
+                disabled={isSaving}
+                className={`w-full py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 ${
+                  googleScriptKeyStatus === 'valid' && youtubeKeyStatus !== 'invalid'
+                    ? 'bg-green-500/15 text-green-400 border border-green-500/40 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.35)]'
+                    : 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/20 hover:shadow-[0_0_15px_rgba(0,243,255,0.2)]'
+                }`}
+              >
+                {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
+                {isSaving ? 'Verificando e Salvando...' : 'Salvar e Verificar Conexão'}
+              </button>
+            </div>
+          </div>
+
+          {isAdmin ? (
           <div className="glass-card p-6">
             <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4 border-b border-white/10 pb-2">
               <Key className="text-neon-cyan w-5 h-5" /> {t('settings.api_config')}
@@ -646,6 +867,36 @@ export const SettingsTab = () => {
               </div>
             </div>
           </div>
+          ) : (
+          /* Card status para usuários comuns — sem nenhuma chave exposta */
+          <div className="glass-card p-6">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4 border-b border-white/10 pb-2">
+              <Shield className="text-neon-cyan w-5 h-5" /> Status das Integrações
+            </h3>
+            <div className="space-y-3">
+              {[
+                { label: 'Gemini AI (Motor Principal)', st: status.gemini, icon: Shield },
+                { label: 'Chave Exclusiva (Prompts)', st: status.prompts_key, icon: Shield },
+                { label: 'YouTube API', st: status.youtube, icon: Youtube },
+              ].map(({ label, st, icon: Icon }) => {
+                const on = st === 'online' || st === 'configured';
+                const chk = st === 'checking...';
+                return (
+                  <div key={label} className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-white/[0.02]">
+                    <Icon className={`w-4 h-4 shrink-0 ${on ? 'text-green-400' : chk ? 'text-yellow-400 animate-pulse' : 'text-red-400'}`} />
+                    <span className="text-sm text-gray-300 flex-1">{label}</span>
+                    <span className={`text-[9px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest border ${
+                      on ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                      chk ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                      'bg-red-500/10 text-red-400 border-red-500/20'
+                    }`}>{on ? 'LIGADO' : chk ? 'TESTANDO' : 'DESLIGADO'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          )}
+
 
           <div className="glass-card p-6">
             <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4 border-b border-white/10 pb-2">
@@ -708,16 +959,14 @@ export const SettingsTab = () => {
                   </ul>
                </div>
                
-               <a 
-                 href="https://github.com/gSantosX/guru-master-app/releases/latest" 
-                 target="_blank" 
-                 rel="noopener noreferrer" 
-                 className="block w-full"
+               <div 
+                 className="block w-full cursor-not-allowed opacity-50"
+                 title="Disponível em breve!"
                >
-                  <button className="w-full bg-white text-dark hover:bg-neon-cyan hover:text-black font-black uppercase tracking-widest py-3.5 rounded-xl transition-all shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(0,243,255,0.3)] hover:-translate-y-1 flex items-center justify-center gap-2 text-xs">
-                    <Download className="w-4 h-4 shrink-0" /> Baixar Instalador Windows (.exe)
+                  <button disabled className="w-full bg-white text-dark font-black uppercase tracking-widest py-3.5 rounded-xl transition-all shadow-[0_0_15px_rgba(255,255,255,0.1)] flex items-center justify-center gap-2 text-xs">
+                    <Download className="w-4 h-4 shrink-0" /> Baixar Instalador Windows (.exe) (Em breve!)
                   </button>
-               </a>
+               </div>
                <p className="text-center text-[8px] text-gray-600 font-bold uppercase tracking-widest">Versão atual compatível com Windows 10/11 x64</p>
              </div>
           </div>

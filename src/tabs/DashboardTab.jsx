@@ -73,7 +73,7 @@ export const DashboardTab = ({ setActiveTab }) => {
         </motion.div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
         
         {/* Welcome & Status Section */}
         <div className="lg:col-span-8 flex flex-col gap-8">
@@ -155,12 +155,12 @@ export const DashboardTab = ({ setActiveTab }) => {
         </div>
 
         {/* Plan & Sidebar Section */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
+        <div className="lg:col-span-4 flex flex-col h-full">
            <motion.div 
              initial={{ opacity: 0, x: 20 }}
              animate={{ opacity: 1, x: 0 }}
              transition={{ delay: 0.2 }}
-             className="glass-card p-6 border border-white/10 relative overflow-hidden"
+           className="glass-card p-6 border border-white/10 relative overflow-hidden flex flex-col flex-1 h-full"
            >
               <div className="absolute top-0 right-0 w-16 h-16 opacity-10">
                  <Shield className="w-full h-full text-neon-cyan" />
@@ -208,73 +208,19 @@ export const DashboardTab = ({ setActiveTab }) => {
 
               <button 
                 onClick={() => setActiveTab('settings')}
-                className="w-full py-2.5 rounded-lg border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all"
+                className="mt-auto w-full py-2.5 rounded-lg border border-white/10 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/5 transition-all"
               >
                 Gerenciar Assinatura
               </button>
            </motion.div>
 
-           {/* Status do Sistema — resumo simples */}
+           {/* Status do Sistema — removido do dashboard
            <div 
              className={`glass-card p-6 bg-gradient-to-br transition-all duration-500 border-[1px] ${isHealthy ? 'from-neon-cyan/10 to-transparent border-white/5' : 'from-red-500/10 to-transparent border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.1)]'}`}
            >
-              <div className="flex items-center justify-between mb-4">
-                 <h4 className="text-white font-black text-xs uppercase tracking-[0.1em]">Status do Sistema</h4>
-                 <div className={`w-2 h-2 rounded-full ${isHealthy ? 'bg-neon-cyan animate-pulse shadow-[0_0_10px_#00f3ff]' : 'bg-red-500 shadow-[0_0_10px_#ef4444]'}`} />
-              </div>
-
-              <div className="space-y-4">
-                 {/* Servidor */}
-                 <div 
-                   className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-                   onClick={() => checkConnectivity()}
-                 >
-                    <Activity className={`w-4 h-4 ${isHealthy ? 'text-neon-cyan' : 'text-red-500'}`} />
-                    <div>
-                       <p className="text-[10px] text-white font-bold">
-                          {isHealthy ? 'Operacional' : 'Anomalia Detectada'}
-                       </p>
-                       <p className="text-[9px] text-gray-500">
-                         Latência: {status.rendering === 'online' ? `${lastLatency}ms` : '---'}
-                       </p>
-                    </div>
-                 </div>
-
-                 {/* Motor Neural */}
-                 <div className="flex items-center gap-3">
-                    <Zap className={`w-4 h-4 ${engineOnline ? 'text-neon-purple' : 'text-gray-600'}`} />
-                    <div>
-                       <p className="text-[10px] text-white font-bold">Motor Neural</p>
-                       <p className="text-[9px] text-gray-500 truncate max-w-[150px]">
-                          {configs.active_model || 'Aguardando...'}
-                          <span className={`ml-1 text-[8px] uppercase font-bold ${engineOnline ? 'text-neon-cyan' : 'text-gray-600'}`}>
-                            ({status[activeAiKey] || 'offline'})
-                          </span>
-                       </p>
-                    </div>
-                 </div>
-
-                 {/* Hint para configurações */}
-                 <button
-                   onClick={() => setActiveTab('settings')}
-                   className="flex items-center gap-2 pt-1 w-full text-left hover:opacity-80 transition-opacity"
-                 >
-                    <Key className="w-3 h-3 text-gray-600 shrink-0" />
-                    <p className="text-[9px] text-gray-500 italic">
-                       Ver status de todas as chaves em{' '}
-                       <span className="text-neon-cyan font-bold not-italic">Configurações</span>
-                    </p>
-                 </button>
-
-                 {!isHealthy && (
-                   <div className="pt-1 border-t border-red-500/20">
-                     <p className="text-[8px] text-red-400 font-bold uppercase tracking-widest animate-bounce">
-                       Ação requerida na configuração
-                     </p>
-                   </div>
-                 )}
-              </div>
            </div>
+           */}
+
         </div>
 
         {/* Shortcuts Grid */}

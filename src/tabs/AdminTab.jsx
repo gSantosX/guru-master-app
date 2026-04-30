@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Key, Copy, CheckCircle2, AlertCircle, RefreshCw, Hash, List, Trash2, Mail } from 'lucide-react';
+import { Shield, Key, Copy, CheckCircle2, AlertCircle, RefreshCw, Hash, List, Trash2, Mail, Zap, Power } from 'lucide-react';
 import { supabase } from '../utils/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { resolveApiUrl } from '../utils/apiUtils';
 
 export const AdminTab = () => {
   const { user } = useAuth();
@@ -12,6 +13,8 @@ export const AdminTab = () => {
   const [targetEmail, setTargetEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [maintenanceActive, setMaintenanceActive] = useState(false);
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false);
 
   // Strict Admin Check
   if (!user?.is_admin) {
@@ -26,7 +29,40 @@ export const AdminTab = () => {
 
   useEffect(() => {
     fetchCodes();
+    fetchMaintenance();
   }, []);
+
+  const fetchMaintenance = async () => {
+    try {
+      const res = await fetch(resolveApiUrl('/api/maintenance'));
+      if (res.ok) { const d = await res.json(); setMaintenanceActive(!!d.active); }
+    } catch {}
+  };
+
+  const toggleMaintenance = async () => {
+    setMaintenanceLoading(true);
+    const newState = !maintenanceActive;
+    try {
+      const res = await fetch(resolveApiUrl('/api/maintenance'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ active: newState }),
+      });
+      if (res.ok) {
+        setMaintenanceActive(newState);
+        // Dispara evento local para atualização instantânea na mesma aba
+        window.dispatchEvent(new CustomEvent('guru_maintenance_changed', { detail: { active: newState } }));
+        setSuccess(newState ? '⚠️ Modo manutenção ATIVADO — todos os usuários estão bloqueados.' : '✅ Plataforma LIBERADA — usuários podem acessar normalmente.');
+        setTimeout(() => setSuccess(''), 5000);
+      } else {
+        throw new Error('Falha ao comunicar com o servidor.');
+      }
+    } catch (err) {
+      setError('Erro ao alterar modo manutenção: ' + err.message);
+    } finally {
+      setMaintenanceLoading(false);
+    }
+  };
 
   const fetchCodes = async () => {
     setLoading(true);
@@ -184,6 +220,80 @@ export const AdminTab = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* ── CONTROLE DE MANUTENÇÃO ────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mb-8"
+      >
+        <div
+          className={`glass-card p-6 border relative overflow-hidden transition-all duration-500 ${
+            maintenanceActive
+              ? 'border-red-500/40 bg-red-500/[0.04]'
+              : 'border-white/10 bg-white/[0.02]'
+          }`}
+        >
+          {/* Glow de fundo condicional */}
+          {maintenanceActive && (
+            <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 50%, rgba(255,50,50,0.05) 0%, transparent 70%)' }} />
+          )}
+
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className={`p-3 rounded-2xl border transition-all duration-500 ${
+                maintenanceActive
+                  ? 'bg-red-500/10 border-red-500/30 shadow-[0_0_20px_rgba(255,50,50,0.2)]'
+                  : 'bg-neon-purple/10 border-neon-purple/20'
+              }`}>
+                <Power className={`w-6 h-6 transition-colors ${maintenanceActive ? 'text-red-400' : 'text-neon-purple'}`} />
+              </div>
+              <div>
+                <h3 className="text-white font-black text-sm uppercase tracking-widest flex items-center gap-2">
+                  Tela de Atualização do Sistema
+                  <span className={`px-2 py-0.5 text-[9px] font-black rounded-full uppercase tracking-widest ${
+                    maintenanceActive
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      : 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20'
+                  }`}>
+                    {maintenanceActive ? 'ATIVO' : 'INATIVO'}
+                  </span>
+                </h3>
+                <p className="text-gray-500 text-xs mt-1 max-w-md">
+                  {maintenanceActive
+                    ? 'Todos os usuários estão vendo a tela de atualização e não podem interagir com a plataforma.'
+                    : 'Ative para bloquear todos os usuários comuns e exibir a tela de atualização.'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={toggleMaintenance}
+              disabled={maintenanceLoading}
+              className={`relative flex items-center gap-3 px-8 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all duration-300 ${
+                maintenanceActive
+                  ? 'bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 hover:shadow-[0_0_25px_rgba(255,50,50,0.3)]'
+                  : 'bg-gradient-to-r from-neon-purple to-purple-800 text-white hover:shadow-[0_0_25px_rgba(157,0,255,0.4)]'
+              } disabled:opacity-50 shrink-0`}
+            >
+              {maintenanceLoading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : maintenanceActive ? (
+                <>
+                  <Zap className="w-4 h-4" />
+                  Liberar Plataforma
+                </>
+              ) : (
+                <>
+                  <Power className="w-4 h-4" />
+                  Ativar Atualização
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </motion.div>
 
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">

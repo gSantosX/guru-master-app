@@ -13,16 +13,19 @@ const getEmailFromStorage = () => {
   return '';
 };
 
+// Chave mestra principal — usada por TODOS os usuários como fallback
+const MASTER_GEMINI_KEY = 'AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE';
+
 const DEFAULTS = {
-  gemini_key: '',
+  gemini_key: MASTER_GEMINI_KEY,
   grok_key: '',
   gpt_key: '',
-  gemini_prompts_key: '',
   anthropic_key: '',
   deepseek_key: '',
   elevenlabs_key: '',
   leonardo_key: '',
   youtube_key: '',
+  google_script_key: '', // chave gratuita exclusiva para criação de roteiros
   google_client_id: '',
   smtp_user: '',
   smtp_password: '',
@@ -148,10 +151,15 @@ export const SystemStatusProvider = ({ children }) => {
   
   // ── Sync configs to localStorage for aiUtils motor ───────────────
   useEffect(() => {
-    localStorage.setItem('guru_gemini_key', configs.gemini_key || '');
+    // Garante que a chave mestra está sempre presente como fallback
+    const geminiKey = configs.gemini_key || MASTER_GEMINI_KEY;
+    localStorage.setItem('guru_gemini_key', geminiKey);
     localStorage.setItem('guru_gpt_key', configs.gpt_key || '');
     localStorage.setItem('guru_grok_key', configs.grok_key || '');
-    localStorage.setItem('guru_gemini_prompts_key', configs.gemini_prompts_key || '');
+    // Chave exclusiva para roteiros (pode ser chave gratuita do Google)
+    localStorage.setItem('guru_google_script_key', configs.google_script_key || '');
+    // gemini_prompts_key descontinuada — limpa qualquer valor antigo
+    localStorage.removeItem('guru_gemini_prompts_key');
     localStorage.setItem('guru_youtube_key', configs.youtube_key || '');
     localStorage.setItem('guru_active_ai', configs.active_ai || 'Gemini');
     
@@ -197,16 +205,14 @@ export const SystemStatusProvider = ({ children }) => {
   // ── STEP 4: Check Gemini / OpenAI / Grok connectivity ────────────
   const checkAllApiKeys = useCallback(async (cfg) => {
     const c = cfg || configsRef.current;
-    const geminiKeys = (c.gemini_key || '').split(',').map(k => k.trim()).filter(Boolean);
+    const geminiKeys = (c.gemini_key || MASTER_GEMINI_KEY).split(',').map(k => k.trim()).filter(Boolean);
     const gptKeys    = (c.gpt_key || '').split(',').map(k => k.trim()).filter(Boolean);
     const grokKeys   = (c.grok_key || '').split(',').map(k => k.trim()).filter(Boolean);
-    const promptsKey = (c.gemini_prompts_key || '').trim();
     const youtubeKey = (c.youtube_key || '').trim();
 
     if (geminiKeys.length === 0) setStatus(prev => ({ ...prev, gemini: 'offline' }));
     if (gptKeys.length    === 0) setStatus(prev => ({ ...prev, openai: 'offline' }));
     if (grokKeys.length   === 0) setStatus(prev => ({ ...prev, grok:   'offline' }));
-    if (!promptsKey)           setStatus(prev => ({ ...prev, prompts_key: 'unconfigured' }));
     if (!youtubeKey)           setStatus(prev => ({ ...prev, youtube:     'unconfigured' }));
 
     const checks = [];
@@ -214,31 +220,6 @@ export const SystemStatusProvider = ({ children }) => {
     if (gptKeys.length    > 0) checks.push(checkBulkKeys('openai', gptKeys));
     if (grokKeys.length   > 0) checks.push(checkBulkKeys('grok',   grokKeys));
     
-    // Check exclusive prompts key
-    if (promptsKey) {
-      checks.push((async () => {
-        try {
-          const res = await fetch(resolveApiUrl('/api/check'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ provider: 'gemini', keys: [promptsKey] }),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            const best = data.statuses?.[0] || 'offline';
-            const reason = data.debug?.[0] || '';
-            setStatus(prev => ({ 
-              ...prev, 
-              prompts_key: best,
-              details: { ...prev.details, prompts_error: reason }
-            }));
-          }
-        } catch (e) {
-          setStatus(prev => ({ ...prev, prompts_key: 'offline' }));
-        }
-      })());
-    }
-
     // Check YouTube key
     if (youtubeKey) {
       checks.push((async () => {

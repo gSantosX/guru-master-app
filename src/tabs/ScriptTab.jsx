@@ -6,42 +6,142 @@ import jsPDF from 'jspdf';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { resolveApiUrl } from '../utils/apiUtils';
-import { callAI } from '../utils/aiUtils';
+import { callAI, callGemini } from '../utils/aiUtils';
 import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 import { generateVeoContent } from '../utils/veoUtils';
 
-const DNA_OPTIONS = [
-  "Linear Tradicional", "Jornada do Herói", "O Grande Mistério", "Ponto vs Contraponto",
-  "Pirâmide Invertida", "Cinematográfico Visceral", "Lista em Contagem Regressiva", 
-  "A Grande Mentira", "Problema e Solução", "Antes e Depois", "O Método Científico",
-  "Narrativa Imersiva (Você)", "Análise de Caso Real", "Círculo Narrativo", 
-  "Fatos Curiosos em Cadeia", "Perspectiva em Primeira Pessoa", "Análise de Portfólio Real",
-  "O Caminho da Liberdade Financeira", "Raio-X do Mercado", "Ensinamento Financeiro Estruturado",
-  "Teoria da Conspiração", "Desconstrução de Mitos", "Revelação em Camadas (Iceberg)", 
-  "A Receita do Desastre", "Efeito Borboleta (Causas)", "Dossiê Investigativo", 
-  "Verdade Chocante de Início", "Choque de Expectativas", "A Queda do Império", 
-  "Desabafo Visceral", "Guia Definitivo Passo-a-passo", "Futuro e Previsões", 
-  "Ponto de Inflexão (A Virada)", "Debate Múltiplas Visões", "Micro-Histórias Conectadas",
-  "Investigação Cinematográfica", "Reconstrução Histórica (Timeline)", "O Lado Oculto (Deep Dive)",
-  "Efeito Borboleta Inverso", "O Vazio Cognitivo (Loops)", "A Anatomia de um Golpe", "Paradoxo Temporal", "Duelo de Titãs (Análise)",
-  "Ciclo Vital da Terra (Agrícola)", "Dossiê de Produção Rural", "A Revolução Verde (Evolução)", "Do Campo à Mesa (Logística)",
-  "A Luta contra a Escassez", "Mitos da Roça vs Realidade", "Genealogia de uma Família Real", "Ascensão e Queda de Impérios",
-  "O Dia que Mudou o Mundo", "Crônicas de uma Guerra Esquecida", "Arquivos Secretos do Vaticano", "A Biografia de um Objeto",
-  "O Testamento Perdido", "Expedição ao Desconhecido", "Sobrevivência Extrema (Relato)", "A Ciência por Trás do Fenômeno",
-  "Engenharia da Natureza", "O Código Genético da Sociedade", "Simulação de Cenário Distópico", "Análise de Impacto Global",
-  "O Preço do Progresso", "A Anatomia de uma Descoberta", "O Diário de um Explorador", "Relatos de uma Vila Isolada",
-  "O Segredo das Pirâmides (Teoria)", "A Economia da Fé", "Poder Oculto das Corporações", "A Batalha Final (Estratégia)",
-  "O Despertar de um Gigante", "Heranças Malditas da História", "O Protocolo da Crise", "Raízes Culturais (Documental)",
-  "A Era das Máquinas Inteligentes", "O Vazio da Solidão (Humano)", "Fragmentos de Memória", "O Custo Humano do Ouro",
-  "Fronteiras Invisíveis", "A Lei do Mais Forte (Natureza)", "Metamorfose Social", "O Eco do Passado",
-  "Labirinto de Intrigas Políticas", "A Última Fronteira Espacial", "Oceanos de Mistério (Profundezas)", "A Dança das Estações",
-  "Pelas Mãos do Artesão", "O Legado dos Ancestrais", "Visão Microscópica do Mundo", "A Teia da Vida (Ecossistema)",
-  "Sombras do Império", "O Renascimento de uma Ideia", "Anatomia de um Crime Perfeito", "O Código de Ética Samurai",
-  "O Poder da Mente Subconsciente", "A Geopolítica do Petróleo", "Ouro Branco: A História do Sal", "Cidades Perdidas e Lendas",
-  "O Mistério da Matéria Escura", "Evolução Tecnológica Acelerada", "A Psicologia das Massas", "O Império do Consumo"
-];
+const DNA_GROUPS = {
+  "🎬 Documentário": [
+    "Investigação Cinematográfica",
+    "Dossiê Investigativo",
+    "O Lado Oculto (Deep Dive)",
+    "Raízes Culturais (Documental)",
+    "Relatos de uma Vila Isolada",
+    "Sobrevivência Extrema (Relato)",
+    "O Diário de um Explorador",
+    "Expedição ao Desconhecido",
+    "A Ciência por Trás do Fenômeno",
+    "Visão Microscópica do Mundo",
+  ],
+  "📜 História & Civilizações": [
+    "Reconstrução Histórica (Timeline)",
+    "Ascensão e Queda de Impérios",
+    "O Dia que Mudou o Mundo",
+    "Crônicas de uma Guerra Esquecida",
+    "Arquivos Secretos do Vaticano",
+    "Genealogia de uma Família Real",
+    "Heranças Malditas da História",
+    "Sombras do Império",
+    "Ouro Branco: A História do Sal",
+    "Cidades Perdidas e Lendas",
+    "A Biografia de um Objeto",
+    "Paradoxo Temporal",
+  ],
+  "🌿 Agricultura & Campo": [
+    "Ciclo Vital da Terra (Agrícola)",
+    "Dossiê de Produção Rural",
+    "A Revolução Verde (Evolução)",
+    "Do Campo à Mesa (Logística)",
+    "A Luta contra a Escassez",
+    "Mitos da Roça vs Realidade",
+    "Pelas Mãos do Artesão",
+    "A Teia da Vida (Ecossistema)",
+    "A Dança das Estações",
+  ],
+  "🔍 Mistérios & Conspiração": [
+    "Teoria da Conspiração",
+    "O Grande Mistério",
+    "Revelação em Camadas (Iceberg)",
+    "O Segredo das Pirâmides (Teoria)",
+    "A Anatomia de um Golpe",
+    "Poder Oculto das Corporações",
+    "O Testamento Perdido",
+    "Labirinto de Intrigas Políticas",
+    "O Vazio Cognitivo (Loops)",
+    "Oceanos de Mistério (Profundezas)",
+  ],
+  "💰 Finanças & Economia": [
+    "O Caminho da Liberdade Financeira",
+    "Raio-X do Mercado",
+    "Ensinamento Financeiro Estruturado",
+    "Análise de Portfólio Real",
+    "A Geopolítica do Petróleo",
+    "O Império do Consumo",
+    "A Economia da Fé",
+    "Duelo de Titãs (Análise)",
+    "O Custo Humano do Ouro",
+  ],
+  "🎭 Narrativa & Drama": [
+    "Linear Tradicional",
+    "Jornada do Herói",
+    "Cinematográfico Visceral",
+    "Círculo Narrativo",
+    "Ponto de Inflexão (A Virada)",
+    "A Queda do Império",
+    "Micro-Histórias Conectadas",
+    "Desabafo Visceral",
+    "Fragmentos de Memória",
+    "O Eco do Passado",
+  ],
+  "🧠 Educação & Motivação": [
+    "Problema e Solução",
+    "Antes e Depois",
+    "Guia Definitivo Passo-a-passo",
+    "Desconstrução de Mitos",
+    "O Método Científico",
+    "Fatos Curiosos em Cadeia",
+    "Debate Múltiplas Visões",
+    "A Psicologia das Massas",
+    "O Poder da Mente Subconsciente",
+  ],
+  "🔬 Ciência & Tecnologia": [
+    "A Era das Máquinas Inteligentes",
+    "Evolução Tecnológica Acelerada",
+    "O Mistério da Matéria Escura",
+    "A Última Fronteira Espacial",
+    "Engenharia da Natureza",
+    "A Anatomia de uma Descoberta",
+    "Análise de Impacto Global",
+    "Simulação de Cenário Distópico",
+    "O Preço do Progresso",
+  ],
+  "⚡ Engajamento & Viral": [
+    "Verdade Chocante de Início",
+    "Lista em Contagem Regressiva",
+    "A Grande Mentira",
+    "Choque de Expectativas",
+    "Pirâmide Invertida",
+    "Ponto vs Contraponto",
+    "Efeito Borboleta (Causas)",
+    "Efeito Borboleta Inverso",
+    "Futuro e Previsões",
+  ],
+  "🌍 Sociedade & Cultura": [
+    "A Receita do Desastre",
+    "Narrativa Imersiva (Você)",
+    "Perspectiva em Primeira Pessoa",
+    "Análise de Caso Real",
+    "O Código Genético da Sociedade",
+    "Metamorfose Social",
+    "Fronteiras Invisíveis",
+    "A Lei do Mais Forte (Natureza)",
+    "O Legado dos Ancestrais",
+    "O Vazio da Solidão (Humano)",
+    "O Renascimento de uma Ideia",
+    "O Despertar de um Gigante",
+    "O Protocolo da Crise",
+  ],
+  "⚔️ Crime & Investigação": [
+    "Anatomia de um Crime Perfeito",
+    "A Batalha Final (Estratégia)",
+    "O Código de Ética Samurai",
+    "Dossiê Investigativo",
+  ],
+};
+const DNA_OPTIONS = Object.values(DNA_GROUPS).flat();
+
 
 const ALMA_OPTIONS = [
   "Amigável e Casual", "Sarcástica e Ácida", "Acolhedora e Empática", "Épica e Cinematográfica",
@@ -101,6 +201,20 @@ export const ScriptTab = ({ setActiveTab }) => {
   const { configs, showToast } = useSystemStatus();
   const { scriptState, setScriptState } = usePersistence();
   const [cloudScripts, setCloudScripts] = useCloudStorage('scripts', []);
+
+  // Chave exclusiva para roteiros — lida diretamente do context (reativo)
+  const scriptApiKey = (configs.google_script_key || '').trim();
+
+  // Helper: chama AI usando a chave certa para roteiros.
+  // Prioridade: 1) chave pessoal do usuário → 2) chave mestra Gemini → 3) callAI genérico
+  const callScriptAI = async (prompt, opts = {}) => {
+    if (scriptApiKey) {
+      // Chave pessoal do usuário — sem rotação indevida
+      return await callGemini(scriptApiKey, prompt, { ...opts, forcedIndex: 0 });
+    }
+    // Fallback: usa a chave mestra do sistema via callAI
+    return await callAI(prompt, opts);
+  };
   
   const {
     titulo, dna, alma, cta, nicho, idioma, formato, natureza, 
@@ -134,6 +248,17 @@ export const ScriptTab = ({ setActiveTab }) => {
   const [isCopied, setIsCopied] = useState(false);
   const [isAnalyzingTitle, setIsAnalyzingTitle] = useState(false);
   const [showFullScript, setShowFullScript] = useState(false);
+  const [dnaOpen, setDnaOpen] = useState(false);
+  const dnaRef = useRef(null);
+
+  // Fecha dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dnaRef.current && !dnaRef.current.contains(e.target)) setDnaOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const scriptViewerRef = useRef(null);
 
@@ -147,8 +272,9 @@ export const ScriptTab = ({ setActiveTab }) => {
       Nicho: ${NICHO_OPTIONS.join('|')}
       Idioma: ${IDIOMA_OPTIONS.join('|')}`;
 
-      const response = await callAI(prompt, { 
-        model: configs.active_model,
+      // gemini-2.0-flash-lite: modelo ultra-rápido ideal para tarefas simples de JSON
+      const response = await callScriptAI(prompt, { 
+        model: 'gemini-2.0-flash-lite',
         temperature: 0.1,
         isPromptTask: true
       });
@@ -206,23 +332,23 @@ export const ScriptTab = ({ setActiveTab }) => {
   const handleGenerate = async () => {
     setIsGenerating(true);
     setGenerationProgress(5);
-    setStatusMessage('Iniciando Inteligência Guru...');
+    setStatusMessage('Iniciando geração...');
     setGeneratedScript(null);
 
-    const targetWords = Math.ceil(tamanho / 6);
-    const minChars = tamanho - 2000;
-    const maxChars = tamanho + 2000;
+    const targetChars = tamanho;
+    const minChars = targetChars - 2000;
+    const maxChars = targetChars + 2000;
+    const targetWords = Math.ceil(targetChars / 6);
 
-    // Phase 1: Planning & Initial Generation
-    const systemPrompt = `Você é o Guru Master V5, o roteirista mais experiente em canais Dark do mundo.
+    const systemPrompt = `Você é um roteirista profissional especializado em canais Dark.
 Sua missão é criar um roteiro MAGISTRAL, PROFISSIONAL e ALTAMENTE ENGAJADOR.
 
---- PROTOCOLO DE CONFORMIDADE DE TAMANHO (OBRIGATÓRIO) ---
-- ALVO: ${tamanho} caracteres.
-- MARGEM RÍGIDA: Entre ${minChars} e ${maxChars} caracteres.
+--- PROTOCOLO DE CONFORMIDADE DE TAMANHO (LEI ABSOLUTA) ---
+- ALVO EXATO: ${targetChars} caracteres.
+- MARGEM RÍGIDA: Entre ${minChars} e ${maxChars} caracteres. NÃO negocie isso.
 - ESTIMATIVA: Cerca de ${targetWords} palavras.
-Você DEVE analisar o tema e deduzir quantas partes/marcos narrativos são necessários para preencher esse volume com QUALIDADE.
-Se necessário, seja extremamente detalhado, use exemplos, analogias e análises profundas para atingir o tamanho.
+- Se o tema acabar cedo: aprofunde análises, adicione exemplos reais, contexto histórico, detalhes sensoriais.
+- Não pare até atingir o volume solicitado com QUALIDADE TOTAL.
 
 --- PROTOCOLO ZERO-MARKING (CRÍTICO) ---
 - O texto DEVE ser PURO. Sem [Cenas], sem (Narrador), sem "Parte 1", sem títulos internos.
@@ -243,11 +369,11 @@ RESPONDA APENAS COM O TEXTO DA NARRAÇÃO.`;
     try {
       setGenerationProgress(20);
       setStatusMessage('Planejando Milestones de Volume...');
-      
-      const fullPrompt = `${systemPrompt}\n\nUSER REQUEST:\n${userPrompt}`;
-      const estimatedTokens = Math.min(8192, Math.ceil((tamanho / 2.5) + 1000));
 
-      let response = await callAI(fullPrompt, {
+      const fullPrompt = `${systemPrompt}\n\nUSER REQUEST:\n${userPrompt}`;
+      const estimatedTokens = Math.min(8192, Math.ceil((targetChars / 2.5) + 1000));
+
+      let response = await callScriptAI(fullPrompt, {
         model: configs.active_model,
         maxOutputTokens: estimatedTokens,
         temperature: 0.7,
@@ -255,41 +381,53 @@ RESPONDA APENAS COM O TEXTO DA NARRAÇÃO.`;
       });
 
       let cleanedContent = cleanScript(response);
-      setGenerationProgress(60);
+      setGenerationProgress(55);
 
-      // Phase 2: Recursive Expansion if too short (SMART CONTINUATION - TOKEN SAVING)
-      if (cleanedContent.length < minChars) {
-        setStatusMessage('Auto-Expansão Econômica: Gerando Continuação...');
-        setGenerationProgress(70);
-        
-        // Em vez de enviar o roteiro inteiro (caro!), enviamos apenas o contexto final
+      // ── LOOP DE EXPANSÃO ITERATIVA (até 5 rodadas) ──────────────────────────
+      let expansionRound = 0;
+      while (cleanedContent.length < minChars && expansionRound < 5) {
+        expansionRound++;
+        const remaining = targetChars - cleanedContent.length;
+        setStatusMessage(`Expansão ${expansionRound}/5 — faltam ~${remaining} chars...`);
+        setGenerationProgress(55 + expansionRound * 6);
+
         const expansionPrompt = `${systemPrompt}
-        
---- TAREFA DE CONTINUAÇÃO (ECONOMIA DE TOKENS) ---
-O roteiro gerado está incompleto (${cleanedContent.length} caracteres). Alvo: ${tamanho}.
-Continue a narrativa exatamente de onde parou abaixo. 
-Mantenha o tom e a fluidez. 
-IMPORTANTE: Retorne APENAS o novo conteúdo gerado, sem repetir o contexto inicial.
 
-CONTEXTO FINAL:
+--- TAREFA DE CONTINUAÇÃO (ADIÇÃO DE CONTEÚDO) ---
+O roteiro está com ${cleanedContent.length} caracteres. Alvo: ${targetChars}.
+Faltam APROXIMADAMENTE ${remaining} caracteres para atingir a meta.
+Continue a narrativa exatamente de onde parou. Mantenha o tom e a fluidez.
+IMPORTANTE: Retorne APENAS o novo conteúdo gerado, sem repetir o que já foi escrito.
+
+CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
 ... ${cleanedContent.slice(-2000)}`;
 
-        const expandedResponse = await callAI(expansionPrompt, {
+        const expandedResponse = await callScriptAI(expansionPrompt, {
           model: configs.active_model,
-          maxOutputTokens: 8192,
-          temperature: 0.8,
+          maxOutputTokens: Math.min(8192, Math.ceil((remaining / 2.5) + 500)),
+          temperature: 0.75,
           isPromptTask: true
         });
 
-        cleanedContent = cleanedContent + "\n\n" + cleanScript(expandedResponse);
+        cleanedContent = cleanedContent + '\n\n' + cleanScript(expandedResponse);
+      }
+
+      // ── TRUNCAMENTO INTELIGENTE se passar do máximo ─────────────────────────
+      if (cleanedContent.length > maxChars) {
+        setStatusMessage('Ajustando tamanho final...');
+        // Corta no último ponto final antes do limite máximo
+        const cutPoint = cleanedContent.lastIndexOf('.', maxChars);
+        cleanedContent = cutPoint > minChars
+          ? cleanedContent.substring(0, cutPoint + 1).trim()
+          : cleanedContent.substring(0, maxChars).trim();
       }
 
       setGenerationProgress(90);
       setStatusMessage('Polimento Final de Fluxo...');
-      
+
       // --- GERAR VEO ---
       const veoData = generateVeoContent(cleanedContent);
-      
+
       const finalScript = {
         title: titulo,
         niche: nicho,
@@ -303,27 +441,28 @@ CONTEXTO FINAL:
       setGeneratedScript(finalScript);
       setGenerationProgress(100);
       setStatusMessage('Roteiro Magistral Concluído!');
-      
+
       // AUTO-SAVE to cloud (per-user account)
       const generatedId = Date.now();
       const toSave = { ...finalScript, id: generatedId, length: cleanedContent.length };
       setCloudScripts(prev => {
         const existing = Array.isArray(prev) ? prev : [];
-        return [toSave, ...existing].slice(0, 30); // Keep up to 30 scripts per user
+        return [toSave, ...existing].slice(0, 6);
       });
       setLastSavedId(generatedId);
       window.dispatchEvent(new Event('guru_scripts_updated'));
-      showToast("✅ Roteiro salvo em Roteiros Prontos!", "success");
-      
+      showToast(`✅ Roteiro salvo! ${cleanedContent.length} chars (alvo: ${targetChars})`, 'success');
+
       setTimeout(() => scriptViewerRef.current?.scrollTo({ top: 0, behavior: 'smooth' }), 500);
 
     } catch (error) {
       console.error('Erro na geração:', error);
-      showToast(error.message || "Erro inesperado na geração", "error");
+      showToast(error.message || 'Erro inesperado na geração', 'error');
     } finally {
       setIsGenerating(false);
     }
   };
+
 
   const handleCopy = () => {
     if (!generatedScript) return;
@@ -442,16 +581,40 @@ CONTEXTO FINAL:
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               {/* DNA */}
-               <div>
+               {/* DNA — Dropdown Customizado com Grupos */}
+               <div ref={dnaRef} className="relative">
                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2 px-1">{t('script.field_dna')}</label>
-                 <select 
-                    value={dna}
-                    onChange={(e) => setDna(e.target.value)}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white text-xs focus:outline-none focus:border-neon-purple/50 appearance-none cursor-pointer hover:bg-black/60 transition-colors"
+                 <button
+                   type="button"
+                   onClick={() => setDnaOpen(o => !o)}
+                   className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white text-xs focus:outline-none focus:border-neon-purple/50 hover:bg-black/60 transition-colors text-left flex items-center justify-between gap-2"
                  >
-                   {DNA_OPTIONS.map(opt => <option key={opt} value={opt} className="bg-dark text-white">{opt}</option>)}
-                 </select>
+                   <span className="truncate">{dna || 'Selecione...'}</span>
+                   <svg className={`w-3 h-3 text-gray-500 shrink-0 transition-transform ${dnaOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                 </button>
+                 {dnaOpen && (
+                   <div className="absolute z-50 mt-1 w-full max-h-72 overflow-y-auto bg-[#0d0d0d] border border-white/10 rounded-xl shadow-2xl custom-scrollbar">
+                     {Object.entries(DNA_GROUPS).map(([group, opts]) => (
+                       <div key={group}>
+                         <div className="px-3 pt-3 pb-1 text-[9px] font-black uppercase tracking-widest text-neon-purple border-b border-white/5">{group}</div>
+                         {opts.map(opt => (
+                           <button
+                             key={opt}
+                             type="button"
+                             onClick={() => { setDna(opt); setDnaOpen(false); }}
+                             className={`w-full text-left px-4 py-2 text-xs transition-colors ${
+                               dna === opt
+                                 ? 'bg-neon-purple/20 text-neon-purple font-bold'
+                                 : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                             }`}
+                           >
+                             {opt}
+                           </button>
+                         ))}
+                       </div>
+                     ))}
+                   </div>
+                 )}
                </div>
 
                {/* ALMA */}
@@ -578,7 +741,7 @@ CONTEXTO FINAL:
                      </div>
                   </div>
                   <input 
-                    type="range" min="1000" max="60000" step="500" value={tamanho}
+                    type="range" min="1000" max="40000" step="500" value={tamanho}
                     onChange={(e) => setTamanho(Number(e.target.value))}
                     className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-neon-cyan"
                   />
@@ -587,6 +750,20 @@ CONTEXTO FINAL:
           </div>
 
           <div className="mt-12">
+            {/* Dica informacional (não bloqueia) quando não tem chave pessoal */}
+            {!scriptApiKey && (
+              <div className="mb-4 flex items-start gap-3 p-4 rounded-xl bg-neon-cyan/5 border border-neon-cyan/20">
+                <span className="text-neon-cyan text-lg shrink-0">💡</span>
+                <div>
+                  <p className="text-neon-cyan font-black text-xs uppercase tracking-widest mb-1">Dica: Use sua própria Google API Key</p>
+                  <p className="text-gray-400 text-[10px] leading-relaxed">
+                    Adicione sua <span className="font-bold text-white">Google API Key</span> gratuita em{' '}
+                    <strong>Configurações → Suas Chaves Pessoais</strong> para usar cota dedicada.{' '}
+                    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="underline text-neon-cyan">Obter chave ↗</a>
+                  </p>
+                </div>
+              </div>
+            )}
             <button 
               onClick={handleGenerate}
               disabled={isGenerating || !titulo}

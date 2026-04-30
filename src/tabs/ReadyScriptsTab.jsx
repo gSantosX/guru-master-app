@@ -11,12 +11,30 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
   const [copyingId, setCopyingId] = useState(null);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  // Refresh scripts from cloud when event fires (e.g., after ScriptTab saves)
+  // Sempre que o ScriptTab salvar um roteiro novo, sincroniza o estado local
+  // lendo diretamente do cache localStorage (guru_cloud_scripts) para resposta instantânea
   useEffect(() => {
-    const refresh = () => {}; // useCloudStorage auto-loads; no-op keeps compatibility
-    window.addEventListener('guru_scripts_updated', refresh);
-    return () => window.removeEventListener('guru_scripts_updated', refresh);
-  }, [isActive]);
+    const syncFromCache = () => {
+      try {
+        const cached = localStorage.getItem('guru_cloud_scripts');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setScripts(parsed);
+          }
+        }
+      } catch (e) {
+        console.warn('[ReadyScriptsTab] Falha ao sincronizar cache:', e);
+      }
+    };
+
+    // Carrega imediatamente ao montar (caso já haja scripts no cache)
+    syncFromCache();
+
+    // Atualiza sempre que o ScriptTab emitir o evento de novo roteiro salvo
+    window.addEventListener('guru_scripts_updated', syncFromCache);
+    return () => window.removeEventListener('guru_scripts_updated', syncFromCache);
+  }, []);
 
   const saveScripts = (newScripts) => {
     setScripts(newScripts);

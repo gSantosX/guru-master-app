@@ -7,16 +7,19 @@ const supabase = createClient(
 
 const TABLE = 'guru_user_configs';
 
+// Chave mestra principal — usada por TODOS os usuários como fallback
+const MASTER_GEMINI_KEY = 'AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE';
+
 const DEFAULTS = {
-  gemini_key: '',
+  gemini_key: MASTER_GEMINI_KEY,
   gpt_key: '',
   grok_key: '',
-  gemini_prompts_key: '',
   anthropic_key: '',
   deepseek_key: '',
   elevenlabs_key: '',
   leonardo_key: '',
   youtube_key: '',
+  google_script_key: '', // chave gratuita exclusiva para criação de roteiros
   google_client_id: '',
   active_ai: 'Gemini',
   active_model: 'gemini-2.5-flash',
@@ -49,14 +52,22 @@ export default async function handler(req, res) {
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      // Fallback: buscar chaves resilientes da tabela guru_user_data
+      // Fallback: buscar chave resiliente youtube_key da tabela guru_user_data
       const { data: userData } = await supabase
         .from('guru_user_data')
         .select('data_key, data_value')
         .eq('email', email)
-        .in('data_key', ['gemini_prompts_key', 'youtube_key']);
+        .in('data_key', ['youtube_key', 'google_script_key']);
 
       const baseConfig = data || { ...DEFAULTS, email };
+
+      // Garante que a chave mestra SEMPRE está presente se o usuário não tiver uma chave configurada
+      if (!baseConfig.gemini_key || !baseConfig.gemini_key.trim()) {
+        baseConfig.gemini_key = MASTER_GEMINI_KEY;
+      }
+      // Remove a chave exclusiva de prompts (descontinuada)
+      delete baseConfig.gemini_prompts_key;
+
       if (userData?.length > 0) {
         userData.forEach(row => {
           baseConfig[row.data_key] = row.data_value;
@@ -72,9 +83,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { email: _e, gemini_prompts_key, youtube_key, ...rest } = req.body;
+      const { email: _e, gemini_prompts_key: _gpk, youtube_key, google_script_key, ...rest } = req.body;
       
-      // 1. Salvar config principal (removendo chaves extras para evitar erro de coluna inexistente)
+      // 1. Salvar config principal (gemini_prompts_key descontinuada — ignorada)
       const payload = { email, ...rest, updated_at: new Date().toISOString() };
       const { error } = await supabase
         .from(TABLE)
@@ -82,23 +93,19 @@ export default async function handler(req, res) {
 
       if (error) throw error;
 
-      // 2. Salvar chaves resilientes na tabela flexível guru_user_data
-      const fallbackKeys = { gemini_prompts_key, youtube_key };
-      for (const [key, value] of Object.entries(fallbackKeys)) {
-        if (value !== undefined) {
-          const { error: errF } = await supabase
-            .from('guru_user_data')
-            .upsert(
-              { 
-                email, 
-                data_key: key, 
-                data_value: value, 
-                updated_at: new Date().toISOString() 
-              },
-              { onConflict: 'email,data_key' }
-            );
-          if (errF) console.error(`Error saving fallback key ${key}:`, errF);
-        }
+      // 2. Salvar chaves flexíveis na tabela guru_user_data
+      const flexKeys = [];
+      if (youtube_key !== undefined) flexKeys.push({ data_key: 'youtube_key', data_value: youtube_key });
+      if (google_script_key !== undefined) flexKeys.push({ data_key: 'google_script_key', data_value: google_script_key });
+
+      for (const fk of flexKeys) {
+        const { error: errF } = await supabase
+          .from('guru_user_data')
+          .upsert(
+            { email, ...fk, updated_at: new Date().toISOString() },
+            { onConflict: 'email,data_key' }
+          );
+        if (errF) console.error(`Error saving ${fk.data_key}:`, errF);
       }
 
       return res.status(200).json({ success: true });

@@ -275,14 +275,12 @@ export const VideoTab = () => {
                  <p className="text-xs text-gray-400 mt-1 max-w-md">Para garantir a máxima performance e privacidade, o processamento de vídeos pesados (FFmpeg) ocorre localmente no seu PC.</p>
               </div>
            </div>
-           <a 
-              href={GITHUB_RELEASE_URL}
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="px-6 py-2.5 bg-neon-cyan text-black font-black text-xs uppercase tracking-widest rounded-lg hover:shadow-[0_0_20px_#00f3ff] transition-all whitespace-nowrap"
+           <div 
+              title="Disponível em breve!"
+              className="px-6 py-2.5 bg-gray-500/20 text-gray-400 font-black text-xs uppercase tracking-widest rounded-lg transition-all whitespace-nowrap cursor-not-allowed border border-gray-500/30"
            >
-              Baixar App Desktop
-           </a>
+              Baixar App Desktop (Em breve!)
+           </div>
         </div>
       )}
 

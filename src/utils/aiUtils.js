@@ -34,6 +34,14 @@ const isAuthError = (error, data = {}) => {
 
 // Listen for manual selection from the UI Settings
 if (typeof window !== 'undefined') {
+  // Limpa histórico acumulado ao iniciar (chave paga — contadores do free tier são irrelevantes)
+  try {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('guru_gemini_history_'))
+      .forEach(k => localStorage.removeItem(k));
+    console.log('✅ [aiUtils] Histórico de uso reiniciado (chave paga ativa).');
+  } catch(e) { console.warn('Erro ao limpar histórico inicial:', e); }
+
   window.addEventListener('guru_manual_key_select', (e) => {
     const { provider, index } = e.detail;
     if (sessionIndices.hasOwnProperty(provider)) {
@@ -58,10 +66,10 @@ if (typeof window !== 'undefined') {
 }
 
 // --- GEMINI SMART USAGE TRACKER ---
-// Free tier real limits: 15 RPM, 1500 RPD for flash models.
-// We set safety margin slightly below to avoid hard blocks.
-const SAFE_RPM_LIMIT = 14;   // Google free = 15 RPM  → bloqueia em 14 para dar margem
-const SAFE_RPD_LIMIT = 1480; // Google free = 1500 RPD → era 1450, aumentado para 1480
+// Chave PAGA: limites muito maiores — sem bloqueio preemptivo por cota diária.
+// O tracker apenas registra uso para fins de diagnóstico (não bloqueia).
+const SAFE_RPM_LIMIT = 950;    // Paid tier: ~1000 RPM
+const SAFE_RPD_LIMIT = 999999; // Paid tier: sem limite diário fixo
 
 const getRollingUsage = (apiKey) => {
    if (typeof window === 'undefined') return { rpm: 0, rpd: 0 };
@@ -113,26 +121,21 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
     const kIdx = (startIndex + i) % keyList.length;
     const apiKey = keyList[kIdx];
     
-    // PREEMPTIVE CHECK — só pula se houver OUTRA chave disponível
+    // Tracker apenas para log — chave paga não tem limite preemptivo
     const usage = getRollingUsage(apiKey);
-    if ((usage.rpm >= SAFE_RPM_LIMIT || usage.rpd >= SAFE_RPD_LIMIT) && i < iterations - 1) {
-       console.warn(`🔄 [Tracker] Chave ${kIdx} no teto de segurança (RPM: ${usage.rpm}/${SAFE_RPM_LIMIT}, RPD: ${usage.rpd}/${SAFE_RPD_LIMIT}). Pulando para próxima chave...`);
+    if (usage.rpm >= SAFE_RPM_LIMIT && i < iterations - 1) {
+       console.warn(`🔄 [Tracker] Chave ${kIdx} próxima do limite de RPM (${usage.rpm}/${SAFE_RPM_LIMIT}). Rotacionando...`);
        continue;
     }
-    if (usage.rpm >= SAFE_RPM_LIMIT || usage.rpd >= SAFE_RPD_LIMIT) {
-       // Última chave disponível e está no limite — avisa mas tenta mesmo assim
-       console.warn(`⚠️ [Tracker] Chave ${kIdx} no teto mas é a única disponível. Tentando mesmo assim (o Google decide)...`);
-    }
     
-    if (kIdx !== startIndex && usage.rpm < SAFE_RPM_LIMIT) {
+    if (kIdx !== startIndex) {
         console.warn(`🔄 Gemini: Entrando na próxima chave (Index ${kIdx})...`);
     }
 
 
     try {
-      // Modelos a tentar — ordem de prioridade.
-      // NUNCA adicionar gemini-2.5-flash aqui: free tier = 250 req/dia (esgota rápido)
-      // gemini-2.0-flash tem 1500 req/dia e gemini-1.5-flash tem 1500 req/dia
+      // Modelos a tentar — ordem de prioridade (API v1beta compatível).
+      // gemini-1.5-pro NÃO disponível na v1beta — removido dos fallbacks.
       const modelsToTry = [];
 
       // 1. Modelo pedido explicitamente vem primeiro
@@ -141,18 +144,20 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
         modelsToTry.push(m);
       }
 
-      // 2. Fallbacks confiáveis (só modelos com 1500 RPD no free tier)
+      // 2. Fallbacks confiáveis na v1beta
       const fallbacks = [
         'models/gemini-2.0-flash',
+        'models/gemini-2.5-flash',
         'models/gemini-1.5-flash',
-        'models/gemini-1.5-pro',
       ];
       fallbacks.forEach(f => { if (!modelsToTry.includes(f)) modelsToTry.push(f); });
 
 
       for (const modelPath of modelsToTry) {
         let attempts = 0;
-        while (attempts < 2) {
+        const MAX_ATTEMPTS = 4;
+        let modelSuccess = false;
+        while (attempts < MAX_ATTEMPTS && !modelSuccess) {
           attempts++;
           try {
             const cleanPath = modelPath.startsWith('models/') ? modelPath : `models/${modelPath}`;
@@ -178,6 +183,7 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
                 sessionIndices.gemini = kIdx;
                 window.dispatchEvent(new CustomEvent('guru_key_rotated', { detail: { provider: 'gemini', index: kIdx } }));
               }
+              modelSuccess = true;
               return data.candidates[0].content.parts[0].text;
             }
 
@@ -185,14 +191,16 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
               const errorMsg = data.error.message || "Unknown error";
               
               if (isQuotaError(null, data)) {
-                if (attempts === 1) {
-                  await new Promise(r => setTimeout(r, 2000));
-                  continue; 
+                if (attempts < MAX_ATTEMPTS) {
+                  // Backoff curto: 2s, 4s, 8s — não congela a UI
+                  const waitMs = 2000 * Math.pow(2, attempts - 1);
+                  console.warn(`⏳ [Gemini] 429 no modelo ${modelPath} (tentativa ${attempts}/${MAX_ATTEMPTS}). Aguardando ${waitMs/1000}s...`);
+                  await new Promise(r => setTimeout(r, waitMs));
+                  continue;
                 }
-                console.warn(`⚠️ [Gemini]: Cota atingida na chave ${kIdx}.`);
-                const err = new Error(errorMsg);
-                err.status = 429;
-                throw err;
+                // Esgotou tentativas neste modelo — tenta próximo modelo
+                console.warn(`🔄 [Gemini] Modelo ${modelPath} esgotado após ${MAX_ATTEMPTS} tentativas. Tentando próximo modelo...`);
+                break; // sai do while, vai para o próximo modelPath
               }
 
               if (isAuthError(null, data)) {
@@ -206,8 +214,15 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
             }
           } catch (e) {
             if (isQuotaError(e)) {
-                e.status = 429; // Ensure status is set for the outer loop
-                throw e; 
+              if (attempts < MAX_ATTEMPTS) {
+                const waitMs = 2000 * Math.pow(2, attempts - 1);
+                console.warn(`⏳ [Gemini] 429 catch (tentativa ${attempts}/${MAX_ATTEMPTS}). Aguardando ${waitMs/1000}s...`);
+                await new Promise(r => setTimeout(r, waitMs));
+                continue;
+              }
+              // Tenta próximo modelo
+              console.warn(`🔄 [Gemini] Modelo ${modelPath} esgotado. Tentando próximo modelo...`);
+              break;
             }
             lastError = e;
             break;
@@ -503,27 +518,7 @@ export const callAI = async (prompt, options = {}) => {
   const activeAI = localStorage.getItem('guru_active_ai') || 'Gemini';
   
   if (activeAI === 'Gemini') {
-    // Prioritize exclusive prompts key if this is a prompt task
-    const promptsKey = (localStorage.getItem('guru_gemini_prompts_key') || '').trim();
     const mainKeys = (localStorage.getItem('guru_gemini_key') || '').trim();
-    
-    if (options.isPromptTask && promptsKey) {
-      console.log('💎 Using Exclusive Prompts Key for this task (with main key fallback)');
-      try {
-        // No forcedIndex — allow rotation if the key string contains multiple keys
-        return await callGemini(promptsKey, prompt, { ...options });
-      } catch (exclusiveErr) {
-        const isExhausted = exclusiveErr?.status === 429 || 
-          (exclusiveErr?.message || '').toLowerCase().includes('quota');
-        if (isExhausted && mainKeys) {
-          console.warn('⚠️ Exclusive Prompts Key exhausted. Falling back to main Gemini keys...');
-          const idx = parseInt(localStorage.getItem('guru_gemini_active_idx') || '0');
-          return await callGemini(mainKeys, prompt, { ...options, forcedIndex: idx });
-        }
-        throw exclusiveErr;
-      }
-    }
-    
     const idx = parseInt(localStorage.getItem('guru_gemini_active_idx') || '0');
     return await callGemini(mainKeys, prompt, { ...options, forcedIndex: idx });
   } else if (activeAI === 'OpenAI' || activeAI === 'GPT') {

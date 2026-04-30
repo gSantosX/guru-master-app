@@ -9,6 +9,8 @@ import { SalesLanding } from './pages/SalesLanding';
 import { GuruMasterApp } from './pages/GuruMasterApp';
 import { ResetPassword } from './components/ResetPassword';
 import InteractiveBackground from './components/InteractiveBackground';
+import { MaintenanceOverlay } from './components/MaintenanceOverlay';
+import { resolveApiUrl } from './utils/apiUtils';
 
 function WebAppContent() {
   const { isAuthenticated, user, logout } = useAuth();
@@ -16,6 +18,7 @@ function WebAppContent() {
   
   const [showLoginComponent, setShowLoginComponent] = useState(window.location.hash.includes('login'));
   const [isResetMode, setIsResetMode] = useState(window.location.hash.includes('reset'));
+  const [maintenanceActive, setMaintenanceActive] = useState(false);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -26,7 +29,38 @@ function WebAppContent() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Polling do estado de manutenção — para TODOS os visitantes (logados ou não)
+  useEffect(() => {
+    const checkMaintenance = async () => {
+      try {
+        const res = await fetch(resolveApiUrl('/api/maintenance'));
+        if (res.ok) {
+          const data = await res.json();
+          setMaintenanceActive(!!data.active);
+        }
+      } catch { /* silencia erros de rede — nunca bloqueia por falha */ }
+    };
+
+    checkMaintenance();
+    const interval = setInterval(checkMaintenance, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Evento local para atualização instantânea quando o ADMIN altera o estado
+  useEffect(() => {
+    const handler = (e) => setMaintenanceActive(!!e.detail?.active);
+    window.addEventListener('guru_maintenance_changed', handler);
+    return () => window.removeEventListener('guru_maintenance_changed', handler);
+  }, []);
+
   if (!isInitialized) return null;
+
+  // Admin nunca vê o overlay — todos os demais veem quando ativo
+  const showMaintenance = maintenanceActive && !user?.is_admin;
+
+  const handleBackToSales = () => {
+    window.location.hash = '';
+  };
 
   return (
     <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden relative">
@@ -49,6 +83,9 @@ function WebAppContent() {
              )
           )}
         </AnimatePresence>
+
+        {/* Overlay de manutenção — bloqueia TODOS os não-admins em qualquer página */}
+        <MaintenanceOverlay active={showMaintenance} onBackToSales={handleBackToSales} />
 
         <InteractiveBackground />
     </div>

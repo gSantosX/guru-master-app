@@ -100,6 +100,24 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
     localStorage.setItem('guru_title_knowledge', JSON.stringify(newKnowledge));
   };
 
+  // Helper: lança erro legível quando a API do YouTube retorna um erro
+  const checkYouTubeError = (data, context = '') => {
+    if (data?.error) {
+      const msg = data.error.message || 'Erro desconhecido';
+      const code = data.error.code || data.error.status || '';
+      if (code === 401 || msg.toLowerCase().includes('api key') || msg.toLowerCase().includes('invalid')) {
+        throw new Error('Chave do YouTube inválida ou não configurada. Acesse Configurações → Suas Chaves Pessoais.');
+      }
+      if (code === 403 || msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('exceeded')) {
+        throw new Error('Cota do YouTube esgotada. Aguarde até amanhã ou use outra chave.');
+      }
+      if (code === 400 || msg.toLowerCase().includes('keyinvalid') || msg.toLowerCase().includes('bad request')) {
+        throw new Error('Chave do YouTube inválida. Configure em Configurações → Suas Chaves Pessoais.');
+      }
+      throw new Error(`YouTube API${context ? ` (${context})` : ''}: ${msg}`);
+    }
+  };
+
   const handleSearch = async () => {
     // Check Cache
     const cacheKey = `mining_${selectedNiche}_${selectedLang.code}`;
@@ -119,20 +137,20 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
     setChannels([]);
     
     try {
-      // 1. Calculate Date Boundary (6 months ago to find true rising stars)
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      const dateString = sixMonthsAgo.toISOString();
-
-      // 2. Resolve Niche Search Term (Translate niche to target language for accurate scraping)
+      // 1. Resolve Niche Search Term
       const langCode = selectedLang.code;
       const nicheTerm = (NICHE_TRANSLATIONS[selectedNiche] && NICHE_TRANSLATIONS[selectedNiche][langCode]) 
                         ? NICHE_TRANSLATIONS[selectedNiche][langCode] 
                         : selectedNiche;
 
-      // 3. Construct Search Query
-      // Using quotes around niche term forces the engine to respect the core topic
-      const query = encodeURIComponent(`"${nicheTerm}" viral popular channel`).trim();
+      // 2. Construct Search Query
+      // Remove encodeURIComponent since URLSearchParams in buildYouTubeUrl handles it.
+      // We look for highly viewed videos published recently to find small channels getting traction.
+      const date = new Date();
+      date.setDate(date.getDate() - 30);
+      const publishedAfter = date.toISOString();
+
+      const query = nicheTerm; // Clean query without forced English words
       const res = await fetch(buildYouTubeUrl('search', {
         part: 'snippet',
         type: 'video',
@@ -140,31 +158,29 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
         relevanceLanguage: langCode,
         regionCode: selectedLang.region,
         maxResults: '50',
-        order: 'viewCount'
+        order: 'viewCount',
+        publishedAfter: publishedAfter
       }));
       const data = await res.json();
       
-      if (!res.ok) {
-        const errorMsg = data?.error?.message || data?.error || "Erro desconhecido na API do YouTube.";
-        throw new Error(`YouTube API: ${errorMsg}`);
-      }
+      // Verifica erro da API antes de acessar .items
+      checkYouTubeError(data, 'search');
 
       if (!data.items || data.items.length === 0) {
         throw new Error("Nenhum canal encontrado com a amostragem atual. Tente outro nicho ou idioma.");
       }
 
-      // 3. Extract unique Channel IDs - Increasing sample pool for better filtering
+      // 3. Extract unique Channel IDs
       const channelIds = [...new Set(data.items.map(item => item.snippet.channelId))].slice(0, 40);
       
-      // 4. Get detailed channel stats and snippet
+      // 4. Get detailed channel stats
       const channelsRes = await fetch(buildYouTubeUrl('channels', { part: 'snippet,statistics', id: channelIds.join(',') }));
       const channelsData = await channelsRes.json();
 
-      if (!channelsRes.ok) {
-        throw new Error(`YouTube API (Channels): ${channelsData?.error?.message || "Falha ao obter dados dos canais."}`);
-      }
+      // Verifica erro antes de acessar .items
+      checkYouTubeError(channelsData, 'channels');
 
-      // 5. Transform and Apply Strict Filters: < 50 videos AND < 6 months old AND > 30k views
+      // 5. Transform and filter for SMALL CHANNELS with HIGH PERFORMANCE
       const minedChannels = (channelsData.items || [])
         .map(item => {
           const videoCount = parseInt(item.statistics.videoCount || 0);
@@ -181,16 +197,12 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
             subscriberCount: parseInt(item.statistics.subscriberCount || 0),
             publishedAt: item.snippet.publishedAt,
             efficiency: efficiency,
-            isExplosive: efficiency > 50000 // Flag for explosive growth
+            isExplosive: efficiency > 50000
           };
         })
-        .filter(channel => {
-          // Remove strict date and count filters. 
-          // Only keep minimal check for views to avoid channels with zero views.
-          return channel.viewCount >= 5000; 
-        })
-        .sort((a, b) => b.efficiency - a.efficiency) 
-        .slice(0, 15); // Increased to 15 results
+        .filter(channel => channel.viewCount >= 5000 && channel.subscriberCount < 150000 && channel.subscriberCount > 0)
+        .sort((a, b) => b.efficiency - a.efficiency)
+        .slice(0, 6); // Exactly 6 cards
 
       setChannels(minedChannels);
       
@@ -211,6 +223,12 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
     }
   };
 
+  const handleModelChannel = (channel) => {
+    const url = `https://youtube.com/${channel.customUrl || 'channel/' + channel.id}`;
+    localStorage.setItem('guru_auto_model_channel', url);
+    setActiveTab('channel-modeler');
+  };
+
   const handleGenerateViralTitles = async (channel) => {
     setSelectedChannel(channel);
     setShowTitleGenerator(true);
@@ -223,7 +241,8 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
       const vidsRes = await fetch(buildYouTubeUrl('search', { part: 'snippet', channelId: channel.id, order: 'viewCount', type: 'video', maxResults: '15' }));
       const vidsData = await vidsRes.json();
 
-      if (!vidsRes.ok) throw new Error("Falha ao buscar vídeos do canal.");
+      // Verifica erro da API antes de acessar .items
+      checkYouTubeError(vidsData, 'videos do canal');
       
       const titles = (vidsData.items || []).map(v => v.snippet.title);
       if (titles.length === 0) throw new Error("Nenhum vídeo encontrado para analisar.");
@@ -361,16 +380,18 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
               animate={{ opacity: 1, y: 0 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-12"
             >
-              {channels.map((channel, i) => (
+              {(Array.isArray(channels) ? [...channels, ...Array(Math.max(0, 6 - channels.length)).fill(null)] : Array(6).fill(null)).map((channel, i) => (
+                channel ? (
                 <motion.div
                   key={channel.id}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.1 }}
-                  className="glass-card group relative overflow-hidden border border-white/5 hover:border-neon-cyan/30 transition-all duration-500 flex flex-col h-[480px] bg-dark-lighter/20"
+                  onClick={() => handleModelChannel(channel)}
+                  className="glass-card group relative overflow-hidden border border-white/5 hover:border-neon-cyan/50 hover:shadow-[0_0_30px_rgba(0,243,255,0.2)] transition-all duration-300 flex flex-col h-[480px] bg-dark-lighter/40 cursor-pointer hover:-translate-y-1"
                 >
                   {/* Decorative Glow */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/5 rounded-full blur-[60px] pointer-events-none group-hover:bg-neon-cyan/10 transition-colors" />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/5 rounded-full blur-[60px] pointer-events-none group-hover:bg-neon-cyan/20 transition-colors" />
                   
                   {/* Banner/Avatar Area */}
                   <div className="h-24 bg-gradient-to-r from-neon-purple/20 via-neon-cyan/20 to-blue-600/20 relative">
@@ -391,7 +412,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                   </div>
 
                   {/* Content */}
-                  <div className="pt-10 px-6 flex flex-col flex-1">
+                  <div className="pt-10 px-6 flex flex-col flex-1 relative z-10">
                     <div className="mb-4">
                       <h4 className="text-lg font-black text-white group-hover:text-neon-cyan transition-colors truncate uppercase leading-tight mb-0.5">{channel.title}</h4>
                       <div className="flex items-center gap-2">
@@ -431,33 +452,20 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                     </div>
 
                     {/* Actions */}
-                    <div className="grid grid-cols-2 gap-3 pb-6">
-                      <button 
-                        onClick={() => handleGenerateViralTitles(channel)}
-                        className="flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-neon-purple/10 to-neon-cyan/10 border border-neon-cyan/20 rounded-xl text-[10px] font-black text-neon-cyan uppercase tracking-widest hover:from-neon-purple/20 hover:to-neon-cyan/20 transition-all shadow-lg"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" /> {t('mining.generate_titles') || 'Gerar Títulos Virais'}
-                      </button>
-                      <button className="flex items-center justify-center gap-2 py-2.5 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black text-gray-400 uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all">
-                        <PlayCircle className="w-3.5 h-3.5" /> {t('mining.latest_videos')}
-                      </button>
+                    <div className="pb-6">
+                      <div className="flex items-center justify-center gap-2 py-3 bg-neon-cyan/10 border border-neon-cyan/30 rounded-xl text-xs font-black text-neon-cyan uppercase tracking-widest group-hover:bg-neon-cyan group-hover:text-dark transition-all shadow-lg group-hover:shadow-[0_0_20px_rgba(0,243,255,0.4)]">
+                        <Brain className="w-4 h-4" /> Modelar Este Canal
+                      </div>
                     </div>
-
-                    <button 
-                      onClick={() => handleCopyUrl(channel)}
-                      className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-sm uppercase tracking-widest transition-all mb-4 relative overflow-hidden group/btn shadow-lg transform active:scale-95
-                        ${copiedId === channel.id 
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.2)]' 
-                          : 'bg-white text-dark hover:bg-neon-cyan'
-                        }
-                      `}
-                    >
-                      {copiedId === channel.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      {copiedId === channel.id ? (t('mining.copied') || 'Copiado!') : (t('mining.copy_btn') || 'Copiar Canal')}
-                      {!copiedId && <Zap className="absolute right-4 w-4 h-4 opacity-50 group-hover/btn:opacity-100 group-hover/btn:scale-125 transition-all text-dark/20" />}
-                    </button>
                   </div>
                 </motion.div>
+                ) : (
+                  <div key={`empty-${i}`} className="border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center text-center opacity-30 h-[480px]">
+                    <Youtube className="w-10 h-10 text-gray-700 mb-4" />
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-700 mb-1">Slot Disponível</p>
+                    <p className="text-[10px] text-gray-800">Procurando canais explosivos...</p>
+                  </div>
+                )
               ))}
             </motion.div>
           ) : (

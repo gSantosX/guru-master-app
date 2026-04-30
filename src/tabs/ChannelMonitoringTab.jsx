@@ -209,6 +209,20 @@ Rules:
     return null;
   };
 
+  const checkYouTubeError = (data, context = '') => {
+    if (data?.error) {
+      const msg = data.error.message || 'Erro desconhecido';
+      const code = data.error.code || data.error.status || '';
+      if (code === 401 || msg.includes('API key') || msg.includes('UNAUTHENTICATED')) {
+        throw new Error('Chave do YouTube não configurada. Acesse Configurações → Chave do YouTube.');
+      }
+      if (code === 403 || msg.includes('quota') || msg.includes('quotaExceeded') || msg.includes('forbidden')) {
+        throw new Error('Cota do YouTube esgotada. Aguarde até amanhã ou use outra chave API.');
+      }
+      throw new Error(`YouTube API: ${msg}${context ? ` (${context})` : ''}`);
+    }
+  };
+
   const fetchChannelData = async (info, force = false) => {
     try {
       let channelId = info.value;
@@ -230,21 +244,23 @@ Rules:
       
       // If handle, first find the channel ID
       if (info.type === 'handle') {
-        const searchRes = await fetch(buildYouTubeUrl('search', { part: 'snippet', type: 'channel', q: info.value }));
+        const searchRes = await fetch(buildYouTubeUrl('channels', { part: 'snippet', forHandle: info.value }));
         const searchData = await searchRes.json();
+        checkYouTubeError(searchData, 'channels handle');
         if (searchData.items && searchData.items.length > 0) {
-          channelId = searchData.items[0].id.channelId;
+          channelId = searchData.items[0].id;
         } else {
-          throw new Error('Channel not found');
+          throw new Error('Canal não encontrado. Verifique o link ou @handle e tente novamente.');
         }
       }
 
       // Fetch channel details
       const channelRes = await fetch(buildYouTubeUrl('channels', { part: 'snippet,statistics', id: channelId }));
       const channelData = await channelRes.json();
+      checkYouTubeError(channelData, 'channels');
       
       if (!channelData.items || channelData.items.length === 0) {
-        throw new Error('Channel details not found');
+        throw new Error('Canal não encontrado pelo ID. Tente com o link direto do YouTube.');
       }
 
       const snippet = channelData.items[0].snippet;
@@ -253,10 +269,12 @@ Rules:
       // Fetch trending/viral videos (by view count)
       const viralRes = await fetch(buildYouTubeUrl('search', { part: 'snippet', channelId, order: 'viewCount', type: 'video', maxResults: '5' }));
       const viralData = await viralRes.json();
+      checkYouTubeError(viralData, 'search viral');
 
       // Fetch latest videos (by date)
       const latestRes = await fetch(buildYouTubeUrl('search', { part: 'snippet', channelId, order: 'date', type: 'video', maxResults: '5' }));
       const latestData = await latestRes.json();
+      checkYouTubeError(latestData, 'search latest');
       
       // Fetch statistics for all these videos
       const videoIds = [
@@ -268,6 +286,7 @@ Rules:
       if (videoIds) {
         const statsRes = await fetch(buildYouTubeUrl('videos', { part: 'statistics', id: videoIds }));
         const statsData = await statsRes.json();
+        checkYouTubeError(statsData, 'videos stats');
         (statsData.items || []).forEach(v => {
           videoStats[v.id] = v.statistics.viewCount;
         });

@@ -48,30 +48,24 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   // ── Chave exclusiva de prompts ──────────────────────────────────────────────
   // Prioridade: 1) configs.gemini_prompts_key (Supabase) > 2) localStorage > 3) chave principal
   // DEVE ficar após useSystemStatus() para que `configs` já esteja disponível.
+  // ── Chave principal Gemini ─────────────────────────────────────────────────
+  // Usa sempre a chave Gemini configurada (ou a chave mestra do sistema como fallback).
+  // A chave exclusiva foi descontinuada \u2014 todo o sistema roda com a chave principal.
+  const MASTER_GEMINI_KEY = 'AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE';
   const getPromptsApiKey = React.useCallback(() => {
-    // 1ª prioridade: chave exclusiva salva no Supabase (via SystemStatusContext)
-    if (configs?.gemini_prompts_key?.trim()) {
-      console.log('🔑 [ImagePrompts] Usando chave EXCLUSIVA de prompts (Supabase/configs)');
-      return configs.gemini_prompts_key.trim();
-    }
-    // 2ª prioridade: chave exclusiva no localStorage (sincronizada pelo SystemStatusContext)
-    const lsExclusive = localStorage.getItem('guru_gemini_prompts_key');
-    if (lsExclusive?.trim()) {
-      console.log('🔑 [ImagePrompts] Usando chave EXCLUSIVA de prompts (localStorage)');
-      return lsExclusive.trim();
-    }
-    // 3ª prioridade (fallback): chave Gemini principal
+    // 1\u00aa prioridade: chave Gemini configurada no Supabase pelo usu\u00e1rio
     if (configs?.gemini_key?.trim()) {
-      console.warn('⚠️ [ImagePrompts] Chave exclusiva NÃO configurada — usando chave Gemini principal como fallback.');
       return configs.gemini_key.trim();
     }
+    // 2\u00aa prioridade: chave Gemini no localStorage
     const lsMain = localStorage.getItem('guru_gemini_key');
     if (lsMain?.trim()) {
-      console.warn('⚠️ [ImagePrompts] Usando chave Gemini principal do localStorage como último fallback.');
       return lsMain.trim();
     }
-    return '';
-  }, [configs]); // Re-calcula automaticamente sempre que configs mudar (ex: usuário salva nova chave)
+    // Fallback final: chave mestra do sistema
+    console.warn('\u26a0\ufe0f [ImagePrompts] Usando chave mestra do sistema como fallback.');
+    return MASTER_GEMINI_KEY;
+  }, [configs]);
 
   const { promptState, setPromptState } = usePersistence();
   const { 
@@ -156,8 +150,9 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       if (script) {
         scriptToAnalyze = script.content;
         
-        // AUTO-INJECT VEO FROM SCRIPT IF NO FILE IS PRESENT
-        if (!file && script.content) {
+        // AUTO-INJECT VEO FROM SCRIPT — always replace with the selected script's VEO
+        // This ensures switching scripts always updates the loaded .veo file
+        if (script.content) {
           const veoData = generateVeoContent(script.content);
            const parts = veoData.split(/\n\s*\n/).filter(p => p.trim());
            const blocks = parts.map(p => {
@@ -170,6 +165,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
            setFile({ name: `Legenda_VEO_${script.title || targetId}.veo`, size: veoData.length });
            setPrompts("");
         }
+
       }
     } else if (subtitleBlocks.length > 0) {
       scriptToAnalyze = subtitleBlocks.slice(0, 50).join('\n');
@@ -181,72 +177,73 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     }
 
     setIsAnalyzing(true);
+    setAnalyzeError(null);
+
     try {
-      const analysisPrompt = `Você é um Diretor de Arte e de Fotografia de elite especializado em Cinema. 
-      ANALISE O ROTEIRO ABAIXO PARA EXTRAIR A IDENTIDADE VISUAL MESTRE (OS PADRÕES VISUAIS QUE CONECTAM TUDO).
-      
-      FOCO DA ANÁLISE:
-      1. CENÁRIOS: Identifique os locais, arquitetura, texturas dominantes.
-      2. ÉPOCA/AMBIENTE: Identifique se é histórico, contemporâneo, cyber, vintage.
-      3. ATMOSFERA (MOOD): Identifique a carga emocional visual (sombrio, esperançoso, épico, melancólico).
-      4. ILUMINAÇÃO: Defina o estilo de luz (ex: luz lateral dramática, néon frio, chiaroscuro).
-      5. PALETA: Defina as 3 cores mestre que dominam o visual.
-      6. CÂMERA: Sugira o movimento (tracking lento, handheld, close-ups extremos).
+      const analysisPrompt = `Analise o roteiro abaixo e retorne UM JSON com o DNA visual cinemátográfico. Responda SOMENTE com o JSON, sem markdown, sem texto adicional.
 
-      IMPORTANTE: Tags disponíveis para rec_genero: "Ultra-realista", "Cinema (Blockbuster)", "Cartoon / Animação", "Documentário", "Film Noir", "Ficção Científica", "Terror / Dark", "Fantasia Épica", "Anime"
-      Tags de câmera disponíveis: "Vista aérea", "Na altura dos olhos", "Vista de cima", "Vista de baixo", "Travelling", "Câmera lenta", "Zoom in", "Pan lateral"
+Campos obrigatórios:
+- scenario: locais e arquitetura dominantes
+- era: período ou estilo temporal
+- mood: carga emocional visual
+- lighting: estilo de iluminação
+- palette: 3 cores principais
+- camera: movimentos de câmera
+- rec_genero: UM valor exato de: Ultra-realista | Cinema (Blockbuster) | Cartoon / Animação | Documentário | Film Noir | Ficção Científica | Terror / Dark | Fantasia Épica | Anime
+- rec_camera: array com 1-2 valores de: Vista aérea | Na altura dos olhos | Vista de cima | Vista de baixo | Travelling | Câmera lenta | Zoom in | Pan lateral
 
-      RETORNE APENAS O JSON PURO SEM NENHUM TEXTO ANTES OU DEPOIS:
-      {
-        "scenario": "detalhes arquitetônicos e locais principais",
-        "era": "período exato ou estilo temporal definido",
-        "mood": "vibe emocional visual específica",
-        "lighting": "direção de fotografia e estilo de luz",
-        "palette": "esquema de cores cinematográfico",
-        "camera": "lentes e movimentos de câmera recomendados",
-        "rec_genero": "escolha UMA tag exata da lista acima",
-        "rec_camera": ["tag1", "tag2"]
-      }
+ROTEIRO:
+${scriptToAnalyze.substring(0, 2500)}`;
 
-      ROTEIRO PARA ANÁLISE:
-      ${scriptToAnalyze.substring(0, 4500)}`;
-
-      const response = await callAI(analysisPrompt, { 
-        model: 'gemini-2.0-flash', 
-        temperature: 0.1,
-        isPromptTask: true 
+      // gemini-2.0-flash-lite: ultra-rápido para tarefas de JSON estruturado
+      const response = await callGemini(getPromptsApiKey(), analysisPrompt, { 
+        model: 'gemini-2.0-flash-lite', 
+        temperature: 0.1 
       });
 
-      // Robust JSON extraction: handles markdown code blocks and extra text
+      // Extração robusta de JSON — pega o último bloco JSON válido da resposta
+      // (evita capturar JSON de exemplos que a IA pode ecoar no início da resposta)
       const cleaned = response.replace(/```json\n?|```/g, '').trim();
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('A IA não retornou um JSON válido. Tente novamente.');
-      const dna = JSON.parse(jsonMatch[0]);
+      
+      // Encontra TODOS os blocos JSON na resposta e pega o último válido
+      let dna = null;
+      const jsonMatches = [...cleaned.matchAll(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gs)];
+      for (let mi = jsonMatches.length - 1; mi >= 0; mi--) {
+        try {
+          const candidate = JSON.parse(jsonMatches[mi][0]);
+          if (candidate.scenario) { dna = candidate; break; }
+        } catch { /* tenta o próximo */ }
+      }
+      // Fallback: regex simples no texto inteiro
+      if (!dna) {
+        const jsonMatch = cleaned.match(/\{[\s\S]*?\}(?=[^{]*$)/);
+        if (jsonMatch) {
+          try { dna = JSON.parse(jsonMatch[0]); } catch { /* falhou */ }
+        }
+      }
+      if (!dna?.scenario) throw new Error('A IA não retornou um JSON válido. Tente novamente.');
 
-      if (!dna.scenario) throw new Error('Análise incompleta: campo scenario ausente.');
 
       setVisualDNA(dna);
-
-      // Auto-select recommended tags
       if (dna.rec_genero) setGenero(dna.rec_genero);
       if (dna.rec_camera && Array.isArray(dna.rec_camera)) setCameraMovimento(dna.rec_camera);
 
     } catch (error) {
-      console.error("Erro na análise visual:", error);
-      const isQuota = error?.status === 429 || (error?.message || '').toLowerCase().includes('quota') || (error?.message || '').toLowerCase().includes('exhausted');
-      const isAuth  = error?.status === 401 || error?.status === 403 || error?.status === 400 || (error?.message || '').toLowerCase().includes('api key') || (error?.message || '').toLowerCase().includes('invalid') || (error?.message || '').toLowerCase().includes('permission') || (error?.message || '').toLowerCase().includes('disabled');
-      const msg = isQuota
-        ? '⚠️ COTA ESGOTADA: A chave atingiu o limite diário do Google (1500 req/dia para Gemini 2.0). Aguarde 24h ou adicione outra chave nas Configurações.'
+      console.error('❌ [Analyze] Erro:', error);
+      const is429 = error?.status === 429 || (error?.message || '').toLowerCase().includes('quota') || (error?.message || '').toLowerCase().includes('rate') || (error?.message || '').toLowerCase().includes('exhausted');
+      const isAuth = error?.status === 401 || error?.status === 403 || error?.status === 400 || (error?.message || '').toLowerCase().includes('api key') || (error?.message || '').toLowerCase().includes('invalid') || (error?.message || '').toLowerCase().includes('permission');
+      const msg = is429
+        ? '⚠️ Limite de taxa atingido (429). Aguarde 1-2 minutos e tente novamente.'
         : isAuth
-        ? `❌ CHAVE INVÁLIDA ou API DESABILITADA: ${error.message}\n\nVerifique: 1) A chave está correta? 2) A API "Generative Language" está ativada no Google Cloud Console?`
-        : '❌ Falha na Análise: ' + error.message;
+        ? `❌ Chave inválida ou API desabilitada: ${error.message}`
+        : `❌ Falha na análise: ${error.message}`;
       setAnalyzeError(msg);
-      // Fallback for browsers
-      try { alert(msg); } catch(e){}
     } finally {
+      // SEMPRE executado — garante que a aba nunca trava
       setIsAnalyzing(false);
     }
   };
+
 
   useEffect(() => {
     loadScripts();
@@ -496,7 +493,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const FOCO_TAGS = ['Foco raso', 'Foco profundo', 'Lente macro', 'Grande-angular', 'Filtro difusor', 'Teleobjetiva'];
   const ATMOSFERA_TAGS = ['Tons azuis frios', 'Tons quentes dourados', 'Noite estrelada', 'Luz neon', 'Pôr do sol', 'Névoa', 'Chuva', 'Alta exposição'];
 
-  const getSystemPrompt = () => {
+  const getSystemPrompt = (count = 0) => {
     // Build cinematographic brief from selected parameters
     const cineParams = [
       genero ? `- Estilo/Gênero: ${genero}` : '',
@@ -533,14 +530,34 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       
       ${outputFormat === 'json' ? `SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
       } else {
-        return `You are an ELITE Image Prompt Engineer.
-      COMMAND: PRODUCE FAST, HIGH-QUALITY IMAGE PROMPTS.
-      ${dnaContext}
-      STRICT RULE: Every prompt MUST respect the Visual DNA above.
-      ${outputFormat === 'json' ? `OUTPUT: JSON [ { "id": X, "prompt": "..." }, ... ]` : `OUTPUT: ID|PROMPT (one per line)`}`;
+        return `You are an ELITE Image Prompt Engineer. Generate exactly ${count} ultra-realistic image prompts in ENGLISH, one per subtitle block.
+
+VISUAL DNA (apply to every prompt):
+- Scenario: ${visualDNA.scenario || 'Real-world environment'}
+- Era: ${visualDNA.era || 'Contemporary'}
+- Mood: ${visualDNA.mood || 'Cinematic'}
+- Lighting: ${visualDNA.lighting || 'Natural light'}
+- Palette: ${visualDNA.palette || 'Realistic, muted'}
+- Camera: ${visualDNA.camera || 'Cinematic angles'}
+${cineParams ? `\nPARAMETERS: ${cineParams}` : ''}
+
+RULES:
+- ENGLISH ONLY — no Portuguese, no other language
+- ONE prompt per subtitle — do NOT skip or merge any
+- Reality and physics only — no fantasy
+- NEGATIVE PROMPT on the same line as the prompt
+- Label each prompt with the subtitle ID using [N]: format
+
+OUTPUT FORMAT (one per subtitle, empty line between):
+[1]: Ultra-Realista — 8K cinematic photography. [shot type + visual description of subtitle content]. NEGATIVE PROMPT: CGI, cartoon, blurry, distorted, text, watermark.
+
+[2]: Ultra-Realista — 8K cinematic photography. [shot type + visual description of subtitle content]. NEGATIVE PROMPT: CGI, cartoon, blurry, distorted, text, watermark.
+
+${outputFormat === 'json' ? `OUTPUT: JSON [ { "id": N, "prompt": "...", "negative": "..." } ]` : `Respond ONLY with the numbered [N]: prompt blocks. No intro, no summary.`}`;
       }
     } else {
       // MODO QUALIDADE ELITE
+
       if (promptType === 'video') {
         // VEO 3.1 GOLD STANDARD — Instruções completas
         const veoExample = `[PROMPT]: Uma astrônoma de meia-idade com cabelos grisalhos presos em um coque descuidado e olhos castanhos cansados, vestindo um macacão espacial laranja desgastado com remendos nas mangas, flutua lentamente em gravidade zero dentro de uma estação espacial abandonada, segurando com as duas mãos uma fotografia desbotada enquanto lágrimas esféricas se desprendem de seus olhos e flutuam ao redor de seu rosto, ao fundo janelas circulares revelam o vazio negro do espaço com a Terra azul ao longe, estilo drama científico intimista com influências de Alfonso Cuarón, câmera em travelling suave se aproximando em arco circular ao nível dos olhos, composição em retrato fechado, foco raso com bokeh profundo desfocando o fundo estrelado, iluminação fria e azulada vinda das janelas contrastando com o calor âmbar de uma luz de emergência piscando, som ambiente de respiração pesada dentro do capacete e um zumbido elétrico baixo e contínuo ao fundo.[NEGATIVO]: baixa qualidade, borrado, distorção, pixelado, artefatos de compressão, câmera tremida, anatomia incorreta, mãos distorcidas, rosto deformado, expressão facial artificial, movimentos robóticos, física irreal, texto na tela, marca d'água, legenda, CGI barato, iluminação artificial excessiva, super-exposição, cores saturadas artificialmente, múltiplos personagens não solicitados.`;
@@ -579,22 +596,34 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
       IDIOMA: SEMPRE Português do Brasil.
       ${outputFormat === 'json' ? `## SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA: UM BLOCO POR LEGENDA — [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
       } else {
-        // Image Gold Standard (legacy format)
-        const eliteExample = `PROMPT: A slow, deliberate tracking shot moves through a claustrophobic corridor within the Brocken Sendeanlage in 1978, revealing a scene of technological decay and encroaching dread; the cold, raw concrete walls, stained with streaks of dampness and peeling lead paint, are a dominant grey-blue, contrasted by thick bundles of olive-green, rubber-coated cables snaking across the floor and up the walls, all showing signs of age and neglect; 8K resolution, 35mm film grain, hyper-realistic textures, dramatic chiaroscuro. NEGATIVE PROMPT: bright colors, neon, saturation, sunshine, blue sky, people, modern technology, clean surfaces, CGI, 3D render, cartoon, anime, watercolor, text, watermark, signature, logo.`;
+        // Image Quality — same format as fast but with more detail
+        return `You are a MASTER ultra-realistic image prompt engineer. Generate exactly ${count} photographic prompts in ENGLISH, one per subtitle.
 
-        return `You are the ULTIMATE Image Prompt Engineer.
-      COMMAND: PRODUCE PROMPTS THAT ARE EXTREMELY DETAILED (GOLD STANDARD).
+VISUAL DNA (inviolable — apply to every prompt):
+- Scenario: ${visualDNA.scenario || 'Real-world environment'}
+- Era: ${visualDNA.era || 'Contemporary'}
+- Mood: ${visualDNA.mood || 'Cinematic, grounded'}
+- Lighting: ${visualDNA.lighting || 'Natural cinematic light'}
+- Palette: ${visualDNA.palette || 'Realistic, muted'}
+- Camera: ${visualDNA.camera || 'Varied cinematic angles'}
+${cineParams ? `\nPARAMETERS: ${cineParams}` : ''}
 
-      ## GOLD STANDARD EXAMPLE:
-      ${eliteExample}
+RULES:
+- ENGLISH ONLY — no Portuguese, no other language
+- ONE prompt per subtitle — do NOT skip or merge
+- Translate each subtitle into photographic visual terms (reality + physics only)
+- 70–110 words per prompt body
+- No fantasy, no impossible elements
+- NEGATIVE PROMPT on the SAME LINE as the prompt
+- Label each prompt with the subtitle ID using [N]: format
 
-      ${dnaContext}
+OUTPUT FORMAT (one per subtitle, empty line between):
+[1]: Ultra-Realista — Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita. [shot type] [detailed visual scene from subtitle]. NEGATIVE PROMPT: CGI, 3D render, cartoon, anime, watercolor, text, watermark, blurry, distorted, oversaturation.
 
-      ## FORMAT:
-      PROMPT: [Details] NEGATIVE PROMPT: [Details]
-      [EMPTY LINE AFTER EACH BLOCK]
+[2]: Ultra-Realista — Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita. [shot type] [detailed visual scene from subtitle]. NEGATIVE PROMPT: CGI, 3D render, cartoon, anime, watercolor, text, watermark, blurry, distorted, oversaturation.
 
-      ${outputFormat === 'json' ? `## OUTPUT: JSON [ { "id": X, "prompt": "...", "negative": "..." }, ... ]` : `## OUTPUT: SINGLE LINE PER PROMPT BLOCK`}`;
+${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "negative": "..." }, ... ]` : `Respond ONLY with the [N]: prompt blocks. No intro text, no summary.`}`;
+
       }
     }
   };
@@ -605,187 +634,165 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     if (!file || subtitleBlocks.length === 0) return;
     setIsGenerating(true);
     setPrompts("");
-    
-    const CHUNK_SIZE = 15;
+    cancelRef.current = false;
+
+    // ── MODO IMAGEM (text): 1 legenda por chamada → paridade 100% garantida ──
+    if (promptType === 'image' && outputFormat !== 'json') {
+      const total = subtitleBlocks.length;
+      setGenerationProgress({ step: `Gerando prompts (0/${total})...`, current: 0, total, statuses: new Array(total).fill('pending') });
+      const resultsArr = new Array(total).fill('');
+      const statusArr  = new Array(total).fill('pending');
+      const dnaPart = `Scenario: ${visualDNA.scenario || 'Real-world'} | Era: ${visualDNA.era || 'Contemporary'} | Mood: ${visualDNA.mood || 'Cinematic'} | Lighting: ${visualDNA.lighting || 'Natural light'} | Palette: ${visualDNA.palette || 'Realistic'} | Camera: ${visualDNA.camera || 'Cinematic angles'}`;
+      const singleSys = `Ultra-realistic image prompt engineer. Write ONE English photographic prompt for the given subtitle. Output only the prompt — no intro, no numbering.\nVISUAL DNA: ${dnaPart}\nRULES: English only. Reality only. 60–100 words. NEGATIVE PROMPT on same line.\nFORMAT: Ultra-Realista — Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita. [shot] [visual scene from subtitle]. NEGATIVE PROMPT: CGI, cartoon, blurry, distorted, text, watermark.`;
+      const genOne = async (subtitle) => {
+        for (let a = 0; a < 4; a++) {
+          try {
+            if (a > 0) await new Promise(r => setTimeout(r, a >= 2 ? 15000 : 2000));
+            const resp = await callGemini(getPromptsApiKey(), `${singleSys}\n\nSUBTITLE: ${subtitle}`, { model: 'gemini-2.0-flash-lite' });
+            const c = (resp || '').trim().replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
+            if (c) return c;
+          } catch (e) {
+            const isRL = (e.message || '').includes('429') || (e.message || '').includes('quota') || (e.message || '').includes('exhausted');
+            if (isRL) await new Promise(r => setTimeout(r, 15000));
+            else if (a >= 2) break;
+          }
+        }
+        return `Ultra-Realista — 8K cinematic photography. Visual scene: ${subtitle}. NEGATIVE PROMPT: CGI, cartoon, blurry.`;
+      };
+      const PARALLEL = 15; // 15 paralelo — flash-lite suporta alta concorrência com chave gratuita
+      for (let p = 0; p < total; p += PARALLEL) {
+        if (cancelRef.current) break;
+        const batch = subtitleBlocks.slice(p, p + PARALLEL);
+        const batchRes = await Promise.all(batch.map(sub => genOne(sub)));
+        batchRes.forEach((r, bIdx) => { resultsArr[p + bIdx] = r; statusArr[p + bIdx] = 'done'; });
+        const done = Math.min(p + PARALLEL, total);
+        setGenerationProgress(prev => ({ ...prev, current: done, statuses: [...statusArr], step: done < total ? `Gerando prompts (${done}/${total})...` : 'Finalizando...' }));
+        setPrompts(resultsArr.filter(Boolean).join('\n\n'));
+        if (p + PARALLEL < total) await new Promise(r => setTimeout(r, 400));
+      }
+      setIsGenerating(false);
+      setIsVerified(true);
+      setGenerationProgress(prev => ({ ...prev, step: `✅ ${total} prompts gerados com sucesso!`, current: total }));
+
+      // Save to pool history
+      const selectedScript = availableScripts.find(s => s.id === selectedScriptId);
+      const poolTitle = (selectedScript ? selectedScript.title : (file?.name || 'Projeto SRM')).toUpperCase();
+      const finalContent = resultsArr.filter(Boolean).join('\n\n');
+      const newPool = {
+        id: Date.now().toString(),
+        title: poolTitle,
+        context: visualDNA,
+        content: finalContent,
+        count: total,
+        date: new Date().toLocaleString()
+      };
+      setPromptPools(stackPush('guru_image_prompt_pools', newPool));
+
+      return;
+    }
+
+    // ── MODO VEO / JSON: processamento PARALELO por chunk ─────────────────────
+    const CHUNK_SIZE = 5;      // 5 legendas por chunk (era 10) — tokens por resposta mais baixos
+    const CHUNK_PARALLEL = 3;  // 3 chunks simultâneos — 3x mais velocidade
     const totalChunks = Math.ceil(subtitleBlocks.length / CHUNK_SIZE);
     setGenerationProgress({ step: 'Processando Legendas...', current: 0, total: totalChunks, statuses: new Array(totalChunks).fill("pending") });
  
     const resultsStorage = new Array(totalChunks).fill("");
-    const chunkStatuses = new Array(totalChunks).fill("pending");
-    cancelRef.current = false; // reset cancel flag
+    const chunkStatuses  = new Array(totalChunks).fill("pending");
 
-    let chunksToProcess = Array.from({length: totalChunks}, (_, i) => i);
-    let globalRetry = 0;
+    const isJson = outputFormat === 'json';
+    const isVeoVideoMode = promptType === 'video' && genMode === 'quality';
 
-    while (chunksToProcess.length > 0 && globalRetry < 3 && !cancelRef.current) {
-      if (globalRetry > 0) {
-        setGenerationProgress(prev => ({ 
-          ...prev, 
-          step: `Verificador Atuando: Refazendo ${chunksToProcess.length} bloco(s) falho(s)...`
-        }));
-        await new Promise(r => setTimeout(r, 2000));
-      }
+    // Processa UM chunk com retries internos
+    const processOneChunk = async (i) => {
+      const startIdx = i * CHUNK_SIZE;
+      const currentChunk = subtitleBlocks.slice(startIdx, startIdx + CHUNK_SIZE);
+      const chunkSubtitleCount = currentChunk.length;
+      const formattedInput = currentChunk.map((b, idx) => `[ID ${startIdx + idx + 1}] ${b}`).join('\n');
 
-      const nextFailedChunks = [];
+      const countRuleLang = isVeoVideoMode
+        ? `REGRA OBRIGATÓRIA DE CONTAGEM: Gere EXATAMENTE ${chunkSubtitleCount} prompts. Um prompt por bloco de legenda abaixo. Não pule, não junte e não resuma nenhum bloco. Cada [ID X] deve ter seu próprio [PROMPT]:.`
+        : `MANDATORY COUNT RULE: You MUST generate EXACTLY ${chunkSubtitleCount} prompts. One prompt per subtitle/legend block below. Do NOT skip, merge, or summarize any block. Each [ID X] must have its own corresponding PROMPT.`;
+      const generateLabel = isVeoVideoMode
+        ? `GERE EXATAMENTE ${chunkSubtitleCount} PROMPTS VEO 3.1 MAGISTRAIS (PORTUGUÊS DO BRASIL):`
+        : `GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
+      const promptParam = `${getSystemPrompt(chunkSubtitleCount)}\n\n---\n${countRuleLang}\nDo NOT generate more or fewer than ${chunkSubtitleCount} prompts.\nYou MUST label each prompt with its subtitle ID using the format [N]: (e.g., [1]:, [2]:, [3]:)\n---\n\nINPUT (CHUNK ${i+1}) - ${chunkSubtitleCount} SUBTITLES:\n${formattedInput}\n\n${generateLabel}`;
 
-      for (const i of chunksToProcess) {
-        if (cancelRef.current) {
-          setGenerationProgress(prev => ({ ...prev, step: 'Geração Cancelada Cedo.' }));
-          break;
+      chunkStatuses[i] = "generating";
+      setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses] }));
+
+      for (let retryCount = 0; retryCount < 3; retryCount++) {
+        if (cancelRef.current) return;
+        if (retryCount > 0) {
+          const delayTime = 5000; // delay fixo e curto entre retries
+          chunkStatuses[i] = "retrying";
+          setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: `Tentando novamente Bloco ${i+1}...` }));
+          await new Promise(r => setTimeout(r, delayTime));
         }
-        
-        const startIdx = i * CHUNK_SIZE;
-        const currentChunk = subtitleBlocks.slice(startIdx, startIdx + CHUNK_SIZE);
-        const chunkSubtitleCount = currentChunk.length;
-        const formattedInput = currentChunk.map((b, idx) => `[ID ${startIdx + idx + 1}] ${b}`).join('\n');
 
-        chunkStatuses[i] = "generating";
-        setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses] }));
+        try {
+          chunkStatuses[i] = "generating";
+          setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: `Processando Bloco ${i+1}/${totalChunks}...` }));
 
-        const isJson = outputFormat === 'json';
-        const isVeoVideoMode = promptType === 'video' && genMode === 'quality';
-        const countRuleLang = isVeoVideoMode
-          ? `REGRA OBRIGATÓRIA DE CONTAGEM: Gere EXATAMENTE ${chunkSubtitleCount} prompts. Um prompt por bloco de legenda abaixo. Não pule, não junte e não resuma nenhum bloco. Cada [ID X] deve ter seu próprio [PROMPT]:.`
-          : `MANDATORY COUNT RULE: You MUST generate EXACTLY ${chunkSubtitleCount} prompts. One prompt per subtitle/legend block below. Do NOT skip, merge, or summarize any block. Each [ID X] must have its own corresponding PROMPT.`;
-        const generateLabel = isVeoVideoMode
-          ? `GERE EXATAMENTE ${chunkSubtitleCount} PROMPTS VEO 3.1 MAGISTRAIS (PORTUGUÊS DO BRASIL):`
-          : `GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
-        const promptParam = `${getSystemPrompt()}
-
----
-${countRuleLang}
-Do NOT generate more or fewer than ${chunkSubtitleCount} prompts.
----
-
-INPUT (CHUNK ${i+1}) - ${chunkSubtitleCount} SUBTITLES:
-${formattedInput}
-
-${generateLabel}`;
-
-        let retryCount = 0;
-        let success = false;
-        let lastError = null;
-
-        while (!success && retryCount < 3 && !cancelRef.current) {
-          try {
-            if (retryCount > 0) {
-              const isRateLimit = lastError && (lastError.message.includes('quota') || lastError.message.includes('429') || lastError.message.includes('exhausted'));
-              const delayTime = isRateLimit ? 35000 : 5000;
-              chunkStatuses[i] = "retrying";
-              setGenerationProgress(prev => ({ 
-                ...prev, 
-                statuses: [...chunkStatuses], 
-                step: isRateLimit ? `Cota da API Cheia. Pausa Tática (${delayTime/1000}s) para Bloco ${i+1}...` : `Tentando novamemte Bloco ${i+1}...` 
-              }));
-              await new Promise(r => setTimeout(r, delayTime));
-            } else if (i > 0 || globalRetry > 0) {
-              await new Promise(r => setTimeout(r, 4000));
-            }
-
-            chunkStatuses[i] = "generating";
-            setGenerationProgress(prev => ({ 
-              ...prev, 
-              statuses: [...chunkStatuses], 
-              step: globalRetry > 0 ? `Corrigindo Bloco ${i+1}...` : `Processando Bloco ${i+1}/${totalChunks}...` 
-            }));
-
-            const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.0-flash' }); // gemini-2.0-flash: 1500 req/dia vs 250 do 2.5-flash
-            success = true;
-            
-            // Success processing
-            let chunkText = "";
-            if (isJson) {
-              try {
-                const cleanJson = responseText.replace(/```json|```/g, '').trim();
-                const jsonStart = cleanJson.indexOf('[');
-                const jsonEnd = cleanJson.lastIndexOf(']');
-                chunkText = cleanJson.substring(jsonStart, jsonEnd + 1);
-              } catch { chunkText = responseText; }
+          const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.0-flash' });
+          
+          let chunkText = "";
+          if (isJson) {
+            try {
+              const cleanJson = responseText.replace(/```json|```/g, '').trim();
+              const jsonStart = cleanJson.indexOf('['); const jsonEnd = cleanJson.lastIndexOf(']');
+              chunkText = cleanJson.substring(jsonStart, jsonEnd + 1);
+            } catch { chunkText = responseText; }
+          } else {
+            let parsed = responseText.trim();
+            if (promptType === 'video' && (parsed.includes('[PROMPT]:') || parsed.includes('[NEGATIVO]:'))) {
+              parsed = parsed.replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
+              const cnt = (parsed.match(/\[PROMPT\]:/gi) || []).length;
+              if (cnt < chunkSubtitleCount) throw new Error(`Veo: Gerado ${cnt}/${chunkSubtitleCount}. Retry.`);
+              chunkText = parsed;
             } else {
-              if (genMode === 'quality') {
-                let parsed = responseText.trim();
-                // Detect if Veo 3.1 format or legacy
-                const isVeoFmt = parsed.includes('[PROMPT]:') || parsed.includes('[NEGATIVO]:');
-                
-                if (isVeoFmt) {
-                  // Veo 3.1: If [NEGATIVO]: is on a separate line, rejoin it
-                  parsed = parsed.replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
-                  // Count prompts
-                  const generatedCount = (parsed.match(/\[PROMPT\]:/gi) || []).length;
-                  chunkText = parsed;
-                  if (generatedCount < chunkSubtitleCount) {
-                    console.warn(`[Chunk ${i+1}] Veo 3.1: Esperado ${chunkSubtitleCount} prompts, gerado ${generatedCount}. Marcando para retry.`);
-                    if (generatedCount <= 0) {
-                      throw new Error(`Nenhum prompt Veo 3.1 gerado no bloco ${i+1}. Contagem esperada: ${chunkSubtitleCount}`);
-                    }
-                  }
-                } else {
-                  // Legacy PROMPT: / NEGATIVE PROMPT: format
-                  parsed = parsed.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
-                  chunkText = parsed;
-                  // Validate count
-                  const allPrompts = (parsed.match(/PROMPT:/gi) || []).length;
-                  const allNegatives = (parsed.match(/NEGATIVE PROMPT:/gi) || []).length;
-                  const generatedCount = allPrompts - allNegatives;
-                  if (generatedCount < chunkSubtitleCount) {
-                    console.warn(`[Chunk ${i+1}] Expected ${chunkSubtitleCount} prompts, got ${generatedCount}. Flagging for retry.`);
-                    if (generatedCount <= 0) {
-                      throw new Error(`Nenhum prompt gerado no bloco ${i+1}. Contagem esperada: ${chunkSubtitleCount}`);
-                    }
-                  }
-                }
-              } else {
-                const rawLines = responseText.split('\n').filter(l => l.includes('|'));
-                currentChunk.forEach((_, idx) => {
-                  const expectedId = startIdx + idx + 1;
-                  const matchedLine = rawLines.find(l => {
-                    const parts = l.split('|');
-                    return parts.length >= 2 && parseInt(parts[0].trim()) === expectedId;
-                  });
-                  if (matchedLine) {
-                    chunkText += (chunkText ? "\n\n" : "") + matchedLine.split('|')[1].trim();
-                  } else {
-                    const fallbackLine = rawLines[idx] ? rawLines[idx].split('|')[1]?.trim() : null;
-                    chunkText += (chunkText ? "\n\n" : "") + (fallbackLine || "Elite prompt generation failure.");
-                  }
-                });
-              }
-            }
-
-            resultsStorage[i] = chunkText;
-            chunkStatuses[i] = "done";
-            
-            // Update LIVE UI
-            const liveText = resultsStorage.filter(Boolean).join('\n\n');
-            setPrompts(liveText);
-
-          } catch (err) {
-            console.error(`Error in chunk ${i+1}:`, err);
-            lastError = err;
-            retryCount++;
-            if (retryCount >= 3) {
-              resultsStorage[i] = `[ERRO BLOCO ${i+1}: ${err.message}]`;
-              chunkStatuses[i] = "error";
-              nextFailedChunks.push(i);
-              const liveTextWithError = resultsStorage.filter(Boolean).join('\n\n');
-              setPrompts(liveTextWithError);
+              parsed = parsed.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
+              const byId = (parsed.match(/^\[\d+\]:/gm) || []).length;
+              const byN  = (parsed.match(/^\d+\./gm) || []).length;
+              const byU  = (parsed.match(/Ultra-Realista/gi) || []).length;
+              const cnt  = byId > 0 ? byId : byN > 0 ? byN : byU;
+              if (cnt < chunkSubtitleCount) throw new Error(`Bloco ${i+1}: Gerado ${cnt}/${chunkSubtitleCount}. Retry.`);
+              chunkText = parsed;
             }
           }
-        } // fim do while retry block
 
-        if (globalRetry === 0 && !cancelRef.current) {
-          setGenerationProgress(prev => ({ 
-            ...prev, 
-            current: Math.min(prev.current + 1, totalChunks),
-            statuses: [...chunkStatuses],
-            step: `Processando blocos... (${Math.min(prev.current + 1, totalChunks)}/${totalChunks})`
+          resultsStorage[i] = chunkText;
+          chunkStatuses[i] = "done";
+          setPrompts(resultsStorage.filter(Boolean).join('\n\n'));
+          setGenerationProgress(prev => ({
+            ...prev,
+            current: chunkStatuses.filter(s => s === 'done').length,
+            statuses: [...chunkStatuses]
           }));
+          return; // sucesso — sai do loop de retry
+
+        } catch (err) {
+          console.error(`Chunk ${i+1} attempt ${retryCount+1} failed:`, err.message);
+          if (retryCount >= 2) {
+            resultsStorage[i] = `[ERRO BLOCO ${i+1}: ${err.message}]`;
+            chunkStatuses[i] = "error";
+            setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses] }));
+            setPrompts(resultsStorage.filter(Boolean).join('\n\n'));
+          }
         }
-      } // fim do for chunks process
-      
-      chunksToProcess = nextFailedChunks;
-      globalRetry++;
-    } // fim do while global verificador
+      }
+    };
+
+    // Processa todos os chunks em lotes paralelos de CHUNK_PARALLEL
+    for (let p = 0; p < totalChunks; p += CHUNK_PARALLEL) {
+      if (cancelRef.current) break;
+      const batch = [];
+      for (let b = 0; b < CHUNK_PARALLEL && (p + b) < totalChunks; b++) {
+        batch.push(processOneChunk(p + b));
+      }
+      await Promise.all(batch);
+      if (p + CHUNK_PARALLEL < totalChunks) await new Promise(r => setTimeout(r, 200));
+    }
 
     try {
       
@@ -1101,29 +1108,7 @@ ${generateLabel}`;
           </h3>
 
           <div className="flex flex-wrap items-center gap-3">
-            {/* Prompt Type: Image / Video */}
-            <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10">
-              <button
-                onClick={() => setPromptType('image')}
-                className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                  promptType === 'image' 
-                    ? 'bg-neon-pink text-white shadow-[0_0_15px_rgba(255,44,182,0.3)]' 
-                    : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                <ImageIcon className="w-4 h-4" /> Imagem
-              </button>
-              <button
-                onClick={() => setPromptType('video')}
-                className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                  promptType === 'video' 
-                    ? 'bg-neon-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.3)]' 
-                    : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                <Video className="w-4 h-4" /> Vídeo
-              </button>
-            </div>
+{/* Prompt Type toggle removido — modo imagem fixo */}
 
             {/* Output Format: Normal / JSON */}
             <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10">
@@ -1176,133 +1161,8 @@ ${generateLabel}`;
         </div>
       </div>
 
-      {/* ── Cinematographic Parameters ──────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        {/* ESTILO / GÊNERO — obrigatório */}
-        <div className="glass-card p-5 border border-white/10 space-y-3 md:col-span-2">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-neon-pink/20 text-neon-pink border border-neon-pink/30 uppercase tracking-widest">Obrigatório</span>
-            <h3 className="text-xs font-black text-white uppercase tracking-widest">Estilo / Gênero</h3>
-          </div>
-          <p className="text-[10px] text-gray-500 -mt-1">Direção criativa do vídeo</p>
-          <div className="flex flex-wrap gap-2">
-            {GENERO_TAGS.map(tag => (
-              <button
-                key={tag}
-                onClick={() => setGenero(genero === tag ? '' : tag)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all duration-200 ${
-                  genero === tag
-                    ? 'bg-neon-pink/20 border-neon-pink text-neon-pink shadow-[0_0_8px_rgba(255,44,182,0.25)]'
-                    : 'bg-white/5 border-white/15 text-gray-400 hover:border-white/40 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-          <input
-            type="text"
-            value={GENERO_TAGS.includes(genero) ? '' : genero}
-            onChange={e => setGenero(e.target.value)}
-            placeholder="ou escreva seu estilo..."
-            className="w-full bg-dark/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder:text-gray-600 focus:outline-none focus:border-neon-pink/40 transition-all"
-          />
-        </div>
 
-        {/* CÂMERA & MOVIMENTO */}
-        <div className="glass-card p-5 border border-white/10 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-white/5 text-gray-500 border border-white/10 uppercase tracking-widest">Opcional</span>
-            <h3 className="text-xs font-black text-white uppercase tracking-widest">Câmera &amp; Movimento</h3>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {CAMERA_TAGS.map(tag => (
-              <button
-                key={tag}
-                onClick={() => toggleTag(setCameraMovimento, cameraMovimento || [], tag)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all duration-200 ${
-                  (cameraMovimento || []).includes(tag)
-                    ? 'bg-neon-purple/20 border-neon-purple text-neon-purple shadow-[0_0_8px_rgba(176,38,255,0.2)]'
-                    : 'bg-white/5 border-white/15 text-gray-400 hover:border-white/40 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* COMPOSIÇÃO */}
-        <div className="glass-card p-5 border border-white/10 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-white/5 text-gray-500 border border-white/10 uppercase tracking-widest">Opcional</span>
-            <h3 className="text-xs font-black text-white uppercase tracking-widest">Composição</h3>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {COMPOSICAO_TAGS.map(tag => (
-              <button
-                key={tag}
-                onClick={() => toggleTag(setComposicao, composicao || [], tag)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all duration-200 ${
-                  (composicao || []).includes(tag)
-                    ? 'bg-neon-cyan/20 border-neon-cyan text-neon-cyan shadow-[0_0_8px_rgba(0,243,255,0.2)]'
-                    : 'bg-white/5 border-white/15 text-gray-400 hover:border-white/40 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* FOCO & LENTE */}
-        <div className="glass-card p-5 border border-white/10 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-white/5 text-gray-500 border border-white/10 uppercase tracking-widest">Opcional</span>
-            <h3 className="text-xs font-black text-white uppercase tracking-widest">Foco &amp; Lente</h3>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {FOCO_TAGS.map(tag => (
-              <button
-                key={tag}
-                onClick={() => toggleTag(setFocoLente, focoLente || [], tag)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all duration-200 ${
-                  (focoLente || []).includes(tag)
-                    ? 'bg-blue-500/20 border-blue-400 text-blue-300 shadow-[0_0_8px_rgba(96,165,250,0.2)]'
-                    : 'bg-white/5 border-white/15 text-gray-400 hover:border-white/40 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ATMOSFERA & LUZ */}
-        <div className="glass-card p-5 border border-white/10 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-white/5 text-gray-500 border border-white/10 uppercase tracking-widest">Opcional</span>
-            <h3 className="text-xs font-black text-white uppercase tracking-widest">Atmosfera &amp; Luz</h3>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {ATMOSFERA_TAGS.map(tag => (
-              <button
-                key={tag}
-                onClick={() => toggleTag(setAtmosferaLuz, atmosferaLuz || [], tag)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all duration-200 ${
-                  (atmosferaLuz || []).includes(tag)
-                    ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.2)]'
-                    : 'bg-white/5 border-white/15 text-gray-400 hover:border-white/40 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-
-      </div>
 
       {/* Generation Area Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -1318,16 +1178,7 @@ ${generateLabel}`;
                   <p className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mt-0.5">Defina o equilíbrio entre rapidez e fidelidade</p>
                </div>
                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setGenMode('fast')}
-                    className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
-                      (genMode === 'fast' || !genMode) 
-                        ? 'bg-neon-cyan/20 border-neon-cyan text-neon-cyan shadow-[0_0_15px_rgba(0,243,255,0.2)]' 
-                        : 'bg-white/5 border-white/10 text-gray-500 hover:text-white'
-                    } border`}
-                  >
-                    <Zap className="w-3 h-3" /> Velocidade
-                  </button>
+   {/* Velocidade button removido — modo Elite fixo */}
                   <button 
                     onClick={() => setGenMode('quality')}
                     className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
@@ -1402,19 +1253,14 @@ ${generateLabel}`;
                 <span>Processamento em Lote</span>
                 <span className="text-neon-pink animate-pulse">Ativo</span>
               </div>
-              <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
-                {generationProgress.statuses.map((status, idx) => (
-                  <div 
-                    key={idx}
-                    className={`h-1.5 rounded-full transition-all duration-500 ${
-                      status === 'done' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.4)]' :
-                      status === 'generating' ? 'bg-neon-pink animate-pulse shadow-[0_0_12px_rgba(255,44,182,0.5)]' :
-                      status === 'error' ? 'bg-red-500' :
-                      'bg-white/10'
-                    }`}
-                    title={`Bloco ${idx + 1}: ${status}`}
-                  />
-                ))}
+              <div className="flex flex-col items-center justify-center py-6 bg-dark-lighter/30 rounded-xl border border-white/5 shadow-inner">
+                <div className="text-5xl font-black text-white tracking-tighter flex items-baseline gap-2">
+                  <span className="text-neon-pink text-glow-pink">{(prompts || "").split(/\n\n+/).filter(p => p.trim().length > 20).length}</span>
+                  {subtitleCount > 0 && <span className="text-xl text-gray-500">/ {subtitleCount}</span>}
+                </div>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2 animate-pulse">
+                  Prompts Gerados
+                </p>
               </div>
               <p className="text-[10px] text-center text-gray-500 font-bold italic mt-2">
                 {generationProgress.step}
@@ -1717,7 +1563,7 @@ ${generateLabel}`;
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(Array.isArray(promptPools) ? [...promptPools, ...Array(Math.max(0, 5 - promptPools.length)).fill(null)] : Array(5).fill(null)).map((pool, idx) => (
+            {(Array.isArray(promptPools) ? [...promptPools, ...Array(Math.max(0, 6 - promptPools.length)).fill(null)] : Array(6).fill(null)).map((pool, idx) => (
                pool ? (
                   <div
                      key={pool.id}
