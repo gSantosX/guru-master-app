@@ -17,7 +17,7 @@ const ChannelMiningTab = React.lazy(() => import('./tabs/ChannelMiningTab').then
 const NicheIdentifierTab = React.lazy(() => import('./tabs/NicheIdentifierTab').then(m => ({ default: m.NicheIdentifierTab })));
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { SystemStatusProvider, useSystemStatus } from './contexts/SystemStatusContext';
-import { Cpu, Zap, Shield, Wand2, AlertTriangle, Check } from 'lucide-react';
+import { Cpu, Zap, Shield, Wand2, AlertTriangle, Check, Menu, X } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { PersistenceProvider } from './contexts/PersistenceContext';
@@ -55,6 +55,11 @@ function AppContent() {
   const [fontSize, setFontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);
   const [language, setLanguage] = useState(localStorage.getItem('guru_app_lang') || 'Português (BR)');
   const [updateStatus, setUpdateStatus] = useState({ available: false, progress: 0, downloaded: false, version: '' });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [activeTab]);
 
   useEffect(() => {
     if (window.electronAPI) {
@@ -118,7 +123,7 @@ function AppContent() {
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
       <div 
-        className={`flex h-screen w-full bg-dark overflow-hidden font-sans theme-${theme} ${reduceMotion ? 'reduce-motion' : ''} flex-row`}
+        className={`flex h-screen w-full bg-dark overflow-hidden font-sans theme-${theme} ${reduceMotion ? 'reduce-motion' : ''} flex-col md:flex-row`}
       >
         
         <AnimatePresence>
@@ -166,8 +171,39 @@ function AppContent() {
         {isAuthenticated && (
           <>
             <div className="premium-grain" />
-            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-            <main className="flex-1 relative z-10 overflow-hidden bg-transparent">
+
+            {/* Mobile Header (Only visible on small screens) */}
+            <div className="md:hidden flex items-center justify-between p-4 bg-black/60 backdrop-blur-md border-b border-white/5 relative z-[60]">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
+                  <img src="logo.jpg" alt="Logo" className="w-full h-full object-cover" />
+                </div>
+                <span className="font-black text-white text-lg tracking-tighter uppercase italic">Guru Master</span>
+              </div>
+              <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+                className="p-2 text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all shadow-lg active:scale-95"
+              >
+                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
+
+            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen} />
+            
+            {/* Overlay para fechar o menu ao clicar fora */}
+            <AnimatePresence>
+              {isMobileMenuOpen && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="md:hidden fixed inset-0 bg-black/80 backdrop-blur-md z-[45]" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                />
+              )}
+            </AnimatePresence>
+
+            <main className="flex-1 relative z-10 overflow-hidden bg-transparent flex flex-col min-w-0">
               {/* Notificação de Atualização Elite */}
               <AnimatePresence>
                 {updateStatus.available && (

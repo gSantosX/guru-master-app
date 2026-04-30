@@ -33,7 +33,7 @@ const getNavItems = (user = null) => {
   return items;
 };
 
-export const Sidebar = ({ activeTab, setActiveTab }) => {
+export const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const { user, logout } = useAuth();
   const [isUpdating, setIsUpdating] = useState(false);
   const [userProfile, setUserProfile] = useState({
@@ -99,7 +99,12 @@ export const Sidebar = ({ activeTab, setActiveTab }) => {
   const GITHUB_RELEASE_URL = 'https://github.com/gSantosX/guru-master-app/releases/latest';
 
   return (
-    <div className="w-64 h-full glass-panel flex flex-col p-4 flex-shrink-0 z-10 border-r border-white/10 shadow-2xl relative">
+    <div className={`
+      w-64 h-full glass-panel flex flex-col p-4 flex-shrink-0 z-[50] border-r border-white/10 shadow-2xl
+      fixed md:relative top-0 left-0 bottom-0
+      transition-transform duration-300 ease-in-out
+      ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+    `}>
       <div className="flex flex-col items-center justify-center mb-12 px-2 mt-8 space-y-4">
         <div className="w-32 h-32 rounded-full p-1 bg-gradient-to-br from-neon-purple via-neon-cyan to-blue-600 shadow-[0_0_50px_rgba(0,243,255,0.45),inset_0_0_25px_rgba(255,255,255,0.25)] transform transition-transform hover:scale-110 duration-500 overflow-hidden border-[3px] border-white/10 relative group">
           <div className="absolute inset-0 bg-neon-cyan/20 opacity-0 group-hover:opacity-100 transition-opacity blur-2xl"></div>

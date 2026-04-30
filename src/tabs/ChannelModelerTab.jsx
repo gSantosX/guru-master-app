@@ -116,10 +116,10 @@ export const ChannelModelerTab = ({ setActiveTab }) => {
       }
 
       if (info.type === 'handle') {
-        const searchRes = await fetch(resolveApiUrl(`/api/youtube/search?part=snippet&type=channel&q=${info.value}`));
+        const searchRes = await fetch(resolveApiUrl(`/api/youtube/channels?part=snippet&forHandle=${info.value}`));
         const searchData = await searchRes.json();
         if (searchData.items && searchData.items.length > 0) {
-          channelId = searchData.items[0].id.channelId;
+          channelId = searchData.items[0].id;
         } else {
           throw new Error('Channel not found via API');
         }
