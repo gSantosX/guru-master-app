@@ -234,6 +234,7 @@ export const SettingsTab = () => {
           onPaste={handlePaste}
           placeholder={`Cole as chaves aqui... Ex: ${placeholder}`}
           rows={Math.max(2, Math.min(4, keysArray.length > 2 ? 3 : 2))}
+          style={{ WebkitTextSecurity: "disc" }}
           className="w-full bg-dark/50 border border-white/10 rounded-lg p-2 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-xs font-mono break-all resize-none shadow-inner transition-all hover:bg-dark/70"
         />
 
