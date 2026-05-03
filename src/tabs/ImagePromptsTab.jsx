@@ -1268,6 +1268,22 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
             </div>
           )}
 
+          {/* Aviso: chave gratuita não configurada */}
+          {!configs.gemini_prompts_key && !configs.google_script_key && (
+            <div className="mb-4 flex items-start gap-3 p-4 rounded-xl bg-neon-pink/5 border border-neon-pink/20">
+              <span className="text-neon-pink text-lg shrink-0">💡</span>
+              <div>
+                <p className="text-neon-pink font-black text-xs uppercase tracking-widest mb-1">Dica: Configure sua Google API Key gratuita</p>
+                <p className="text-gray-400 text-[10px] leading-relaxed">
+                  Adicione sua <span className="font-bold text-white">Google API Key</span> gratuita em{' '}
+                  <strong>Configurações → Suas Chaves Pessoais</strong> para ampliar os limites do{' '}
+                  <strong className="text-neon-pink">Criador de Prompts</strong>.{' '}
+                  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="underline text-neon-cyan">Obter chave ↗</a>
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col gap-4">
             <div className="flex gap-4">
               <button
