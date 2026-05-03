@@ -44,6 +44,8 @@ export const SettingsTab = () => {
 
   // Flag to block auto-save when we're syncing FROM cloud (not user typing)
   const syncingFromCloud = React.useRef(false);
+  // Flag to protect prompt key field during active editing
+  const userEditingPromptKey = React.useRef(false);
 
   // Sync form fields whenever configs change (e.g., after loading from Supabase)
   useEffect(() => {
@@ -52,11 +54,13 @@ export const SettingsTab = () => {
     syncingFromCloud.current = true;
     setGeminiKeys(configs.gemini_key || '');
     setGptKeys(configs.gpt_key || '');
-    setGrokKeys(configs.grok_key || '');
-    setGeminiPromptsKey(configs.gemini_prompts_key || '');
     const gsk = configs.google_script_key || '';
     const ytk = configs.youtube_key || '';
-    setGoogleScriptKey(gsk);
+    // Só sincroniza campos de prompt key se o usuário NÃO está editando
+    if (!userEditingPromptKey.current) {
+      setGeminiPromptsKey(configs.gemini_prompts_key || '');
+      setGoogleScriptKey(gsk);
+    }
     setYoutubeKey(ytk);
     setAnthropicKey(configs.anthropic_key || '');
     setDeepseekKey(configs.deepseek_key || '');
@@ -476,6 +480,8 @@ export const SettingsTab = () => {
                   <input
                     type="password"
                     value={googleScriptKey || geminiPromptsKey}
+                    onFocus={() => { userEditingPromptKey.current = true; }}
+                    onBlur={() => { setTimeout(() => { userEditingPromptKey.current = false; }, 500); }}
                     onChange={(e) => { setGoogleScriptKey(e.target.value); setGeminiPromptsKey(e.target.value); setGoogleScriptKeyStatus(null); }}
                     placeholder="AIza... (chave gratuita do Google AI Studio)"
                     className={`w-full bg-dark/50 rounded-lg p-2.5 pr-32 text-gray-300 focus:outline-none text-xs font-mono transition-all hover:bg-dark/70 border ${
