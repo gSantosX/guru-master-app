@@ -195,11 +195,28 @@ Campos obrigatórios:
 ROTEIRO:
 ${scriptToAnalyze.substring(0, 2500)}`;
 
-      // gemini-2.0-flash-lite: ultra-rápido para tarefas de JSON estruturado
-      const response = await callGemini(getPromptsApiKey(), analysisPrompt, { 
-        model: 'gemini-2.0-flash-lite', 
-        temperature: 0.1 
-      });
+      // Tenta primeiro com a chave exclusiva de prompts (gratuita)
+      // Se der 429, faz fallback automático para a chave paga
+      let response;
+      try {
+        response = await callGemini(getPromptsApiKey(), analysisPrompt, { 
+          model: 'gemini-2.0-flash-lite', 
+          temperature: 0.1 
+        });
+      } catch (firstErr) {
+        const isRL = firstErr?.status === 429 || (firstErr?.message || '').includes('quota') || (firstErr?.message || '').includes('429') || (firstErr?.message || '').includes('exhausted');
+        if (isRL) {
+          // Fallback: usa a chave paga principal
+          console.warn('[Analyze] Chave gratuita com limite atingido — usando chave paga como fallback...');
+          const paidKey = configs?.gemini_key || localStorage.getItem('guru_gemini_key');
+          response = await callGemini(paidKey, analysisPrompt, { 
+            model: 'gemini-2.0-flash-lite', 
+            temperature: 0.1 
+          });
+        } else {
+          throw firstErr;
+        }
+      }
 
       // Extração robusta de JSON — pega o último bloco JSON válido da resposta
       // (evita capturar JSON de exemplos que a IA pode ecoar no início da resposta)
@@ -233,7 +250,7 @@ ${scriptToAnalyze.substring(0, 2500)}`;
       const is429 = error?.status === 429 || (error?.message || '').toLowerCase().includes('quota') || (error?.message || '').toLowerCase().includes('rate') || (error?.message || '').toLowerCase().includes('exhausted');
       const isAuth = error?.status === 401 || error?.status === 403 || error?.status === 400 || (error?.message || '').toLowerCase().includes('api key') || (error?.message || '').toLowerCase().includes('invalid') || (error?.message || '').toLowerCase().includes('permission');
       const msg = is429
-        ? '⚠️ Limite de taxa atingido (429). Aguarde 1-2 minutos e tente novamente.'
+        ? '⚠️ Cota da chave atingida. Aguarde 1-2 minutos ou configure uma chave gratuita em Configurações → Criador de Prompts.'
         : isAuth
         ? `❌ Chave inválida ou API desabilitada: ${error.message}`
         : `❌ Falha na análise: ${error.message}`;
