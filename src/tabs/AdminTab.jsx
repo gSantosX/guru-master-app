@@ -318,8 +318,8 @@ export const AdminTab = () => {
         ))}
       </div>
 
-      <div className="glass-panel overflow-hidden border border-white/5 bg-white/[0.01]">
-        <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between">
+      <div className="glass-panel overflow-hidden border border-white/5 bg-white/[0.01] flex-1 flex flex-col min-h-[400px]">
+        <div className="p-6 border-b border-white/5 bg-white/[0.02] flex items-center justify-between shrink-0">
           <h3 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
             <List className="w-4 h-4 text-neon-cyan" />
             Lista de Códigos de Acesso
@@ -330,10 +330,10 @@ export const AdminTab = () => {
         </div>
 
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-black/40 text-gray-500 text-[10px] font-black uppercase tracking-widest">
+        <div className="overflow-x-auto overflow-y-auto flex-1 custom-scrollbar">
+          <table className="w-full text-left relative">
+            <thead className="sticky top-0 z-10 bg-[#12121a]/95 backdrop-blur-md shadow-md">
+              <tr className="text-gray-500 text-[10px] font-black uppercase tracking-widest">
                 <th className="px-6 py-4">Código</th>
                 <th className="px-6 py-4">Status</th>
                 <th className="px-6 py-4">Data de Geração</th>
