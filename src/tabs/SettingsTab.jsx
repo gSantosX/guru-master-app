@@ -442,13 +442,13 @@ export const SettingsTab = () => {
             </p>
 
             <div className="space-y-5">
-              {/* GOOGLE API KEY para gerador de prompts */}
+              {/* CHAVE EXCLUSIVA — CRIADOR DE PROMPTS */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gradient-to-br from-neon-pink to-neon-purple" />
-                    <label className="text-xs font-black text-gray-300 uppercase tracking-widest">
-                      Google API Key — Gerador de Prompts
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-br from-neon-pink to-neon-purple shadow-[0_0_6px_rgba(255,44,182,0.5)]" />
+                    <label className="text-xs font-black uppercase tracking-widest bg-gradient-to-r from-neon-pink to-neon-purple bg-clip-text text-transparent">
+                      Criador de Prompts — Chave Exclusiva
                     </label>
                   </div>
                   {(configs.google_script_key || configs.gemini_prompts_key) && (
@@ -459,7 +459,7 @@ export const SettingsTab = () => {
                           setGeminiPromptsKey('');
                           setGoogleScriptKeyStatus(null);
                           updateConfig({ google_script_key: '', gemini_prompts_key: '' });
-                          showToast("Chave do Google esquecida permanentemente.", "warning");
+                          showToast("Chave do Criador de Prompts esquecida permanentemente.", "warning");
                         }
                       }}
                       className="text-[9px] text-red-500 hover:text-red-400 font-bold uppercase flex items-center gap-1 transition-all"
@@ -469,7 +469,7 @@ export const SettingsTab = () => {
                   )}
                 </div>
                 <p className="text-[9px] text-gray-500 italic mb-2 pl-5">
-                  Chave gratuita usada <span className="text-neon-pink font-bold">exclusivamente</span> para gerar prompts de imagem/vídeo. Economiza a cota principal.
+                  Chave gratuita usada <span className="text-neon-pink font-bold">exclusivamente</span> para criar prompts de imagem e vídeo. Não consome a cota paga.
                   <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="ml-1 text-neon-cyan underline">Obter chave gratuita ↗</a>
                 </p>
                 <div className="relative">
