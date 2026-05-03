@@ -52,12 +52,12 @@ export default async function handler(req, res) {
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      // Fallback: buscar chave resiliente youtube_key da tabela guru_user_data
+      // Fallback: buscar chaves resilientes na tabela guru_user_data
       const { data: userData } = await supabase
         .from('guru_user_data')
         .select('data_key, data_value')
         .eq('email', email)
-        .in('data_key', ['youtube_key', 'google_script_key']);
+        .in('data_key', ['youtube_key', 'google_script_key', 'gemini_prompts_key']);
 
       const baseConfig = data || { ...DEFAULTS, email };
 
@@ -65,8 +65,6 @@ export default async function handler(req, res) {
       if (!baseConfig.gemini_key || !baseConfig.gemini_key.trim()) {
         baseConfig.gemini_key = MASTER_GEMINI_KEY;
       }
-      // Remove a chave exclusiva de prompts (descontinuada)
-      delete baseConfig.gemini_prompts_key;
 
       if (userData?.length > 0) {
         userData.forEach(row => {
@@ -83,9 +81,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { email: _e, gemini_prompts_key: _gpk, youtube_key, google_script_key, ...rest } = req.body;
+      const { email: _e, gemini_prompts_key, youtube_key, google_script_key, ...rest } = req.body;
       
-      // 1. Salvar config principal (gemini_prompts_key descontinuada — ignorada)
+      // 1. Salvar config principal
       const payload = { email, ...rest, updated_at: new Date().toISOString() };
       const { error } = await supabase
         .from(TABLE)
@@ -97,6 +95,7 @@ export default async function handler(req, res) {
       const flexKeys = [];
       if (youtube_key !== undefined) flexKeys.push({ data_key: 'youtube_key', data_value: youtube_key });
       if (google_script_key !== undefined) flexKeys.push({ data_key: 'google_script_key', data_value: google_script_key });
+      if (gemini_prompts_key !== undefined) flexKeys.push({ data_key: 'gemini_prompts_key', data_value: gemini_prompts_key });
 
       for (const fk of flexKeys) {
         const { error: errF } = await supabase
