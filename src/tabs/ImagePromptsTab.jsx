@@ -647,19 +647,19 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
       const genOne = async (subtitle) => {
         for (let a = 0; a < 4; a++) {
           try {
-            if (a > 0) await new Promise(r => setTimeout(r, a >= 2 ? 15000 : 2000));
+            if (a > 0) await new Promise(r => setTimeout(r, a >= 2 ? 5000 : 1000));
             const resp = await callGemini(getPromptsApiKey(), `${singleSys}\n\nSUBTITLE: ${subtitle}`, { model: 'gemini-2.0-flash-lite' });
             const c = (resp || '').trim().replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
             if (c) return c;
           } catch (e) {
             const isRL = (e.message || '').includes('429') || (e.message || '').includes('quota') || (e.message || '').includes('exhausted');
-            if (isRL) await new Promise(r => setTimeout(r, 15000));
+            if (isRL) await new Promise(r => setTimeout(r, 3000)); // era 15s — reduzido para 3s
             else if (a >= 2) break;
           }
         }
         return `Ultra-Realista — 8K cinematic photography. Visual scene: ${subtitle}. NEGATIVE PROMPT: CGI, cartoon, blurry.`;
       };
-      const PARALLEL = 15; // 15 paralelo — flash-lite suporta alta concorrência com chave gratuita
+      const PARALLEL = 28; // flash-lite: 30 RPM — 28 paralelo seguro (era 15)
       for (let p = 0; p < total; p += PARALLEL) {
         if (cancelRef.current) break;
         const batch = subtitleBlocks.slice(p, p + PARALLEL);
@@ -668,7 +668,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         const done = Math.min(p + PARALLEL, total);
         setGenerationProgress(prev => ({ ...prev, current: done, statuses: [...statusArr], step: done < total ? `Gerando prompts (${done}/${total})...` : 'Finalizando...' }));
         setPrompts(resultsArr.filter(Boolean).join('\n\n'));
-        if (p + PARALLEL < total) await new Promise(r => setTimeout(r, 400));
+        if (p + PARALLEL < total) await new Promise(r => setTimeout(r, 100)); // era 400ms
       }
       setIsGenerating(false);
       setIsVerified(true);
@@ -692,8 +692,8 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
     }
 
     // ── MODO VEO / JSON: processamento PARALELO por chunk ─────────────────────
-    const CHUNK_SIZE = 5;      // 5 legendas por chunk (era 10) — tokens por resposta mais baixos
-    const CHUNK_PARALLEL = 3;  // 3 chunks simultâneos — 3x mais velocidade
+    const CHUNK_SIZE = 8;      // 8 legendas por chunk (era 5) — mais dados por chamada = menos chamadas
+    const CHUNK_PARALLEL = 6;  // 6 chunks simultâneos (era 3) — flash-lite suporta 30 RPM
     const totalChunks = Math.ceil(subtitleBlocks.length / CHUNK_SIZE);
     setGenerationProgress({ step: 'Processando Legendas...', current: 0, total: totalChunks, statuses: new Array(totalChunks).fill("pending") });
  
@@ -724,7 +724,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
       for (let retryCount = 0; retryCount < 3; retryCount++) {
         if (cancelRef.current) return;
         if (retryCount > 0) {
-          const delayTime = 5000; // delay fixo e curto entre retries
+          const delayTime = 2000; // era 5000ms — reduzido para 2s
           chunkStatuses[i] = "retrying";
           setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: `Tentando novamente Bloco ${i+1}...` }));
           await new Promise(r => setTimeout(r, delayTime));
@@ -734,7 +734,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
           chunkStatuses[i] = "generating";
           setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: `Processando Bloco ${i+1}/${totalChunks}...` }));
 
-          const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.0-flash' });
+          const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.0-flash-lite' }); // flash-lite: 30 RPM vs 15 RPM do flash = 2x mais rápido
           
           let chunkText = "";
           if (isJson) {
@@ -791,7 +791,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         batch.push(processOneChunk(p + b));
       }
       await Promise.all(batch);
-      if (p + CHUNK_PARALLEL < totalChunks) await new Promise(r => setTimeout(r, 200));
+      if (p + CHUNK_PARALLEL < totalChunks) await new Promise(r => setTimeout(r, 100)); // era 200ms
     }
 
     try {
@@ -891,7 +891,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         const promptBatchQuery = `${getSystemPrompt()}\n\nSCRIPT SEGMENT (BLOCK ${i+1}):\n"${segment}"\n\nGENERATE ELITE PROMPTS (ENGLISH ONLY):`;
  
         try {
-          const batchResult = await callGemini(getPromptsApiKey(), promptBatchQuery); // usa chave exclusiva
+          const batchResult = await callGemini(getPromptsApiKey(), promptBatchQuery, { model: 'gemini-2.0-flash-lite' }); // flash-lite: 30 RPM — 2x mais rápido que flash
           
           let processedBatch = "";
           if (genMode === 'quality') {
