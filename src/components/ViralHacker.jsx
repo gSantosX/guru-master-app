@@ -324,10 +324,6 @@ Liste os ${titleCount} títulos seguindo o formato: Título: [Texto] || Traduç�
             className="flex flex-col items-center justify-center py-20 gap-5 border-t border-white/5 overflow-hidden"
           >
              <div className="w-16 h-16 rounded-full border-4 border-neon-cyan/20 border-t-neon-cyan animate-spin shadow-neon" />
-             <div className="text-center">
-                <p className="text-sm font-black text-neon-cyan uppercase tracking-[0.4em] animate-pulse">IA Guru Analisando Dominação...</p>
-                <p className="text-[10px] text-gray-500 font-bold uppercase mt-2">Consultando Memória Tática do Cérebro Global</p>
-             </div>
           </motion.div>
         ) : generatedTitles.length > 0 && (
           <motion.div 

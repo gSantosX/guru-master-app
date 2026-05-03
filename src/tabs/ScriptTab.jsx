@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { resolveApiUrl } from '../utils/apiUtils';
-import { callAI, callGemini } from '../utils/aiUtils';
+import { callAI } from '../utils/aiUtils';
 import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
 import { useCloudStorage } from '../hooks/useCloudStorage';
@@ -202,17 +202,8 @@ export const ScriptTab = ({ setActiveTab }) => {
   const { scriptState, setScriptState } = usePersistence();
   const [cloudScripts, setCloudScripts] = useCloudStorage('scripts', []);
 
-  // Chave exclusiva para roteiros — lida diretamente do context (reativo)
-  const scriptApiKey = (configs.google_script_key || '').trim();
-
-  // Helper: chama AI usando a chave certa para roteiros.
-  // Prioridade: 1) chave pessoal do usuário → 2) chave mestra Gemini → 3) callAI genérico
+  // Helper: chama AI para geração de roteiro usando a chave principal configurada.
   const callScriptAI = async (prompt, opts = {}) => {
-    if (scriptApiKey) {
-      // Chave pessoal do usuário — sem rotação indevida
-      return await callGemini(scriptApiKey, prompt, { ...opts, forcedIndex: 0 });
-    }
-    // Fallback: usa a chave mestra do sistema via callAI
     return await callAI(prompt, opts);
   };
   
@@ -750,15 +741,16 @@ CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
           </div>
 
           <div className="mt-12">
-            {/* Dica informacional (não bloqueia) quando não tem chave pessoal */}
-            {!scriptApiKey && (
-              <div className="mb-4 flex items-start gap-3 p-4 rounded-xl bg-neon-cyan/5 border border-neon-cyan/20">
-                <span className="text-neon-cyan text-lg shrink-0">💡</span>
+            {/* Dica informacional quando não tem chave de prompts configurada */}
+            {!configs.gemini_prompts_key && (
+              <div className="mb-4 flex items-start gap-3 p-4 rounded-xl bg-neon-pink/5 border border-neon-pink/20">
+                <span className="text-neon-pink text-lg shrink-0">💡</span>
                 <div>
-                  <p className="text-neon-cyan font-black text-xs uppercase tracking-widest mb-1">Dica: Use sua própria Google API Key</p>
+                  <p className="text-neon-pink font-black text-xs uppercase tracking-widest mb-1">Dica: Configure sua Google API Key gratuita</p>
                   <p className="text-gray-400 text-[10px] leading-relaxed">
                     Adicione sua <span className="font-bold text-white">Google API Key</span> gratuita em{' '}
-                    <strong>Configurações → Suas Chaves Pessoais</strong> para usar cota dedicada.{' '}
+                    <strong>Configurações → Suas Chaves Pessoais</strong> para ampliar os limites do{' '}
+                    <strong className="text-neon-pink">Gerador de Prompts</strong>.{' '}
                     <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="underline text-neon-cyan">Obter chave ↗</a>
                   </p>
                 </div>
@@ -776,7 +768,7 @@ CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
             >
               {isGenerating ? (
                 <span className="flex items-center gap-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-neon-cyan" /> {t('script.generating')}
+                  <Loader2 className="w-6 h-6 animate-spin text-neon-cyan" />
                 </span>
               ) : (
                 <>
@@ -841,7 +833,6 @@ CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
                     <LoadingSpinner size="lg" />
                     <Sparkles className="absolute -top-4 -right-4 w-6 h-6 text-neon-cyan animate-pulse" />
                  </div>
-                 <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">{statusMessage}</p>
               </div>
             ) : generatedScript ? (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">

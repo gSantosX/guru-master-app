@@ -933,8 +933,7 @@ REGRAS DE FORMATO:
                                 >
                                   {isTranslating
                                     ? <Loader2 className="w-3 h-3 animate-spin" />
-                                    : <Globe className="w-3 h-3" />}
-                                  {isTranslating ? 'Traduzindo...' : Object.keys(translations).length > 0 ? 'Traduzido' : 'Traduzir'}
+                                    : <><Globe className="w-3 h-3" /> {Object.keys(translations).length > 0 ? 'Traduzido' : 'Traduzir'}</>}
                                 </button>
                               )}
                               <button 

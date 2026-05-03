@@ -357,8 +357,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
             disabled={isSearching}
             className="flex-shrink-0 md:w-auto w-full px-10 py-4 h-[54px] bg-white text-dark rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-neon-cyan transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-30 shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-3"
           >
-            {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
-            {isSearching ? t('mining.searching') : t('mining.btn_search')}
+            {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Search className="w-5 h-5" /> {t('mining.btn_search')}</>}
           </button>
         </div>
       </div>
@@ -371,8 +370,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                exit={{ opacity: 0 }}
                className="h-full flex flex-col items-center justify-center p-20"
              >
-               <LoadingSpinner message={t('mining.searching')} size="lg" />
-               <div className="mt-8 text-xs font-black text-neon-cyan/40 uppercase tracking-[0.3em] animate-pulse">Garimpando canais de alto impacto...</div>
+               <LoadingSpinner size="lg" />
              </motion.div>
           ) : channels.length > 0 ? (
             <motion.div 
@@ -524,7 +522,6 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                       <LoadingSpinner size="lg" message="" />
                     </div>
                     <div className="text-center space-y-3">
-                       <p className="text-sm font-black text-white uppercase tracking-widest">{generationStep}</p>
                        <div className="flex justify-center gap-1">
                           {[1,2,3].map(i => <motion.div key={i} animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 1, delay: i*0.2 }} className="w-1.5 h-1.5 bg-neon-cyan rounded-full" />)}
                        </div>

@@ -246,15 +246,17 @@ export const SettingsTab = () => {
   const handleSavePersonalKeys = async () => {
     setIsSaving(true);
     // Valida ambas em paralelo antes de salvar
+    const keyToTest = googleScriptKey.trim() || geminiPromptsKey.trim();
     const [gOk, ytOk] = await Promise.all([
-      googleScriptKey.trim() ? testGoogleScriptKey(googleScriptKey) : Promise.resolve(null),
-      youtubeKey.trim()      ? testYoutubeKey(youtubeKey)           : Promise.resolve(null),
+      keyToTest ? testGoogleScriptKey(keyToTest) : Promise.resolve(null),
+      youtubeKey.trim() ? testYoutubeKey(youtubeKey) : Promise.resolve(null),
     ]);
     // Só salva se pelo menos a validação não retornou 'invalid' (null = campo vazio = ok)
     const hasError = gOk === false || ytOk === false;
     if (!hasError) {
       await updateConfig({
-        google_script_key: googleScriptKey.trim(),
+        google_script_key: '',          // limpa chave do roteiro (não usada mais)
+        gemini_prompts_key: keyToTest,  // salva como chave exclusiva do Gerador de Prompts
         youtube_key: youtubeKey.trim(),
       });
       showToast('✅ Chaves verificadas e salvas com sucesso!', 'success');
@@ -440,22 +442,23 @@ export const SettingsTab = () => {
             </p>
 
             <div className="space-y-5">
-              {/* GOOGLE API KEY para roteiros */}
+              {/* GOOGLE API KEY para gerador de prompts */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gradient-to-br from-neon-cyan to-neon-purple" />
+                    <div className="w-3 h-3 rounded-full bg-gradient-to-br from-neon-pink to-neon-purple" />
                     <label className="text-xs font-black text-gray-300 uppercase tracking-widest">
-                      Google API Key — Criador de Roteiro
+                      Google API Key — Gerador de Prompts
                     </label>
                   </div>
-                  {configs.google_script_key && (
+                  {(configs.google_script_key || configs.gemini_prompts_key) && (
                     <button
                       onClick={() => {
                         if (confirm("Tem certeza que deseja excluir esta chave permanentemente de todas as suas máquinas?")) {
                           setGoogleScriptKey('');
+                          setGeminiPromptsKey('');
                           setGoogleScriptKeyStatus(null);
-                          updateConfig({ google_script_key: '' });
+                          updateConfig({ google_script_key: '', gemini_prompts_key: '' });
                           showToast("Chave do Google esquecida permanentemente.", "warning");
                         }
                       }}
@@ -466,20 +469,20 @@ export const SettingsTab = () => {
                   )}
                 </div>
                 <p className="text-[9px] text-gray-500 italic mb-2 pl-5">
-                  Chave gratuita usada <span className="text-neon-cyan font-bold">exclusivamente</span> para gerar roteiros. Economiza a cota principal.
+                  Chave gratuita usada <span className="text-neon-pink font-bold">exclusivamente</span> para gerar prompts de imagem/vídeo. Economiza a cota principal.
                   <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="ml-1 text-neon-cyan underline">Obter chave gratuita ↗</a>
                 </p>
                 <div className="relative">
                   <input
                     type="password"
-                    value={googleScriptKey}
-                    onChange={(e) => { setGoogleScriptKey(e.target.value); setGoogleScriptKeyStatus(null); }}
+                    value={googleScriptKey || geminiPromptsKey}
+                    onChange={(e) => { setGoogleScriptKey(e.target.value); setGeminiPromptsKey(e.target.value); setGoogleScriptKeyStatus(null); }}
                     placeholder="AIza... (chave gratuita do Google AI Studio)"
                     className={`w-full bg-dark/50 rounded-lg p-2.5 pr-32 text-gray-300 focus:outline-none text-xs font-mono transition-all hover:bg-dark/70 border ${
                       googleScriptKeyStatus === 'valid'    ? 'border-green-500/60 shadow-[0_0_16px_rgba(34,197,94,0.3)]' :
                       googleScriptKeyStatus === 'invalid'  ? 'border-red-500/60 shadow-[0_0_12px_rgba(239,68,68,0.2)]' :
                       googleScriptKeyStatus === 'checking' ? 'border-yellow-500/40' :
-                      'border-neon-cyan/20 focus:border-neon-cyan/60'
+                      'border-neon-pink/20 focus:border-neon-pink/60'
                     }`}
                   />
                   {/* Badge de status inline */}
@@ -562,8 +565,7 @@ export const SettingsTab = () => {
                     : 'bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/30 hover:bg-neon-cyan/20 hover:shadow-[0_0_15px_rgba(0,243,255,0.2)]'
                 }`}
               >
-                {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
-                {isSaving ? 'Verificando e Salvando...' : 'Salvar e Verificar Conexão'}
+                {isSaving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <><Key className="w-3.5 h-3.5" /> Salvar e Verificar Conexão</>}
               </button>
             </div>
           </div>
@@ -857,7 +859,7 @@ export const SettingsTab = () => {
                   }`}
                 >
                   {isSaving ? (
-                    <><RefreshCw className="w-4 h-4 animate-spin" /> Salvando...</>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : isSaved ? (
                     <><CheckCircle className="w-4 h-4" /> Chaves Salvas com Sucesso!</>
                   ) : (

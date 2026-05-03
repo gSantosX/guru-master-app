@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, PenTool, FileText, Image as ImageIcon, Video, Activity, CheckCircle, Settings, RefreshCw, User, Zap, Youtube, Clock, Compass, Infinity, HelpCircle, LogOut, Shield } from 'lucide-react';
+import { Layout, PenTool, FileText, Image as ImageIcon, Video, Activity, CheckCircle, Settings, RefreshCw, User, Zap, Youtube, Clock, Compass, Infinity, HelpCircle, LogOut, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LoadingSpinner } from './LoadingSpinner';
 import { motion } from 'framer-motion';
 import { resolveApiUrl } from '../utils/apiUtils';
@@ -36,6 +36,7 @@ const getNavItems = (user = null) => {
 export const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const { user, logout } = useAuth();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [userProfile, setUserProfile] = useState({
     name: user?.name || localStorage.getItem('guru_user_name') || 'Usuário Guru',
     avatar: user?.picture || localStorage.getItem('guru_user_avatar') || null
@@ -100,20 +101,28 @@ export const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobile
 
   return (
     <div className={`
-      w-64 h-full glass-panel flex flex-col p-4 flex-shrink-0 z-[50] border-r border-white/10 shadow-2xl
-      fixed md:relative top-0 left-0 bottom-0
-      transition-transform duration-300 ease-in-out
+      ${isCollapsed ? 'w-20' : 'w-64'} h-full glass-panel flex flex-col py-4 flex-shrink-0 z-[50] border-r border-white/10 shadow-2xl
+      fixed md:relative top-0 left-0 bottom-0 bg-[#020203] md:bg-transparent
+      transition-all duration-300 ease-in-out
       ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
     `}>
-      <div className="flex flex-col items-center justify-center mb-12 px-2 mt-8 space-y-4">
-        <div className="w-32 h-32 rounded-full p-1 bg-gradient-to-br from-neon-purple via-neon-cyan to-blue-600 shadow-[0_0_50px_rgba(0,243,255,0.45),inset_0_0_25px_rgba(255,255,255,0.25)] transform transition-transform hover:scale-110 duration-500 overflow-hidden border-[3px] border-white/10 relative group">
+      {/* Toggle button for desktop */}
+      <button 
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="hidden md:flex absolute -right-3 top-8 bg-dark border border-white/10 text-white rounded-full p-1 z-[60] hover:bg-white/10 hover:text-neon-cyan transition-colors shadow-[0_0_15px_rgba(0,0,0,0.5)]"
+      >
+        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+      </button>
+
+      <div className={`flex flex-col items-center justify-center mb-8 px-2 mt-4 space-y-4 transition-all duration-300`}>
+        <div className={`${isCollapsed ? 'w-12 h-12 border-2' : 'w-32 h-32 border-[3px]'} rounded-full p-1 bg-gradient-to-br from-neon-purple via-neon-cyan to-blue-600 shadow-[0_0_50px_rgba(0,243,255,0.45),inset_0_0_25px_rgba(255,255,255,0.25)] transform transition-all hover:scale-110 duration-500 overflow-hidden border-white/10 relative group`}>
           <div className="absolute inset-0 bg-neon-cyan/20 opacity-0 group-hover:opacity-100 transition-opacity blur-2xl"></div>
           <img src="logo.jpg" alt="Logo" className="w-full h-full object-cover rounded-full shadow-2xl relative z-10" />
         </div>
-        <div className="w-16 h-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent rounded-full opacity-50 shadow-[0_0_10px_rgba(0,243,255,0.2)]"></div>
+        {!isCollapsed && <div className="w-16 h-1 bg-gradient-to-r from-transparent via-neon-cyan/50 to-transparent rounded-full opacity-50 shadow-[0_0_10px_rgba(0,243,255,0.2)]"></div>}
       </div>
 
-      <nav className="flex-1 flex flex-col gap-2 overflow-y-auto pb-10 items-stretch custom-scrollbar">
+      <nav className="flex-1 flex flex-col gap-2 overflow-y-auto overflow-x-hidden pb-6 px-3 items-stretch custom-scrollbar">
         {getNavItems(user).map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
@@ -121,6 +130,7 @@ export const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobile
           return (
             <button
               key={item.id}
+              title={isCollapsed ? item.label : undefined}
               onClick={() => {
                 if (item.id === 'logout') {
                    if (window.confirm("Deseja realmente sair da conta?")) {
@@ -128,18 +138,22 @@ export const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobile
                    }
                 } else {
                    setActiveTab(item.id);
+                   setIsMobileMenuOpen(false); // Close on mobile when navigating
                 }
               }}
-              className={`w-full flex-shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 relative group overflow-hidden
+              className={`w-full flex-shrink-0 flex items-center ${isCollapsed ? 'justify-center py-3 px-0' : 'gap-3 px-4 py-2.5'} rounded-xl transition-all duration-300 relative group overflow-hidden
                 ${isActive ? 'bg-white/10 text-white shadow-inner' : 'text-gray-400 hover:text-white hover:bg-white/5'}
               `}
             >
-              <div className={`transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
-                <Icon className={`w-4 h-4 ${isActive ? item.color : 'text-gray-500 group-hover:' + item.color} transition-colors duration-300`} />
+              <div className={`transition-all duration-300 shrink-0 flex items-center justify-center ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
+                <Icon className={`w-5 h-5 ${isActive ? item.color : 'text-gray-500 group-hover:' + item.color} transition-colors duration-300`} />
               </div>
-              <span className={`font-bold whitespace-nowrap text-[14px] tracking-tight transition-all duration-300 ${isActive ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
-                {item.label}
-              </span>
+              
+              {!isCollapsed && (
+                <span className={`font-bold whitespace-nowrap text-[13px] tracking-tight transition-all duration-300 ${isActive ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
+                  {item.label}
+                </span>
+              )}
               
               {isActive && (
                 <motion.div
@@ -157,57 +171,64 @@ export const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobile
         })}
       </nav>
 
-      <div className="block mt-auto px-3 py-3 border-t border-white/5 bg-black/20">
-        {!isElectron && (
+      <div className={`block mt-auto px-3 py-3 border-t border-white/5 bg-black/20 transition-all ${isCollapsed ? 'items-center flex flex-col' : ''}`}>
+        {!isElectron && !isCollapsed && (
           <div
             title="Disponível em breve!"
             className="flex items-center justify-center gap-2 w-full py-3 mb-4 bg-white/5 border border-white/10 rounded-xl text-gray-500 cursor-not-allowed transition-all overflow-hidden relative"
           >
-            <Zap className="w-4 h-4 text-gray-600" />
-            <span className="text-[11px] font-black uppercase tracking-widest">App Desktop (Em breve!)</span>
+            <Zap className="w-4 h-4 text-gray-600 shrink-0" />
+            <span className="text-[10px] font-black uppercase tracking-widest truncate">App Desktop (Em breve!)</span>
           </div>
         )}
 
         <button 
           onClick={() => setActiveTab('profile')}
-          className={`w-full flex items-center gap-2.5 p-2.5 mb-3 rounded-xl border transition-all group relative overflow-hidden
+          title={isCollapsed ? userProfile.name : undefined}
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center p-2' : 'gap-2.5 p-2.5'} mb-3 rounded-xl border transition-all group relative overflow-hidden
             ${activeTab === 'profile' 
               ? 'bg-neon-cyan/10 border-neon-cyan/20 shadow-[0_0_15px_rgba(0,243,255,0.05)]' 
               : 'bg-white/5 border-white/5 hover:border-white/10 hover:bg-white/5'
             }
           `}
         >
-          <div className="w-9 h-9 rounded-full border border-white/10 overflow-hidden bg-dark flex items-center justify-center shrink-0 shadow-lg group-hover:border-neon-cyan/50 transition-all duration-500">
+          <div className={`${isCollapsed ? 'w-8 h-8' : 'w-9 h-9'} rounded-full border border-white/10 overflow-hidden bg-dark flex items-center justify-center shrink-0 shadow-lg group-hover:border-neon-cyan/50 transition-all duration-500`}>
             {userProfile.avatar ? (
               <img src={userProfile.avatar} alt="User" className="w-full h-full object-cover" />
             ) : (
-              <User className="w-5 h-5 text-gray-500" />
+              <User className="w-4 h-4 text-gray-500" />
             )}
           </div>
-          <div className="flex-1 text-left overflow-hidden">
-            <p className="text-xs font-black text-white truncate group-hover:text-neon-cyan transition-colors">{userProfile.name}</p>
-            <div className="flex items-center gap-1.5 overflow-hidden">
-               <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider shrink-0">{t('sidebar.pro_member')}</p>
-               <span className="text-gray-700 font-black">•</span>
-               {getDaysRemaining() === 'vitalicio' ? (
-                 <span className="text-[9px] text-neon-cyan font-black uppercase tracking-tighter flex items-center gap-0.5 animate-pulse">
-                   <Infinity className="w-2 h-2" /> {t('sidebar.lifetime')}
-                 </span>
-               ) : getDaysRemaining() !== null ? (
-                 <span className={`text-[9px] font-black uppercase tracking-tighter ${getDaysRemaining() <= 5 ? 'text-red-500' : 'text-gray-400'}`}>
-                   {getDaysRemaining()} {t('sidebar.days_left')}
-                 </span>
-               ) : (
-                 <span className="text-[9px] text-gray-600 font-black uppercase tracking-tighter">Ativo</span>
-               )}
+          
+          {!isCollapsed && (
+            <div className="flex-1 text-left overflow-hidden">
+              <p className="text-[11px] font-black text-white truncate group-hover:text-neon-cyan transition-colors">{userProfile.name}</p>
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                 <p className="text-[8px] text-gray-500 font-bold uppercase tracking-wider shrink-0">{t('sidebar.pro_member')}</p>
+                 <span className="text-gray-700 font-black">•</span>
+                 {getDaysRemaining() === 'vitalicio' ? (
+                   <span className="text-[8px] text-neon-cyan font-black uppercase tracking-tighter flex items-center gap-0.5 animate-pulse">
+                     <Infinity className="w-2 h-2" /> {t('sidebar.lifetime')}
+                   </span>
+                 ) : getDaysRemaining() !== null ? (
+                   <span className={`text-[8px] font-black uppercase tracking-tighter ${getDaysRemaining() <= 5 ? 'text-red-500' : 'text-gray-400'}`}>
+                     {getDaysRemaining()} {t('sidebar.days_left')}
+                   </span>
+                 ) : (
+                   <span className="text-[8px] text-gray-600 font-black uppercase tracking-tighter">Ativo</span>
+                 )}
+              </div>
             </div>
-          </div>
-          <div className="absolute right-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="w-1 h-1 rounded-full bg-neon-cyan shadow-[0_0_8px_#00f3ff]" />
-          </div>
+          )}
+          
+          {!isCollapsed && (
+            <div className="absolute right-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="w-1 h-1 rounded-full bg-neon-cyan shadow-[0_0_8px_#00f3ff]" />
+            </div>
+          )}
         </button>
 
-        <p className="text-[8px] text-gray-700 font-black text-center uppercase tracking-[0.2em]">{t('sidebar.version')}</p>
+        {!isCollapsed && <p className="text-[8px] text-gray-700 font-black text-center uppercase tracking-[0.2em]">{t('sidebar.version')}</p>}
       </div>
     </div>
   );
