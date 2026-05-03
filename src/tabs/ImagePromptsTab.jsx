@@ -748,8 +748,10 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
           setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: `Tentando novamente Bloco ${i+1}...` }));
           await new Promise(r => setTimeout(r, delayTime));
         }
-        // Stagger por chunk index: evita burst simultâneo entre chunks paralelos
-        if (retryCount === 0 && i > 0) await new Promise(r => setTimeout(r, i * 200));
+        // Stagger relativo à posição no batch: evita burst, mas não acumula exponencialmente
+        if (retryCount === 0 && (i % CHUNK_PARALLEL) > 0) {
+          await new Promise(r => setTimeout(r, (i % CHUNK_PARALLEL) * 200));
+        }
 
         try {
           chunkStatuses[i] = "generating";
@@ -901,49 +903,61 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
       const resultsArray = new Array(totalBlocks).fill("");
       const chunkStatuses = new Array(totalBlocks).fill("pending");
 
-      const batchPromises = Array.from({ length: totalBlocks }, async (_, i) => {
-        const startIdx = i * batchSize;
-        const segment = scriptSegments.slice(startIdx, startIdx + batchSize).join(' ');
- 
-        // Update status
-        chunkStatuses[i] = "generating";
-        setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses] }));
- 
-        const promptBatchQuery = `${getSystemPrompt()}\n\nSCRIPT SEGMENT (BLOCK ${i+1}):\n"${segment}"\n\nGENERATE ELITE PROMPTS (ENGLISH ONLY):`;
- 
-        try {
-          const batchResult = await callGemini(getPromptsApiKey(), promptBatchQuery, { model: 'gemini-2.0-flash-lite' }); // flash-lite: 30 RPM — 2x mais rápido que flash
-          
-          let processedBatch = "";
-          if (genMode === 'quality') {
-            // ELITE CLEANUP: Ensure no blank lines between Prompt and Negative Prompt
-            processedBatch = (batchResult || "").trim().replace(/PROMPT:\s*([\s\S]*?)\n+\s*NEGATIVE PROMPT:/gim, "PROMPT: $1\nNEGATIVE PROMPT:");
-          } else {
-            processedBatch = (batchResult || "").split('\n').map(p => p.trim()).filter(p => p.length > 20).join('\n\n');
-          }
-          
-          resultsArray[i] = processedBatch;
-          chunkStatuses[i] = "done";
-          
-          // Live UI Update
-          setPrompts(resultsArray.filter(Boolean).join('\n\n'));
+      const PARALLEL_SCRIPT = 6;
+      for (let p = 0; p < totalBlocks; p += PARALLEL_SCRIPT) {
+        if (cancelRef.current) break;
+        const batch = [];
+        
+        for (let b = 0; b < PARALLEL_SCRIPT && (p + b) < totalBlocks; b++) {
+          const i = p + b;
+          batch.push((async () => {
+            const startIdx = i * batchSize;
+            const segment = scriptSegments.slice(startIdx, startIdx + batchSize).join(' ');
+     
+            // Update status
+            chunkStatuses[i] = "generating";
+            setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses] }));
+     
+            const promptBatchQuery = `${getSystemPrompt()}\n\nSCRIPT SEGMENT (BLOCK ${i+1}):\n"${segment}"\n\nGENERATE ELITE PROMPTS (ENGLISH ONLY):`;
+     
+            // Stagger para não bater 30 RPM instantâneo
+            if (b > 0) await new Promise(r => setTimeout(r, b * 200));
 
-          return { index: i, content: batchResult };
-        } catch (err) {
-          resultsArray[i] = `[ERRO BLOCO ${i+1}: ${err.message}]`;
-          chunkStatuses[i] = "error";
-          return { index: i, error: err.message };
-        } finally {
-          setGenerationProgress(prev => ({ 
-            ...prev, 
-            current: Math.min(prev.current + 1, totalBlocks),
-            statuses: [...chunkStatuses],
-            step: `Gerando blocos... (${Math.min(prev.current + 1, totalBlocks)}/${totalBlocks})`
-          }));
+            try {
+              const batchResult = await callGemini(getPromptsApiKey(), promptBatchQuery, { model: 'gemini-2.0-flash-lite' });
+              
+              let processedBatch = "";
+              if (genMode === 'quality') {
+                processedBatch = (batchResult || "").trim().replace(/PROMPT:\s*([\s\S]*?)\n+\s*NEGATIVE PROMPT:/gim, "PROMPT: $1\nNEGATIVE PROMPT:");
+              } else {
+                processedBatch = (batchResult || "").split('\n').map(p => p.trim()).filter(p => p.length > 20).join('\n\n');
+              }
+              
+              resultsArray[i] = processedBatch;
+              chunkStatuses[i] = "done";
+              
+              setPrompts(resultsArray.filter(Boolean).join('\n\n'));
+    
+              return { index: i, content: batchResult };
+            } catch (err) {
+              resultsArray[i] = `[ERRO BLOCO ${i+1}: ${err.message}]`;
+              chunkStatuses[i] = "error";
+              return { index: i, error: err.message };
+            } finally {
+              setGenerationProgress(prev => ({ 
+                ...prev, 
+                current: Math.min(prev.current + 1, totalBlocks),
+                statuses: [...chunkStatuses],
+                step: `Gerando blocos... (${Math.min(prev.current + 1, totalBlocks)}/${totalBlocks})`
+              }));
+            }
+          })());
         }
-      });
-
-      const results = await Promise.all(batchPromises);
+        
+        await Promise.all(batch);
+        // Pequena pausa entre batches para alívio da API
+        if (p + PARALLEL_SCRIPT < totalBlocks) await new Promise(r => setTimeout(r, 500));
+      }
       const finalPrompts = resultsArray.filter(Boolean).join('\n\n');
       setPrompts(finalPrompts);
 
