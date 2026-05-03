@@ -644,7 +644,9 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
       const statusArr  = new Array(total).fill('pending');
       const dnaPart = `Scenario: ${visualDNA.scenario || 'Real-world'} | Era: ${visualDNA.era || 'Contemporary'} | Mood: ${visualDNA.mood || 'Cinematic'} | Lighting: ${visualDNA.lighting || 'Natural light'} | Palette: ${visualDNA.palette || 'Realistic'} | Camera: ${visualDNA.camera || 'Cinematic angles'}`;
       const singleSys = `Ultra-realistic image prompt engineer. Write ONE English photographic prompt for the given subtitle. Output only the prompt — no intro, no numbering.\nVISUAL DNA: ${dnaPart}\nRULES: English only. Reality only. 60–100 words. NEGATIVE PROMPT on same line.\nFORMAT: Ultra-Realista — Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita. [shot] [visual scene from subtitle]. NEGATIVE PROMPT: CGI, cartoon, blurry, distorted, text, watermark.`;
-      const genOne = async (subtitle) => {
+      const genOne = async (subtitle, staggerIdx = 0) => {
+        // Stagger: distribui os disparos no tempo para não bater 30 RPM de uma vez
+        if (staggerIdx > 0) await new Promise(r => setTimeout(r, staggerIdx * 80));
         for (let a = 0; a < 4; a++) {
           try {
             if (a > 0) await new Promise(r => setTimeout(r, a >= 2 ? 5000 : 1000));
@@ -653,22 +655,22 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
             if (c) return c;
           } catch (e) {
             const isRL = (e.message || '').includes('429') || (e.message || '').includes('quota') || (e.message || '').includes('exhausted');
-            if (isRL) await new Promise(r => setTimeout(r, 3000)); // era 15s — reduzido para 3s
+            if (isRL) await new Promise(r => setTimeout(r, 8000)); // 8s para reset do sliding window
             else if (a >= 2) break;
           }
         }
         return `Ultra-Realista — 8K cinematic photography. Visual scene: ${subtitle}. NEGATIVE PROMPT: CGI, cartoon, blurry.`;
       };
-      const PARALLEL = 28; // flash-lite: 30 RPM — 28 paralelo seguro (era 15)
+      const PARALLEL = 22; // 22 paralelo com stagger de 80ms = disparos distribuídos em ~1.7s (seguro para 30 RPM)
       for (let p = 0; p < total; p += PARALLEL) {
         if (cancelRef.current) break;
         const batch = subtitleBlocks.slice(p, p + PARALLEL);
-        const batchRes = await Promise.all(batch.map(sub => genOne(sub)));
+        const batchRes = await Promise.all(batch.map((sub, idx) => genOne(sub, idx)));
         batchRes.forEach((r, bIdx) => { resultsArr[p + bIdx] = r; statusArr[p + bIdx] = 'done'; });
         const done = Math.min(p + PARALLEL, total);
         setGenerationProgress(prev => ({ ...prev, current: done, statuses: [...statusArr], step: done < total ? `Gerando prompts (${done}/${total})...` : 'Finalizando...' }));
         setPrompts(resultsArr.filter(Boolean).join('\n\n'));
-        if (p + PARALLEL < total) await new Promise(r => setTimeout(r, 100)); // era 400ms
+        if (p + PARALLEL < total) await new Promise(r => setTimeout(r, 100));
       }
       setIsGenerating(false);
       setIsVerified(true);
@@ -724,11 +726,13 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
       for (let retryCount = 0; retryCount < 3; retryCount++) {
         if (cancelRef.current) return;
         if (retryCount > 0) {
-          const delayTime = 2000; // era 5000ms — reduzido para 2s
+          const delayTime = 2000;
           chunkStatuses[i] = "retrying";
           setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: `Tentando novamente Bloco ${i+1}...` }));
           await new Promise(r => setTimeout(r, delayTime));
         }
+        // Stagger por chunk index: evita burst simultâneo entre chunks paralelos
+        if (retryCount === 0 && i > 0) await new Promise(r => setTimeout(r, i * 200));
 
         try {
           chunkStatuses[i] = "generating";
