@@ -39,31 +39,31 @@ const _getPromptsApiKeyStub = () => '';
 
 
 export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
-  // ── Chave exclusiva de prompts ──────────────────────────────────────
-  // Prioridade: 1) configs.gemini_prompts_key (Supabase) > 2) localStorage > 3) chave principal
-  // Esta função vive dentro do componente para ter acesso live ao `configs`.
   const { status, configs } = useSystemStatus();
   const [cloudScripts] = useCloudStorage('scripts', []);
 
-  // ── Chave exclusiva de prompts ──────────────────────────────────────────────
-  // Prioridade: 1) configs.gemini_prompts_key (Supabase) > 2) localStorage > 3) chave principal
-  // DEVE ficar após useSystemStatus() para que `configs` já esteja disponível.
-  // ── Chave principal Gemini ─────────────────────────────────────────────────
-  // Usa sempre a chave Gemini configurada (ou a chave mestra do sistema como fallback).
-  // A chave exclusiva foi descontinuada \u2014 todo o sistema roda com a chave principal.
+  // ── Chave exclusiva do Gerador de Prompts ─────────────────────────────────
+  // Prioridade: 1) gemini_prompts_key (Supabase) → 2) google_script_key (campo pessoal)
+  //             → 3) localStorage direto → 4) chave paga como fallback final
   const MASTER_GEMINI_KEY = 'AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE';
   const getPromptsApiKey = React.useCallback(() => {
-    // 1\u00aa prioridade: chave Gemini configurada no Supabase pelo usu\u00e1rio
-    if (configs?.gemini_key?.trim()) {
-      return configs.gemini_key.trim();
+    // 1ª prioridade: chave gratuita exclusiva de prompts (Supabase)
+    if (configs?.gemini_prompts_key?.trim()) {
+      return configs.gemini_prompts_key.trim();
     }
-    // 2\u00aa prioridade: chave Gemini no localStorage
+    // 2ª prioridade: chave pessoal do campo "Google API Key — Gerador de Prompts"
+    if (configs?.google_script_key?.trim()) {
+      return configs.google_script_key.trim();
+    }
+    // 3ª prioridade: localStorage (sincronizado pelo SystemStatusContext)
+    const lsPrompts = localStorage.getItem('guru_gemini_prompts_key');
+    if (lsPrompts?.trim()) return lsPrompts.trim();
+    const lsScript = localStorage.getItem('guru_google_script_key');
+    if (lsScript?.trim()) return lsScript.trim();
+    // Fallback final: chave paga do sistema (garante funcionamento mesmo sem chave gratuita)
     const lsMain = localStorage.getItem('guru_gemini_key');
-    if (lsMain?.trim()) {
-      return lsMain.trim();
-    }
-    // Fallback final: chave mestra do sistema
-    console.warn('\u26a0\ufe0f [ImagePrompts] Usando chave mestra do sistema como fallback.');
+    if (lsMain?.trim()) return lsMain.trim();
+    console.warn('⚠️ [ImagePrompts] Usando chave mestra do sistema como fallback. Configure a chave gratuita em Configurações.');
     return MASTER_GEMINI_KEY;
   }, [configs]);
 

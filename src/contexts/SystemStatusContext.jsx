@@ -17,7 +17,8 @@ const getEmailFromStorage = () => {
 const MASTER_GEMINI_KEY = 'AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE';
 
 const DEFAULTS = {
-  gemini_key: MASTER_GEMINI_KEY,
+  gemini_key: MASTER_GEMINI_KEY,    // chave PAGA — usada em todas as abas exceto Gerador de Prompts
+  gemini_prompts_key: '',           // chave GRATUITA — usada SOMENTE no Gerador de Prompts
   grok_key: '',
   gpt_key: '',
   anthropic_key: '',
@@ -25,7 +26,7 @@ const DEFAULTS = {
   elevenlabs_key: '',
   leonardo_key: '',
   youtube_key: '',
-  google_script_key: '', // chave gratuita exclusiva para criação de roteiros
+  google_script_key: '',            // campo pessoal — espelha gemini_prompts_key (Gerador de Prompts)
   google_client_id: '',
   smtp_user: '',
   smtp_password: '',
@@ -158,8 +159,8 @@ export const SystemStatusProvider = ({ children }) => {
     localStorage.setItem('guru_grok_key', configs.grok_key || '');
     // Chave exclusiva para roteiros (pode ser chave gratuita do Google)
     localStorage.setItem('guru_google_script_key', configs.google_script_key || '');
-    // gemini_prompts_key descontinuada — limpa qualquer valor antigo
-    localStorage.removeItem('guru_gemini_prompts_key');
+    // Chave gratuita exclusiva do Gerador de Prompts
+    localStorage.setItem('guru_gemini_prompts_key', configs.gemini_prompts_key || '');
     localStorage.setItem('guru_youtube_key', configs.youtube_key || '');
     localStorage.setItem('guru_active_ai', configs.active_ai || 'Gemini');
     
