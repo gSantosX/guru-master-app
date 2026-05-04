@@ -154,12 +154,14 @@ export const GuruMasterApp = () => {
               className={`fixed top-6 left-1/2 -translate-x-1/2 z-[110] backdrop-blur-xl border rounded-2xl px-6 py-3 flex items-center gap-3 shadow-2xl transition-colors
                 ${toast.type === 'success' ? 'bg-green-500/80 border-green-500/50 text-white' : 
                   toast.type === 'warning' ? 'bg-yellow-600/80 border-yellow-500/50 text-white' : 
+                  toast.type === 'error' ? 'bg-red-600/80 border-red-500/50 text-white' :
                   'bg-neon-cyan/80 border-neon-cyan/50 text-dark'}
               `}
             >
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
                 {toast.type === 'success' ? <Check className="w-4 h-4" /> : 
                  toast.type === 'warning' ? <AlertTriangle className="w-4 h-4" /> : 
+                 toast.type === 'error' ? <AlertTriangle className="w-4 h-4" /> :
                  <Zap className="w-4 h-4" />}
               </div>
               <span className="text-xs font-black uppercase tracking-widest">{toast.message}</span>

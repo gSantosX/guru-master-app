@@ -17,7 +17,7 @@ export default async function handler(req, res) {
 
     // Se a requisição veio sem o parâmetro "key" ou com a chave mascarada, injeta a chave Global Mestra.
     // Tenta usar a variável de ambiente primeiro, senão faz o fallback para as chaves conhecidas.
-    const GLOBAL_KEY = process.env.GEMINI_API_KEY || "AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE";
+    const GLOBAL_KEY = process.env.GEMINI_API_KEY || "AIzaSyB3Crr5gKP4MgKoAQgiHkSxk_SJP4Im2TY";
     
     if (!req.query.key || req.query.key === 'GLOBAL_MASTER_KEY_ACTIVE' || req.query.key === 'AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE') {
       req.query.key = GLOBAL_KEY;

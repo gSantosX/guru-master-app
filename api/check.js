@@ -21,7 +21,7 @@ export default async function handler(req, res) {
         if (!key || typeof key !== 'string' || key.trim() === '') return { status: 'offline', reason: 'empty_key' };
         let actualKey = key.trim();
         if (actualKey === 'GLOBAL_MASTER_KEY_ACTIVE' && (provider === 'gemini' || provider === 'prompts_key')) {
-          actualKey = process.env.GEMINI_API_KEY || "AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE";
+          actualKey = process.env.GEMINI_API_KEY || "AIzaSyB3Crr5gKP4MgKoAQgiHkSxk_SJP4Im2TY";
         }
         return pingKey(provider, actualKey);
       })
