@@ -61,8 +61,14 @@ export default async function handler(req, res) {
 
       const baseConfig = data || { ...DEFAULTS, email };
 
-      // Garante que a chave mestra SEMPRE está presente se o usuário não tiver uma chave configurada
-      if (!baseConfig.gemini_key || !baseConfig.gemini_key.trim()) {
+      // Garante que a chave mestra SEMPRE está presente se o usuário não tiver uma chave pessoal válida
+      // Também substitui chaves expiradas conhecidas pela chave mestra
+      const EXPIRED_KEYS = [
+        'AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE',
+        'AIzaSyB3Crr5gKP4MgKoAQgiHkSxk_SJP4Im2TY',
+      ];
+      const currentKey = (baseConfig.gemini_key || '').trim();
+      if (!currentKey || currentKey === '' || EXPIRED_KEYS.includes(currentKey)) {
         baseConfig.gemini_key = MASTER_GEMINI_KEY;
       }
 
