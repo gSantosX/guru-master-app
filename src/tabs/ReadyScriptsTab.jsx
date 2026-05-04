@@ -212,8 +212,9 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
   // VIEWER MODE
   if (activeScript) {
     return (
-      <div className="p-4 md:p-8 max-w-5xl mx-auto min-h-full md:h-full flex flex-col pt-4 overflow-y-auto md:overflow-hidden custom-scrollbar">
-        <button 
+      <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4">
+          <button 
           onClick={() => setActiveScript(null)}
           className="mb-6 flex items-center gap-2 text-gray-400 hover:text-white transition-colors w-max"
         >
@@ -285,14 +286,16 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
             </button>
           </div>
         </div>
+        </div>
       </div>
     );
   }
 
   // GRID MODE
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-full md:h-full flex flex-col overflow-y-auto custom-scrollbar">
-      <header className="mb-12">
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4">
+      <header className="mb-4">
         <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(0,243,255,0.3)]">
             <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
@@ -449,6 +452,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
           </AnimatePresence>
         </div>
       )}
+      </div>
       </div>
     </div>
   );

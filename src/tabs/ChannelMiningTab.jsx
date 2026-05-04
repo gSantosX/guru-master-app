@@ -63,14 +63,23 @@ const LANGUAGES = [
   { name: "Japonês", code: "ja", region: "JP" }
 ];
 
+const AGE_OPTIONS = [
+  { label: "Qualquer Idade", value: 0 },
+  { label: "Menos de 1 Mês", value: 1 },
+  { label: "Menos de 3 Meses", value: 3 },
+  { label: "Menos de 5 Meses", value: 5 },
+  { label: "Menos de 1 Ano", value: 12 }
+];
+
 export const ChannelMiningTab = ({ setActiveTab }) => {
   const { configs } = useSystemStatus();
   const { miningState, setMiningState } = usePersistence();
-  const { channels, niche: selectedNiche, isSearching } = miningState;
+  const { channels, niche: selectedNiche, isSearching, maxAgeMonths = 0 } = miningState;
 
   const setSelectedNiche = (val) => setMiningState(prev => ({ ...prev, niche: val }));
   const setChannels = (val) => setMiningState(prev => ({ ...prev, channels: val }));
   const setIsSearching = (val) => setMiningState(prev => ({ ...prev, isSearching: val }));
+  const setMaxAgeMonths = (val) => setMiningState(prev => ({ ...prev, maxAgeMonths: val }));
 
   const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
   const [copiedId, setCopiedId] = useState(null);
@@ -120,14 +129,14 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
 
   const handleSearch = async () => {
     // Check Cache
-    const cacheKey = `mining_${selectedNiche}_${selectedLang.code}`;
+    const cacheKey = `mining_${selectedNiche}_${selectedLang.code}_${maxAgeMonths}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
         if (Date.now() - parsed.timestamp < 1 * 60 * 60 * 1000) { // 1 hour cache
           console.log("Using cached mining data");
-          setChannels(parsed.data);
+          setChannels(parsed.data.slice(0, 6));
           return;
         }
       } catch (e) {}
@@ -186,6 +195,11 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
           const videoCount = parseInt(item.statistics.videoCount || 0);
           const viewCount = parseInt(item.statistics.viewCount || 0);
           const efficiency = Math.round(viewCount / Math.max(1, videoCount));
+          
+          const publishedAtDate = new Date(item.snippet.publishedAt);
+          const now = new Date();
+          const ageInMonths = (now.getFullYear() - publishedAtDate.getFullYear()) * 12 + now.getMonth() - publishedAtDate.getMonth();
+
           return {
             id: item.id,
             title: item.snippet.title,
@@ -196,24 +210,31 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
             viewCount: viewCount,
             subscriberCount: parseInt(item.statistics.subscriberCount || 0),
             publishedAt: item.snippet.publishedAt,
+            ageInMonths: ageInMonths,
             efficiency: efficiency,
             isExplosive: efficiency > 50000
           };
         })
-        .filter(channel => channel.viewCount >= 5000 && channel.subscriberCount < 150000 && channel.subscriberCount > 0)
+        .filter(channel => {
+          if (channel.viewCount < 5000 || channel.subscriberCount >= 150000 || channel.subscriberCount <= 0) return false;
+          if (maxAgeMonths > 0 && channel.ageInMonths > maxAgeMonths) return false;
+          return true;
+        })
         .sort((a, b) => b.efficiency - a.efficiency)
         .slice(0, 6); // Exactly 6 cards
 
       setChannels(minedChannels);
       
       // Save to Cache
-      sessionStorage.setItem(`mining_${selectedNiche}_${selectedLang.code}`, JSON.stringify({
+      sessionStorage.setItem(`mining_${selectedNiche}_${selectedLang.code}_${maxAgeMonths}`, JSON.stringify({
         timestamp: Date.now(),
         data: minedChannels
       }));
 
       if (minedChannels.length === 0) {
-        alert("Não encontramos canais com os critérios atuais para este nicho. Tente outro tema ou idioma!");
+        alert(maxAgeMonths > 0 
+          ? `Nenhum canal bombando com menos de ${maxAgeMonths} meses foi encontrado neste nicho agora. Tente remover o filtro de Idade ou mudar o Nicho.` 
+          : "Não encontramos canais com os critérios atuais para este nicho. Tente outro tema ou idioma!");
       }
     } catch (error) {
       console.error("Mining error:", error);
@@ -268,7 +289,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
         Previous Knowledge context: ${JSON.stringify(knowledge.structures.slice(-5))}
       `;
 
-      const response = await callAI(analysisPrompt, { gptKey: configs.gpt_key });
+      const response = await callAI(analysisPrompt, { model: 'gemini-1.5-pro', gptKey: configs.gpt_key });
       const cleanJson = response.replace(/```json|```/g, '').trim();
       const results = JSON.parse(cleanJson);
 
@@ -304,65 +325,83 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
   };
 
   return (
-    <div className="flex flex-col h-full w-full max-w-[1600px] mx-auto gap-8 font-sans overflow-hidden">
-      <header className="mb-12">
-        <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(34,211,238,0.3)]">
-            <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
-              <Youtube className="w-8 h-8 text-white fill-current" />
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4">
+        <header className="mb-4 shrink-0">
+          <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(34,211,238,0.3)]">
+              <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
+                <Youtube className="w-8 h-8 text-white fill-current" />
+              </div>
             </div>
-          </div>
-          {t('mining.rising_header') || 'Mineração de Canais'}
-        </h2>
-        <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-cyan pl-4 ml-2 italic">
-          {t('mining.subtitle') || 'Detectando Rising Stars e Oportunidades Explosivas'}
-        </p>
-      </header>
+            {t('mining.rising_header') || 'Mineração de Canais'}
+          </h2>
+          <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-cyan pl-4 ml-2 italic">
+            {t('mining.subtitle') || 'Detectando Rising Stars e Oportunidades Explosivas'}
+          </p>
+        </header>
 
-      {/* Filters Box */}
-      <div className="w-full mb-8">
-        <div className="flex flex-col md:flex-row gap-6 bg-white/5 p-6 rounded-3xl border border-white/10 backdrop-blur-md items-end w-full">
-          <div className="flex flex-col gap-2 flex-1">
-            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-neon-cyan" /> {t('mining.lang_label')}
-            </label>
-            <select 
-              value={selectedLang.code}
-              onChange={(e) => setSelectedLang(LANGUAGES.find(l => l.code === e.target.value))}
-              className="bg-dark/60 border border-white/5 rounded-2xl px-5 py-4 text-white font-bold text-sm focus:outline-none focus:border-neon-cyan/50 hover:bg-dark/80 transition-all cursor-pointer w-full"
+        {/* Filters Box */}
+        <div className="glass-card p-8 border border-neon-cyan/20 relative overflow-hidden group shrink-0 shadow-[0_0_50px_rgba(0,243,255,0.05)] mb-4">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-neon-cyan/5 rounded-full blur-[100px] pointer-events-none group-hover:bg-neon-cyan/10 transition-colors" />
+          <div className="flex flex-col md:flex-row gap-6 relative z-10 items-end w-full">
+            <div className="flex flex-col gap-2 flex-1">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2 flex items-center gap-2">
+                <Globe className="w-4 h-4 text-neon-cyan" /> {t('mining.lang_label')}
+              </label>
+              <select 
+                value={selectedLang.code}
+                onChange={(e) => setSelectedLang(LANGUAGES.find(l => l.code === e.target.value))}
+                className="bg-dark/60 border border-white/5 rounded-2xl px-5 py-4 text-white font-bold text-sm focus:outline-none focus:border-neon-cyan/50 hover:bg-dark/80 transition-all cursor-pointer w-full shadow-inner"
+              >
+                {LANGUAGES.map(lang => (
+                  <option key={lang.code} value={lang.code}>{lang.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-2 flex-1">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-neon-purple" /> {t('mining.niche_label')}
+              </label>
+              <select 
+                value={selectedNiche}
+                onChange={(e) => setSelectedNiche(e.target.value)}
+                className="bg-dark/60 border border-white/5 rounded-2xl px-5 py-4 text-white font-bold text-sm focus:outline-none focus:border-neon-purple/50 hover:bg-dark/80 transition-all cursor-pointer w-full shadow-inner"
+              >
+                {NICHES.map(niche => (
+                  <option key={niche} value={niche}>{niche}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-2 flex-1">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2 flex items-center gap-2">
+                <History className="w-4 h-4 text-neon-pink" /> Idade do Canal
+              </label>
+              <select 
+                value={maxAgeMonths}
+                onChange={(e) => setMaxAgeMonths(Number(e.target.value))}
+                className="bg-dark/60 border border-white/5 rounded-2xl px-5 py-4 text-white font-bold text-sm focus:outline-none focus:border-neon-pink/50 hover:bg-dark/80 transition-all cursor-pointer w-full shadow-inner"
+              >
+                {AGE_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <button 
+              onClick={handleSearch}
+              disabled={isSearching}
+              className="flex-shrink-0 md:w-auto w-full px-10 py-4 h-[54px] bg-gradient-to-r from-neon-purple to-neon-cyan text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:shadow-[0_0_30px_rgba(0,243,255,0.6)] transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
             >
-              {LANGUAGES.map(lang => (
-                <option key={lang.code} value={lang.code}>{lang.name}</option>
-              ))}
-            </select>
+              {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Search className="w-5 h-5" /> {t('mining.btn_search')}</>}
+            </button>
           </div>
-
-          <div className="flex flex-col gap-2 flex-1">
-            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-neon-purple" /> {t('mining.niche_label')}
-            </label>
-            <select 
-              value={selectedNiche}
-              onChange={(e) => setSelectedNiche(e.target.value)}
-              className="bg-dark/60 border border-white/5 rounded-2xl px-5 py-4 text-white font-bold text-sm focus:outline-none focus:border-neon-purple/50 hover:bg-dark/80 transition-all cursor-pointer w-full"
-            >
-              {NICHES.map(niche => (
-                <option key={niche} value={niche}>{niche}</option>
-              ))}
-            </select>
-          </div>
-
-          <button 
-            onClick={handleSearch}
-            disabled={isSearching}
-            className="flex-shrink-0 md:w-auto w-full px-10 py-4 h-[54px] bg-white text-dark rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-neon-cyan transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-30 shadow-[0_0_20px_rgba(255,255,255,0.1)] flex items-center justify-center gap-3"
-          >
-            {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Search className="w-5 h-5" /> {t('mining.btn_search')}</>}
-          </button>
         </div>
-      </div>
-      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0">
-        <AnimatePresence mode="wait">
+
+        <div className="flex flex-col w-full">
+          <AnimatePresence mode="wait">
           {isSearching ? (
              <motion.div 
                initial={{ opacity: 0 }} 
@@ -378,7 +417,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
               animate={{ opacity: 1, y: 0 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-12"
             >
-              {(Array.isArray(channels) ? [...channels, ...Array(Math.max(0, 6 - channels.length)).fill(null)] : Array(6).fill(null)).map((channel, i) => (
+              {(Array.isArray(channels) ? [...channels.slice(0, 6), ...Array(Math.max(0, 6 - channels.slice(0, 6).length)).fill(null)] : Array(6).fill(null)).map((channel, i) => (
                 channel ? (
                 <motion.div
                   key={channel.id}
@@ -620,6 +659,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
           </div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 };

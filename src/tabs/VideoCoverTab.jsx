@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap, Box, Copy, Check, Palette, CloudMoon, Target, Maximize, MousePointer2, Globe, Terminal, AlertTriangle, Loader2 } from 'lucide-react';
+import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap, Box, Copy, Check, Palette, CloudMoon, Target, Maximize, MousePointer2, Globe, Terminal, AlertTriangle, Loader2, Camera, Brush, PenTool, Monitor, Ghost, Sun, Moon, Star, Flame, Droplet, Wind, Tv } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { usePersistence } from '../contexts/PersistenceContext';
 import { resolveApiUrl } from '../utils/apiUtils';
-import { callAI } from '../utils/aiUtils';
+import { callAI, generateGeminiImage } from '../utils/aiUtils';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 
 const THUMBNAIL_STYLES = [
@@ -15,7 +15,24 @@ const THUMBNAIL_STYLES = [
     { id: 'anime', label: 'Anime/Manga', icon: Palette, prompt: 'Dynamic anime style, strong character outlines, vibrant cel-shaded colors, dramatic perspective.' },
     { id: 'cyberpunk', label: 'Cyberpunk', icon: Zap, prompt: 'Retro-futuristic cyberpunk aesthetic, neon lights (cyan and magenta), high contrast, rainy atmosphere, foggy depth.' },
     { id: 'suspense', label: 'Suspense/Horror', icon: AlertTriangle, prompt: 'Dark and atmospheric, high contrast shadows, moody lighting, ominous feeling, mysterious silhouette.' },
-    { id: 'minimalist', label: 'Minimalista', icon: Maximize, prompt: 'Clean minimalist composition, single focal point, soft neutral background, focus on essential details.' }
+    { id: 'minimalist', label: 'Minimalista', icon: Maximize, prompt: 'Clean minimalist composition, single focal point, soft neutral background, focus on essential details.' },
+    // Novas +16 estilos:
+    { id: 'vaporwave', label: 'Vaporwave', icon: Monitor, prompt: '80s retrowave aesthetic, synthwave, glowing grid, magenta and cyan neon lighting, VHS glitch effect.' },
+    { id: 'oil_painting', label: 'Pintura a Óleo', icon: Brush, prompt: 'Classic oil painting masterpiece, dramatic chiaroscuro lighting, rich visible brushstrokes, museum quality.' },
+    { id: 'watercolor', label: 'Aquarela', icon: Droplet, prompt: 'Soft watercolor illustration, ethereal blending, paper texture, delicate washes of color.' },
+    { id: 'low_poly', label: 'Low Poly', icon: Box, prompt: 'Low poly 3D art, flat shading, geometric facets, vibrant pastel colors, isometric perspective.' },
+    { id: 'photoreal', label: 'Fotorealismo 8k', icon: Camera, prompt: 'Ultra-photorealistic macro photography, shot on 85mm lens, f/1.2, insanely detailed, studio lighting, hyper-sharp.' },
+    { id: 'steampunk', label: 'Steampunk', icon: Zap, prompt: 'Victorian steampunk aesthetic, brass gears, steam clouds, warm sepia and gold tones, intricate mechanical details.' },
+    { id: 'pixel_art', label: 'Pixel Art', icon: Monitor, prompt: '16-bit retro pixel art, sharp pixels, vibrant SNES color palette, nostalgic gaming aesthetic.' },
+    { id: 'noir', label: 'Filme Noir', icon: Moon, prompt: 'Classic film noir, harsh shadows, pure black and white, high contrast lighting, moody detective aesthetic.' },
+    { id: 'pop_art', label: 'Pop Art', icon: Palette, prompt: 'Andy Warhol pop art style, Ben-Day dots, ultra-saturated flat colors, thick comic book outlines.' },
+    { id: 'vector', label: 'Vetor Corporativo', icon: PenTool, prompt: 'Clean vector illustration, flat colors, modern corporate tech aesthetic, geometric shapes, minimal shading.' },
+    { id: 'epic_fantasy', label: 'Fantasia Épica', icon: Flame, prompt: 'High fantasy epic scale, glowing magic, dramatic lighting, legendary heroic atmosphere, highly detailed concept art.' },
+    { id: 'scifi', label: 'Ficção Científica', icon: Star, prompt: 'Futuristic sci-fi space opera, glowing holographic UI, deep space blues and purples, highly advanced tech.' },
+    { id: 'studio', label: 'Retrato Estúdio', icon: Camera, prompt: 'Professional studio portrait photography, softbox lighting, crisp solid backdrop, high-end editorial fashion look.' },
+    { id: 'vlog', label: 'Vlog Lifestyle', icon: Tv, prompt: 'GoPro ultra-wide angle, bright sunny day, highly saturated natural colors, authentic YouTube vlogger aesthetic.' },
+    { id: 'liminal', label: 'Terror Psicológico', icon: Ghost, prompt: 'Unsettling liminal space, slightly off-putting, harsh fluorescent lighting, empty and cold, psychological horror.' },
+    { id: 'origami', label: 'Papercraft', icon: Box, prompt: 'Constructed entirely from folded paper, papercraft art, visible paper textures, warm studio lighting casting soft shadows.' }
 ];
 
 // Helper: build a detailed visual prompt for the cover using universal callAI
@@ -54,7 +71,7 @@ NEGATIVE PROMPT: [Technical anti-quality tokens, blurry, low resolution, bad ana
 
 Return ONLY the prompt and negative prompt in English. No markdown, no quotes.`;
 
-    return await callAI(instruction, { model: "gpt-4o-mini" });
+    return await callAI(instruction, { model: "gemini-1.5-pro" });
 }
 
 // Helper: generate actual image via Pollinations.ai (free, no key)
@@ -67,7 +84,7 @@ function buildPollinationsUrl(fullText, seed) {
     }
     
     const encoded = encodeURIComponent(cleanPrompt + ', youtube thumbnail, high quality, vibrant, 16:9');
-    return `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=576&seed=${seed}&nologo=true&enhance=true`;
+    return `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=576&seed=${seed}`;
 }
 
 export const VideoCoverTab = ({ isActive }) => {
@@ -207,7 +224,7 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
   }
 }`;
 
-            const result = await callAI(prompt, { gptKey: configs.gpt_key });
+            const result = await callAI(prompt, { model: 'gemini-1.5-pro', gptKey: configs.gpt_key });
 
             let parsed = { variations: [], shockWords: { one: '-', two: '-', three: '-' } };
             try {
@@ -237,7 +254,9 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
                     one: sw.one || sw.palavra1 || sw.first || '-',
                     two: sw.two || sw.palavra2 || sw.second || '-',
                     three: sw.three || sw.palavra3 || sw.third || '-'
-                }
+                },
+                // Inicializa preferências globais se estiverem vazias
+                coverPrefs: Object.keys(coverPrefs).length === 0 ? { global: { includeText: false, colorStyle: 'standard', distance: 'close', styleId: 'cinematic' } } : coverPrefs
             });
         } catch (error) {
             console.error('Erro ao gerar variações:', error);
@@ -293,13 +312,13 @@ As primeiras 2 linhas aparecem no feed ANTES do "Ver mais". São o único texto 
 ## REQUISITOS TÉCNICOS
 - IDIOMA: Obrigatoriamente o MESMO IDIOMA do título "${lastSelectedTitle}"
 - COMPRIMENTO: Entre 600 e 800 caracteres TOTAIS (incluindo hashtags)
-- DISCLAIMER: ${withDisclaimer ? 'OBRIGATÓRIO: Adicione antes das hashtags: "⚠️ Este vídeo é uma obra de ficção/entretenimento. Qualquer semelhança com pessoas ou eventos reais é mera coincidência."' : 'NÃO inclua avisos de ficção.'}
+- DISCLAIMER: ${withDisclaimer ? 'OBRIGATÓRIO: Adicione antes das hashtags um aviso de ficção TRADUZIDO EXATAMENTE PARA O MESMO IDIOMA DO TÍTULO, com o seguinte sentido: "⚠️ Este vídeo é uma obra de ficção/entretenimento. Qualquer semelhança com pessoas ou eventos reais é mera coincidência."' : 'NÃO inclua avisos de ficção.'}
 - COERÊNCIA: Seja fiel ao título e ao espírito do roteiro
 - ZERO marketing genérico: Cada frase deve ser específica para ESTE vídeo
 
 Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem aspas, sem markdown.`;
 
-            const result = await callAI(prompt, { gptKey: configs.gpt_key });
+            const result = await callAI(prompt, { model: 'gemini-1.5-pro', gptKey: configs.gpt_key });
             updateCoverState({ description: result.replace(/```markdown/g, '').replace(/```/g, '').trim() });
         } catch (error) {
             console.error('Erro ao gerar descrição:', error);
@@ -310,28 +329,95 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
     };
 
     const handleGenerateCover = async (idx, title) => {
-        updateCoverState({ covers: { ...covers, [idx]: { loading: true, prompt: null, error: null } } });
+        setCoverState(prev => ({ ...prev, covers: { ...prev.covers, [idx]: { loading: true, prompt: null, error: null } } }));
         try {
-            const prefs = coverPrefs[idx] || { includeText: false, colorStyle: 'standard', distance: 'close', styleId: 'cinematic' };
+            const prefs = coverPrefs.global || { includeText: false, colorStyle: 'standard', distance: 'close', styleId: 'cinematic' };
             const visualPrompt = await buildDetailedCoverPrompt(title, prefs);
-            updateCoverState({ covers: { ...covers, [idx]: { loading: false, prompt: visualPrompt, error: null } } });
+            setCoverState(prev => ({ ...prev, covers: { ...prev.covers, [idx]: { loading: false, prompt: visualPrompt, error: null } } }));
         } catch (error) {
             console.error('Erro ao gerar prompt da capa:', error);
-            updateCoverState({ 
+            setCoverState(prev => ({ 
+                ...prev, 
                 covers: { 
-                    ...covers, 
+                    ...prev.covers, 
+                    [idx]: { loading: false, prompt: null, error: error.message } 
+                } 
+            }));
+        }
+    };
+
+    const handleGenerateImage = async (idx, title) => {
+        setCoverState(prev => ({ 
+            ...prev, 
+            covers: { 
+                ...prev.covers, 
+                [idx]: { ...(prev.covers?.[idx] || {}), isGeneratingImage: true, imageError: null } 
+            } 
+        }));
+        
+        try {
+            // Pegamos o estado mais atualizado de covers para evitar staled closures
+            let finalPrompt = covers[idx]?.prompt; 
+            
+            if (!finalPrompt) {
+                const prefs = coverPrefs.global || { includeText: false, colorStyle: 'standard', distance: 'close', styleId: 'cinematic' };
+                finalPrompt = await buildDetailedCoverPrompt(title, prefs);
+            }
+
+            // LIMPEZA DO PROMPT: O modelo do Imagen 4 não entende a estrutura "PROMPT: ... NEGATIVE PROMPT: ...".
+            // Precisamos extrair apenas a descrição visual para ele gerar a imagem correspondente ao título!
+            let cleanPrompt = finalPrompt;
+            if (cleanPrompt.includes('PROMPT:')) {
+                const parts = cleanPrompt.split('NEGATIVE PROMPT:');
+                cleanPrompt = parts[0].replace('PROMPT:', '').trim();
+            }
+
+            // OBRIGA O SISTEMA A USAR A CHAVE PAGA (GLOBAL) DIRETAMENTE PARA O IMAGEN 4
+            const base64Image = await generateGeminiImage(cleanPrompt, 'GLOBAL');
+            
+            setCoverState(prev => ({ 
+                ...prev, 
+                covers: { 
+                    ...prev.covers, 
                     [idx]: { 
-                        loading: false, 
-                        prompt: null, 
-                        error: error.message
+                        ...(prev.covers?.[idx] || {}),
+                        prompt: finalPrompt, 
+                        isGeneratingImage: false, 
+                        image: base64Image, 
+                        imageError: null 
                     } 
                 } 
-            });
+            }));
+        } catch (error) {
+            console.error('Erro ao gerar imagem:', error);
+            setCoverState(prev => ({ 
+                ...prev, 
+                covers: { 
+                    ...prev.covers, 
+                    [idx]: { 
+                        ...(prev.covers?.[idx] || {}),
+                        isGeneratingImage: false, 
+                        imageError: error.message || "Falha na geração." 
+                    } 
+                } 
+            }));
+            alert("Erro ao gerar imagem: " + (error.message || "Verifique sua cota."));
         }
     };
 
     const handleDownload = async (imageUrl, title) => {
         try {
+            const fileName = `Capa_${title.replace(/[^a-z0-9]/gi, '_').substring(0, 40)}.jpg`;
+            
+            // Se for uma imagem Base64 (gerada internamente), baixa diretamente
+            if (imageUrl.startsWith('data:image')) {
+                const link = document.createElement('a');
+                link.href = imageUrl;
+                link.download = fileName;
+                link.click();
+                return;
+            }
+
             // Use backend proxy to avoid CORS restrictions on download and ensure JPG
             const proxyUrl = resolveApiUrl(`/api/image-proxy?url=${encodeURIComponent(imageUrl)}`);
             const response = await fetch(proxyUrl);
@@ -339,7 +425,7 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
             const blob = await response.blob();
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = `Capa_${title.replace(/[^a-z0-9]/gi, '_').substring(0, 40)}.jpg`;
+            link.download = fileName;
             link.click();
             URL.revokeObjectURL(link.href);
         } catch (error) {
@@ -351,7 +437,8 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
 
     if (!selectedScript) {
         return (
-            <div className="p-4 md:p-8 w-full max-w-[1600px] mx-auto min-h-full md:h-full flex flex-col overflow-y-auto custom-scrollbar">
+            <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4 px-4 md:px-8">
                 <header className="mb-12">
                     <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
                         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(176,38,255,0.3)]">
@@ -400,13 +487,15 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                         ))}
                     </div>
                 )}
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="p-4 md:p-8 w-full max-w-[1600px] mx-auto h-full flex flex-col overflow-y-auto custom-scrollbar pb-20">
-                <header className="mb-12">
+        <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4 px-4 md:px-8">
+                <header className="mb-12 shrink-0">
                     <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
                         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-[0_0_20px_rgba(176,38,255,0.3)]">
                             <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
@@ -420,7 +509,7 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                     </p>
                 </header>
                 
-                <div className="mb-10 flex">
+                <div className="mb-10 flex shrink-0">
                     <button 
                         onClick={handleReset}
                         className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:border-neon-purple/50 hover:bg-neon-purple/5 bg-white/5 transition-all text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-sm"
@@ -437,7 +526,7 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                     <motion.div 
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="mb-10"
+                        className="mb-10 shrink-0"
                     >
                         <div className="flex items-center gap-3 mb-5">
                             <Zap className="w-5 h-5 text-neon-cyan" />
@@ -496,7 +585,131 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                 )}
             </AnimatePresence>
 
-            <div className="grid grid-cols-1 gap-8">
+            {/* PAINEL GLOBAL DE DIREÇÃO DE ARTE (Unificado para despoluir) */}
+            <div className="mb-10 p-6 bg-dark/40 border border-white/5 rounded-3xl relative overflow-hidden group/lab shrink-0">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-neon-pink/5 rounded-full blur-[60px] pointer-events-none" />
+                <div className="flex items-center gap-3 mb-8">
+                    <div className="p-2 bg-neon-pink/10 rounded-xl">
+                        <Wand2 className="w-5 h-5 text-neon-pink" />
+                    </div>
+                    <div>
+                        <h3 className="text-[12px] font-black text-white uppercase tracking-[0.2em]">Direção de Arte Mestre</h3>
+                        <p className="text-[8px] text-gray-500 uppercase tracking-widest font-bold">Defina o estilo visual para todas as variações</p>
+                    </div>
+                </div>
+                
+                <div className="space-y-10">
+                    {/* Estilos Visuais em Chips Minimalistas */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                            <Palette className="w-3 h-3 text-neon-purple" />
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Selecione o Estilo Visual</label>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {THUMBNAIL_STYLES.map(style => {
+                                const isSelected = (coverPrefs.global?.styleId || 'cinematic') === style.id;
+                                return (
+                                    <button
+                                        key={style.id}
+                                        onClick={() => {
+                                            const newPrefs = { ...(coverPrefs.global || {}), styleId: style.id };
+                                            updateCoverState({ coverPrefs: { ...coverPrefs, global: newPrefs } });
+                                        }}
+                                        className={`px-4 py-2.5 rounded-xl border flex items-center gap-2.5 transition-all
+                                            ${isSelected 
+                                                ? 'bg-neon-purple/20 border-neon-purple text-white shadow-[0_0_15px_rgba(176,38,255,0.15)]' 
+                                                : 'bg-white/5 border-white/5 text-gray-500 hover:text-gray-300 hover:border-white/20'}
+                                        `}
+                                    >
+                                        <style.icon className={`w-3.5 h-3.5 ${isSelected ? 'text-neon-purple' : ''}`} />
+                                        <span className="text-[9px] font-black uppercase tracking-widest">{style.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Toggle de Texto */}
+                        <div className="space-y-3">
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                <Type className="w-3 h-3 text-neon-cyan" /> Modo de Texto
+                            </label>
+                            <button 
+                                onClick={() => {
+                                    const newPrefs = { ...(coverPrefs.global || {}), includeText: !coverPrefs.global?.includeText };
+                                    updateCoverState({ coverPrefs: { ...coverPrefs, global: newPrefs } });
+                                }}
+                                className={`w-full h-12 rounded-2xl px-5 transition-all flex items-center justify-between border ${coverPrefs.global?.includeText ? 'bg-neon-cyan/10 border-neon-cyan/30' : 'bg-white/5 border-white/5'}`}
+                            >
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${coverPrefs.global?.includeText ? 'text-neon-cyan' : 'text-gray-500'}`}>
+                                    {coverPrefs.global?.includeText ? 'Com Texto Viral' : 'Visual Puro (Sem Texto)'}
+                                </span>
+                                <div className={`w-8 h-4 rounded-full p-0.5 transition-all flex items-center ${coverPrefs.global?.includeText ? 'bg-neon-cyan' : 'bg-gray-700'}`}>
+                                    <div className={`w-3 h-3 bg-white rounded-full transition-all ${coverPrefs.global?.includeText ? 'translate-x-4' : 'translate-x-0'}`} />
+                                </div>
+                            </button>
+                        </div>
+                        
+                        {/* Tratamento de Cor */}
+                        <div className="space-y-3">
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                <Palette className="w-3 h-3 text-neon-pink" /> Tratamento de Cor
+                            </label>
+                            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 h-12">
+                                {[
+                                    { id: 'standard', label: 'Cores', icon: Zap },
+                                    { id: 'bw', label: 'P&B', icon: CloudMoon },
+                                    { id: 'selective', label: 'Selective', icon: Target }
+                                ].map(c => (
+                                    <button 
+                                        key={c.id}
+                                        onClick={() => {
+                                            const newPrefs = { ...(coverPrefs.global || {}), colorStyle: c.id };
+                                            updateCoverState({ coverPrefs: { ...coverPrefs, global: newPrefs } });
+                                        }}
+                                        className={`flex-1 flex items-center justify-center rounded-xl transition-all gap-2
+                                            ${(coverPrefs.global?.colorStyle || 'standard') === c.id ? 'bg-neon-pink text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}
+                                        `}
+                                    >
+                                        <c.icon className="w-3.5 h-3.5" />
+                                        <span className="text-[9px] font-black uppercase tracking-widest">{c.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Enquadramento */}
+                        <div className="space-y-3">
+                            <label className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                <Maximize className="w-3 h-3 text-neon-cyan" /> Enquadramento
+                            </label>
+                            <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5 h-12">
+                                {[
+                                    { id: 'close', label: 'Close', icon: MousePointer2 },
+                                    { id: 'wide', label: 'Full', icon: Globe }
+                                ].map(d => (
+                                    <button 
+                                        key={d.id}
+                                        onClick={() => {
+                                            const newPrefs = { ...(coverPrefs.global || {}), distance: d.id };
+                                            updateCoverState({ coverPrefs: { ...coverPrefs, global: newPrefs } });
+                                        }}
+                                        className={`flex-1 flex items-center justify-center rounded-xl transition-all gap-2
+                                            ${(coverPrefs.global?.distance || 'close') === d.id ? 'bg-neon-cyan text-dark shadow-lg' : 'text-gray-500 hover:text-gray-300'}
+                                        `}
+                                    >
+                                        <d.icon className="w-3.5 h-3.5" />
+                                        <span className="text-[9px] font-black uppercase tracking-widest">{d.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
                 {titles.map((titleObj, idx) => {
                     const titleText = titleObj?.text || '';
                     const labelText = titleObj?.label || 'Variação';
@@ -517,247 +730,159 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                     }
 
                     return (
-                    <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: idx * 0.1, duration: 0.4 }}
-                        className={`glass-card overflow-hidden border border-white/10 group transition-all duration-500 relative mb-6 shadow-[0_10px_30px_rgba(0,0,0,0.4)] ${glowClass} ${!isOriginal && 'hover:border-neon-purple/50'}`}
-                    >
-                        <div className="p-5 md:p-8 flex flex-col gap-6 bg-white/5 relative">
-                            {isBest && (
-                                <div className="absolute top-0 right-0 bg-yellow-500 text-dark font-black text-[9px] md:text-[10px] px-4 py-1.5 rounded-bl-xl uppercase tracking-[0.2em] flex items-center gap-2 shadow-2xl z-30 animate-pulse">
-                                    <Sparkles className="w-3.5 h-3.5" /> Mais Viral
-                                </div>
-                            )}
-
-                            {/* Section 1: Title Header */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <span className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${badgeColor}`}>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-current animate-ping" />
-                                        {labelText}
-                                    </span>
-                                    {isGeneratingTitles && !isOriginal && <LoadingSpinner size="xs" message="" />}
-                                </div>
-                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                            className={`glass-card overflow-hidden border border-white/5 group transition-all duration-300 relative mb-4 shadow-xl ${glowClass} ${!isOriginal && 'hover:border-neon-purple/30'}`}
+                        >
+                            <div className="p-4 md:p-6 flex flex-col md:flex-row gap-6 relative">
+                                {isBest && (
+                                    <div className="absolute top-0 right-0 bg-yellow-500 text-dark font-black text-[9px] px-3 py-1 rounded-bl-lg uppercase tracking-widest flex items-center gap-1.5 z-30 shadow-lg">
+                                        <Sparkles className="w-3 h-3" /> Viral
+                                    </div>
+                                )}
+    
+                                {/* Lado Esquerdo: Título e Botões de Ação */}
+                                <div className="flex flex-col gap-4 flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${badgeColor}`}>
+                                            {labelText}
+                                        </span>
+                                        {isGeneratingTitles && !isOriginal && <LoadingSpinner size="xs" message="" />}
+                                    </div>
+                                    
                                     <h3 
                                         onClick={() => updateCoverState({ lastSelectedTitle: titleText })}
-                                        className={`text-xl md:text-2xl font-black leading-[1.2] transition-colors max-w-4xl cursor-pointer hover:opacity-80
-                                            ${lastSelectedTitle === titleText ? 'bg-white/10 p-2 rounded-lg' : ''}
-                                            ${isBest ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(234,179,8,0.2)]' : 'text-white'}
+                                        className={`text-base md:text-lg font-bold leading-tight cursor-pointer transition-all hover:text-neon-purple
+                                            ${lastSelectedTitle === titleText ? 'text-white' : 'text-gray-400'}
                                         `}
                                     >
-                                        {titleText || (isGeneratingTitles ? 'Projetando o melhor ângulo...' : 'Aguardando...')}
+                                        {titleText || 'Processando...'}
                                     </h3>
-                                    <button 
-                                        onClick={() => handleCopy(titleText, `title-${idx}`)}
-                                        className={`shrink-0 h-11 w-11 lg:w-40 rounded-xl border transition-all flex items-center justify-center gap-2 group/copy transform active:scale-95 shadow-md
-                                            ${copiedSection === `title-${idx}` 
-                                                ? 'bg-green-500/20 border-green-500 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
-                                                : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/30'}
-                                        `}
-                                    >
-                                        {copiedSection === `title-${idx}` ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                        <span className="text-[9px] font-black uppercase tracking-widest hidden lg:block">{copiedSection === `title-${idx}` ? 'Copiado!' : 'Copiar Título'}</span>
-                                    </button>
-                                </div>
-                            </div>
+    
+                                    <div className="flex flex-wrap items-center gap-2 mt-auto pt-2">
+                                        <button 
+                                            onClick={() => handleCopy(titleText, `title-${idx}`)}
+                                            className={`h-10 w-10 md:w-auto md:px-4 rounded-xl border transition-all flex items-center justify-center gap-2 active:scale-95
+                                                ${copiedSection === `title-${idx}` 
+                                                    ? 'bg-green-500/20 border-green-500 text-green-400' 
+                                                    : 'bg-white/5 border-white/5 text-gray-500 hover:text-white hover:border-white/20'}
+                                            `}
+                                            title="Copiar Título"
+                                        >
+                                            {copiedSection === `title-${idx}` ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                            <span className="text-[9px] font-black uppercase tracking-widest hidden md:block">{copiedSection === `title-${idx}` ? 'Copiado!' : 'Copiar'}</span>
+                                        </button>
+    
+                                        <button 
+                                            onClick={() => handleGenerateImage(idx, titleText)}
+                                            disabled={!titleText || covers[idx]?.isGeneratingImage}
+                                            className={`h-10 px-4 md:px-6 rounded-xl transition-all text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 disabled:opacity-30
+                                                ${covers[idx]?.image ? 'bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40'}
+                                            `}
+                                        >
+                                            {covers[idx]?.isGeneratingImage ? <LoadingSpinner size="xs" message="" /> : (
+                                                <>
+                                                    {covers[idx]?.image ? <RefreshCw className="w-3.5 h-3.5" /> : <Wand2 className="w-3.5 h-3.5" />}
+                                                    {covers[idx]?.image ? 'Regerar Capa' : 'Gerar Capa (I.A.)'}
+                                                </>
+                                            )}
+                                        </button>
 
-                            {/* Section 2: Laboratory Control Center */}
-                            <div className="p-6 bg-dark/40 border border-white/5 rounded-2xl relative overflow-hidden group/lab">
-                                <div className="flex items-center gap-2 mb-6">
-                                    <div className="p-1.5 bg-neon-pink/10 rounded-lg">
-                                        <Wand2 className="w-4 h-4 text-neon-pink" />
-                                    </div>
-                                    <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Direção de Arte e Customização</h3>
-                                </div>
-                                
-                                <div className="space-y-8">
-                                    {/* Visual Style Cards */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2">
-                                            <Palette className="w-3 h-3 text-gray-500" />
-                                            <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Estilos Visuais (Cartões)</label>
-                                        </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-                                            {THUMBNAIL_STYLES.map(style => {
-                                                const isSelected = (coverPrefs[idx]?.styleId || 'cinematic') === style.id;
-                                                return (
-                                                    <button
-                                                        key={style.id}
-                                                        onClick={() => {
-                                                            const newPrefs = { ...coverPrefs[idx], styleId: style.id };
-                                                            updateCoverState({ coverPrefs: { ...coverPrefs, [idx]: newPrefs } });
-                                                        }}
-                                                        className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all group/card
-                                                            ${isSelected 
-                                                                ? 'bg-neon-purple/20 border-neon-purple shadow-[0_0_15px_rgba(176,38,255,0.2)]' 
-                                                                : 'bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10'}
-                                                        `}
-                                                    >
-                                                        <div className={`p-2 rounded-lg transition-transform group-hover/card:scale-110 ${isSelected ? 'text-neon-purple' : 'text-gray-500'}`}>
-                                                            <style.icon className="w-5 h-5" />
-                                                        </div>
-                                                        <span className={`text-[8px] font-black uppercase tracking-widest text-center ${isSelected ? 'text-white' : 'text-gray-500'}`}>
-                                                            {style.label}
-                                                        </span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
-                                        {/* Text Toggle Chip */}
-                                        <div className="space-y-2">
-                                            <div className="flex items-center gap-2">
-                                                <Type className="w-3 h-3 text-gray-500" />
-                                                <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Modo de Texto</label>
-                                            </div>
-                                            <button 
-                                                onClick={() => {
-                                                    const newPrefs = { ...coverPrefs[idx], includeText: !coverPrefs[idx]?.includeText };
-                                                    updateCoverState({ coverPrefs: { ...coverPrefs, [idx]: newPrefs } });
-                                                }}
-                                                className={`w-full h-11 rounded-xl px-4 transition-all flex items-center justify-between border ${coverPrefs[idx]?.includeText ? 'bg-neon-cyan/10 border-neon-cyan/50 shadow-[0_0_10px_rgba(0,243,255,0.05)]' : 'bg-red-500/5 border-red-500/30'}`}
-                                            >
-                                                <span className={`text-[10px] font-black uppercase tracking-widest ${coverPrefs[idx]?.includeText ? 'text-neon-cyan' : 'text-red-400'}`}>
-                                                    {coverPrefs[idx]?.includeText ? 'Com Texto' : 'Sem Texto'}
-                                                </span>
-                                                <div className={`w-7 h-3.5 rounded-full p-0.5 transition-all flex items-center ${coverPrefs[idx]?.includeText ? 'bg-neon-cyan' : 'bg-gray-700'}`}>
-                                                    <div className={`w-2.5 h-2.5 bg-white rounded-full transition-all ${coverPrefs[idx]?.includeText ? 'translate-x-3.5' : 'translate-x-0'}`} />
-                                                </div>
-                                            </button>
-                                            <p className="text-[7px] font-bold text-gray-600 uppercase tracking-tighter">
-                                                {coverPrefs[idx]?.includeText ? 'AI irá gerar frases de impacto.' : 'AI proibida de gerar letras.'}
-                                            </p>
-                                        </div>
-                                        
-                                        {/* Color Style Pills */}
-                                        <div className="space-y-2 lg:col-span-1">
-                                            <div className="flex items-center gap-2">
-                                                <Palette className="w-3 h-3 text-gray-500" />
-                                                <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Tratamento de Cor</label>
-                                            </div>
-                                            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 h-11">
-                                                {[
-                                                    { id: 'standard', label: 'Cores', icon: Zap },
-                                                    { id: 'bw', label: 'P&B', icon: CloudMoon },
-                                                    { id: 'selective', label: 'Selective', icon: Target }
-                                                ].map(c => (
-                                                    <button 
-                                                        key={c.id}
-                                                        onClick={() => {
-                                                            const newPrefs = { ...coverPrefs[idx], colorStyle: c.id };
-                                                            updateCoverState({ coverPrefs: { ...coverPrefs, [idx]: newPrefs } });
-                                                        }}
-                                                        className={`flex-1 flex flex-col items-center justify-center rounded-lg transition-all gap-0.5
-                                                            ${(coverPrefs[idx]?.colorStyle || 'standard') === c.id ? 'bg-neon-pink text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}
-                                                        `}
-                                                    >
-                                                        <c.icon className="w-3 h-3" />
-                                                        <span className="text-[7px] font-black uppercase tracking-tighter">{c.label}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Distance Pills */}
-                                        <div className="space-y-2 lg:col-span-1">
-                                            <div className="flex items-center gap-2">
-                                                <Maximize className="w-3 h-3 text-gray-500" />
-                                                <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Enquadramento</label>
-                                            </div>
-                                            <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 h-11">
-                                                {[
-                                                    { id: 'close', label: 'Close', icon: MousePointer2 },
-                                                    { id: 'wide', label: 'Full', icon: Globe }
-                                                ].map(d => (
-                                                    <button 
-                                                        key={d.id}
-                                                        onClick={() => {
-                                                            const newPrefs = { ...coverPrefs[idx], distance: d.id };
-                                                            updateCoverState({ coverPrefs: { ...coverPrefs, [idx]: newPrefs } });
-                                                        }}
-                                                        className={`flex-1 flex flex-col items-center justify-center rounded-lg transition-all gap-0.5
-                                                            ${(coverPrefs[idx]?.distance || 'close') === d.id ? 'bg-neon-cyan text-dark shadow-lg' : 'text-gray-500 hover:text-gray-300'}
-                                                        `}
-                                                    >
-                                                        <d.icon className="w-3 h-3" />
-                                                        <span className="text-[7px] font-black uppercase tracking-tighter">{d.label}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Main Magic Button */}
                                         <button 
                                             onClick={() => handleGenerateCover(idx, titleText)}
                                             disabled={!titleText || covers[idx]?.loading}
-                                            className="h-11 bg-neon-purple text-white rounded-xl transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-neon-purple/80 shadow-lg shadow-neon-purple/20 active:scale-95 disabled:opacity-30"
+                                            className={`h-10 px-4 md:px-6 rounded-xl transition-all text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 disabled:opacity-30
+                                                ${covers[idx]?.prompt ? 'bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan' : 'bg-neon-purple text-white shadow-lg shadow-neon-purple/20 hover:bg-neon-purple/80'}
+                                            `}
                                         >
-                                            {covers[idx]?.loading ? <LoadingSpinner size="xs" message="" /> : <><Sparkles className="w-4 h-4" /> Gerar Prompt Elite</>}
+                                            {covers[idx]?.loading ? <LoadingSpinner size="xs" message="" /> : (
+                                                <>
+                                                    {covers[idx]?.prompt ? <RefreshCw className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                                    {covers[idx]?.prompt ? 'Refazer Prompt' : 'Gerar Prompt Elite'}
+                                                </>
+                                            )}
                                         </button>
+                                    </div>
+
+                                    {/* ERRO NA GERAÇÃO DA IMAGEM */}
+                                    {covers[idx]?.imageError && (
+                                        <div className="mt-2 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-2 text-red-400 text-[10px] font-black uppercase tracking-wider">
+                                            <AlertCircle className="w-4 h-4 shrink-0" />
+                                            <span>Erro: {covers[idx].imageError}</span>
+                                        </div>
+                                    )}
+                                </div>
+    
+                                {/* Lado Direito: Espaço Reservado para a Imagem (Tamanho Cartão) */}
+                                <div className="w-full md:w-64 shrink-0 flex flex-col justify-center mt-2 md:mt-0">
+                                    <div className={`relative w-full aspect-video rounded-xl overflow-hidden border transition-all duration-500
+                                        ${covers[idx]?.image ? 'border-white/10 shadow-2xl group/img' : 'border-dashed border-white/10 bg-dark/30 flex items-center justify-center'}
+                                    `}>
+                                        {covers[idx]?.image ? (
+                                            <>
+                                                <img src={covers[idx].image} alt={titleText} className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-dark/60 opacity-0 group-hover/img:opacity-100 transition-all duration-300 flex items-center justify-center backdrop-blur-sm">
+                                                    <button 
+                                                        onClick={() => handleDownload(covers[idx].image, titleText)}
+                                                        className="px-4 py-2 bg-neon-cyan text-dark font-black text-[10px] uppercase tracking-widest rounded-lg hover:bg-white transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(0,255,255,0.5)] hover:scale-105 active:scale-95"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5" /> Baixar
+                                                    </button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center gap-2 text-gray-500/30">
+                                                <ImageIcon className="w-8 h-8" />
+                                                <span className="text-[8px] font-black uppercase tracking-widest text-center px-4">Espaço Reservado<br/>Para a Capa</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Section 3: Prompt Master Output */}
-                            <AnimatePresence mode="wait">
-                                {covers[idx]?.prompt && (
-                                    <motion.div 
-                                        initial={{ opacity: 0, scale: 0.98 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.98 }}
-                                        className="relative group/pbox"
-                                    >
-                                        <div className="p-5 bg-dark/80 border border-neon-cyan/20 rounded-2xl shadow-[inset_0_1px_10px_rgba(0,243,255,0.03)] overflow-hidden">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-lg bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20">
-                                                        <Terminal className="w-4 h-4 text-neon-cyan" />
+    
+                                {/* Prompt Output - Compacto e Elegante */}
+                                <AnimatePresence>
+                                    {covers[idx]?.prompt && (
+                                        <motion.div 
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="overflow-hidden mt-2"
+                                        >
+                                            <div className="p-4 bg-dark/60 border border-neon-cyan/10 rounded-xl">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Terminal className="w-3.5 h-3.5 text-neon-cyan" />
+                                                        <span className="text-[8px] font-black text-neon-cyan uppercase tracking-widest">ELITE PROMPT</span>
                                                     </div>
-                                                    <div>
-                                                        <h4 className="text-[10px] font-black text-white uppercase tracking-widest">ELITE PROMPT GENERATOR</h4>
-                                                        <p className="text-[8px] text-neon-cyan font-mono uppercase tracking-widest italic animate-pulse">FIDELIDADE MÁXIMA ATIVADA</p>
-                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleCopy(covers[idx].prompt, `prompt-${idx}`)}
+                                                        className={`px-3 py-1.5 rounded-lg border transition-all text-[8px] font-black uppercase tracking-widest flex items-center gap-2
+                                                            ${copiedSection === `prompt-${idx}` ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-neon-cyan/5 border-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/20'}
+                                                        `}
+                                                    >
+                                                        {copiedSection === `prompt-${idx}` ? <Check className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
+                                                        Copiar Prompt
+                                                    </button>
                                                 </div>
-                                                
-                                                <button 
-                                                    onClick={() => handleCopy(covers[idx].prompt, `prompt-${idx}`)}
-                                                    className={`px-4 py-2 rounded-lg border transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2 transform active:scale-95 shadow-md
-                                                        ${copiedSection === `prompt-${idx}` 
-                                                            ? 'bg-green-500/20 border-green-500 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
-                                                            : 'bg-neon-cyan/10 border-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/20 hover:border-neon-cyan/40'}
-                                                    `}
-                                                >
-                                                    {copiedSection === `prompt-${idx}` ? <Check className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
-                                                    {copiedSection === `prompt-${idx}` ? 'Copiado!' : 'Copiar Prompt'}
-                                                </button>
+                                                <p className="font-mono text-[11px] text-gray-400 leading-relaxed italic select-all line-clamp-3 hover:line-clamp-none transition-all">
+                                                    {covers[idx].prompt}
+                                                </p>
                                             </div>
-
-                                            <div className="bg-dark/40 p-5 rounded-xl border border-white/5 font-mono text-xs md:text-sm text-neon-cyan/80 leading-relaxed italic select-all scrollbar-hide overflow-y-auto max-h-[150px]">
-                                                {covers[idx].prompt}
-                                            </div>
-                                        </div>
-                                    </motion.div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+    
+                                {covers[idx]?.error && (
+                                    <div className="p-4 bg-red-400/5 rounded-xl flex items-center gap-3 border border-red-500/10 mt-2">
+                                        <AlertTriangle className="w-4 h-4 text-red-500" />
+                                        <p className="text-red-400/70 text-[10px] font-bold uppercase tracking-tight">{covers[idx].error}</p>
+                                    </div>
                                 )}
-                            </AnimatePresence>
-
-                            {covers[idx]?.error && (
-                                <div className="p-6 bg-red-400/5 rounded-2xl flex items-center gap-4 border border-red-500/10">
-                                    <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20 text-red-500">
-                                        <AlertTriangle className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-red-400 font-black text-xs uppercase tracking-widest mb-1">Módulo de IA Interrompido</h4>
-                                        <p className="text-red-400/70 text-xs font-medium">{covers[idx].error}</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </motion.div>
+                        </motion.div>
                     );
                 })}
             </div>
@@ -873,6 +998,7 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                     </p>
                 </div>
             </motion.div>
+            </div>
         </div>
     );
 };

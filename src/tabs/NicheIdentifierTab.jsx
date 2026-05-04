@@ -22,7 +22,9 @@ import {
   BarChart2,
   AlertTriangle,
   Flame,
-  LayoutTemplate
+  LayoutTemplate,
+  Brain,
+  Wand2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -61,6 +63,14 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
   const [copiedSection, setCopiedSection] = useState(null);
   const [loadingStep, setLoadingStep] = useState('');
 
+  const [isAnalyzingStrategy, setIsAnalyzingStrategy] = useState(false);
+  const [strategyResult, setStrategyResult] = useState(null);
+  
+  const [isAnalyzingTitles, setIsAnalyzingTitles] = useState(false);
+  const [titlesResult, setTitlesResult] = useState(null);
+  const [selectedLanguageTitle, setSelectedLanguageTitle] = useState('Português (Brasil)');
+  const [copiedTitleIndex, setCopiedTitleIndex] = useState(null);
+
   const [history, setHistory] = useCloudStorage('niche_history', []);
 
   const saveToHistory = (newResult, langInfo) => {
@@ -89,6 +99,8 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
     setLanguage(entry.language);
     setTopic(entry.topic === "Trend Aleatória" ? "" : entry.topic);
     setResult(entry.data);
+    setStrategyResult(null);
+    setTitlesResult(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -119,6 +131,8 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
 
     setIsSearching(true);
     setResult(null);
+    setStrategyResult(null);
+    setTitlesResult(null);
 
     try {
       const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
@@ -205,7 +219,7 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
         ]
       }`;
 
-      const response = await callAI(prompt, { gptKey });
+      const response = await callAI(prompt, { model: 'gemini-1.5-pro', gptKey });
       const cleanJson = response.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(cleanJson);
       
@@ -279,23 +293,108 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
      return 'text-red-500';
   };
 
-  return (
-    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto gap-8 font-sans overflow-hidden">
-      <header className="mb-12">
-        <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-pink p-[2px] shadow-[0_0_20px_rgba(255,44,182,0.3)]">
-            <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
-              <Compass className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          Identificador de Nichos
-        </h2>
-        <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-pink pl-4 ml-2 italic">
-          V4 ORACLE: Caçador de Oceanos Azuis & Gaps Táticos de Mercado
-        </p>
-      </header>
+  // Auto trigger strategy when result is generated
+  useEffect(() => {
+    if (result && !strategyResult && !isAnalyzingStrategy) {
+      runStrategyAnalysis();
+    }
+  }, [result, strategyResult, isAnalyzingStrategy]);
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12">
+  const runStrategyAnalysis = async () => {
+    if (!result) return;
+    setIsAnalyzingStrategy(true);
+    setStrategyResult(null);
+
+    const prompt = `Você é um MENTOR ESTRATÉGICO SÊNIOR de YouTube — especialista em análise de nichos, crescimento orgânico e replicação de estratégias virais em oceanos azuis.
+
+NICHO EM ANÁLISE: "${result.nicheName}"
+ESTRUTURA BASE: "${result.strategyDescription}"
+GAP IDENTIFICADO (FALHA DA CONCORRÊNCIA): "${result.gapAnalysis}"
+MONETIZAÇÃO CAMUFLADA: "${result.monetizationStrategy}"
+PÚBLICO ALVO: "${result.targetAudience}"
+
+Sua resposta deve ter EXATAMENTE estas 6 partes EM PORTUGUÊS (PT-BR) — sem introdução, sem conclusão:
+**1. DIAGNÓSTICO DO NICHO**
+Em 1-2 frases: Qual é o posicionamento real deste nicho? O que ele vende emocionalmente para o público alvo?
+**2. FÓRMULA DE SUCESSO**
+Identifique 2-3 padrões específicos que farão um canal decolar rapidamente neste espaço.
+**3. VOZ DA AUDIÊNCIA (O QUE ELES BUSCAM)**
+RESUMA em bullet points o que o público deste nicho tanto deseja consumir e o que sentem falta na concorrência atual.
+**4. LACUNA DE OPORTUNIDADE**
+Que ângulos a concorrência atual AINDA NÃO explorou de forma correta e que nós podemos dominar?
+**5. DICA DE OURO REPLICÁVEL**
+Uma estratégia concreta baseada na monetização camuflada e retenção para o usuário aplicar imediatamente.
+**6. ARMADILHA A EVITAR**
+O erro fatal que os iniciantes neste nicho sempre cometem e que você deve fugir a todo custo.
+
+REGRAS: Use **NEGRITO** para os títulos da seção.`;
+
+    try {
+      const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
+      const res = await callAI(prompt, { model: 'gemini-1.5-pro', gptKey });
+      if (!res) throw new Error('Resposta vazia da IA.');
+      setStrategyResult(res);
+    } catch (err) {
+      console.error(err);
+      setStrategyResult(`Erro na análise estratégica: ${err.message}`);
+    } finally {
+      setIsAnalyzingStrategy(false);
+    }
+  };
+
+  const runTitlesAnalysis = async () => {
+    if (!result) return;
+    setIsAnalyzingTitles(true);
+    setTitlesResult(null);
+
+    const prompt = `Você é um ESPECIALISTA ELITE em CTR, Algoritmos do YouTube e Psicologia do Clique.
+NICHO EM ANÁLISE: "${result.nicheName}"
+PÚBLICO ALVO: "${result.targetAudience}"
+GAP A EXPLORAR: "${result.gapAnalysis}"
+
+${strategyResult ? `INSIGHTS DA ESTRATÉGIA (Use esses dados para guiar a criação dos ganchos):\n${strategyResult}\n` : ''}
+
+MISSÃO: Gerar 10 títulos NOVOS de altíssimo CTR perfeitos para estrear um canal neste nicho.
+IDIOMA OBRIGATÓRIO: Gere TODOS os títulos em ${selectedLanguageTitle}. 
+
+REGRAS CRÍTICAS:
+- Analise os desejos ocultos do público e use como gancho.
+- Os títulos devem ter entre 40 e 75 caracteres.
+- Não use formatação markdown para os títulos, apenas a lista numerada padrão (ex: 1. Título).
+- SEM ADJETIVOS VAZIOS, muita especificidade. Use a metodologia do medo, curiosidade ou ganância.
+
+Retorne APENAS a lista numerada.`;
+
+    try {
+      const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
+      const res = await callAI(prompt, { model: 'gemini-1.5-pro', gptKey });
+      if (!res) throw new Error('Resposta vazia da IA.');
+      setTitlesResult(res);
+    } catch (err) {
+      console.error(err);
+      setTitlesResult(`Erro ao gerar títulos: ${err.message}`);
+    } finally {
+      setIsAnalyzingTitles(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4">
+        <header className="mb-8 shrink-0">
+          <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-pink p-[2px] shadow-[0_0_20px_rgba(255,44,182,0.3)]">
+              <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
+                <Compass className="w-8 h-8 text-white" />
+              </div>
+            </div>
+            Identificador de Nichos
+          </h2>
+          <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-pink pl-4 ml-2 italic">
+            V4 ORACLE: Caçador de Oceanos Azuis & Gaps Táticos de Mercado
+          </p>
+        </header>
+
         {/* Input Panel */}
         <div className="glass-card p-8 border border-neon-purple/20 relative overflow-hidden group shrink-0 shadow-[0_0_50px_rgba(255,44,182,0.05)]">
           <div className="absolute top-0 right-0 w-96 h-96 bg-neon-purple/5 rounded-full blur-[100px] pointer-events-none group-hover:bg-neon-purple/10 transition-colors" />
@@ -360,292 +459,285 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
            ) : result ? (
               <motion.div 
                  key="results"
-                 initial={{ opacity: 0, scale: 0.98 }}
-                 animate={{ opacity: 1, scale: 1 }}
+                 initial={{ opacity: 0, y: 10 }}
+                 animate={{ opacity: 1, y: 0 }}
                  className="flex flex-col gap-6"
               >
-                 {/* Hero Result Panel V3 */}
-                 <div className="glass-card border border-neon-cyan/20 p-8 flex flex-col xl:flex-row gap-8 relative items-stretch shadow-[0_0_40px_rgba(0,243,255,0.05)] overflow-hidden">
-                    <div className="absolute -top-40 -right-40 w-96 h-96 bg-neon-cyan/10 rounded-full blur-[120px] pointer-events-none" />
+                 <div className="flex justify-end mb-2 gap-2">
+                    <button 
+                      onClick={redoSearch}
+                      className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all font-black text-xs uppercase tracking-widest border border-white/5"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> Recalcular Dados
+                    </button>
+                    <button 
+                       onClick={() => handleCopy(JSON.stringify(result, null, 2), "all")}
+                       className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all font-black text-xs uppercase tracking-widest border border-white/5"
+                    >
+                       {copiedSection === "all" ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                       Copiar Tudo
+                    </button>
+                 </div>
+
+                 {/* Top Metrics */}
+                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-4">
+                    {[
+                      { label: 'Apetite Viral', val: result.viralPotential + '/10', icon: Flame, color: 'text-neon-cyan' },
+                      { label: 'Saturação Real', val: result.saturationScore + '/10', icon: AlertTriangle, color: getSaturationColor(result.saturationScore) },
+                      { label: 'Esforço de Prod.', val: (result.productionDifficulty || 2) + '/10', icon: Zap, color: getDifficultyColor(result.productionDifficulty) },
+                      { label: 'Oceano de Mercado', val: result.trendMomentum, icon: Target, color: getTrendColor(result.trendMomentum).split(' ')[0] }
+                    ].map((s, i) => (
+                      <div key={i} className="bg-white/5 border border-white/10 p-5 rounded-2xl flex flex-col items-center justify-center text-center gap-2">
+                         <s.icon className={`w-5 h-5 ${s.color} opacity-50`} />
+                         <p className={`text-2xl font-black ${s.color}`}>{s.val}</p>
+                         <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">{s.label}</p>
+                      </div>
+                    ))}
+                 </div>
+
+                 {/* Core Strategy */}
+                 <div className="mb-4 bg-black/40 border-2 border-white/10 rounded-2xl p-6 md:p-8 relative overflow-hidden">
+                   <div className="absolute top-0 left-0 w-2 h-full bg-neon-cyan" />
+                   
+                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
+                      <h3 className="text-3xl md:text-5xl font-black text-white italic tracking-tighter leading-none">
+                         {result.nicheName}
+                      </h3>
+                      <div className="flex flex-wrap gap-3 shrink-0">
+                         <div className="inline-flex px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-xl text-xs font-black text-green-400 uppercase tracking-widest items-center gap-2 shadow-[0_0_15px_rgba(74,222,128,0.1)]">
+                            <DollarSign className="w-4 h-4" /> Est. Ganho/1M: {calculateRevenue()}
+                         </div>
+                         <div className="inline-flex px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-black text-gray-400 uppercase tracking-widest items-center">
+                            Peso: {result.categoryMultiplier || 1}x
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                      <div>
+                         <h4 className="text-[11px] font-black text-neon-cyan uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <Target className="w-4 h-4" /> A Estrutura Validada
+                         </h4>
+                         <p className="text-sm font-medium text-gray-300 leading-relaxed bg-white/5 p-5 rounded-xl border border-white/5">
+                            {result.strategyDescription}
+                         </p>
+                      </div>
+                      <div>
+                         <h4 className="text-[11px] font-black text-neon-pink uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <Zap className="w-4 h-4" /> A Fraqueza (Gap de Mercado)
+                         </h4>
+                         <p className="text-sm font-medium text-gray-300 leading-relaxed bg-white/5 p-5 rounded-xl border border-white/5 italic">
+                            {result.gapAnalysis}
+                         </p>
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="flex items-start gap-4 p-5 bg-dark/60 rounded-xl border border-white/5">
+                         <Users className="w-10 h-10 text-neon-purple p-2 bg-neon-purple/10 rounded-xl shrink-0" />
+                         <div>
+                           <span className="block text-[10px] font-black text-neon-purple uppercase tracking-[0.2em] mb-1">Perfil Psicológico (Alvo)</span>
+                           <p className="text-xs text-gray-300 font-bold leading-relaxed">{result.targetAudience}</p>
+                         </div>
+                      </div>
+                      <div className="flex items-start gap-4 p-5 bg-gradient-to-r from-green-600/10 to-transparent rounded-xl border border-green-500/20">
+                         <DollarSign className="w-10 h-10 text-green-500 p-2 bg-green-500/10 rounded-xl shrink-0" />
+                         <div>
+                           <span className="block text-[10px] font-black text-green-500 uppercase tracking-widest mb-1">Monetização Camuflada</span>
+                           <p className="text-xs text-green-100 font-bold leading-relaxed">{result.monetizationStrategy}</p>
+                         </div>
+                      </div>
+                   </div>
+                 </div>
+
+                 {/* Strategy & Titles Section */}
+                 <div className="grid grid-cols-1 gap-6 mb-4">
                     
-                    <div className="absolute top-4 right-4 flex gap-2">
-                       <button 
-                         onClick={redoSearch}
-                         className="p-2 rounded-xl bg-white/5 hover:bg-neon-pink/20 text-gray-400 hover:text-neon-pink transition-all z-10 border border-white/5"
-                         title="Recalcular Dados"
-                       >
-                         <RefreshCw className="w-3.5 h-3.5" />
-                       </button>
-                       <SectionCopyBtn text={JSON.stringify(result, null, 2)} sectionId="all" />
-                    </div>
-                    
-                    {/* Left Panel: Primary Metrics */}
-                    <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-1 gap-4 w-full xl:w-56 shrink-0 relative z-10">
-                        {/* Viral Score */}
-                        <div className="flex flex-col items-center justify-center p-5 border border-neon-cyan/20 rounded-2xl bg-dark/80 relative group overflow-hidden">
-                           <div className="absolute inset-0 bg-gradient-to-b from-neon-cyan/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                           <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Flame className="w-3 h-3 text-neon-cyan" /> Apetite Viral</span>
-                           <span className="text-5xl font-black text-white leading-none tracking-tighter">
-                              {result.viralPotential}
-                              <span className="text-xl text-neon-cyan/50 ml-1">/10</span>
-                           </span>
-                        </div>
-                        
-                        {/* Saturation Score */}
-                        <div className="flex flex-col items-center justify-center p-5 border border-white/10 rounded-2xl bg-dark/80 relative">
-                           <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                              <AlertTriangle className={`w-3 h-3 ${getSaturationColor(result.saturationScore)}`} /> Saturação Real
-                           </span>
-                           <span className={`text-4xl font-black leading-none tracking-tighter ${getSaturationColor(result.saturationScore)}`}>
-                              {result.saturationScore}
-                              <span className="text-xl text-gray-600 ml-1">/10</span>
-                           </span>
-                        </div>
-
-                        {/* Production Difficulty */}
-                        <div className="flex flex-col items-center justify-center p-5 border border-white/5 rounded-2xl bg-dark/80 relative">
-                           <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1">
-                              <Zap className={`w-3 h-3 ${getDifficultyColor(result.productionDifficulty)}`} /> Esforço Produção
-                           </span>
-                           <span className={`text-4xl font-black leading-none tracking-tighter ${getDifficultyColor(result.productionDifficulty)}`}>
-                              {result.productionDifficulty || "2"}
-                              <span className="text-xl text-gray-600 ml-1">/10</span>
-                           </span>
-                        </div>
-
-                         {/* Trend Phase Graph Mock */}
-                         <div className={`col-span-2 md:col-span-2 xl:col-span-1 flex flex-col items-center justify-center p-3 border rounded-2xl ${getTrendColor(result.trendMomentum)} relative overflow-hidden backdrop-blur-md`}>
-                           <span className="text-[9px] font-black uppercase tracking-[0.2em] mb-1 opacity-70">Oceano de Mercado</span>
-                           <span className="text-sm text-center md:text-base font-black uppercase tracking-widest flex items-center gap-2 px-2">
-                             {result.trendMomentum}
-                           </span>
-                        </div>
-                    </div>
-
-                    {/* Center Context */}
-                    <div className="flex-1 space-y-5 flex flex-col justify-center relative z-10">
-                       <div className="flex flex-wrap items-center gap-3">
-                           <div className="inline-flex px-4 py-1.5 bg-green-500/10 border border-green-500/30 rounded-full text-[11px] font-black text-green-400 uppercase tracking-[0.2em] items-center gap-2 shadow-[0_0_15px_rgba(74,222,128,0.2)]">
-                              <DollarSign className="w-3.5 h-3.5" /> Est. Ganho/1M: {calculateRevenue()}
-                           </div>
-                           <div className="inline-flex px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                              Peso do Nicho: {result.categoryMultiplier || 1}x
-                           </div>
-                       </div>
-                       
-                       <h3 className="text-4xl md:text-5xl lg:text-7xl font-black text-white italic tracking-tighter leading-none">{result.nicheName}</h3>
-                       <div className="relative group/strat space-y-4">
-                          {/* STrategy Output */}
-                          <div className="border-l-4 border-neon-cyan pl-5 py-1 pr-10">
-                             <span className="block text-[10px] font-black text-neon-cyan uppercase tracking-widest mb-1">A Estrutura Validada:</span>
-                             <p className="text-base font-bold text-gray-300 leading-relaxed">
-                                {result.strategyDescription}
-                             </p>
-                          </div>
-                          
-                          {/* Gap Analysis Drop */}
-                          <div className="border-l-4 border-neon-pink pl-5 py-1 pr-10">
-                             <span className="block text-[10px] font-black text-neon-pink uppercase tracking-widest mb-1 flex items-center gap-2"><Target className="w-3 h-3" /> A Fraqueza (Gap de Concorrência):</span>
-                             <p className="text-[13px] font-medium text-gray-400 italic leading-relaxed">
-                                "{result.gapAnalysis}"
-                             </p>
-                          </div>
-                          
-                          <div className="absolute top-2 right-0 opacity-0 group-hover/strat:opacity-100 transition-opacity flex flex-col gap-2">
-                             <ItemCopyBtn text={`ESTRUTURA: ${result.strategyDescription}\n\nGAP (FALHA DELES): ${result.gapAnalysis}`} id="strat-desc" />
-                          </div>
-                       </div>
-                    </div>
-
-                    {/* Right Panel: Actions */}
-                    <div className="flex flex-col justify-end xl:w-64 shrink-0 mt-6 xl:mt-0 relative z-10 gap-3">
-                        <div className="w-full py-5 rounded-xl border border-white/5 bg-white/5 flex items-center justify-center gap-2">
-                           <Target className="w-4 h-4 text-white/20" />
-                           <span className="text-[11px] font-black text-gray-500 uppercase tracking-[0.2em]">Oportunidade Mapeada</span>
-                        </div>
-
-                       <div className="w-full mb-2 bg-gradient-to-r from-green-600/10 to-transparent border border-green-500/20 rounded-xl p-3 shadow-inner">
-                           <span className="block text-[9px] font-black text-green-500 uppercase tracking-widest mb-1 flex items-center gap-1"><DollarSign className="w-3 h-3" /> Monetização Camuflada</span>
-                           <p className="text-[10px] font-bold text-green-100 leading-tight">
-                              {result.monetizationStrategy}
+                    {/* SECTION 1: AUTO STRATEGY */}
+                    <div className="bg-black/40 border-2 border-white/10 rounded-2xl p-6 relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-2 h-full bg-neon-purple" />
+                      <h3 className="text-xl font-black text-white flex items-center gap-3 mb-6">
+                        <Brain className="text-neon-purple w-6 h-6" /> Análise Estratégica Automática
+                      </h3>
+                      
+                      {isAnalyzingStrategy ? (
+                        <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                           <Loader2 className="w-8 h-8 text-neon-purple animate-spin" />
+                           <p className="text-xs font-black text-neon-purple uppercase tracking-[0.2em] animate-pulse">
+                             Mapeando táticas do nicho...
                            </p>
                         </div>
+                      ) : strategyResult ? (
+                        <div className="space-y-6 prose prose-invert prose-sm max-w-none prose-p:text-gray-300 prose-headings:text-white prose-strong:text-neon-cyan">
+                           <div className="whitespace-pre-wrap leading-relaxed text-[13px] sm:text-sm font-medium">
+                              {strategyResult}
+                           </div>
+                           <div className="pt-4 border-t border-white/10 flex justify-end">
+                              <button 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(strategyResult);
+                                  alert('Análise Estratégica copiada!');
+                                }}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors text-xs font-black uppercase tracking-widest"
+                              >
+                                <Copy className="w-3.5 h-3.5" /> Copiar Análise
+                              </button>
+                           </div>
+                        </div>
+                      ) : (
+                        <div className="py-10 text-center text-gray-500 font-bold text-sm">
+                           Aguardando dados do nicho para iniciar a análise estratégica.
+                        </div>
+                      )}
+                    </div>
 
-                       <div className="glass-card bg-dark/60 border border-white/5 p-4 rounded-xl flex items-center gap-3 relative group/aud">
-                          <Users className="w-8 h-8 text-neon-purple p-1.5 bg-neon-purple/10 rounded-lg shrink-0" />
-                          <div className="flex-1 overflow-hidden pr-6">
-                            <span className="block text-[8px] font-black text-neon-purple uppercase tracking-[0.2em] mb-0.5">Perfil Psicológico</span>
-                            <p className="text-[10px] text-gray-300 font-bold leading-tight line-clamp-3" title={result.targetAudience}>{result.targetAudience}</p>
+                    {/* SECTION 2: TITLE GENERATOR */}
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative">
+                       <h4 className="text-sm font-black text-orange-400 uppercase tracking-[0.2em] flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 border-b border-white/5 pb-4">
+                          <span className="flex items-center gap-2"><Type className="w-4 h-4" /> Gerador de Títulos Virais</span>
+                          <div className="flex items-center gap-2 w-full md:w-auto">
+                            <select
+                              value={selectedLanguageTitle}
+                              onChange={(e) => setSelectedLanguageTitle(e.target.value)}
+                              className="bg-black/40 border border-white/10 text-white text-xs rounded-lg focus:ring-neon-cyan focus:border-neon-cyan block p-2 font-bold w-full md:w-auto"
+                            >
+                              {LANGUAGES.map(lang => (
+                                <option key={lang.code} value={lang.name}>{lang.name}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={runTitlesAnalysis}
+                              disabled={isAnalyzingTitles || isAnalyzingStrategy || !result}
+                              className="flex items-center justify-center gap-2 px-4 py-2 bg-neon-cyan hover:bg-cyan-400 text-black rounded-lg font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                            >
+                              {isAnalyzingTitles ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                              Gerar 10 Títulos
+                            </button>
                           </div>
-                          <div className="absolute top-2 right-2 opacity-0 group-hover/aud:opacity-100 transition-opacity">
-                             <ItemCopyBtn text={result.targetAudience} id="aud-desc" />
+                       </h4>
+
+                       {isAnalyzingTitles ? (
+                          <div className="flex flex-col items-center justify-center py-12 space-y-4 bg-black/20 rounded-xl border border-white/5">
+                             <Loader2 className="w-8 h-8 text-neon-cyan animate-spin" />
+                             <p className="text-xs font-black text-neon-cyan uppercase tracking-[0.2em] animate-pulse">
+                               Forjando ganchos impossíveis de ignorar...
+                             </p>
                           </div>
-                       </div>
+                       ) : titlesResult ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                             {titlesResult.split('\n').filter(t => t.trim().match(/^\d/)).map((titleLine, i) => {
+                               const titleText = titleLine.replace(/^\d+\.\s*/, '').replace(/\*\*/g, '');
+                               return (
+                                 <div key={i} className="flex gap-3 text-xs md:text-sm font-bold text-gray-200 bg-black/40 p-3.5 rounded-xl border border-white/5 hover:border-neon-cyan/50 transition-colors group items-start">
+                                    <span className="text-neon-cyan shrink-0 font-black">{i+1}.</span>
+                                    <span className="leading-tight flex-1">{titleText}</span>
+                                    <button 
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(titleText);
+                                        setCopiedTitleIndex(i);
+                                        setTimeout(() => setCopiedTitleIndex(null), 2000);
+                                        const bridgeData = `NICHO GERADO:\n${result.nicheName}\n\nTÍTULO SELECIONADO:\n${titleText}\n\nPÚBLICO ALVO:\n${result.targetAudience}`;
+                                        localStorage.setItem('guru_flow_transfer', bridgeData);
+                                      }}
+                                      className="p-1.5 rounded-lg transition-all border flex items-center justify-center shrink-0 hover:bg-white/10 border-transparent hover:border-white/20 text-gray-500 hover:text-white"
+                                      title="Copiar para usar no roteiro"
+                                    >
+                                      {copiedTitleIndex === i ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                                    </button>
+                                 </div>
+                               );
+                             })}
+                          </div>
+                       ) : (
+                          <div className="py-12 flex flex-col items-center justify-center text-center bg-black/20 rounded-xl border border-white/5">
+                            <Sparkles className="w-8 h-8 text-gray-600 mb-3" />
+                            <p className="text-gray-500 font-bold text-sm">
+                               Clique em "Gerar 10 Títulos" para criar ganchos<br/>baseados no algoritmo e psicologia.
+                            </p>
+                          </div>
+                       )}
                     </div>
                  </div>
 
-                 {/* Matrix Bento Grid V3 */}
-                 <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-6">
-                    
-                    {/* Visual Predizer - Thumbnail Blueprint (New Feature) */}
-                    <div className="glass-card md:col-span-3 xl:col-span-1 border border-white/5 relative overflow-hidden flex flex-col group p-0 min-h-[400px]">
-                       <div className="p-4 border-b border-white/5 bg-black/40 flex items-center justify-between gap-2 z-10 relative">
-                         <div className="flex items-center gap-2">
-                           <LayoutTemplate className="w-4 h-4 text-neon-pink" />
-                           <span className="text-[10px] font-black text-neon-pink uppercase tracking-[0.2em]">Blueprint Visual</span>
-                         </div>
-                         <span className="text-[8px] font-black uppercase text-gray-500 bg-white/5 px-2 py-1 rounded truncate max-w-[120px]">{result.channelArchetype}</span>
+
+                 {/* Competitors & Visual Blueprint */}
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4">
+                    {/* Visual Predizer */}
+                    <div className="bg-black/40 border-2 border-white/10 rounded-2xl p-6 relative overflow-hidden flex flex-col">
+                       <div className="absolute top-0 left-0 w-2 h-full bg-neon-pink" />
+                       <h3 className="text-xl font-black text-white flex items-center gap-3 mb-6">
+                         <LayoutTemplate className="text-neon-pink w-6 h-6" /> Blueprint Visual
+                         <span className="text-[9px] font-black uppercase text-gray-500 bg-white/5 px-2 py-1 rounded ml-auto tracking-widest">{result.channelArchetype}</span>
+                       </h3>
+                       
+                       <div className="flex flex-col md:flex-row gap-6 flex-1">
+                          <div className="w-full md:w-1/2 aspect-video rounded-xl shadow-2xl relative overflow-hidden flex flex-col p-4 border border-white/20 shrink-0"
+                               style={{ background: `linear-gradient(135deg, ${result.thumbnailStyle?.primaryColor || '#1a1a2e'} 0%, ${result.thumbnailStyle?.secondaryColor || '#16213e'} 100%)` }}
+                          >
+                             <div className="absolute inset-0 bg-black/30 opacity-50 mix-blend-overlay" />
+                             <h4 className="text-white font-black text-lg leading-tight uppercase relative z-10 w-2/3 break-words mix-blend-difference drop-shadow-md">[TEXTO DE CHOCAR]</h4>
+                             <div className="absolute bottom-4 right-4 text-5xl opacity-40 mix-blend-overlay">👤</div>
+                             <div className="mt-auto relative z-10 text-[8px] font-black bg-black/50 text-white w-fit px-2 py-0.5 rounded uppercase">{result.thumbnailStyle?.keyElement || 'Foco'}</div>
+                          </div>
+                          
+                          <div className="flex-1 space-y-4">
+                             <p className="text-[11px] text-gray-400 font-bold leading-relaxed border-b border-white/5 pb-3">
+                               <span className="text-white block mb-1">Direção de Arte:</span> {result.thumbnailStyle?.mood || 'Vibrante e Misterioso'}
+                             </p>
+                             
+                             {(result.toolsRequired && result.toolsRequired.length > 0) && (
+                               <div className="flex flex-wrap gap-2 pb-3 border-b border-white/5">
+                                  {result.toolsRequired.map((tool, idx) => (
+                                     <span key={idx} className="text-[9px] font-black text-white/70 bg-white/5 border border-white/10 px-2 py-1 rounded shadow-sm">
+                                        {tool}
+                                     </span>
+                                  ))}
+                               </div>
+                             )}
+
+                             <div className="space-y-2">
+                                {result.thumbnailIdeas?.map((idea, idx) => (
+                                   <p key={idx} className="text-[10px] text-gray-400 font-medium leading-tight bg-white/5 p-2.5 rounded-lg border border-white/5">{idea}</p>
+                                ))}
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+
+                    {/* Competitors Tracker */}
+                    <div className="bg-black/40 border-2 border-white/10 rounded-2xl p-6 relative overflow-hidden">
+                       <div className="absolute top-0 left-0 w-2 h-full bg-orange-500" />
+                       <div className="flex items-center justify-between mb-6">
+                         <h3 className="text-xl font-black text-white flex items-center gap-3">
+                            <Target className="text-orange-500 w-6 h-6" /> Alvos a Desbancar
+                         </h3>
+                         <ItemCopyBtn text={JSON.stringify(result.competitors)} id="competitors" />
                        </div>
                        
-                       <div className="p-6 flex-1 flex flex-col justify-center items-center relative overflow-hidden min-h-[200px]">
-                         {/* CSS Mockup Representation */}
-                         <div className="w-full max-w-[280px] aspect-video rounded-xl border border-white/20 shadow-2xl relative overflow-hidden flex flex-col p-4"
-                              style={{ 
-                                background: `linear-gradient(135deg, ${result.thumbnailStyle?.primaryColor || '#1a1a2e'} 0%, ${result.thumbnailStyle?.secondaryColor || '#16213e'} 100%)` 
-                              }}
-                         >
-                            <div className="absolute inset-0 bg-black/30 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-50 mix-blend-overlay" />
-                            <h4 className="text-white font-black text-lg leading-tight uppercase relative z-10 w-2/3 break-words mix-blend-difference drop-shadow-md">
-                               [TEXTO DE CHOCAR]
-                            </h4>
-                            <div className="absolute bottom-4 right-4 text-5xl opacity-40 mix-blend-overlay">👤</div>
-                            <div className="mt-auto relative z-10 text-[8px] font-black bg-black/50 text-white w-fit px-2 py-0.5 rounded uppercase">{result.thumbnailStyle?.keyElement || 'Elemento Foco'}</div>
-                         </div>
-                       </div>
-
-                       <div className="p-4 border-t border-white/5 bg-dark/60 space-y-4">
-                          <p className="text-[11px] text-gray-400 font-bold leading-relaxed border-b border-white/5 pb-2">
-                            <span className="text-white">Direção de Arte:</span> {result.thumbnailStyle?.mood || 'Vibrante e Misterioso'}.
-                          </p>
-                          
-                          {/* Tools Needed Badges */}
-                          {(result.toolsRequired && result.toolsRequired.length > 0) && (
-                              <div className="flex flex-wrap gap-1.5 pb-2 border-b border-white/5">
-                                 {result.toolsRequired.map((tool, idx) => (
-                                    <span key={idx} className="text-[8px] font-black text-white/70 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded shadow-sm">
-                                       {tool}
-                                    </span>
-                                 ))}
-                              </div>
-                           )}
-
-                          <div className="space-y-2">
-                             {result.thumbnailIdeas?.map((idea, idx) => (
-                                <div key={idx} className="flex items-start justify-between gap-2 p-2 bg-white/5 rounded-lg group/thumb">
-                                   <p className="text-[10px] text-gray-400 font-medium leading-tight line-clamp-2">{idea}</p>
-                                   <div className="opacity-0 group-hover/thumb:opacity-100 transition-opacity">
-                                      <ItemCopyBtn text={idea} id={`thumb-idea-${idx}`} />
-                                   </div>
-                                </div>
-                             ))}
-                          </div>
-                       </div>
-                    </div>
-
-                    {/* Competitors Tracker (New Feature) */}
-                    <div className="glass-card md:col-span-3 xl:col-span-3 border border-neon-purple/20 relative p-6 bg-[url('https://www.transparenttextures.com/patterns/micro-carbon.png')]">
-                       <SectionCopyBtn text={JSON.stringify(result.competitors)} sectionId="competitors" />
-                       <h4 className="text-[11px] font-black text-neon-purple uppercase tracking-[0.2em] flex items-center gap-2 mb-6">
-                          <Target className="w-4 h-4" /> Alvos a Serem Desbancados
-                       </h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {result.competitors && result.competitors.map((comp, i) => (
-                             <div key={i} className="p-5 bg-black/60 rounded-xl border border-white/10 hover:border-neon-purple/50 transition-colors relative overflow-hidden group/comp">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-neon-purple" />
-                                <div className="absolute top-4 right-4 opacity-0 group-hover/comp:opacity-100 transition-opacity">
-                                   <ItemCopyBtn text={`${comp.name} - Força: ${comp.strength} - Fraqueza: ${comp.weakness}`} id={`comp-${i}`} />
-                                </div>
-                                <h5 className="text-lg font-black text-white italic tracking-tight mb-3 flex justify-between items-center pr-8">
-                                  {comp.name} <span className="text-[9px] font-mono text-neon-purple/50">TARGET {i+1}</span>
+                       <div className="space-y-4">
+                          {result.competitors?.map((comp, i) => (
+                             <div key={i} className="p-5 bg-white/5 rounded-xl border border-white/10 relative overflow-hidden group/comp hover:bg-white/10 transition-colors">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-orange-500/50" />
+                                <h5 className="text-base font-black text-white tracking-tight mb-4 flex justify-between items-center">
+                                  {comp.name}
+                                  <span className="text-[9px] font-mono text-orange-500/80 bg-orange-500/10 px-2 py-1 rounded tracking-widest">ALVO {i+1}</span>
                                 </h5>
-                                <div className="space-y-2">
-                                  <div className="flex gap-2 items-start">
-                                    <span className="text-green-500 mt-1 shrink-0">▲</span>
-                                    <p className="text-xs text-gray-300 font-bold leading-tight"><span className="text-gray-500 uppercase text-[9px] tracking-widest block mb-1">Força Operacional</span> {comp.strength}</p>
+                                <div className="space-y-3">
+                                  <div className="flex gap-3 items-start">
+                                    <span className="text-green-500 mt-0.5 shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-green-500/10 text-[10px]">▲</span>
+                                    <p className="text-xs text-gray-300 font-bold leading-tight"><span className="text-gray-500 uppercase text-[9px] tracking-widest block mb-1">Força Inimiga</span> {comp.strength}</p>
                                   </div>
-                                  <div className="flex gap-2 items-start">
-                                    <span className="text-red-500 mt-1 shrink-0">▼</span>
-                                    <p className="text-xs text-gray-300 font-bold leading-tight"><span className="text-gray-500 uppercase text-[9px] tracking-widest block mb-1">Ponto de Ruptura (Sua Vantagem)</span> {comp.weakness}</p>
+                                  <div className="flex gap-3 items-start">
+                                    <span className="text-red-500 mt-0.5 shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-red-500/10 text-[10px]">▼</span>
+                                    <p className="text-xs text-gray-300 font-bold leading-tight"><span className="text-gray-500 uppercase text-[9px] tracking-widest block mb-1">Gap Tático (Sua Vantagem)</span> {comp.weakness}</p>
                                   </div>
                                 </div>
                              </div>
                           ))}
                        </div>
                     </div>
-
-                    {/* Channel Names */}
-                    <div className="glass-card p-6 border border-white/5 relative group xl:col-span-1">
-                       <SectionCopyBtn text={result.channelNames} sectionId="names" />
-                       <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] flex items-center gap-2 mb-5">
-                          <Youtube className="w-3 h-3" /> Nomenclatura Preditiva
-                       </h4>
-                       <ul className="space-y-2.5">
-                          {Array.isArray(result.channelNames) && result.channelNames.map((name, i) => (
-                             <li key={i} className="px-4 py-3 bg-white/5 rounded-xl border border-white/5 text-sm font-bold text-gray-200 hover:bg-white/10 transition-all flex justify-between items-center gap-2 group">
-                                <span className="truncate" title={name}>{name}</span>
-                                <button 
-                                  onClick={() => handleCopy(name, `name-${i}`)}
-                                  className={`p-2 rounded-lg transition-all border flex items-center justify-center shrink-0
-                                    ${copiedSection === `name-${i}` ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/30'}
-                                  `}
-                                >
-                                  {copiedSection === `name-${i}` ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                </button>
-                             </li>
-                          ))}
-                       </ul>
-                    </div>
-
-                    {/* Title Structures */}
-                    <div className="glass-card p-6 border border-white/5 relative group md:col-span-2 xl:col-span-2">
-                       <SectionCopyBtn text={result.titleStructures} sectionId="titles" />
-                       <h4 className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.2em] flex items-center gap-2 mb-5">
-                          <Type className="w-3 h-3" /> Fórmulas de Escrita (Copywriting)
-                       </h4>
-                       <div className="space-y-3">
-                          {Array.isArray(result.titleStructures) && result.titleStructures.map((title, i) => (
-                             <div key={i} className="px-5 py-3.5 bg-dark/40 border-l-2 border-neon-cyan/50 rounded-r-xl shadow-inner text-sm font-black text-white hover:border-neon-cyan transition-all flex justify-between items-center gap-3 group">
-                                <span className="break-words w-full">{title}</span>
-                                <button 
-                                  onClick={() => handleCopy(title, `title-${i}`)}
-                                  className={`p-2 rounded-lg transition-all border flex items-center justify-center shrink-0
-                                    ${copiedSection === `title-${i}` ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:border-white/30'}
-                                  `}
-                                >
-                                  {copiedSection === `title-${i}` ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                </button>
-                             </div>
-                          ))}
-                       </div>
-                    </div>
-
-                    {/* Video Ideas */}
-                    <div className="glass-card p-6 border border-white/5 relative group xl:col-span-1">
-                       <SectionCopyBtn text={result.videoThemes} sectionId="ideas" />
-                       <h4 className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em] flex items-center gap-2 mb-5">
-                          <Video className="w-3 h-3" /> Temas de Estreia
-                       </h4>
-                       <ul className="space-y-3">
-                          {Array.isArray(result.videoThemes) && result.videoThemes.map((theme, i) => (
-                             <li key={i} className="flex items-center justify-between gap-3 text-[13px] font-bold text-gray-300 leading-tight bg-dark/40 p-3 rounded-xl border border-white/5 group">
-                                <div className="flex gap-3 items-start overflow-hidden w-full">
-                                   <span className="text-orange-400 shrink-0 mt-0.5">{i+1}.</span>
-                                   <span className="line-clamp-2 w-full" title={theme}>{theme}</span>
-                                </div>
-                                <button 
-                                  onClick={() => handleCopy(theme, `theme-${i}`)}
-                                  className={`p-2 rounded-lg transition-all border flex items-center justify-center shrink-0 active:scale-95
-                                    ${copiedSection === `theme-${i}` ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:border-white/30'}
-                                  `}
-                                >
-                                  {copiedSection === `theme-${i}` ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                </button>
-                             </li>
-                          ))}
-                       </ul>
-                    </div>
-
                  </div>
+
               </motion.div>
            ) : null}
         </AnimatePresence>

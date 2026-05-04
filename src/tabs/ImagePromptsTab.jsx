@@ -45,7 +45,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   // ── Chave exclusiva do Gerador de Prompts ─────────────────────────────────
   // Prioridade: 1) gemini_prompts_key (Supabase) → 2) google_script_key (campo pessoal)
   //             → 3) localStorage direto → 4) chave paga como fallback final
-  const MASTER_GEMINI_KEY = 'AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE';
+  const MASTER_GEMINI_KEY = 'AIzaSyBBCgHN2uMfey5aR_Y4CJDOeyqY_oLSFG0';
   const getPromptsApiKey = React.useCallback(() => {
     // 1ª prioridade: chave gratuita exclusiva de prompts (Supabase)
     if (configs?.gemini_prompts_key?.trim()) {
@@ -60,11 +60,8 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     if (lsPrompts?.trim()) return lsPrompts.trim();
     const lsScript = localStorage.getItem('guru_google_script_key');
     if (lsScript?.trim()) return lsScript.trim();
-    // Fallback final: chave paga do sistema (garante funcionamento mesmo sem chave gratuita)
-    const lsMain = localStorage.getItem('guru_gemini_key');
-    if (lsMain?.trim()) return lsMain.trim();
-    console.warn('⚠️ [ImagePrompts] Usando chave mestra do sistema como fallback. Configure a chave gratuita em Configurações.');
-    return MASTER_GEMINI_KEY;
+    // Bloqueia o uso da chave mestra do sistema para o Gerador de Prompts (exige chave pessoal)
+    return null;
   }, [configs]);
 
   const { promptState, setPromptState } = usePersistence();
@@ -195,28 +192,9 @@ Campos obrigatórios:
 ROTEIRO:
 ${scriptToAnalyze.substring(0, 2500)}`;
 
-      // Tenta primeiro com a chave exclusiva de prompts (gratuita)
-      // Se der 429, faz fallback automático para a chave paga
-      let response;
-      try {
-        response = await callGemini(getPromptsApiKey(), analysisPrompt, { 
-          model: 'gemini-2.0-flash-lite', 
-          temperature: 0.1 
-        });
-      } catch (firstErr) {
-        const isRL = firstErr?.status === 429 || (firstErr?.message || '').includes('quota') || (firstErr?.message || '').includes('429') || (firstErr?.message || '').includes('exhausted');
-        if (isRL) {
-          // Fallback: usa a chave paga principal
-          console.warn('[Analyze] Chave gratuita com limite atingido — usando chave paga como fallback...');
-          const paidKey = configs?.gemini_key || localStorage.getItem('guru_gemini_key');
-          response = await callGemini(paidKey, analysisPrompt, { 
-            model: 'gemini-2.0-flash-lite', 
-            temperature: 0.1 
-          });
-        } else {
-          throw firstErr;
-        }
-      }
+      // ANÁLISE: Obrigatoriamente via Chave PAGA para ser instantânea e suportar o Gemini Pro
+      const mainKey = localStorage.getItem('guru_gemini_key') || 'GLOBAL';
+      const response = await callGemini(mainKey, analysisPrompt, { model: 'gemini-1.5-pro', temperature: 0.1 });
 
       // Extração robusta de JSON — pega o último bloco JSON válido da resposta
       // (evita capturar JSON de exemplos que a IA pode ecoar no início da resposta)
@@ -474,8 +452,7 @@ ${scriptToAnalyze.substring(0, 2500)}`;
         Separate each complete block with ONE empty line.
         Repair these blocks keeping original descriptions:
         ${repaired}`;
-        
-        const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-2.0-flash' }); // gemini-2.0-flash: 1500 req/dia vs 250 do 2.5-flash
+        const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-1.5-flash' }); // flash é mais rápido e garantido na chave free
         repaired = aiRepaired.trim();
         setRepairLogs(prev => [...prev, "✓ Reparo de Estrutura via IA Concluído"]);
       }
@@ -648,47 +625,116 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
 
 
   const handleGenerate = async () => {
-    if (!file || subtitleBlocks.length === 0) return;
+    if (!file && !prompts) {
+      alert("Por favor, faça upload de uma legenda (.srt ou .txt) primeiro.");
+      return;
+    }
+
+    const apiKey = getPromptsApiKey();
+    if (!apiKey) {
+      alert("⚠️ Chave Gratuita Necessária! Por favor, vá em 'Configurações -> Suas Chaves Pessoais' e insira a sua Google API Key (Criador de Prompts) para utilizar esta ferramenta.");
+      return;
+    }
+
     setIsGenerating(true);
     setPrompts("");
     cancelRef.current = false;
 
-    // ── MODO IMAGEM (text): 1 legenda por chamada → paridade 100% garantida ──
+    // ── MODO IMAGEM (text): Geração em Lote (10 cenas por chamada) para máxima velocidade ──
     if (promptType === 'image' && outputFormat !== 'json') {
       const total = subtitleBlocks.length;
-      setGenerationProgress({ step: `Gerando prompts (0/${total})...`, current: 0, total, statuses: new Array(total).fill('pending') });
+      const BATCH_SIZE = 10; // 10 cenas por chamada = 10x mais rápido
+      const totalBatches = Math.ceil(total / BATCH_SIZE);
+      
+      setGenerationProgress({ 
+        step: `Iniciando geração em lote (0/${total})...`, 
+        current: 0, 
+        total, 
+        statuses: new Array(total).fill('pending') 
+      });
+
       const resultsArr = new Array(total).fill('');
       const statusArr  = new Array(total).fill('pending');
+      
       const dnaPart = `Scenario: ${visualDNA.scenario || 'Real-world'} | Era: ${visualDNA.era || 'Contemporary'} | Mood: ${visualDNA.mood || 'Cinematic'} | Lighting: ${visualDNA.lighting || 'Natural light'} | Palette: ${visualDNA.palette || 'Realistic'} | Camera: ${visualDNA.camera || 'Cinematic angles'}`;
-      const singleSys = `Ultra-realistic image prompt engineer. Write ONE English photographic prompt for the given subtitle. Output only the prompt — no intro, no numbering.\nVISUAL DNA: ${dnaPart}\nRULES: English only. Reality only. 60–100 words. NEGATIVE PROMPT on same line.\nFORMAT: Ultra-Realista — Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita. [shot] [visual scene from subtitle]. NEGATIVE PROMPT: CGI, cartoon, blurry, distorted, text, watermark.`;
-      const genOne = async (subtitle, staggerIdx = 0) => {
-        // Stagger: distribui os disparos no tempo para não bater 30 RPM de uma vez
-        if (staggerIdx > 0) await new Promise(r => setTimeout(r, staggerIdx * 80));
-        for (let a = 0; a < 4; a++) {
+      
+      const genBatch = async (batchIdx) => {
+        const start = batchIdx * BATCH_SIZE;
+        const end = Math.min(start + BATCH_SIZE, total);
+        const batchSubtitles = subtitleBlocks.slice(start, end);
+        
+        // Constrói a lista de legendas com IDs para a IA manter a ordem
+        const subtitlesWithIds = batchSubtitles.map((s, i) => `[${start + i + 1}]: ${s}`).join('\n');
+
+        const systemPrompt = `You are a MASTER ultra-realistic image prompt engineer. 
+        TASK: Write ONE English photographic prompt for EACH subtitle provided below.
+        VISUAL DNA: ${dnaPart}
+        RULES: 
+        - Respond ONLY in English. 
+        - Use exactly the format [N]: [Prompt Text] NEGATIVE PROMPT: [Negatives]
+        - Keep prompts between 60-100 words.
+        - Ensure 100% parity: Prompt [N] must describe Subtitle [N].
+        
+        SUBTITLES TO PROCESS:
+        ${subtitlesWithIds}`;
+
+        for (let a = 0; a < 3; a++) {
           try {
-            if (a > 0) await new Promise(r => setTimeout(r, a >= 2 ? 5000 : 1000));
-            const resp = await callGemini(getPromptsApiKey(), `${singleSys}\n\nSUBTITLE: ${subtitle}`, { model: 'gemini-2.0-flash-lite' });
-            const c = (resp || '').trim().replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
-            if (c) return c;
+            if (a > 0) await new Promise(r => setTimeout(r, a * 2000));
+            
+            // Prioriza a chave de prompts (gratuita) com fallback para 'GLOBAL'
+            const apiKey = getPromptsApiKey() || 'GLOBAL';
+            const resp = await callGemini(apiKey, systemPrompt, { model: 'gemini-1.5-flash' });
+            
+            // Extração dos prompts por ID [N]:
+            const lines = resp.split('\n').filter(l => l.includes(']:'));
+            let foundCount = 0;
+            
+            lines.forEach(line => {
+              const match = line.match(/\[(\d+)\]:\s*([\s\S]+)/);
+              if (match) {
+                const id = parseInt(match[1]);
+                const content = match[2].trim();
+                if (id >= start + 1 && id <= end) {
+                  resultsArr[id - 1] = content;
+                  statusArr[id - 1] = 'done';
+                  foundCount++;
+                }
+              }
+            });
+
+            if (foundCount > 0) return true;
           } catch (e) {
-            const isRL = (e.message || '').includes('429') || (e.message || '').includes('quota') || (e.message || '').includes('exhausted');
-            if (isRL) await new Promise(r => setTimeout(r, 8000)); // 8s para reset do sliding window
-            else if (a >= 2) break;
+            console.error(`Erro no lote ${batchIdx}:`, e);
+            if (a === 2) throw e;
           }
         }
-        return `Ultra-Realista — 8K cinematic photography. Visual scene: ${subtitle}. NEGATIVE PROMPT: CGI, cartoon, blurry.`;
+        return false;
       };
-      const PARALLEL = 22; // 22 paralelo com stagger de 80ms = disparos distribuídos em ~1.7s (seguro para 30 RPM)
-      for (let p = 0; p < total; p += PARALLEL) {
+
+      const PARALLEL_BATCHES = 4; // 4 lotes simultâneos (40 cenas por vez)
+      for (let p = 0; p < totalBatches; p += PARALLEL_BATCHES) {
         if (cancelRef.current) break;
-        const batch = subtitleBlocks.slice(p, p + PARALLEL);
-        const batchRes = await Promise.all(batch.map((sub, idx) => genOne(sub, idx)));
-        batchRes.forEach((r, bIdx) => { resultsArr[p + bIdx] = r; statusArr[p + bIdx] = 'done'; });
-        const done = Math.min(p + PARALLEL, total);
-        setGenerationProgress(prev => ({ ...prev, current: done, statuses: [...statusArr], step: done < total ? `Gerando prompts (${done}/${total})...` : 'Finalizando...' }));
+        const batchPromises = [];
+        for (let b = 0; b < PARALLEL_BATCHES && (p + b) < totalBatches; b++) {
+          batchPromises.push(genBatch(p + b));
+        }
+        
+        await Promise.all(batchPromises);
+        
+        const doneCount = Math.min((p + PARALLEL_BATCHES) * BATCH_SIZE, total);
+        setGenerationProgress(prev => ({ 
+          ...prev, 
+          current: doneCount, 
+          statuses: [...statusArr], 
+          step: doneCount < total ? `Gerando blocos (${doneCount}/${total})...` : 'Finalizando...' 
+        }));
         setPrompts(resultsArr.filter(Boolean).join('\n\n'));
-        if (p + PARALLEL < total) await new Promise(r => setTimeout(r, 100));
+        
+        // Pequena pausa para respeitar 15 RPM da chave gratuita
+        await new Promise(r => setTimeout(r, 1000));
       }
+      
       setIsGenerating(false);
       setIsVerified(true);
       setGenerationProgress(prev => ({ ...prev, step: `✅ ${total} prompts gerados com sucesso!`, current: total }));
@@ -755,9 +801,8 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
 
         try {
           chunkStatuses[i] = "generating";
-          setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: `Processando Bloco ${i+1}/${totalChunks}...` }));
-
-          const responseText = await callGemini(getPromptsApiKey(), promptParam, { model: 'gemini-2.0-flash-lite' }); // flash-lite: 30 RPM vs 15 RPM do flash = 2x mais rápido
+          const apiKey = getPromptsApiKey() || 'GLOBAL';
+          const responseText = await callGemini(apiKey, promptParam, { model: 'gemini-1.5-flash' });
           
           let chunkText = "";
           if (isJson) {
@@ -884,6 +929,12 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
     const script = availableScripts.find(s => s.id === selectedScriptId);
     if (!script) return;
 
+    const apiKey = getPromptsApiKey();
+    if (!apiKey) {
+      alert("⚠️ Chave Gratuita Necessária! Por favor, vá em 'Configurações -> Suas Chaves Pessoais' e insira a sua Google API Key (Criador de Prompts) para utilizar esta ferramenta.");
+      return;
+    }
+
     setIsGenerating(true);
     const styleInfo = getActiveStyle();
     setGenerationProgress({ step: 'Analisando Roteiro...', current: 0, total: 0 });
@@ -924,7 +975,9 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
             if (b > 0) await new Promise(r => setTimeout(r, b * 200));
 
             try {
-              const batchResult = await callGemini(getPromptsApiKey(), promptBatchQuery, { model: 'gemini-2.0-flash-lite' });
+              // Prioriza a chave gratuita para geração de prompts (mesmo em modo roteiro)
+              const apiKey = getPromptsApiKey() || 'GLOBAL';
+              const batchResult = await callGemini(apiKey, promptBatchQuery);
               
               let processedBatch = "";
               if (genMode === 'quality') {
@@ -1013,7 +1066,8 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
   }; */
 
   return (
-    <div className="p-8 max-w-6xl mx-auto h-full overflow-y-auto custom-scrollbar space-y-10">
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-8 pb-12 pt-4 px-4 md:px-8 [&>*]:shrink-0">
       <header className="mb-12">
         <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-pink to-neon-purple p-[2px] shadow-[0_0_20px_rgba(255,44,182,0.3)]">
@@ -1675,6 +1729,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
                )
             ))}
          </div>
+      </div>
       </div>
     </div>
   );

@@ -323,13 +323,13 @@ export const SettingsTab = () => {
           <label className="text-xs font-medium text-gray-300">{label} (Separe chaves com vírgula)</label>
         </div>
         
-        <textarea 
+        <input 
+          type="password"
           value={typeof keysStr === 'string' ? keysStr : ''}
           onChange={(e) => setKeysStr(e.target.value)}
           onPaste={handlePaste}
           placeholder={`Cole as chaves aqui... Ex: ${placeholder}`}
-          rows={Math.max(2, Math.min(4, keysArray.length > 2 ? 3 : 2))}
-          className="w-full bg-dark/50 border border-white/10 rounded-lg p-2 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-xs font-mono break-all resize-none shadow-inner transition-all hover:bg-dark/70"
+          className="w-full bg-dark/50 border border-white/10 rounded-lg p-2.5 text-gray-400 focus:outline-none focus:border-neon-cyan/50 text-xs font-mono transition-all hover:bg-dark/70"
         />
 
         {keysArray.length > 0 && (
@@ -421,7 +421,8 @@ export const SettingsTab = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto h-full flex flex-col overflow-y-auto custom-scrollbar pb-20">
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4 px-4 md:px-8">
       <header className="mb-6 md:mb-8 shrink-0">
         <h2 className="text-2xl md:text-4xl font-bold text-gray-200 flex items-center gap-2 md:gap-3">
           <Settings className="text-gray-400 w-8 h-8 md:w-10 md:h-10" />
@@ -663,45 +664,7 @@ export const SettingsTab = () => {
                 />
               </div>
 
-              {/* ── CHAVE EXCLUSIVA GERADOR DE PROMPTS ─────────────── */}
-              <div className="pt-3 border-t border-neon-pink/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-4 h-4 rounded bg-gradient-to-br from-neon-pink to-neon-purple flex items-center justify-center shrink-0">
-                    <span className="text-[8px]">✦</span>
-                  </div>
-                  <label className="text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-neon-pink to-neon-purple bg-clip-text text-transparent">
-                    Chave Exclusiva — Gerador de Prompts
-                  </label>
-                </div>
-                <p className="text-[9px] text-gray-500 italic mb-2 pl-6">
-                  Esta chave será usada <span className="text-neon-pink font-bold">somente</span> na aba "Gerador de Prompts". 
-                  Se vazia, usa a chave Gemini principal. Ideal para separar cotas de uso.
-                </p>
-                <div className="relative">
-                  <input
-                    type="password"
-                    value={geminiPromptsKey}
-                    onChange={(e) => setGeminiPromptsKey(e.target.value)}
-                    placeholder="AIza... (chave exclusiva para prompts)"
-                    className="w-full bg-dark/50 border border-neon-pink/20 rounded-lg p-2.5 pr-20 text-gray-300 focus:outline-none focus:border-neon-pink/50 text-xs font-mono transition-all hover:bg-dark/70 shadow-[0_0_10px_rgba(255,44,182,0.05)] focus:shadow-[0_0_15px_rgba(255,44,182,0.15)]"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    <button
-                      onClick={async () => {
-                        if (!geminiPromptsKey.trim()) return;
-                        setIsSaving(true);
-                        await updateConfig({ gemini_prompts_key: geminiPromptsKey.trim() });
-                        await checkConnectivity();
-                        setIsSaving(false);
-                        showToast('Teste de conexão concluído', 'info');
-                      }}
-                      className="text-[8px] px-2 py-1 rounded bg-neon-pink/20 text-neon-pink font-black uppercase tracking-wider border border-neon-pink/30 hover:bg-neon-pink/30 transition-colors"
-                    >
-                      {status.prompts_key === 'checking...' ? '...' : 'Testar'}
-                    </button>
-                  </div>
-                </div>
-              </div>
+
               <div>
                 <label className="text-sm font-medium text-gray-300 block mb-1">Anthropic (Claude) Key</label>
                 <input 
@@ -1208,6 +1171,7 @@ export const SettingsTab = () => {
           </div>
         </div>
 
+      </div>
       </div>
     </div>
   );

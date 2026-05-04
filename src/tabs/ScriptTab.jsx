@@ -202,9 +202,9 @@ export const ScriptTab = ({ setActiveTab }) => {
   const { scriptState, setScriptState } = usePersistence();
   const [cloudScripts, setCloudScripts] = useCloudStorage('scripts', []);
 
-  // Helper: chama AI para geração de roteiro usando a chave principal configurada.
+  // Helper: chama AI para geração de roteiro usando o modelo TOP (Pro).
   const callScriptAI = async (prompt, opts = {}) => {
-    return await callAI(prompt, opts);
+    return await callAI(prompt, { ...opts, model: 'gemini-1.5-pro' });
   };
   
   const {
@@ -263,9 +263,8 @@ export const ScriptTab = ({ setActiveTab }) => {
       Nicho: ${NICHO_OPTIONS.join('|')}
       Idioma: ${IDIOMA_OPTIONS.join('|')}`;
 
-      // gemini-2.0-flash-lite: modelo ultra-rápido ideal para tarefas simples de JSON
+      // Usa o sistema universal inteligente sem forçar modelo depreciado
       const response = await callScriptAI(prompt, { 
-        model: 'gemini-2.0-flash-lite',
         temperature: 0.1,
         isPromptTask: true
       });
@@ -504,7 +503,8 @@ CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
   };
 
   return (
-    <div className="flex flex-col h-auto min-h-full animate-in fade-in duration-500 pb-10">
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4 animate-in fade-in duration-500">
       
       <header className="mb-8 w-full max-w-4xl">
         <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
@@ -980,6 +980,7 @@ CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
           </div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 };

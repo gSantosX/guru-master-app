@@ -19,10 +19,12 @@ export const AdminTab = () => {
   // Strict Admin Check
   if (!user?.is_admin) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] text-center p-8">
-        <Shield className="w-16 h-16 text-red-500/20 mb-4" />
-        <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Acesso Negado</h2>
-        <p className="text-gray-500 mt-2 max-w-xs">Você não tem permissão para acessar o painel administrativo.</p>
+      <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col items-center justify-center p-8">
+          <Shield className="w-16 h-16 text-red-500/20 mb-4" />
+          <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Acesso Negado</h2>
+          <p className="text-gray-500 mt-2 max-w-xs">Você não tem permissão para acessar o painel administrativo.</p>
+        </div>
       </div>
     );
   }
@@ -149,7 +151,8 @@ export const AdminTab = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto h-full flex flex-col overflow-y-auto custom-scrollbar pb-20">
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4 px-4 md:px-8">
       {/* Header Section: Title + Invitation Card Side-by-Side */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10 items-center">
         <header className="lg:col-span-5 shrink-0">
@@ -400,6 +403,7 @@ export const AdminTab = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 };

@@ -35,7 +35,8 @@ export const HelpTab = () => {
 
   return (
     <>
-      <div className="max-w-5xl mx-auto h-full flex flex-col overflow-y-auto custom-scrollbar pb-20">
+      <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4 px-4 md:px-8">
         <header className="mb-10 shrink-0">
           <motion.div
              initial={{ opacity: 0, y: -20 }}
@@ -181,6 +182,7 @@ export const HelpTab = () => {
             </div>
           </div>
 
+        </div>
         </div>
       </div>
 

@@ -34,7 +34,8 @@ export const PersistenceProvider = ({ children }) => {
   const [miningState, setMiningState] = useState({
     channels: [],
     niche: '',
-    isSearching: false
+    isSearching: false,
+    maxAgeMonths: 0
   });
 
   // 3. Image Prompts Global State

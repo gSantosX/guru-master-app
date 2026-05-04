@@ -83,7 +83,7 @@ Rules:
 - Adapt idioms naturally — do NOT translate literally if it sounds unnatural
 - Return ONLY the JSON object, no markdown, no explanations`;
 
-      const result = await callAI(prompt);
+      const result = await callAI(prompt, { model: 'gemini-1.5-pro' });
       const clean = result.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(clean);
 
@@ -567,7 +567,7 @@ REGRAS DE FORMATO:
     }
 
     try {
-      const result = await callAI(prompt);
+      const result = await callAI(prompt, { model: 'gemini-1.5-pro' });
       
       if (!result || result.trim().length === 0) {
         throw new Error('A IA retornou uma resposta vazia. Tente novamente ou verifique sua chave API.');
@@ -602,7 +602,7 @@ REGRAS DE FORMATO:
   };
 
   return (
-    <div className="flex flex-col h-full w-full max-w-[1600px] mx-auto overflow-hidden" onClickCapture={refreshAllChannelsQuietly}>
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto overflow-hidden" onClickCapture={refreshAllChannelsQuietly}>
       <AnimatePresence mode="wait">
         {!selectedChannel ? (
           <motion.div 
@@ -845,10 +845,10 @@ REGRAS DE FORMATO:
                       setAnalysisResult(null);
                     }}
                     disabled={isAnalyzing}
-                    className="flex flex-col items-center justify-center p-6 bg-white/5 border-2 border-neon-cyan/10 rounded-2xl hover:bg-neon-cyan/5 hover:border-neon-cyan transition-all group gap-4 text-center disabled:opacity-50"
+                    className="flex flex-col items-center justify-center p-6 bg-white/5 border-2 border-neon-cyan/10 rounded-2xl hover:bg-neon-cyan/5 hover:border-neon-cyan transition-all group gap-4 text-center disabled:opacity-50 relative"
                   >
                     <div className="w-16 h-16 rounded-xl bg-neon-cyan/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Youtube className="w-8 h-8 text-neon-cyan" />
+                      {isAnalyzing && analysisType === 'titles' ? <div className="w-8 h-8 border-2 border-neon-cyan/20 border-t-neon-cyan rounded-full animate-spin" /> : <Youtube className="w-8 h-8 text-neon-cyan" />}
                     </div>
                     <div>
                       <p className="text-lg font-black text-white">Gerar Títulos Virais</p>
@@ -897,7 +897,7 @@ REGRAS DE FORMATO:
                     </motion.div>
                   )}
 
-                  {(isAnalyzing || analysisResult !== null) && (
+                  {analysisResult !== null && (
                     <motion.div 
                       key="result"
                       ref={resultRef}
@@ -908,10 +908,7 @@ REGRAS DE FORMATO:
                     >
                       <div className="absolute top-0 left-0 w-2 h-full bg-neon-cyan" />
                       
-                      {isAnalyzing ? (
-                        <LoadingSpinner message="Consultando Guru IA..." size="lg" className="py-16" />
-                      ) : (
-                        <div className="animate-fade-in">
+                      <div className="animate-fade-in">
                           <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
                             <h4 className="text-xl font-black text-white flex items-center gap-3">
                                <Sparkles className="w-5 h-5 text-neon-cyan" /> 
@@ -1043,7 +1040,6 @@ REGRAS DE FORMATO:
                             </div>
                           )}
                         </div>
-                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

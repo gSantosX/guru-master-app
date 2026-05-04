@@ -60,7 +60,8 @@ export const ProfileTab = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto h-full flex flex-col overflow-y-auto custom-scrollbar pb-20">
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4 px-4 md:px-8">
       <header className="mb-8 shrink-0">
         <h2 className="text-2xl md:text-4xl font-bold text-gray-200 flex items-center gap-3">
           <User className="text-neon-cyan w-8 h-8 md:w-10 md:h-10" />
@@ -195,6 +196,7 @@ export const ProfileTab = () => {
             {isSaved ? <><CheckCircle className="w-5 h-5" /> {t('profile.saved_success')}</> : t('profile.save_changes')}
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

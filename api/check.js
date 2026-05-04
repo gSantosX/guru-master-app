@@ -19,7 +19,11 @@ export default async function handler(req, res) {
     const results = await Promise.all(
       keys.map(async (key) => {
         if (!key || typeof key !== 'string' || key.trim() === '') return { status: 'offline', reason: 'empty_key' };
-        return pingKey(provider, key.trim());
+        let actualKey = key.trim();
+        if (actualKey === 'GLOBAL_MASTER_KEY_ACTIVE' && (provider === 'gemini' || provider === 'prompts_key')) {
+          actualKey = process.env.GEMINI_API_KEY || "AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE";
+        }
+        return pingKey(provider, actualKey);
       })
     );
     // Return statuses array for backward compat, plus debug info

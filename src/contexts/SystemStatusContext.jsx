@@ -13,8 +13,8 @@ const getEmailFromStorage = () => {
   return '';
 };
 
-// Chave mestra principal — usada por TODOS os usuários como fallback
-const MASTER_GEMINI_KEY = 'AIzaSyAA2D1mqTD59Czg6iz6eYcfL29VNyRoPnE';
+// Chave mestra principal — mascarada no frontend, substituída no backend
+const MASTER_GEMINI_KEY = 'GLOBAL_MASTER_KEY_ACTIVE';
 
 const DEFAULTS = {
   gemini_key: MASTER_GEMINI_KEY,    // chave PAGA — usada em todas as abas exceto Gerador de Prompts

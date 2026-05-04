@@ -11,6 +11,41 @@ import { useAuth } from '../contexts/AuthContext';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
+const GLOBAL_LANGUAGES = [
+  "Português (Brasil)",
+  "Português (Portugal)",
+  "Inglês (US)",
+  "Inglês (UK)",
+  "Espanhol (América Latina)",
+  "Espanhol (Espanha)",
+  "Francês",
+  "Alemão",
+  "Japonês",
+  "Coreano",
+  "Russo",
+  "Italiano",
+  "Holandês",
+  "Polonês",
+  "Turco",
+  "Árabe",
+  "Hindi",
+  "Bengali",
+  "Indonésio",
+  "Tailandês",
+  "Vietnamita",
+  "Chinês (Mandarim)",
+  "Chinês (Cantonês)",
+  "Sueco",
+  "Dinamarquês",
+  "Finlandês",
+  "Norueguês",
+  "Tcheco",
+  "Ucraniano",
+  "Grego",
+  "Hebraico",
+  "Filipino (Tagalog)"
+];
+
 export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
   const { configs } = useSystemStatus();
   const { user } = useAuth();
@@ -354,7 +389,7 @@ O erro que a audiência mais critica neste tipo de canal.
 REGRAS: Use **NEGRITO** para os títulos da seção.`;
 
     try {
-      const result = await callAI(prompt);
+      const result = await callAI(prompt, { model: 'gemini-1.5-pro' });
       if (!result) throw new Error('Resposta vazia da IA.');
       setStrategyResult(result);
     } catch (err) {
@@ -372,7 +407,7 @@ REGRAS: Use **NEGRITO** para os títulos da seção.`;
 
     try {
       const termPrompt = `Baseado no canal "${selectedChannel.title}" que fala sobre: ${selectedChannel.description}. Forneça APENAS 1 TERMO DE PESQUISA (uma palavra ou frase curta em INGLÊS) que seja o núcleo deste canal para fazer uma busca no YouTube e medir a concorrência global. RETORNE APENAS O TERMO.`;
-      const searchTerm = await callAI(termPrompt);
+      const searchTerm = await callAI(termPrompt, { model: 'gemini-1.5-pro' });
       const cleanTerm = searchTerm.replace(/["']/g, '').trim();
 
       const countryData = {};
@@ -413,7 +448,7 @@ Formato OBRIGATÓRIO (PT-BR):
 - [País 2]: [Breve motivo]
 - [País 3]: [Breve motivo]`;
 
-      const analysis = await callAI(analysisPrompt);
+      const analysis = await callAI(analysisPrompt, { model: 'gemini-1.5-pro' });
       setCountryResult(analysis);
       
       // Auto-select language based on the result
@@ -456,7 +491,7 @@ REGRAS CRÍTICAS:
 Retorne APENAS a lista numerada.`;
 
     try {
-      const result = await callAI(prompt);
+      const result = await callAI(prompt, { model: 'gemini-1.5-pro' });
       setTitlesResult(result);
     } catch (err) {
       console.error(err);
@@ -476,7 +511,7 @@ Retorne APENAS a lista numerada.`;
 
 
   return (
-    <div className="flex flex-col h-full w-full max-w-[1600px] mx-auto overflow-hidden">
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto overflow-hidden">
       <AnimatePresence mode="wait">
         {!selectedChannel ? (
           <motion.div 
@@ -784,14 +819,9 @@ Retorne APENAS a lista numerada.`;
                       onChange={(e) => setSelectedLanguage(e.target.value)}
                       className="bg-dark border border-white/10 text-gray-300 text-sm rounded-xl px-4 py-2 focus:border-neon-cyan flex-1 md:w-48"
                     >
-                      <option>Português (Brasil)</option>
-                      <option>Inglês (US)</option>
-                      <option>Espanhol</option>
-                      <option>Francês</option>
-                      <option>Alemão</option>
-                      <option>Japonês</option>
-                      <option>Coreano</option>
-                      <option>Russo</option>
+                      {GLOBAL_LANGUAGES.map(lang => (
+                         <option key={lang} value={lang}>{lang}</option>
+                      ))}
                     </select>
                     <button 
                       onClick={runTitlesAnalysis}
