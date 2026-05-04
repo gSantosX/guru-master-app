@@ -1,14 +1,16 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext } from 'react';
+import { useCloudStorage } from '../hooks/useCloudStorage';
 
 const PersistenceContext = createContext();
 
 /**
  * PersistenceProvider — Elite State Persistence
  * Keeps tab data alive during switching and handles "Rule of 7" cleanup.
+ * Now using Cloud Storage to sync automatically across devices.
  */
 export const PersistenceProvider = ({ children }) => {
   // 1. Video Tab Global State (Files + Configs)
-  const [videoState, setVideoState] = useState({
+  const [videoState, setVideoState] = useCloudStorage('video_state', {
     audioFile: null,
     musicFile: null,
     imageFiles: [],
@@ -31,7 +33,7 @@ export const PersistenceProvider = ({ children }) => {
   });
 
   // 2. Channel Mining Global State
-  const [miningState, setMiningState] = useState({
+  const [miningState, setMiningState] = useCloudStorage('mining_state', {
     channels: [],
     niche: '',
     isSearching: false,
@@ -39,7 +41,7 @@ export const PersistenceProvider = ({ children }) => {
   });
 
   // 3. Image Prompts Global State
-  const [promptState, setPromptState] = useState({
+  const [promptState, setPromptState] = useCloudStorage('prompt_state', {
     file: null,
     subtitleBlocks: [],
     prompts: "",
@@ -66,7 +68,7 @@ export const PersistenceProvider = ({ children }) => {
   });
   
   // 4. Video Cover Global State (Titles, ShockWords, Covers)
-  const [coverState, setCoverState] = useState({
+  const [coverState, setCoverState] = useCloudStorage('cover_state', {
     selectedScript: null,
     titles: [],
     shockWords: { one: '', two: '', three: '' },
@@ -77,7 +79,7 @@ export const PersistenceProvider = ({ children }) => {
   });
 
   // 5. Script Creator Global State
-  const [scriptState, setScriptState] = useState({
+  const [scriptState, setScriptState] = useCloudStorage('script_state', {
     titulo: '',
     dna: 'Jornada do Herói',
     alma: 'Épica e Cinematográfica',
@@ -106,14 +108,14 @@ export const PersistenceProvider = ({ children }) => {
 
   // Helper to clear video form
   const clearVideoState = () => {
-    setVideoState({
+    setVideoState(prev => ({
       audioFile: null,
       musicFile: null,
       imageFiles: [],
       videoFiles: [],
       subtitleFile: null,
-      settings: videoState.settings // keep settings
-    });
+      settings: prev.settings // keep settings
+    }));
   };
 
   return (

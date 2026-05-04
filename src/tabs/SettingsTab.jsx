@@ -3,12 +3,18 @@ import { Settings, Key, Palette, HardDrive, Shield, CheckCircle, Cpu, AlertCircl
 import { motion } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { resolveApiUrl } from '../utils/apiUtils';
-import { t } from '../utils/i18n';
 import { useAuth } from '../contexts/AuthContext';
+import { useCloudStorage } from '../hooks/useCloudStorage';
+import { t } from '../utils/i18n';
 
 export const SettingsTab = () => {
   const { status, configs, checkConnectivity, updateConfig, isInitialized, activeIndices, checkBulkKeys, showToast } = useSystemStatus();
   const { user } = useAuth();
+  
+  const [, setCloudScripts] = useCloudStorage('scripts', []);
+  const [, setActiveRenders] = useCloudStorage('active_renders', []);
+  const [, setCompletedRenders] = useCloudStorage('completed_renders', []);
+
   const isAdmin = user?.email === 'suporte.gurumaster@gmail.com' || localStorage.getItem('guru_user_email') === 'suporte.gurumaster@gmail.com';
   
   const [geminiKeys, setGeminiKeys] = useState(configs.gemini_key || '');
@@ -35,11 +41,23 @@ export const SettingsTab = () => {
   
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [theme, setTheme] = useState(localStorage.getItem('guru_theme') || 'neon');
-  const [reduceMotion, setReduceMotion] = useState(localStorage.getItem('guru_reduce_motion') === 'true');
+  const [appSettings, setAppSettings] = useCloudStorage('app_settings', {
+    theme: localStorage.getItem('guru_theme') || 'neon',
+    reduceMotion: localStorage.getItem('guru_reduce_motion') === 'true',
+    appFontSize: Number(localStorage.getItem('guru_app_font_size')) || 16
+  });
+  
+  useEffect(() => {
+    localStorage.setItem('guru_theme', appSettings.theme);
+    localStorage.setItem('guru_reduce_motion', appSettings.reduceMotion);
+    localStorage.setItem('guru_app_font_size', appSettings.appFontSize);
+    document.documentElement.style.fontSize = `${appSettings.appFontSize}px`;
+    window.dispatchEvent(new Event('guru_theme_change'));
+  }, [appSettings]);
+
+  const { theme, reduceMotion, appFontSize } = appSettings;
   const [isReconnecting, setIsReconnecting] = useState(false);
-  const [appFontSize, setAppFontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);
-  const [storageInfo, setStorageInfo] = useState({ cache_size: 0, total_space: 21474836480, free_space: 0 }); 
+  const [storageInfo, setStorageInfo] = useState({ cache_size: 0, total_space: 21474836480, free_space: 0 });
   // promptsKeyStatus removed — using global status.prompts_key from context
 
   // Flag to block auto-save when we're syncing FROM cloud (not user typing)
@@ -274,9 +292,9 @@ export const SettingsTab = () => {
     if (confirm(t('settings.clear_warning'))) {
       try {
         await fetch(resolveApiUrl('/api/storage/clear'), { method: 'POST' });
-        localStorage.removeItem('guru_scripts');
-        localStorage.removeItem('guru_active_renders');
-        localStorage.removeItem('guru_completed_renders');
+        setCloudScripts([]);
+        setActiveRenders([]);
+        setCompletedRenders([]);
         await fetchStorageInfo();
         alert(t('settings.clear_success'));
         window.dispatchEvent(new Event('guru_completed_updated'));
@@ -1013,9 +1031,7 @@ export const SettingsTab = () => {
                           <button 
                              onClick={() => {
                                 const newVal = Math.max(12, appFontSize - 1);
-                                setAppFontSize(newVal);
-                                localStorage.setItem('guru_app_font_size', newVal);
-                                window.dispatchEvent(new Event('guru_font_size_change'));
+                                setAppSettings(prev => ({ ...prev, appFontSize: newVal }));
                              }}
                              className="flex-1 flex justify-center py-2 bg-dark hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
                              title={t('settings.font_dec')}
@@ -1025,9 +1041,7 @@ export const SettingsTab = () => {
                           <button 
                              onClick={() => {
                                 const newVal = Math.min(24, appFontSize + 1);
-                                setAppFontSize(newVal);
-                                localStorage.setItem('guru_app_font_size', newVal);
-                                window.dispatchEvent(new Event('guru_font_size_change'));
+                                setAppSettings(prev => ({ ...prev, appFontSize: newVal }));
                              }}
                              className="flex-1 flex justify-center py-2 bg-dark hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
                              title={t('settings.font_inc')}

@@ -2,27 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, XCircle } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { stackPush, stackWrite } from '../utils/stackUtils';
 import { resolveApiUrl } from '../utils/apiUtils';
+import { useCloudStorage } from '../hooks/useCloudStorage';
 
 export const ProgressTab = () => {
-  const [projects, setProjects] = useState([]);
-
-  useEffect(() => {
-    const loadSaved = () => {
-       const saved = JSON.parse(localStorage.getItem('guru_active_renders') || '[]');
-       setProjects(saved);
-    };
-    loadSaved();
-    
-    window.addEventListener('guru_active_updated', loadSaved);
-    return () => window.removeEventListener('guru_active_updated', loadSaved);
-  }, []);
-
-  const saveProjects = (newProjects) => {
-    setProjects(newProjects);
-    localStorage.setItem('guru_active_renders', JSON.stringify(newProjects));
-  };
+  const [projects, setProjects] = useCloudStorage('active_renders', []);
+  const [completedRenders, setCompletedRenders] = useCloudStorage('completed_renders', []);
 
   // Real FFMPEG progress tracking
   useEffect(() => {
@@ -53,43 +38,43 @@ export const ProgressTab = () => {
       const updated = await Promise.all(updatedPromises);
         
       if (changed) {
-         setProjects(() => {
+         setProjects((prevProjects) => {
+           // We use the updated array which reflects new progress
            const stillActive = updated.filter(p => p.progress < 100);
            const newlyCompleted = updated.filter(p => p.progress >= 100);
            
            if (newlyCompleted.length > 0) {
-               // LIFO push each newly completed project — auto-ejects oldest if > 6
-               const existingCompleted = JSON.parse(localStorage.getItem('guru_completed_renders') || '[]');
-               let pushed = false;
-               newlyCompleted.forEach(p => {
-                 // Check if ID already exists to prevent duplication
-                 if (!existingCompleted.some(e => e.id === p.id)) {
-                     stackPush('guru_completed_renders', {
-                       id: p.id,
-                       name: p.name,
-                       date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
-                       path: p.result_file
-                     });
-                     pushed = true;
+               setCompletedRenders(prev => {
+                 let nextCompleted = [...prev];
+                 let pushed = false;
+                 newlyCompleted.forEach(p => {
+                   if (!nextCompleted.some(e => e.id === p.id)) {
+                       nextCompleted = [{
+                         id: p.id,
+                         name: p.name,
+                         date: new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }),
+                         path: p.result_file
+                       }, ...nextCompleted].slice(0, 50); // limit completed history to 50
+                       pushed = true;
+                   }
+                 });
+                 if (pushed) {
+                     window.dispatchEvent(new Event('guru_completed_updated'));
                  }
+                 return nextCompleted;
                });
-               if (pushed) {
-                   window.dispatchEvent(new Event('guru_completed_updated'));
-               }
             }
            
-           stackWrite('guru_active_renders', stillActive);
            return stillActive;
          });
       }
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [projects]);
+  }, [projects, setProjects, setCompletedRenders]);
 
   const handleCancel = (id) => {
-    const updated = projects.filter(p => p.id !== id);
-    saveProjects(updated);
+    setProjects(prev => prev.filter(p => p.id !== id));
   };
 
   return (

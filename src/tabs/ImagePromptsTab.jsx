@@ -242,7 +242,6 @@ ${scriptToAnalyze.substring(0, 2500)}`;
 
   useEffect(() => {
     loadScripts();
-    setPromptPools(stackRead('guru_image_prompt_pools'));
     window.addEventListener('guru_scripts_updated', loadScripts);
     return () => window.removeEventListener('guru_scripts_updated', loadScripts);
   }, []);
@@ -751,7 +750,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         count: total,
         date: new Date().toLocaleString()
       };
-      setPromptPools(stackPush('guru_image_prompt_pools', newPool));
+      setPromptPools(prev => [newPool, ...prev].slice(0, 50));
 
       return;
     }
@@ -913,7 +912,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         count: (finalContent || "").split('\n\n').filter(p => p.trim()).length,
         date: new Date().toLocaleString()
       };
-      setPromptPools(stackPush('guru_image_prompt_pools', newPool));
+      setPromptPools(prev => [newPool, ...prev].slice(0, 50));
 
     } catch (error) {
       console.error(error);
@@ -1029,7 +1028,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         count: (finalContent || "").split('\n\n').filter(p => p.trim()).length,
         date: new Date().toLocaleString()
       };
-      setPromptPools(stackPush('guru_image_prompt_pools', newPool));
+      setPromptPools(prev => [newPool, ...prev].slice(0, 50));
     } catch (error) {
       alert("Erro na geração paralela de roteiro: " + error.message);
     } finally {
@@ -1656,7 +1655,6 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
                <button 
                   onClick={() => {
                      if(confirm("Limpar todo o histórico?")) {
-                        localStorage.setItem('guru_image_prompt_pools', '[]');
                         setPromptPools([]);
                      }
                   }}
@@ -1680,7 +1678,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
                            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{pool.date}</p>
                         </div>
                         <button 
-                           onClick={() => setPromptPools(stackRemove('guru_image_prompt_pools', pool.id))}
+                           onClick={() => setPromptPools(prev => prev.filter(p => p.id !== pool.id))}
                            className="text-gray-700 hover:text-red-500"
                         >
                            <Trash2 className="w-3.5 h-3.5" />

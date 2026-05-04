@@ -232,7 +232,7 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
                 }
 
                 if (isAuthError(null, data)) {
-                  const err = new Error(errorMsg);
+                  const err = new Error("Chave de IA indisponível no momento. Tente novamente em instantes ou verifique suas configurações.");
                   err.status = 403;
                   throw err;
                 }

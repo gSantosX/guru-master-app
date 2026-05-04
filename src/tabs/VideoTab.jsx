@@ -6,12 +6,14 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { usePersistence } from '../contexts/PersistenceContext';
 import { translateSRT } from '../utils/aiUtils';
 import { stackRead, stackPush, MAX_STACK } from '../utils/stackUtils';
+import { useCloudStorage } from '../hooks/useCloudStorage';
 
 export const VideoTab = () => {
   const { videoState, setVideoState, updateVideoSettings, clearVideoState } = usePersistence();
   const { resolution, fps, transitionStyle, zoomStyle, zoomSpeed, filterStyle, outputDir, narrationVolume, videoVolume, musicVolume, encoder, renderPreset } = videoState.settings;
   const { audioFile, musicFile, imageFiles, videoFiles, subtitleFile } = videoState;
 
+  const [activeRenders, setActiveRenders] = useCloudStorage('active_renders', []);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [targetLang, setTargetLang] = useState('English');
@@ -19,7 +21,7 @@ export const VideoTab = () => {
   const [renderSuccess, setRenderSuccess] = useState(false);
   const [formKey, setFormKey] = useState(Date.now()); 
   const [selectedScriptId, setSelectedScriptId] = useState('');
-  const [availableScripts, setAvailableScripts] = useState([]);
+  const [availableScripts] = useCloudStorage('scripts', []);
 
   // ── Backend health state ────────────────────────────────────
   const [backendStatus, setBackendStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
@@ -65,11 +67,6 @@ export const VideoTab = () => {
   };
 
 
-  // Load scripts from localStorage on mount
-  useEffect(() => {
-    const savedScripts = JSON.parse(localStorage.getItem('guru_scripts') || '[]');
-    setAvailableScripts(Array.isArray(savedScripts) ? savedScripts : []);
-  }, []);
   const setAudioFile = (file) => setVideoState(prev => ({ ...prev, audioFile: file }));
   const setMusicFile = (file) => setVideoState(prev => ({ ...prev, musicFile: file }));
   const setImageFiles = (updater) => {
@@ -141,7 +138,6 @@ export const VideoTab = () => {
       return;
     }
 
-    const activeRenders = stackRead('guru_active_renders');
     if (activeRenders.length >= MAX_STACK) {
         alert(`Limite de ${MAX_STACK} renderizações simultâneas atingido.`);
         return;
@@ -215,9 +211,11 @@ export const VideoTab = () => {
          progress: 0, 
          color: 'neon-purple' 
       };
-      
       // LIFO stack push — newest first, max 6
-      stackPush('guru_active_renders', newProj);
+      setActiveRenders(prev => {
+        const next = [newProj, ...prev].slice(0, MAX_STACK);
+        return next;
+      });
       window.dispatchEvent(new Event('guru_active_updated'));
       
       setActiveJobId(data.job_id);

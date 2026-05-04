@@ -3,10 +3,12 @@ import { User, Camera, Globe, Mail, LogIn, CheckCircle, Shield, Languages, LogOu
 import { motion } from 'framer-motion';
 import { t } from '../utils/i18n';
 import { useAuth } from '../contexts/AuthContext';
+import { useCloudStorage } from '../hooks/useCloudStorage';
 
 export const ProfileTab = () => {
   const { user, logout } = useAuth();
-  const [profile, setProfile] = useState({
+  
+  const [profile, setProfile] = useCloudStorage('user_profile', {
     name: user?.name || localStorage.getItem('guru_user_name') || 'Usuário Guru',
     bio: localStorage.getItem('guru_user_bio') || 'Criador de conteúdo apaixonado por IA.',
     avatar: user?.picture || localStorage.getItem('guru_user_avatar') || null,

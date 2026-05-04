@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { Zap, Cpu, Shield, AlertTriangle, Check, Menu, X } from 'lucide-react';
 import { lazyWithRetry } from '../utils/apiUtils';
+import { useCloudStorage } from '../hooks/useCloudStorage';
 
 // Lazy loading das abas migradas do aplicativo local usando retry resiliente
 const ScriptTab = lazyWithRetry(() => import('../tabs/ScriptTab').then(m => ({ default: m.ScriptTab })));
@@ -52,9 +53,16 @@ export const GuruMasterApp = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   // Rastreia quais abas já foram visitadas (para lazy-mount: monta só na 1ª visita)
   const [mountedTabs, setMountedTabs] = useState(new Set(['dashboard']));
-  const [theme] = useState(localStorage.getItem('guru_theme') || 'neon');
-  const [reduceMotion] = useState(localStorage.getItem('guru_reduce_motion') === 'true');
-  const [fontSize] = useState(Number(localStorage.getItem('guru_app_font_size')) || 16);
+  
+  const [appSettings] = useCloudStorage('app_settings', {
+    theme: localStorage.getItem('guru_theme') || 'neon',
+    reduceMotion: localStorage.getItem('guru_reduce_motion') === 'true',
+    appFontSize: Number(localStorage.getItem('guru_app_font_size')) || 16
+  });
+  const theme = appSettings.theme;
+  const reduceMotion = appSettings.reduceMotion;
+  const fontSize = appSettings.appFontSize;
+  
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Fecha o menu mobile quando a aba muda
