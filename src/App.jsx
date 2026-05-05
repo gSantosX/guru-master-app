@@ -282,13 +282,13 @@ function AppContent() {
 function App() {
   return (
     <GlobalErrorBoundary>
-      <SystemStatusProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <SystemStatusProvider>
           <PersistenceProvider>
             <AppContent />
           </PersistenceProvider>
-        </AuthProvider>
-      </SystemStatusProvider>
+        </SystemStatusProvider>
+      </AuthProvider>
     </GlobalErrorBoundary>
   );
 }
