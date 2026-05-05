@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../utils/supabase';
 
 /**
- * useCloudStorage — Hook para sincronizar dados entre localStorage e Supabase.
- * Usa localStorage como cache local + fallback, e Supabase como fonte remota.
+ * useCloudStorage — Hook para armazenamento persistente via localStorage.
+ * Funciona como um useState sincronizado com localStorage.
  */
 export const useCloudStorage = (key, defaultValue = []) => {
   const storageKey = `guru_cloud_${key}`;
@@ -17,56 +16,26 @@ export const useCloudStorage = (key, defaultValue = []) => {
     }
   });
 
-  // Load from Supabase on mount
+  // Listen for cross-tab updates
   useEffect(() => {
-    const loadFromCloud = async () => {
-      try {
-        const userRaw = localStorage.getItem('guru_user');
-        if (!userRaw) return;
-        const user = JSON.parse(userRaw);
-        if (!user?.email) return;
-
-        const { data: rows, error } = await supabase
-          .from('guru_cloud_data')
-          .select('value')
-          .eq('user_email', user.email)
-          .eq('key', key)
-          .single();
-
-        if (!error && rows?.value) {
-          const parsed = typeof rows.value === 'string' ? JSON.parse(rows.value) : rows.value;
-          setDataState(parsed);
-          localStorage.setItem(storageKey, JSON.stringify(parsed));
-        }
-      } catch (e) {
-        console.warn(`[CloudStorage] Failed to load "${key}" from cloud:`, e.message);
+    const handler = (e) => {
+      if (e.key === storageKey && e.newValue) {
+        try {
+          setDataState(JSON.parse(e.newValue));
+        } catch {}
       }
     };
-    loadFromCloud();
-  }, [key, storageKey]);
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, [storageKey]);
 
-  // Setter: update local + cloud
-  const setData = useCallback(async (newValue) => {
+  const setData = useCallback((newValue) => {
     const value = typeof newValue === 'function' ? newValue(data) : newValue;
     setDataState(value);
-    localStorage.setItem(storageKey, JSON.stringify(value));
-
     try {
-      const userRaw = localStorage.getItem('guru_user');
-      if (!userRaw) return;
-      const user = JSON.parse(userRaw);
-      if (!user?.email) return;
-
-      await supabase
-        .from('guru_cloud_data')
-        .upsert({
-          user_email: user.email,
-          key,
-          value: JSON.stringify(value),
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_email,key' });
+      localStorage.setItem(storageKey, JSON.stringify(value));
     } catch (e) {
-      console.warn(`[CloudStorage] Failed to save "${key}" to cloud:`, e.message);
+      console.warn(`[CloudStorage] Failed to save "${key}":`, e.message);
     }
   }, [key, storageKey, data]);
 
@@ -74,26 +43,10 @@ export const useCloudStorage = (key, defaultValue = []) => {
 };
 
 /**
- * preloadUserCloudData — Preloads ALL cloud data for a user into localStorage.
- * Called on login/session restore to ensure fast local reads.
+ * preloadUserCloudData — No-op for compatibility.
+ * Data is loaded from localStorage on hook mount.
  */
 export const preloadUserCloudData = async (email) => {
-  if (!email) return;
-  try {
-    const { data: rows, error } = await supabase
-      .from('guru_cloud_data')
-      .select('key, value')
-      .eq('user_email', email);
-
-    if (!error && rows) {
-      rows.forEach(row => {
-        try {
-          localStorage.setItem(`guru_cloud_${row.key}`, typeof row.value === 'string' ? row.value : JSON.stringify(row.value));
-        } catch {}
-      });
-      console.log(`[CloudStorage] Preloaded ${rows.length} keys for ${email}`);
-    }
-  } catch (e) {
-    console.warn('[CloudStorage] Preload failed:', e.message);
-  }
+  // Data is already in localStorage — nothing to preload
+  return;
 };
