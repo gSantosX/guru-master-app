@@ -908,6 +908,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
     }
 
     try {
+      if (cancelRef.current) throw new Error("CANCELLED");
       
       let finalOutput = "";
       if (outputFormat === 'json') {
@@ -961,11 +962,15 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
       setPromptPools(stackPush('guru_image_prompt_pools', newPool));
 
     } catch (error) {
+      if (error.message === "CANCELLED") {
+        setPrompts("");
+        return;
+      }
       console.error(error);
       alert("Erro na geração paralela: " + error.message);
     } finally {
       setIsGenerating(false);
-      setGenerationProgress({ step: '', current: 0, total: 0 });
+      setGenerationProgress(prev => prev.step === 'Geração Cancelada' ? prev : { step: '', current: 0, total: 0 });
     }
   };
 
@@ -973,6 +978,8 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
     if (!selectedScriptId) return;
     const script = availableScripts.find(s => s.id === selectedScriptId);
     if (!script) return;
+
+    cancelRef.current = false;
 
     setIsGenerating(true);
     const styleInfo = getActiveStyle();
@@ -994,6 +1001,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
       const chunkStatuses = new Array(totalBlocks).fill("pending");
 
       const batchPromises = Array.from({ length: totalBlocks }, async (_, i) => {
+        if (cancelRef.current) throw new Error("CANCELLED");
         const startIdx = i * batchSize;
         const segment = scriptSegments.slice(startIdx, startIdx + batchSize).join(' ');
  
@@ -1036,6 +1044,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
       });
 
       const results = await Promise.all(batchPromises);
+      if (cancelRef.current) throw new Error("CANCELLED");
       const finalPrompts = resultsArray.filter(Boolean).join('\n\n');
       setPrompts(finalPrompts);
 
@@ -1056,10 +1065,14 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
       };
       setPromptPools(stackPush('guru_image_prompt_pools', newPool));
     } catch (error) {
+      if (error.message === "CANCELLED") {
+        setPrompts("");
+        return;
+      }
       alert("Erro na geração paralela de roteiro: " + error.message);
     } finally {
       setIsGenerating(false);
-      setGenerationProgress({ step: '', current: 0, total: 0 });
+      setGenerationProgress(prev => prev.step === 'Geração Cancelada' ? prev : { step: '', current: 0, total: 0 });
     }
   };
 
@@ -1462,7 +1475,12 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
               )}
               {isGenerating && (
                  <button
-                   onClick={() => { cancelRef.current = true; setIsCopied(true); setTimeout(() => setIsCopied(false), 2000); }}
+                   onClick={() => { 
+                      cancelRef.current = true; 
+                      setIsCopied(true); 
+                      setGenerationProgress({ step: 'Geração Cancelada', current: 0, total: 0 });
+                      setTimeout(() => setIsCopied(false), 2000); 
+                   }}
                    className="px-4 py-4 rounded-xl flex items-center justify-center gap-2 font-bold bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/30 transition-all hover:text-white hover:bg-red-500"
                    title="Cancelar Geração"
                  >
