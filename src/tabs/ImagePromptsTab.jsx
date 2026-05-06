@@ -163,7 +163,7 @@ EXTRACT:
 5. TEXTURE & GRAIN: Film grain, noise, sharpness, post-processing
 6. CAMERA STYLE: Lens type estimate, depth of field, focus style
 
-Return a SINGLE PARAGRAPH in English describing the visual style as a unified cinematographic direction. Be specific and technical. Max 150 words.` },
+Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified cinematographic direction. Be specific and technical. Max 150 words.` },
             { inline_data: { mime_type: mimeType, data: base64Data } }
           ]}],
           generationConfig: { maxOutputTokens: 500, temperature: 0.2 }
@@ -175,7 +175,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
         setRefImageStyle(style);
         return style;
       }
-      throw new Error(data.error?.message || 'Falha na análise da imagem');
+      throw new Error(data.error?.message || 'Falha na an�lise da imagem');
     } catch (err) {
       console.error('Image analysis error:', err);
       alert('Erro ao analisar imagem: ' + err.message);
@@ -210,8 +210,8 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
   };
 
   const loadScripts = () => {
-    // Agora o dropdown utilizarÃ¡ "cloudScripts" que jÃ¡ Ã© um estado reativo,
-    // mas mantemos este utilitÃ¡rio para caso o hook demore, ele ter fallback instantÃ¢neo.
+    // Agora o dropdown utilizará "cloudScripts" que já é um estado reativo,
+    // mas mantemos este utilitário para caso o hook demore, ele ter fallback instantâneo.
     const savedScripts = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
     const scriptsArray = Array.isArray(savedScripts) ? savedScripts : [];
     setAvailableScripts(scriptsArray);
@@ -222,7 +222,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
     let scriptToAnalyze = "";
     const targetId = forceScriptId || selectedScriptId;
 
-    console.log("ðŸ” [DNA_DEBUG] Iniciando anÃ¡lise para ID:", targetId);
+    console.log("�x� [DNA_DEBUG] Iniciando análise para ID:", targetId);
 
     if (targetId) {
       // Look in all possible sources: cloudScripts hook, availableScripts state, and localStorage
@@ -245,7 +245,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
       let script = merged.find(s => String(s.id) === String(targetId));
 
       if (!script) {
-        console.warn("âš ï¸ [DNA_DEBUG] Script nÃ£o encontrado no estado. Lendo localStorage...");
+        console.warn("�a�️ [DNA_DEBUG] Script não encontrado no estado. Lendo localStorage...");
         const freshScripts = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
         script = freshScripts.find(s => String(s.id) === String(targetId));
       }
@@ -268,7 +268,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
           setPrompts("");
         }
       } else {
-        console.error("âŒ [DNA_DEBUG] Script ID nÃ£o encontrado em nenhuma fonte:", targetId);
+        console.error("�R [DNA_DEBUG] Script ID não encontrado em nenhuma fonte:", targetId);
       }
     } else if (subtitleBlocks.length > 0) {
       scriptToAnalyze = subtitleBlocks.slice(0, 50).join('\n');
@@ -276,14 +276,14 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
 
 
     if (!scriptToAnalyze) {
-      alert("âš ï¸  Selecione um roteiro ou carregue uma legenda primeiro.");
+      alert("�a��  Selecione um roteiro ou carregue uma legenda primeiro.");
       return;
     }
 
-    // TURBO ENGINE: DNA Cache — skip API call if same script was analyzed before
+    // TURBO ENGINE: DNA Cache  skip API call if same script was analyzed before
     const cachedDNA = getDNACache(scriptToAnalyze);
     if (cachedDNA) {
-      console.log("⚡ [TURBO] DNA Cache HIT — pulando chamada API");
+      console.log("� [TURBO] DNA Cache HIT  pulando chamada API");
       setVisualDNA(cachedDNA);
       if (cachedDNA.rec_genero) setGenero(cachedDNA.rec_genero);
       if (cachedDNA.rec_camera) setCameraMovimento(cachedDNA.rec_camera);
@@ -295,24 +295,23 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
 
     setIsAnalyzing(true);
     try {
-      const analysisPrompt = `VocÃª Ã© um Diretor de Arte e de Fotografia de elite especializado em Cinema. 
-      ANALISE O ROTEIRO ABAIXO PARA EXTRAIR A IDENTIDADE VISUAL MESTRE E RECOMENDAR OS PARÃ‚METROS CINEMATOGRÃFICOS IDEAIS.
+      const analysisPrompt = `Você é um Diretor de Arte e de Fotografia de elite especializado em Cinema. 
+      ANALISE O ROTEIRO ABAIXO PARA EXTRAIR A IDENTIDADE VISUAL MESTRE E RECOMENDAR OS PAR�METROS CINEMATOGRÁFICOS IDEAIS.
       
-      FOCO DA ANÃLISE:
-      1. CENÃRIOS: Identifique os locais, arquitetura, texturas dominantes.
-      2. Ã‰POCA/AMBIENTE: PerÃ­odo exato ou estilo temporal.
+      FOCO DA ANÁLISE:
+      1. CENÁRIOS: Identifique os locais, arquitetura, texturas dominantes.
+      2. ÉPOCA/AMBIENTE: Período exato ou estilo temporal.
       3. ATMOSFERA (MOOD): Carga emocional visual.
-      4. ILUMINAÃ‡ÃƒO: Estilo de luz e temperatura.
+      4. ILUMINAÇÃO: Estilo de luz e temperatura.
       5. PALETA: 3 cores mestre.
-      6. CÃ‚MERA: Lentes e movimentos recomendados.
+      6. CÂMERA: Lentes e movimentos recomendados.
 
-      ALÃ‰M DISSO, selecione as TAGS mais adequadas entre estas opÃ§Ãµes (responda exatamente os nomes das tags):
-      - GÃŠNERO: FicÃ§Ã£o cientÃ­fica, Film noir, Terror, AnimaÃ§Ã£o 3D, DocumentÃ¡rio, Fantasia Ã©pica, Retrato cinematogrÃ¡fico, Anime
-      - CÃ‚MERA: Vista aÃ©rea, Na altura dos olhos, Vista de cima, Vista de baixo, Travelling, CÃ¢mera lenta, Zoom in, Pan lateral
-      - COMPOSIÃ‡ÃƒO: Plano geral, Close-up, Plano mÃ©dio, Retrato, Plano Ãºnico, Plano duplo
+      ALÉM DISSO, selecione as TAGS mais adequadas entre estas opções (responda exatamente os nomes das tags):
+      - GÊNERO: Ficção científica, Film noir, Terror, Animação 3D, Documentário, Fantasia épica, Retrato cinematográfico, Anime
+      - CÂMERA: Vista aérea, Na altura dos olhos, Vista de cima, Vista de baixo, Travelling, Câmera lenta, Zoom in, Pan lateral
+      - COMPOSIÇÃO: Plano geral, Close-up, Plano médio, Retrato, Plano único, Plano duplo
       - FOCO: Foco raso, Foco profundo, Lente macro, Grande-angular, Filtro difusor, Teleobjetiva
-      - ATMOSFERA: Tons azuis frios, Tons quentes dourados, Noite estrelada, Luz neon, PÃ´r do sol, NÃ©voa, Chuva, Alta exposiÃ§Ã£o
-
+      - ATMOSFERA: Tons azuis frios, Tons quentes dourados, Noite estrelada, Luz neon, Pôr do sol, Névoa, Chuva, Alta exposição
       RETORNE APENAS UM JSON NO FORMATO:
       {
         "scenario": "...", "era": "...", "mood": "...", "lighting": "...", "palette": "...", "camera": "...",
@@ -332,7 +331,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
       });
       const cleanJson = response.replace(/```json\n?|```/g, '').trim();
       const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('Resposta da IA nÃ£o contÃ©m JSON vÃ¡lido.');
+      if (!jsonMatch) throw new Error('Resposta da IA não contém JSON válido.');
       const dna = JSON.parse(jsonMatch[0]);
       
       setVisualDNA(dna);
@@ -346,8 +345,8 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
       if (dna.rec_atmosfera) setAtmosferaLuz(dna.rec_atmosfera);
 
     } catch (error) {
-      console.error("Erro na anÃ¡lise visual:", error);
-      alert("âŒ Falha na AnÃ¡lise Critica: " + error.message);
+      console.error("Erro na análise visual:", error);
+      alert("�R Falha na Análise Critica: " + error.message);
     } finally {
       setIsAnalyzing(false);
     }
@@ -467,7 +466,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
         rawText = text;
       }
 
-      // FORÃ‡AR A REGRA ABSOLUTA DE 16-22 PALAVRAS EM ARQUIVOS ANEXADOS!
+      // FOR�!AR A REGRA ABSOLUTA DE 16-22 PALAVRAS EM ARQUIVOS ANEXADOS!
       const veoData = generateVeoContent(rawText);
       const newParts = veoData.split(/\n\s*\n/).filter(p => p.trim());
       const blocks = newParts.map(p => {
@@ -538,7 +537,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
     setIsRepairing(true);
     setShowScanner(true);
     setErrorCount(0);
-    setRepairLogs(["Iniciando Agente de DiagnÃ³stico..."]);
+    setRepairLogs(["Iniciando Agente de Diagnóstico..."]);
     
     try {
       await new Promise(r => setTimeout(r, 400)); // Visual "processing" delay
@@ -562,7 +561,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
         // Ensure each [PROMPT]: (except the first) has exactly two newlines before it
         repaired = repaired.replace(/([^\n]+)\s*(\[PROMPT\]:)/gi, '$1\n\n$2');
         
-        logs.push("âœ“ Normalizando estrutura e espaÃ§amento Veo 3.1");
+        logs.push("�S Normalizando estrutura e espaçamento Veo 3.1");
       } else {
         // Fix 1: Legacy format - If NEGATIVE PROMPT is on its own separate line, join it to the previous PROMPT line
         repaired = repaired.replace(/([^\n]+)\s*\n\s*(NEGATIVE PROMPT:)/gi, '$1 $2');
@@ -573,13 +572,13 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
         // Fix 2: Remove any extra blank lines WITHIN a prompt block
         repaired = repaired.replace(/(PROMPT:.*?)\s*\n+\s*(NEGATIVE PROMPT:)/gim, '$1 $2');
         
-        logs.push("âœ“ Normalizando estrutura de blocos Legados");
+        logs.push("�S Normalizando estrutura de blocos Legados");
       }
 
       // Fix: Ensure exactly one blank line between blocks (remove 3+ newlines)
       repaired = repaired.replace(/\n{3,}/g, '\n\n');
       repaired = repaired.trim();
-      logs.push("âœ“ Garantindo linha em branco entre prompts");
+      logs.push("�S Garantindo linha em branco entre prompts");
 
       setRepairLogs(prev => [...prev, ...logs]);
       await new Promise(r => setTimeout(r, 600));
@@ -587,7 +586,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
       // PHASE 2: AI REPAIR (Fallback)
       const res = await runFastVerification(repaired);
       if (!res.allOk) {
-        setRepairLogs(prev => [...prev, "ðŸš¨ InconsistÃªncia CrÃ­tica: Acionando Reparo via IA..."]);
+        setRepairLogs(prev => [...prev, "�xa� Inconsistência Crítica: Acionando Reparo via IA..."]);
         
         const repairFormat = isVeoFormat
           ? `[PROMPT]: [Text] [NEGATIVO]: [Text] (SAME LINE, with exactly one space between them). Pular uma linha entre cada conjunto.`
@@ -603,18 +602,18 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
         
         const aiRepaired = await callGemini(getPromptsApiKey(configs), repairPrompt, { model: 'gemini-2.0-flash-lite' });
         repaired = aiRepaired.trim();
-        setRepairLogs(prev => [...prev, "âœ“ Reparo de Estrutura via IA ConcluÃ­do"]);
+        setRepairLogs(prev => [...prev, "�S Reparo de Estrutura via IA Concluído"]);
       }
 
       setPrompts(repaired);
       setIsVerified(true);
       setErrorCount(0);
-      setRepairLogs(prev => [...prev, "âœ¨ Integridade Garantida: Pronto para Copiar/Baixar!"]);
+      setRepairLogs(prev => [...prev, "�S� Integridade Garantida: Pronto para Copiar/Baixar!"]);
       await new Promise(r => setTimeout(r, 1000));
       return repaired;
     } catch (e) {
       console.error("Repair error:", e);
-      setRepairLogs(prev => [...prev, "âœ– Erro no Reparo: Informe suporte."]);
+      setRepairLogs(prev => [...prev, "�S Erro no Reparo: Informe suporte."]);
       return content;
     } finally {
       setIsRepairing(false);
@@ -631,43 +630,43 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
   };
 
   // Cine param data
-  const GENERO_TAGS = ['Ultra-realista', 'Cinema (Blockbuster)', 'Cartoon / AnimaÃ§Ã£o', 'DocumentÃ¡rio', 'Film Noir', 'FicÃ§Ã£o CientÃ­fica', 'Terror / Dark', 'Fantasia Ã‰pica', 'Anime'];
-  const CAMERA_TAGS = ['Vista aÃ©rea', 'Na altura dos olhos', 'Vista de cima', 'Vista de baixo', 'Travelling', 'CÃ¢mera lenta', 'Zoom in', 'Pan lateral'];
-  const COMPOSICAO_TAGS = ['Plano geral', 'Close-up', 'Plano mÃ©dio', 'Retrato', 'Plano Ãºnico', 'Plano duplo'];
+  const GENERO_TAGS = ['Ultra-realista', 'Cinema (Blockbuster)', 'Cartoon / Animação', 'Documentário', 'Film Noir', 'Ficção Científica', 'Terror / Dark', 'Fantasia �0pica', 'Anime'];
+  const CAMERA_TAGS = ['Vista aérea', 'Na altura dos olhos', 'Vista de cima', 'Vista de baixo', 'Travelling', 'Câmera lenta', 'Zoom in', 'Pan lateral'];
+  const COMPOSICAO_TAGS = ['Plano geral', 'Close-up', 'Plano médio', 'Retrato', 'Plano único', 'Plano duplo'];
   const FOCO_TAGS = ['Foco raso', 'Foco profundo', 'Lente macro', 'Grande-angular', 'Filtro difusor', 'Teleobjetiva'];
-  const ATMOSFERA_TAGS = ['Tons azuis frios', 'Tons quentes dourados', 'Noite estrelada', 'Luz neon', 'PÃ´r do sol', 'NÃ©voa', 'Chuva', 'Alta exposiÃ§Ã£o'];
+  const ATMOSFERA_TAGS = ['Tons azuis frios', 'Tons quentes dourados', 'Noite estrelada', 'Luz neon', 'Pôr do sol', 'Névoa', 'Chuva', 'Alta exposição'];
 
   const getSystemPrompt = () => {
     // Build cinematographic brief from selected parameters
     const cineParams = [
-      genero ? `- Estilo/GÃªnero: ${genero}` : '',
-      cameraMovimento?.length ? `- CÃ¢mera & Movimento: ${cameraMovimento.join(', ')}` : '',
-      composicao?.length ? `- ComposiÃ§Ã£o: ${composicao.join(', ')}` : '',
+      genero ? `- Estilo/Gênero: ${genero}` : '',
+      cameraMovimento?.length ? `- Câmera & Movimento: ${cameraMovimento.join(', ')}` : '',
+      composicao?.length ? `- Composição: ${composicao.join(', ')}` : '',
       focoLente?.length ? `- Foco & Lente: ${focoLente.join(', ')}` : '',
       atmosferaLuz?.length ? `- Atmosfera & Luz: ${atmosferaLuz.join(', ')}` : '',
     ].filter(Boolean).join('\n    ');
 
     const imageStyleBlock = refImageStyle ? `
-    ## ESTILO VISUAL DE REFERÊNCIA (EXTRAÍDO DE IMAGEM — PRIORIDADE MÁXIMA)
+    ## ESTILO VISUAL DE REFER�NCIA (EXTRA�DO DE IMAGEM  PRIORIDADE M�XIMA)
     ${refImageStyle}
-    - REGRA: Todos os prompts DEVEM replicar fielmente este estilo visual. Cores, iluminação, mood e composição devem ser consistentes com a referência.
+    - REGRA: Todos os prompts DEVEM replicar fielmente este estilo visual. Cores, ilumina��o, mood e composi��o devem ser consistentes com a refer�ncia.
     ` : '';
 
     const dnaContext = `
-    ## PILAR VISUAL OBRIGATÓRIO (FUNDAÇÃO DO VÍDEO)
-    - ESTILO BASE: ${genero || 'Ultra-realista (Padrão)'}
-    - REGRA DE CONSISTÊNCIA: 100% dos prompts devem seguir este estilo. É PROIBIDO variar o estilo visual entre as cenas.
+    ## PILAR VISUAL OBRIGAT�RIO (FUNDA��O DO V�DEO)
+    - ESTILO BASE: ${genero || 'Ultra-realista (Padr�o)'}
+    - REGRA DE CONSIST�NCIA: 100% dos prompts devem seguir este estilo. � PROIBIDO variar o estilo visual entre as cenas.
     ${imageStyleBlock}
-    ## DNA VISUAL DO ROTEIRO (REGRAS INVIOLÁVEIS)
-    - Cenário e Arquitetura: ${visualDNA.scenario || 'A ser definido'}
-    - Época/Ambiente: ${visualDNA.era || 'A ser definido'}
+    ## DNA VISUAL DO ROTEIRO (REGRAS INVIOL�VEIS)
+    - Cen�rio e Arquitetura: ${visualDNA.scenario || 'A ser definido'}
+    - �poca/Ambiente: ${visualDNA.era || 'A ser definido'}
     - Mood Emocional: ${visualDNA.mood || 'A ser definido'}
-    - Iluminação Mestre: ${visualDNA.lighting || 'A ser definido'}
+    - Ilumina��o Mestre: ${visualDNA.lighting || 'A ser definido'}
     - Paleta de Cores: ${visualDNA.palette || 'A ser definido'}
-    - Linguagem de Câmera base: ${visualDNA.camera || 'A ser definido'}
+    - Linguagem de C�mera base: ${visualDNA.camera || 'A ser definido'}
 
-    ## PARÂMETROS CINEMATOGRÁFICOS SELECIONADOS (PRIORIDADE MÁXIMA)
-    ${cineParams || '- Nenhum parâmetro específico selecionado — use criatividade baseada no DNA acima'}
+    ## PAR�METROS CINEMATOGR�FICOS SELECIONADOS (PRIORIDADE M�XIMA)
+    ${cineParams || '- Nenhum par�metro espec�fico selecionado  use criatividade baseada no DNA acima'}
     `;
 
     const speechInstruction = promptState.speechMode === 'true' 
@@ -675,85 +674,85 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
       : "ABSOLUTE FORBIDDEN SPEECH: DO NOT include any dialogue, speaking actions, or mouth movements. The subject must NOT be speaking. Focus on silence and atmosphere.";
 
     const realismInstruction = `
-      ## LEIS DA FÃ SICA E REALISMO (CRÃ TICO)
-      1. REALISMO ULTRA: O visual deve ser indistinguÃ­vel da realidade atual. Proibido elementos de ficÃ§Ã£o ou tecnologia impossÃ­vel.
-      2. LOGICA DA FÃ SICA: Respeite a gravidade e a luz natural. Nada flutua.
-      3. ZERO FANTASIA: Sem efeitos mÃ¡gicos ou brilhos irreais.
+      ## LEIS DA F� SICA E REALISMO (CR� TICO)
+      1. REALISMO ULTRA: O visual deve ser indistinguível da realidade atual. Proibido elementos de ficção ou tecnologia impossível.
+      2. LOGICA DA F� SICA: Respeite a gravidade e a luz natural. Nada flutua.
+      3. ZERO FANTASIA: Sem efeitos mágicos ou brilhos irreais.
     `;
 
     const dynamismEngine = `
-      ## MOTOR DE DINAMISMO CINEMATOGRÃ FICO (REGRAS DE OURO)
-      1. ANTI-MONOTONIA: Varie os Ã¢ngulos e tipos de plano entre as cenas (Ex: Se a cena anterior foi Close-up, a atual deve ser Plano Geral ou MÃ©dio). Crie um ritmo de montagem profissional.
-      2. CAMADAS DE DETALHAMENTO (OBRIGATÃ“RIO):
-         - Camada Sensorial: Descreva o ambiente fÃ­sico (temperatura, partÃ­culas de poeira no ar, reflexos em superfÃ­cies, texturas de tecidos).
-         - Camada de Engenharia Ã“ptica: Use termos tÃ©cnicos reais (lentes 35mm f/1.4, bokeh orgÃ¢nico, grÃ£o de filme 35mm).
-         - Camada de IntenÃ§Ã£o Narrativa: Descreva a emoÃ§Ã£o da cena atravÃ©s de movimentos fÃ­sicos (hesitaÃ§Ã£o, pressa, tensÃ£o muscular).
+      ## MOTOR DE DINAMISMO CINEMATOGRÁFICO (REGRAS DE OURO)
+      1. ANTI-MONOTONIA: Varie os ângulos e tipos de plano entre as cenas (Ex: Se a cena anterior foi Close-up, a atual deve ser Plano Geral ou Médio). Crie um ritmo de montagem profissional.
+      2. CAMADAS DE DETALHAMENTO (OBRIGATÓRIO):
+         - Camada Sensorial: Descreva o ambiente físico (temperatura, partículas de poeira no ar, reflexos em superfícies, texturas de tecidos).
+         - Camada de Engenharia Óptica: Use termos técnicos reais (lentes 35mm f/1.4, bokeh orgânico, grão de filme 35mm).
+         - Camada de Intenção Narrativa: Descreva a emoção da cena através de movimentos físicos (hesitação, pressa, tensão muscular).
     `;
 
     if (genMode === 'fast') {
       if (promptType === 'video') {
         // Fast Veo 3.1 format
-        return `VocÃª Ã© um Diretor CinematogrÃ¡fico AI de elite especialista em Veo 3.1.
+        return `Você é um Diretor Cinematográfico AI de elite especialista em Veo 3.1.
       COMANDO: GERE PROMPTS EXTREMAMENTE ROBUSTOS (80-150 PALAVRAS) PARA VEO 3.1.
       ${dnaContext}
       ${realismInstruction}
       ${dynamismEngine}
-      REGRA ABSOLUTA: Cada prompt DEVE conter: 1. Sujeito Detalhado, 2. AÃ§Ã£o FÃ­sica, 3. CenÃ¡rio/Ambiente, 4. Estilo de CÃ¢mera/Lente e 5. IluminaÃ§Ã£o/Atmosfera.
+      REGRA ABSOLUTA: Cada prompt DEVE conter: 1. Sujeito Detalhado, 2. Ação Física, 3. Cenário/Ambiente, 4. Estilo de Câmera/Lente e 5. Iluminação/Atmosfera.
       ${speechInstruction}
-      PROIBIDO: NÃƒO ADICIONE TÃ TULOS OU CABEÃ‡ALHOS. Responda em INGLÃŠS.
+      PROIBIDO: NÃO ADICIONE TÍTULOS OU CABEÇALHOS. Responda em INGLÊS
       
-      ## FORMATO OBRIGATÃ“RIO:
+      ## FORMATO OBRIGATÓRIO:
       [PROMPT]: [Content in one line][NEGATIVO]: [Negative list]
       [linha em branco]
       
-      ${outputFormat === 'json' ? `SAÃ DA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÃ DA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}. 
-      REGRA DE EXTENSÃƒO: Cada prompt deve ser extremamente robusto, com 80-150 palavras (Prompt + Negativo).`;
+      ${outputFormat === 'json' ? `SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}. 
+      REGRA DE EXTENSÃO: Cada prompt deve ser extremamente robusto, com 80-150 palavras (Prompt + Negativo).`;
       } else {
         return `You are an ELITE Image Prompt Engineer.
       COMMAND: PRODUCE FAST, HIGH-QUALITY IMAGE PROMPTS.
       ${dnaContext}
       STRICT RULE: Every prompt MUST respect the Visual DNA above. Response MUST be in ENGLISH.
-      ${outputFormat === 'json' ? `SAÃ DA FINAL: JSON [ { "id": X, "prompt": "..." }, ... ]` : `SAÃ DA FINAL: ID|PROMPT (one per line)`}`;
+      ${outputFormat === 'json' ? `SAÍDA FINAL: JSON [ { "id": X, "prompt": "..." }, ... ]` : `SAÍDA FINAL: ID|PROMPT (one per line)`}`;
       }
     } else {
       // MODO QUALIDADE ELITE
       if (promptType === 'video') {
-        // VEO 3.1 GOLD STANDARD â€” InstruÃ§Ãµes completas
-        const veoExample = `[PROMPT]: A middle-aged man in a realistic blue denim shirt sitting at a wooden table in a dimly lit, contemporary kitchen, resting his chin on his hand while looking out the window at a rainy street, raindrops splashing realistically against the glass pane according to physics, natural cold lighting from the overcast sky outside, hyper-realistic skin textures including pores and fine wrinkles, cinematic drama style with realistic lens blur, 35mm photography aesthetic, ambient sound of rain hitting the roof and the distant sound of a car driving by on a wet road.[NEGATIVO]: fiction, fantasy, sci-fi, magical elements, glowing eyes, floating objects, impossible physics, bright neon colors, anime, cartoon, 3D render, CGI look, smooth plastic skin, missing textures, distorted anatomy, talking, moving mouth, speech bubbles, text, watermark.`;
+        // VEO 3.1 GOLD STANDARD - Instruções completas
+        const veoExample = `[PROMPT]: A middle-aged man in a realistic blue denim shirt sitting at a wooden table in a dimly lit, contemporary kitchen, resting his chin on his hand while looking out the window at a rainy street, raindrops splashing realistically against the glass pane according to physics, natural cold lighting from the overcast sky outside, hyper-realistic skin textures including pores and fine wrinkles, cinematic drama style with realistic lens blur, 35mm photography aesthetic, ambient sound of rain hitting the roof and the distant sound of a car driving by on a wet road. [NEGATIVO]: fiction, fantasy, sci-fi, magical elements, glowing eyes, floating objects, impossible physics, bright neon colors, anime, cartoon, 3D render, CGI look, smooth plastic skin, missing textures, distorted anatomy, talking, moving mouth, speech bubbles, text, watermark.`;
 
-        return `VocÃª Ã© o SUPREMO Diretor CinematogrÃ¡fico AI e Engenheiro de Prompts para Veo 3.1.
-      COMANDO: GERE PROMPTS CINEMATOGRÃ FICOS MAGISTRAIS SEGUINDO O PADRÃƒO OURO VEO 3.1.
-      PROIBIDO: NÃƒO ADICIONE TÃ TULOS, NOMES DE CENAS OU CABEÃ‡ALHOS.
+        return `Você é o SUPREMO Diretor Cinematográfico AI e Engenheiro de Prompts para Veo 3.1.
+      COMANDO: GERE PROMPTS CINEMATOGRÁFICOS MAGISTRAIS SEGUINDO O PADRÃO OURO VEO 3.1.
+      PROIBIDO: NÃO ADICIONE TÍTULOS, NOMES DE CENAS OU CABEÇALHOS.
       ${speechInstruction}
       ${realismInstruction}
       ${dynamismEngine}
 
-      ## EXEMPLO PADRÃƒO OURO (HIPER-REALISMO):
+      ## EXEMPLO PADRÃO OURO (HIPER-REALISMO):
       ${veoExample}
 
       ${dnaContext}
 
-      ## REGRAS DE CONSTRUÃ‡ÃƒO DO PROMPT (OBRIGATÃ“RIO â€” nesta ordem):
-      Cada prompt deve conter TODOS os elementos abaixo em frase contÃ­nua e fluida em INGLÃŠS:
-      1. SUJEITO â€” mÃ¡ximo detalhe fÃ­sico, vestuÃ¡rio, expressÃ£o facial e caracterÃ­sticas Ãºnicas.
-      2. AÃ‡ÃƒO â€” verbos precisos e advÃ©rbios expressivos (ex: "caminha lentamente", "vira a cabeÃ§a de forma brusca").
-      3. CENÃ RIO â€” ambiente, Ã©poca, arquitetura, vegetaÃ§Ã£o, clima e elementos de fundo.
-      4. ESTILO CINEMATOGRÃ FICO â€” gÃªnero, referÃªncias de direÃ§Ã£o e sensaÃ§Ã£o geral.
-      5. MOVIMENTO DE CÃ‚MERA â€” tipo de plano, Ã¢ngulo e movimento (ex: travelling lateral, drone, altura dos olhos).
-      6. COMPOSIÃ‡ÃƒO â€” plano geral, close-up, plano mÃ©dio, retrato, plano Ãºnico ou duplo.
-      7. FOCO E LENTE â€” bokeh, lente macro, grande-angular, teleobjetiva, filtro difusor.
-      8. ATMOSFERA E ILUMINAÃ‡ÃƒO â€” hora do dia, tipo de luz, temperatura de cor, sombras, contraste.
-      9. Ã UDIO â€” ${promptState.speechMode === 'true' ? 'Inclua diÃ¡logos autÃªnticos entre aspas e ambiÃªncia real.' : 'PROIBIDO FALAS. Apenas ambiÃªncia fÃ­sica e sons mecÃ¢nicos reais.'}
+      ## REGRAS DE CONSTRUÇÃO DO PROMPT (OBRIGATÓRIO — nesta ordem):
+      Cada prompt deve conter TODOS os elementos abaixo em frase contínua e fluida em INGLÊS:
+      1. SUJEITO — máximo detalhe físico, vestuário, expressão facial e características únicas.
+      2. AÇÃO — verbos precisos e advérbios expressivos (ex: "caminha lentamente", "vira a cabeça de forma brusca").
+      3. CENÁRIO — ambiente, época, arquitetura, vegetação, clima e elementos de fundo.
+      4. ESTILO CINEMATOGRÁFICO — gênero, referências de direção e sensação geral.
+      5. MOVIMENTO DE CÂMERA — tipo de plano, ângulo e movimento (ex: travelling lateral, drone, altura dos olhos).
+      6. COMPOSIÇÃO — plano geral, close-up, plano médio, retrato, plano único ou duplo.
+      7. FOCO E LENTE — bokeh, lente macro, grande-angular, teleobjetiva, filtro difusor.
+      8. ATMOSFERA E ILUMINAÇÃO — hora do dia, tipo de luz, temperatura de cor, sombras, contraste.
+      9. ÁUDIO — ${promptState.speechMode === 'true' ? 'Inclua diálogos autênticos entre aspas e ambiência real.' : 'PROIBIDO FALAS. Apenas ambiência física e sons mecânicos reais.'}
 
-      ## REGRAS DO PROMPT NEGATIVO (EM INGLÃŠS):
-      Liste separados por vÃ­rgula: problemas tÃ©cnicos + problemas visuais especÃ­ficos da cena + elementos de conteÃºdo indesejados + inconsistÃªncias de estilo + movimentos nÃ£o naturais.
+      ## REGRAS DO PROMPT NEGATIVO (EM INGLÊS):
+      Liste separados por vírgula: problemas técnicos + problemas visuais específicos da cena + elementos de conteúdo indesejados + inconsistências de estilo + movimentos não naturais.
 
-      ## CONSISTÃŠNCIA VISUAL:
-      Mantenha rigorosamente o mesmo estilo, paleta e atmosfera em TODOS os prompts para garantir coesÃ£o visual absoluta em todo o vÃ­deo.
+      ## CONSISTÊNCIA VISUAL:
+      Mantenha rigorosamente o mesmo estilo, paleta e atmosfera em TODOS os prompts para garantir coesão visual absoluta em todo o vídeo.
 
       NÍVEL DE DETALHE (REGRA ABSOLUTA): 80-150 PALAVRAS por prompt (Prompt + Negativo). Evite termos vagos — use descritores concretos, sensoriais e técnicos.
       IDIOMA: SEMPRE Inglês (English).
-      ${outputFormat === 'json' ? `## SAÍDA FINAL: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA FINAL: UM BLOCO POR LEGENDA — [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
+      ${outputFormat === 'json' ? `## SAÍDA FINAL: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA FINAL: UM BLOCO POR LEGENDA   [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
       } else {
         // Image Gold Standard (legacy format)
         const eliteExample = `PROMPT: A slow, deliberate tracking shot moves through a claustrophobic corridor within the Brocken Sendeanlage in 1978, revealing a scene of technological decay and encroaching dread; the cold, raw concrete walls, stained with streaks of dampness and peeling lead paint, are a dominant grey-blue, contrasted by thick bundles of olive-green, rubber-coated cables snaking across the floor and up the walls, all showing signs of age and neglect; 8K resolution, 35mm film grain, hyper-realistic textures, dramatic chiaroscuro. NEGATIVE PROMPT: bright colors, neon, saturation, sunshine, blue sky, people, modern technology, clean surfaces, CGI, 3D render, cartoon, anime, watercolor, text, watermark, signature, logo.`;
@@ -770,7 +769,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
       PROMPT: [Details] NEGATIVE PROMPT: [Details]
       [EMPTY LINE AFTER EACH BLOCK]
 
-      ${outputFormat === 'json' ? `## OUTPUT: JSON [ { "id": X, "prompt": "...", "negative": "..." }, ... ]` : `## OUTPUT: SINGLE LINE PER PROMPT BLOCK (PROMPT: ... NEGATIVE PROMPT: ...)`}`;
+      ${outputFormat === 'json' ? `## OUTPUT: JSON [ { "id": X, "prompt": "...", "negative": "..." }, ... ]` : `## OUTPUT: SINGLÊS LINE PER PROMPT BLOCK (PROMPT: ... NEGATIVE PROMPT: ...)`}`;
       }
     }
   };
@@ -782,7 +781,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
     
     const CHUNK_SIZE = 25;
     const totalChunks = Math.ceil(subtitleBlocks.length / CHUNK_SIZE);
-    setGenerationProgress({ step: '⚡ Turbo Engine: Iniciando...', current: 0, total: totalChunks, statuses: new Array(totalChunks).fill("pending") });
+    setGenerationProgress({ step: '� Turbo Engine: Iniciando...', current: 0, total: totalChunks, statuses: new Array(totalChunks).fill("pending") });
  
     const resultsStorage = new Array(totalChunks).fill("");
     const chunkStatuses = new Array(totalChunks).fill("pending");
@@ -823,12 +822,12 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
           const isJson = outputFormat === 'json';
           const isVeoVideoMode = promptType === 'video' && genMode === 'quality';
           const countRuleLang = isVeoVideoMode
-            ? `REGRA OBRIGATÓRIA: Gere EXATAMENTE ${chunkSubtitleCount} prompts. NÃO ADICIONE TÍTULOS. Responda APENAS com os blocos [PROMPT]: e [NEGATIVO]:.`
+            ? `REGRA OBRIGAT�RIA: Gere EXATAMENTE ${chunkSubtitleCount} prompts. N�O ADICIONE T�TULOS. Responda APENAS com os blocos [PROMPT]: e [NEGATIVO]:.`
             : `MANDATORY RULE: Generate EXACTLY ${chunkSubtitleCount} prompts. DO NOT ADD TITLES, HEADERS, OR INTROS.`;
           const generateLabel = isVeoVideoMode
             ? `GERE EXATAMENTE ${chunkSubtitleCount} PROMPTS VEO 3.1:`
             : `GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
-          const promptParam = `${getSystemPrompt()}\n\n---\n${countRuleLang}\nVOCÊ DEVE GERAR EXATAMENTE ${chunkSubtitleCount} BLOCOS.\n---\n\nINPUT (CHUNK ${i+1}) - ${chunkSubtitleCount} SUBTITLES:\n${formattedInput}\n\n${generateLabel}`;
+          const promptParam = `${getSystemPrompt()}\n\n---\n${countRuleLang}\nVOC� DEVE GERAR EXATAMENTE ${chunkSubtitleCount} BLOCOS.\n---\n\nINPUT (CHUNK ${i+1}) - ${chunkSubtitleCount} SUBTITLES:\n${formattedInput}\n\n${generateLabel}`;
 
           let retryCount = 0, success = false, lastError = null;
           while (!success && retryCount < 4 && !cancelRef.current) {
@@ -837,7 +836,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                 const isRateLimit = lastError && (lastError.message.includes('quota') || lastError.message.includes('429') || lastError.message.includes('exhausted'));
                 const delayTime = isRateLimit ? 35000 : 3000;
                 chunkStatuses[i] = "retrying";
-                setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: retryCount === 3 ? `Segurança: Individuais Bloco ${i+1}...` : (isRateLimit ? `Pausa (${delayTime/1000}s) Bloco ${i+1}...` : `Retry ${retryCount}/3 Bloco ${i+1}...`) }));
+                setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: retryCount === 3 ? `Seguran�a: Individuais Bloco ${i+1}...` : (isRateLimit ? `Pausa (${delayTime/1000}s) Bloco ${i+1}...` : `Retry ${retryCount}/3 Bloco ${i+1}...`) }));
                 await new Promise(r => setTimeout(r, delayTime));
               }
 
@@ -852,12 +851,12 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                   let cleanedSub = subResp.trim().replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
                   const line = cleanedSub.split('\n').find(l => l.includes('[PROMPT]:')) || cleanedSub;
                   individualText += (individualText ? "\n\n" : "") + line;
-                  setGenerationProgress(prev => ({ ...prev, step: `Segurança: ${subIdx+1}/${currentChunk.length} Bloco ${i+1}` }));
+                  setGenerationProgress(prev => ({ ...prev, step: `Seguran�a: ${subIdx+1}/${currentChunk.length} Bloco ${i+1}` }));
                 }
                 responseText = individualText;
               } else {
                 chunkStatuses[i] = "generating";
-                setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: `⚡ Turbo: Bloco ${i+1}/${totalChunks}...` }));
+                setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: `� Turbo: Bloco ${i+1}/${totalChunks}...` }));
                 responseText = await callGemini(getPromptsApiKey(configs), promptParam, { model: 'gemini-2.0-flash-lite' });
               }
 
@@ -900,7 +899,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
 
         if (!cancelRef.current) {
           const doneCount = chunkStatuses.filter(s => s === 'done').length;
-          setGenerationProgress(prev => ({ ...prev, current: doneCount, statuses: [...chunkStatuses], step: `⚡ Turbo: ${doneCount}/${totalChunks} concluídos` }));
+          setGenerationProgress(prev => ({ ...prev, current: doneCount, statuses: [...chunkStatuses], step: `� Turbo: ${doneCount}/${totalChunks} conclu�dos` }));
         }
       }
       chunksToProcess = nextFailedChunks;
@@ -934,14 +933,14 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
       if (!verif.allOk) {
         setGenerationProgress(prev => ({ 
            ...prev, 
-           step: `ðŸš¨ TRAMA CORROMPIDA: Corrigindo ${verif.issues.length} blocos com formataÃ§Ã£o invÃ¡lida...` 
+           step: `�xa� TRAMA CORROMPIDA: Corrigindo ${verif.issues.length} blocos com formatação inválida...` 
         }));
         finalContent = await handleAutomaticRepair(finalOutput);
       }
 
       setPrompts(finalContent);
       setGenerationProgress({ 
-        step: 'GeraÃ§Ã£o ConcluÃ­da!', 
+        step: 'Geração Concluída!', 
         current: totalChunks, 
         total: totalChunks, 
         statuses: chunkStatuses 
@@ -962,7 +961,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
 
     } catch (error) {
       console.error(error);
-      alert("Erro na geraÃ§Ã£o paralela: " + error.message);
+      alert("Erro na geração paralela: " + error.message);
     } finally {
       setIsGenerating(false);
       setGenerationProgress({ step: '', current: 0, total: 0 });
@@ -984,7 +983,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
       const totalBlocks = Math.ceil(scriptSegments.length / batchSize);
       
       setGenerationProgress({ 
-        step: 'Iniciando GeraÃ§Ã£o Paralela...', 
+        step: 'Iniciando Geração Paralela...', 
         current: 0, 
         total: totalBlocks,
         statuses: new Array(totalBlocks).fill("pending")
@@ -1056,7 +1055,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
       };
       setPromptPools(stackPush('guru_image_prompt_pools', newPool));
     } catch (error) {
-      alert("Erro na geraÃ§Ã£o paralela de roteiro: " + error.message);
+      alert("Erro na geração paralela de roteiro: " + error.message);
     } finally {
       setIsGenerating(false);
       setGenerationProgress({ step: '', current: 0, total: 0 });
@@ -1120,7 +1119,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
           Gerador de Prompts
         </h2>
         <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-neon-pink pl-4 ml-2 italic">
-          Engenharia de Prompts de Alta Fidelidade para VÃ­deos e Imagens
+          Engenharia de Prompts de Alta Fidelidade para Vídeos e Imagens
         </p>
       </header>
 
@@ -1130,7 +1129,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
               <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20">
                  <FileText className="w-4 h-4 text-neon-purple" />
               </div>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fidelidade MÃ¡xima</span>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fidelidade Máxima</span>
            </div>
            
            <select 
@@ -1153,8 +1152,8 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                 <Eye className="w-4 h-4 text-neon-purple" />
               </div>
               <div>
-                <h3 className="text-xs font-black text-white uppercase tracking-widest">Referência Visual</h3>
-                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Opcional — Cole uma imagem para replicar o estilo</p>
+                <h3 className="text-xs font-black text-white uppercase tracking-widest">Refer�ncia Visual</h3>
+                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Opcional  Cole uma imagem para replicar o estilo</p>
               </div>
             </div>
             {refImagePreview && (
@@ -1176,13 +1175,13 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
               </div>
               <div className="text-center">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Arraste uma imagem ou clique para enviar</p>
-                <p className="text-[8px] text-gray-600 uppercase tracking-widest mt-1">JPG, PNG, WEBP — A IA extrairá o estilo visual</p>
+                <p className="text-[8px] text-gray-600 uppercase tracking-widest mt-1">JPG, PNG, WEBP  A IA extrair� o estilo visual</p>
               </div>
             </div>
           ) : (
             <div className="flex gap-4">
               <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-white/10 shrink-0">
-                <img src={refImagePreview} alt="Referência" className="w-full h-full object-cover" />
+                <img src={refImagePreview} alt="Refer�ncia" className="w-full h-full object-cover" />
                 {isAnalyzingImage && (
                   <div className="absolute inset-0 bg-dark/70 flex items-center justify-center backdrop-blur-sm">
                     <Loader2 className="w-6 h-6 animate-spin text-neon-purple" />
@@ -1192,12 +1191,12 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
               <div className="flex-1 space-y-2">
                 <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
                   <Sparkles className="w-3 h-3 text-neon-purple" />
-                  {isAnalyzingImage ? 'Analisando estilo visual...' : 'Estilo Visual Extraído'}
+                  {isAnalyzingImage ? 'Analisando estilo visual...' : 'Estilo Visual Extra�do'}
                 </label>
                 <textarea 
                   value={refImageStyle}
                   onChange={(e) => setRefImageStyle(e.target.value)}
-                  placeholder="O estilo visual aparecerá aqui após a análise..."
+                  placeholder="O estilo visual aparecer� aqui ap�s a an�lise..."
                   className="w-full bg-dark/40 border border-white/10 rounded-lg p-3 text-xs text-gray-300 focus:outline-none focus:border-neon-purple/50 h-24 custom-scrollbar resize-none font-medium leading-relaxed"
                 />
                 {refImageStyle && (
@@ -1218,7 +1217,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-white/10 pb-4 mb-0">
           <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-neon-pink" /> 
-            Formato de SaÃ­da
+            Formato de Saída
           </h3>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -1242,7 +1241,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                     : 'text-gray-500 hover:text-white'
                 }`}
               >
-                <Video className="w-4 h-4" /> VÃ­deo
+                <Video className="w-4 h-4" /> Vídeo
               </button>
             </div>
 
@@ -1297,16 +1296,16 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
         </div>
       </div>
 
-      {/* â”€â”€ Cinematographic Parameters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ���� Cinematographic Parameters �������������������������������������������������������� */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        {/* ESTILO / GÃŠNERO â€” obrigatÃ³rio */}
+        {/* ESTILO / G�`NERO � obrigatório */}
         <div className="glass-card p-5 border border-white/10 space-y-3 md:col-span-2">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-neon-pink/20 text-neon-pink border border-neon-pink/30 uppercase tracking-widest">ObrigatÃ³rio</span>
-            <h3 className="text-xs font-black text-white uppercase tracking-widest">Estilo / GÃªnero</h3>
+            <span className="text-[9px] font-black px-2 py-0.5 rounded bg-neon-pink/20 text-neon-pink border border-neon-pink/30 uppercase tracking-widest">Obrigatório</span>
+            <h3 className="text-xs font-black text-white uppercase tracking-widest">Estilo / Gênero</h3>
           </div>
-          <p className="text-[10px] text-gray-500 -mt-1">DireÃ§Ã£o criativa do vÃ­deo</p>
+          <p className="text-[10px] text-gray-500 -mt-1">Direção criativa do vídeo</p>
           <div className="flex flex-wrap gap-2">
             {GENERO_TAGS.map(tag => (
               <button
@@ -1339,15 +1338,15 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* Left: Upload and Controls */}
         <div className="space-y-6">
-          {/* MODO DE PRODUÃ‡ÃƒO â€” apenas Elite Qualidade */}
+          {/* MODO DE PRODUÇÃO — apenas Elite Qualidade */}
           <div className="glass-card p-4 border-neon-pink/20 bg-neon-pink/5">
             <div className="flex items-center gap-3">
                <div className="w-8 h-8 rounded-lg bg-neon-pink/20 flex items-center justify-center shrink-0">
                   <Sparkles className="w-4 h-4 text-neon-pink" />
                </div>
                <div>
-                  <h3 className="text-[10px] font-black text-neon-pink uppercase tracking-widest">Elite Qualidade â€” Modo Ativo</h3>
-                  <p className="text-[9px] text-gray-500 mt-0.5">ðŸ’Ž Prompts ultra detalhados com lentes, cinematografia analÃ³gica e negativos incluÃ­dos.</p>
+                  <h3 className="text-[10px] font-black text-neon-pink uppercase tracking-widest">Elite Qualidade — Modo Ativo</h3>
+                  <p className="text-[9px] text-gray-500 mt-0.5">💎 Prompts ultra detalhados com lentes, cinematografia analógica e negativos incluídos.</p>
                </div>
             </div>
           </div>
@@ -1374,7 +1373,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                 <div className="absolute inset-0 bg-green-500/5 pointer-events-none" />
                 <CheckCircle className="w-12 h-12 text-green-400 mb-3" />
                 <h3 className="text-lg font-bold text-green-400">{file.name}</h3>
-                <p className="text-green-400/70 mt-1 text-sm">{subtitleCount} cenas encontradas â€” clique para trocar</p>
+                <p className="text-green-400/70 mt-1 text-sm">{subtitleCount} cenas encontradas � clique para trocar</p>
               </>
             ) : (
               <>
@@ -1430,7 +1429,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                 onClick={() => {
                    if (file) handleGenerate();
                    else if (selectedScriptId) handleGenerateFromScript();
-                   else alert("⚠️ Carregue uma legenda ou selecione um roteiro.");
+                   else alert("� Carregue uma legenda ou selecione um roteiro.");
                 }}
                 disabled={isGenerating || (!file && !selectedScriptId)}
                 className={`flex-1 py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 ${
@@ -1447,7 +1446,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                 ) : (
                   <>
                     {!visualDNA.scenario ? <X className="w-5 h-5 text-red-500" /> : <Wand2 className="w-5 h-5 shadow-neon animate-pulse" />} 
-                    {!visualDNA.scenario ? "Bloqueado: Requer AnÃ¡lise Visual" : `Gerar Prompts do Projeto`}
+                    {!visualDNA.scenario ? "Bloqueado: Requer Análise Visual" : `Gerar Prompts do Projeto`}
                   </>
                 )}
               </button>
@@ -1464,7 +1463,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                  <button
                    onClick={() => { cancelRef.current = true; setIsCopied(true); setTimeout(() => setIsCopied(false), 2000); }}
                    className="px-4 py-4 rounded-xl flex items-center justify-center gap-2 font-bold bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/30 transition-all hover:text-white hover:bg-red-500"
-                   title="Cancelar GeraÃ§Ã£o"
+                   title="Cancelar Geração"
                  >
                    {isCopied ? <CheckCircle className="w-5 h-5" /> : <X className="w-5 h-5" />}
                  </button>
@@ -1472,7 +1471,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
             </div>
 
             <div className={`w-full py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 border border-white/5 bg-white/5 text-gray-500`}>
-              <ImageIcon className="w-5 h-5 opacity-30" /> Pronto para ProduÃ§Ã£o Visual
+              <ImageIcon className="w-5 h-5 opacity-30" /> Pronto para Produção Visual
             </div>
           </div>
         </div>
@@ -1482,7 +1481,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
           <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
             <h3 className="font-bold text-white flex items-center gap-2 text-xs uppercase tracking-widest">
               <File className="w-5 h-5 text-neon-pink" />
-              SaÃ­da Gerada
+              Saída Gerada
             </h3>
             <div className="flex gap-2">
               {prompts && (
@@ -1507,7 +1506,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                 <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border ${isVerified ? 'bg-green-500/10 border-green-500/30 text-green-500' : 'bg-red-500/10 border-red-500/30 text-red-500'}`}>
                    {isVerified ? <CheckCircle className="w-3 h-3" /> : <X className="w-3 h-3" />}
                    <span className="text-[8px] font-black uppercase tracking-widest">
-                     {isVerified ? 'Fidelidade MÃ¡xima: OK' : `Encontrado: ${errorCount} Erros de Formato`}
+                     {isVerified ? 'Fidelidade Máxima: OK' : `Encontrado: ${errorCount} Erros de Formato`}
                    </span>
                 </div>
               )}
@@ -1568,7 +1567,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                          <div className="w-2 h-2 rounded-full bg-neon-pink animate-pulse" />
-                         <span className="text-[10px] font-black text-white uppercase tracking-widest">Agente de Integridade: DiagnÃ³stico</span>
+                         <span className="text-[10px] font-black text-white uppercase tracking-widest">Agente de Integridade: Diagnóstico</span>
                       </div>
                       <span className="text-[9px] font-black text-neon-pink/50 uppercase tracking-widest italic">{isRepairing ? "Corrigindo..." : "Finalizado"}</span>
                    </div>
@@ -1576,7 +1575,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                       {repairLogs.map((log, idx) => (
                         <div key={idx} className="flex items-center gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
                            <div className="w-1 h-1 rounded-full bg-white/20" />
-                           <p className={`text-[10px] font-bold ${log.includes('âœ“') || log.includes('âœ¨') ? 'text-green-400' : log.includes('ðŸš¨') ? 'text-neon-pink' : 'text-gray-400'}`}>
+                           <p className={`text-[10px] font-bold ${log.includes('�S') || log.includes('�S�') ? 'text-green-400' : log.includes('�xa�') ? 'text-neon-pink' : 'text-gray-400'}`}>
                              {log}
                            </p>
                         </div>
@@ -1623,7 +1622,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                 ) : (
                   <>
                     <ImageIcon className="w-12 h-12 opacity-20" />
-                    <p className="text-[10px] uppercase tracking-widest">Seus prompts aparecerÃ£o aqui...</p>
+                    <p className="text-[10px] uppercase tracking-widest">Seus prompts aparecerão aqui...</p>
                   </>
                 )}
               </div>
@@ -1652,7 +1651,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                      </div>
                      <div>
                         <h2 className="text-3xl font-black text-white italic uppercase tracking-tight">Pool de Prompts Gerado</h2>
-                        <p className="text-[10px] font-black text-neon-pink uppercase tracking-widest mt-1">Alta Fidelidade & CoesÃ£o Visual Ativada</p>
+                        <p className="text-[10px] font-black text-neon-pink uppercase tracking-widest mt-1">Alta Fidelidade & Coesão Visual Ativada</p>
                      </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -1683,9 +1682,9 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                {/* Modal Footer Actions */}
                <div className="p-8 bg-dark/60 border-t border-white/5 flex flex-col md:flex-row gap-6 backdrop-blur-xl">
                    <div className="flex-1 space-y-1">
-                      <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Total de SequÃªncias</p>
+                      <p className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Total de Sequências</p>
                       <p className="text-xl font-black text-white text-glow-pink">
-                         {(prompts || "").split('\n\n').filter(p => p.trim()).length} PeÃ§as Visuais
+                         {(prompts || "").split('\n\n').filter(p => p.trim()).length} Peças Visuais
                       </p>
                    </div>
                   <div className="flex items-center gap-4">
@@ -1717,7 +1716,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
             {promptPools.length > 0 && (
                <button 
                   onClick={() => {
-                     if(confirm("Limpar todo o histÃ³rico?")) {
+                     if(confirm("Limpar todo o histórico?")) {
                         localStorage.setItem('guru_image_prompt_pools', '[]');
                         setPromptPools([]);
                      }
@@ -1786,7 +1785,7 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
                ) : (
                   <div key={`empty-${idx}`} className="h-[220px] rounded-[32px] border-2 border-dashed border-white/5 flex flex-col items-center justify-center text-gray-800 opacity-20">
                      <ImageIcon className="w-8 h-8 mb-2" />
-                     <span className="text-[9px] font-black uppercase tracking-widest">Slot DisponÃ­vel</span>
+                     <span className="text-[9px] font-black uppercase tracking-widest">Slot Disponível</span>
                   </div>
                )
             ))}
