@@ -779,9 +779,9 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
     setIsGenerating(true);
     setPrompts("");
     
-    const CHUNK_SIZE = 25;
+    const CHUNK_SIZE = 15;
     const totalChunks = Math.ceil(subtitleBlocks.length / CHUNK_SIZE);
-    setGenerationProgress({ step: '� Turbo Engine: Iniciando...', current: 0, total: totalChunks, statuses: new Array(totalChunks).fill("pending") });
+    setGenerationProgress({ step: ' Turbo Engine: Iniciando...', current: 0, total: totalChunks, statuses: new Array(totalChunks).fill("pending") });
  
     const resultsStorage = new Array(totalChunks).fill("");
     const chunkStatuses = new Array(totalChunks).fill("pending");
@@ -822,12 +822,12 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
           const isJson = outputFormat === 'json';
           const isVeoVideoMode = promptType === 'video' && genMode === 'quality';
           const countRuleLang = isVeoVideoMode
-            ? `REGRA OBRIGAT�RIA: Gere EXATAMENTE ${chunkSubtitleCount} prompts. N�O ADICIONE T�TULOS. Responda APENAS com os blocos [PROMPT]: e [NEGATIVO]:.`
+            ? `REGRA OBRIGATRIA: Gere EXATAMENTE ${chunkSubtitleCount} prompts. NO ADICIONE TTULOS. Responda APENAS com os blocos [PROMPT]: e [NEGATIVO]:.`
             : `MANDATORY RULE: Generate EXACTLY ${chunkSubtitleCount} prompts. DO NOT ADD TITLES, HEADERS, OR INTROS.`;
           const generateLabel = isVeoVideoMode
             ? `GERE EXATAMENTE ${chunkSubtitleCount} PROMPTS VEO 3.1:`
             : `GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
-          const promptParam = `${getSystemPrompt()}\n\n---\n${countRuleLang}\nVOC� DEVE GERAR EXATAMENTE ${chunkSubtitleCount} BLOCOS.\n---\n\nINPUT (CHUNK ${i+1}) - ${chunkSubtitleCount} SUBTITLES:\n${formattedInput}\n\n${generateLabel}`;
+          const promptParam = `${getSystemPrompt()}\n\n---\n${countRuleLang}\nVOC DEVE GERAR EXATAMENTE ${chunkSubtitleCount} BLOCOS.\n---\n\nINPUT (CHUNK ${i+1}) - ${chunkSubtitleCount} SUBTITLES:\n${formattedInput}\n\n${generateLabel}`;
 
           let retryCount = 0, success = false, lastError = null;
           while (!success && retryCount < 4 && !cancelRef.current) {
@@ -836,7 +836,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
                 const isRateLimit = lastError && (lastError.message.includes('quota') || lastError.message.includes('429') || lastError.message.includes('exhausted'));
                 const delayTime = isRateLimit ? 35000 : 3000;
                 chunkStatuses[i] = "retrying";
-                setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: retryCount === 3 ? `Seguran�a: Individuais Bloco ${i+1}...` : (isRateLimit ? `Pausa (${delayTime/1000}s) Bloco ${i+1}...` : `Retry ${retryCount}/3 Bloco ${i+1}...`) }));
+                setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: retryCount === 3 ? `Segurana: Individuais Bloco ${i+1}...` : (isRateLimit ? `Pausa (${delayTime/1000}s) Bloco ${i+1}...` : `Retry ${retryCount}/3 Bloco ${i+1}...`) }));
                 await new Promise(r => setTimeout(r, delayTime));
               }
 
@@ -844,6 +844,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
               if (retryCount === 3) {
                 let individualText = "";
                 for (let subIdx = 0; subIdx < currentChunk.length; subIdx++) {
+                  if (subIdx > 0) await new Promise(r => setTimeout(r, 600)); 
                   const sub = currentChunk[subIdx];
                   const subId = startIdx + subIdx + 1;
                   const subPrompt = `${getSystemPrompt()}\n\n---\nREGRA ABSOLUTA: Gere APENAS UM PROMPT.\nFORMATO: [PROMPT]: ... [NEGATIVO]: ...\n---\nLEGENDA [ID ${subId}]: ${sub}\n\nGERAR PROMPT:`;
@@ -851,7 +852,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
                   let cleanedSub = subResp.trim().replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
                   const line = cleanedSub.split('\n').find(l => l.includes('[PROMPT]:')) || cleanedSub;
                   individualText += (individualText ? "\n\n" : "") + line;
-                  setGenerationProgress(prev => ({ ...prev, step: `Seguran�a: ${subIdx+1}/${currentChunk.length} Bloco ${i+1}` }));
+                  setGenerationProgress(prev => ({ ...prev, step: `Segurana: ${subIdx+1}/${currentChunk.length} Bloco ${i+1}` }));
                 }
                 responseText = individualText;
               } else {
