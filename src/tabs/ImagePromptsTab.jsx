@@ -360,6 +360,33 @@ Return a SINGLE PARAGRAPH in English describing the visual style as a unified ci
     return () => window.removeEventListener('guru_scripts_updated', loadScripts);
   }, []);
 
+  // AUTO-INJECT VEO FROM SCRIPT SELECTION
+  useEffect(() => {
+    if (!selectedScriptId) {
+      setFile(null);
+      setSubtitleBlocks([]);
+      setSubtitleCount(0);
+      return;
+    }
+
+    const allSources = [...(cloudScripts || []), ...(availableScripts || [])];
+    const script = allSources.find(s => String(s.id) === String(selectedScriptId)) || 
+                   JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]').find(s => String(s.id) === String(selectedScriptId));
+    
+    if (script && script.content) {
+      const veoData = generateVeoContent(script.content);
+      const parts = veoData.split(/\n\s*\n/).filter(p => p.trim());
+      const blocks = parts.map(p => {
+        const lines = p.trim().split('\n');
+        if (lines.length >= 3) return lines.slice(2).join(' ').trim();
+        return p.trim();
+      });
+      setSubtitleBlocks(blocks);
+      setSubtitleCount(blocks.length);
+      setFile({ name: `Legenda_VEO_${script.title || selectedScriptId}.veo`, size: veoData.length });
+    }
+  }, [selectedScriptId, cloudScripts, availableScripts]);
+
   useEffect(() => {
     if (isActive) {
       const triggerId = localStorage.getItem('guru_image_prompt_trigger_id');
