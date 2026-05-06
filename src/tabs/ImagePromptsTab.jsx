@@ -779,7 +779,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
     setIsGenerating(true);
     setPrompts("");
     
-    const CHUNK_SIZE = 15;
+    const CHUNK_SIZE = 25;
     const totalChunks = Math.ceil(subtitleBlocks.length / CHUNK_SIZE);
     setGenerationProgress({ step: ' Turbo Engine: Iniciando...', current: 0, total: totalChunks, statuses: new Array(totalChunks).fill("pending") });
  

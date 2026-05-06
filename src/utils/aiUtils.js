@@ -127,7 +127,7 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
         modelsToTry.push(...cachedGeminiModels);
       } else {
         try {
-          const modelsRes = await fetch(resolveApiUrl(`/api/gemini/v1beta/models?key=${apiKey}`));
+          const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
           if (modelsRes.ok) {
             const modelsData = await modelsRes.json();
             if (modelsData.models) {
@@ -167,7 +167,7 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
           try {
             const cleanPath = modelPath.startsWith('models/') ? modelPath : `models/${modelPath}`;
             // Switching to v1beta for broader model compatibility (Flash 8B, Gemini 2.0)
-            const res = await fetch(resolveApiUrl(`/api/gemini/v1beta/${cleanPath}:generateContent?key=${apiKey}`), {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/${cleanPath}:generateContent?key=${apiKey}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -299,7 +299,7 @@ export const callGeminiImage = async (apiKeys, prompt, options = {}) => {
       }
 
       const modelPath = options.model || "models/imagen-3.0-generate-001";
-      const url = resolveApiUrl(`/api/gemini/v1beta/${modelPath}:generateImages?key=${apiKey}`);
+      const url = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateImages?key=${apiKey}`;
 
       const res = await fetch(url, {
         method: 'POST',
