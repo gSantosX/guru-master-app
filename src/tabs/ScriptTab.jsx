@@ -732,7 +732,7 @@ CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
                      </div>
                   </div>
                   <input 
-                    type="range" min="100" max="80000" step="500" value={tamanho}
+                    type="range" min="80" max="80000" step="500" value={tamanho}
                     onChange={(e) => setTamanho(Number(e.target.value))}
                     className="w-full h-1.5 bg-dark rounded-lg appearance-none cursor-pointer accent-neon-cyan"
                   />
