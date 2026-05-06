@@ -147,8 +147,8 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     try {
       const apiKey = getPromptsApiKey(configs);
       if (!apiKey) throw new Error('API Key ausente!');
-      const cleanPath = 'models/gemini-2.0-flash-lite';
-      const res = await fetch(resolveApiUrl(`/api/gemini/v1beta/${cleanPath}:generateContent?key=${apiKey}`), {
+      const cleanPath = 'models/gemini-2.0-flash';
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/${cleanPath}:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -326,7 +326,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
       ${scriptToAnalyze.substring(0, 4500)}`;
 
       const response = await callGemini(getPromptsApiKey(configs), analysisPrompt, { 
-        model: 'gemini-2.0-flash-lite', 
+        model: 'gemini-2.0-flash', 
         temperature: 0.1
       });
       const cleanJson = response.replace(/```json\n?|```/g, '').trim();
@@ -600,7 +600,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
         Repair these blocks keeping original descriptions in English:
         ${repaired}`;
         
-        const aiRepaired = await callGemini(getPromptsApiKey(configs), repairPrompt, { model: 'gemini-2.0-flash-lite' });
+        const aiRepaired = await callGemini(getPromptsApiKey(configs), repairPrompt, { model: 'gemini-2.0-flash' });
         repaired = aiRepaired.trim();
         setRepairLogs(prev => [...prev, "�S Reparo de Estrutura via IA Concluído"]);
       }
@@ -848,7 +848,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
                   const sub = currentChunk[subIdx];
                   const subId = startIdx + subIdx + 1;
                   const subPrompt = `${getSystemPrompt()}\n\n---\nREGRA ABSOLUTA: Gere APENAS UM PROMPT.\nFORMATO: [PROMPT]: ... [NEGATIVO]: ...\n---\nLEGENDA [ID ${subId}]: ${sub}\n\nGERAR PROMPT:`;
-                  const subResp = await callGemini(getPromptsApiKey(configs), subPrompt, { model: 'gemini-2.0-flash-lite' });
+                  const subResp = await callGemini(getPromptsApiKey(configs), subPrompt, { model: 'gemini-2.0-flash' });
                   let cleanedSub = subResp.trim().replace(/([^\n]+)\s*\n\s*(\[NEGATIVO\]:)/gi, '$1 $2');
                   const line = cleanedSub.split('\n').find(l => l.includes('[PROMPT]:')) || cleanedSub;
                   individualText += (individualText ? "\n\n" : "") + line;
@@ -858,7 +858,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
               } else {
                 chunkStatuses[i] = "generating";
                 setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses], step: `� Turbo: Bloco ${i+1}/${totalChunks}...` }));
-                responseText = await callGemini(getPromptsApiKey(configs), promptParam, { model: 'gemini-2.0-flash-lite' });
+                responseText = await callGemini(getPromptsApiKey(configs), promptParam, { model: 'gemini-2.0-flash' });
               }
 
               success = true;
