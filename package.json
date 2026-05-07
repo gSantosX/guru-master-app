@@ -12,7 +12,7 @@
   "main": "desktop/main.cjs",
   "scripts": {
     "dev": "vite",
-    "build": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "setup:python": "node scripts/setup-python.js",
