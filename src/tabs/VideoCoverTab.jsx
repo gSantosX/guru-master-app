@@ -108,6 +108,8 @@ export const VideoCoverTab = ({ isActive }) => {
     const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
     const [copiedIndex, setCopiedIndex] = useState(null);
     const [copiedSection, setCopiedSection] = useState(null);
+    const [pools, setPools] = useState([]);
+    const [cloudPools] = useCloudStorage('seo_pools', []);
 
     const handleCopy = (text, section) => {
         navigator.clipboard.writeText(text);
@@ -117,28 +119,42 @@ export const VideoCoverTab = ({ isActive }) => {
     
     const ENGINES = []; // Keep empty or just remove entirely. Let's just remove them.
 
-    const [cloudScripts] = useCloudStorage('scripts', []);
     useEffect(() => {
         if (!isActive) return;
-        const fallback = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
-        setScripts(cloudScripts.length > 0 ? cloudScripts : fallback);
-    }, [isActive, cloudScripts]);
+        const fallback = JSON.parse(localStorage.getItem('guru_cloud_seo_pools') || '[]');
+        setPools(cloudPools.length > 0 ? cloudPools : fallback);
+    }, [isActive, cloudPools]);
 
-    const handleSelectScript = (script) => {
+    // Escuta o redirecionamento da Aba SEO
+    useEffect(() => {
+        if (!isActive) return;
+        const triggerId = localStorage.getItem('guru_cover_trigger_pool_id');
+        if (triggerId && pools && pools.length > 0) {
+            const pool = pools.find(p => p.id.toString() === triggerId);
+            if (pool) {
+                handleSelectPool(pool);
+                localStorage.removeItem('guru_cover_trigger_pool_id');
+            }
+        }
+    }, [isActive, pools]);
+
+    const handleSelectPool = (pool) => {
+        const abTitles = Array.isArray(pool.seoResult?.titles) ? pool.seoResult.titles : [];
+        const newTitles = [
+            { text: pool.title, label: 'Título Original', isOriginal: true },
+            { text: abTitles[0] || 'Variação A/B 1', label: 'Teste A/B 1', is_best: false },
+            { text: abTitles[1] || 'Variação A/B 2', label: 'Teste A/B 2', is_best: true },
+            { text: abTitles[2] || 'Variação A/B 3', label: 'Teste A/B 3', is_best: false }
+        ].filter(t => t.text && t.text.trim() !== '' && !t.text.includes('Variação A/B'));
+
         updateCoverState({
-            selectedScript: script,
-            lastSelectedTitle: script.title,
-            titles: [
-                { text: script.title, label: 'Titulo Original', isOriginal: true },
-                { text: '', label: 'Carregando Oportunidades...', isOriginal: false },
-                { text: '', label: 'Carregando Oportunidades...', isOriginal: false }
-            ],
+            selectedScript: { id: pool.id, title: pool.title, content: pool.script, date: pool.date },
+            lastSelectedTitle: pool.title,
+            titles: newTitles,
             shockWords: { one: '', two: '', three: '' },
             covers: {},
-            coverPrefs: {},
-            description: ''
+            coverPrefs: {}
         });
-        generateTitleVariations(script.title);
     };
 
     const handleReset = () => {
@@ -148,7 +164,6 @@ export const VideoCoverTab = ({ isActive }) => {
             shockWords: { one: '', two: '', three: '' },
             covers: {},
             coverPrefs: {},
-            description: '',
             lastSelectedTitle: ''
         });
     };
@@ -391,34 +406,34 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
                     </p>
                 </header>
 
-                {scripts.length === 0 ? (
+                {pools.length === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-gray-400 glass-card p-12 border border-white/5 opacity-50">
                         <AlertCircle className="w-20 h-20 text-gray-600 mb-6" />
-                        <h3 className="text-2xl font-bold text-white mb-2">Sem Roteiros Disponíveis</h3>
-                        <p className="text-lg text-gray-500 text-center max-w-md">Crie um roteiro na aba "Criar Roteiro" primeiro.</p>
+                        <h3 className="text-2xl font-bold text-white mb-2">Sem Pools Disponíveis</h3>
+                        <p className="text-lg text-gray-500 text-center max-w-md">Gere pacotes na aba "SEO & Publicação" primeiro.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-20">
-                        {scripts.slice(0, 6).map((s) => (
+                        {pools.slice(0, 6).map((pool) => (
                             <motion.div
-                                key={s.id}
+                                key={pool.id}
                                 whileHover={{ scale: 1.02, border: '1px solid rgba(191, 64, 255, 0.4)' }}
-                                onClick={() => handleSelectScript(s)}
+                                onClick={() => handleSelectPool(pool)}
                                 className="glass-card p-6 cursor-pointer border border-white/5 bg-white/5 flex flex-col justify-between h-[180px] group transition-all"
                             >
                                 <div>
-                                    <div className="text-[10px] font-bold text-neon-purple uppercase tracking-[0.2em] mb-2">Roteiro</div>
+                                    <div className="text-[10px] font-bold text-neon-purple uppercase tracking-[0.2em] mb-2 bg-neon-purple/10 w-max px-2 py-1 rounded">Pool de SEO</div>
                                     <h3 className="text-lg font-bold text-white group-hover:text-neon-purple transition-colors line-clamp-3">
-                                        {s.title}
+                                        {pool.title}
                                     </h3>
                                 </div>
                                 <div className="flex justify-between items-center mt-4">
-                                    <span className="text-[10px] font-mono text-gray-500">{s.date}</span>
+                                    <span className="text-[10px] font-mono text-gray-500">{pool.date}</span>
                                     <span className="text-xs text-neon-purple font-black">SELECIONAR →</span>
                                 </div>
                             </motion.div>
                         ))}
-                        {[...Array(Math.max(0, 6 - scripts.length))].map((_, i) => (
+                        {[...Array(Math.max(0, 6 - pools.length))].map((_, i) => (
                              <div key={`empty-${i}`} className="glass-card border border-dashed border-white/5 opacity-20 flex items-center justify-center h-[180px]">
                                 <span className="text-[10px] uppercase tracking-widest text-gray-500">Espaço Vazio</span>
                              </div>

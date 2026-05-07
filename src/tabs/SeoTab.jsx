@@ -5,7 +5,7 @@ import { callAI } from '../utils/aiUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 
-export const SeoTab = () => {
+export const SeoTab = ({ isActive, setActiveTab }) => {
   const [videoTitle, setVideoTitle] = useState('');
   const [videoScript, setVideoScript] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -13,6 +13,7 @@ export const SeoTab = () => {
   const [copiedField, setCopiedField] = useState(null);
   const [isFiction, setIsFiction] = useState(false);
   const [scripts] = useCloudStorage('scripts', []);
+  const [seoPools, setSeoPools] = useCloudStorage('seo_pools', []);
 
   useEffect(() => {
     const triggerTitle = localStorage.getItem('guru_seo_trigger_title');
@@ -108,6 +109,19 @@ Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito forte
       }
 
       setSeoResult(sections);
+
+      // Salva no Pool de Publicações (Limite 6)
+      const newPool = {
+        id: Date.now().toString(),
+        title: videoTitle,
+        script: videoScript,
+        seoResult: sections,
+        date: new Date().toLocaleString('pt-BR')
+      };
+      setSeoPools(prev => {
+        const updated = [newPool, ...(prev || [])];
+        return updated.slice(0, 6);
+      });
     } catch (err) {
       console.error(err);
       alert("Erro ao gerar SEO: " + err.message);
@@ -335,6 +349,57 @@ Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito forte
         </div>
       </div>
       </div>
+
+      {/* POOLS DE PUBLICAÇÃO */}
+      <div className="mt-8 mb-12 shrink-0">
+        <div className="flex items-center gap-3 mb-6">
+          <Layers className="w-6 h-6 text-green-500" />
+          <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter italic">Pools de Publicação</h3>
+          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest ml-2 border-l border-white/10 pl-3">Últimos {seoPools?.length || 0}/6 gerados</span>
+        </div>
+
+        {!seoPools || seoPools.length === 0 ? (
+          <div className="bg-white/5 border border-dashed border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center text-center opacity-50">
+            <span className="text-gray-500 text-sm uppercase tracking-widest font-bold">Nenhum pool salvo ainda. Gere seu primeiro pacote SEO acima.</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {seoPools.map(pool => (
+              <div key={pool.id} className="bg-white/5 border border-white/10 p-6 rounded-2xl flex flex-col h-[200px] hover:border-green-500/30 transition-all group">
+                <div className="flex justify-between items-start mb-4">
+                  <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest bg-green-500/10 px-2 py-1 rounded">SEO Salvo</span>
+                  <span className="text-[10px] font-mono text-gray-500">{pool.date}</span>
+                </div>
+                <h4 className="text-white font-bold text-lg leading-tight line-clamp-2 mb-auto group-hover:text-green-400 transition-colors">{pool.title}</h4>
+                
+                <div className="flex items-center gap-3 mt-4">
+                  <button 
+                    onClick={() => {
+                      setVideoTitle(pool.title);
+                      setVideoScript(pool.script);
+                      setSeoResult(pool.seoResult);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="flex-1 py-2 rounded-xl border border-white/10 bg-white/5 text-xs font-bold text-white uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
+                  >
+                    Abrir
+                  </button>
+                  <button 
+                    onClick={() => {
+                      localStorage.setItem('guru_cover_trigger_pool_id', pool.id);
+                      if (setActiveTab) setActiveTab('video-cover');
+                    }}
+                    className="flex-1 py-2 rounded-xl bg-green-500 text-dark text-xs font-black uppercase tracking-widest hover:bg-green-400 active:scale-95 transition-all shadow-[0_0_15px_rgba(34,197,94,0.2)]"
+                  >
+                    Gerar Capas
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 };
