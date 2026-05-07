@@ -30,7 +30,12 @@ import { callAI } from '../utils/aiUtils';
 const NICHES = [
   "Finanças", "História", "Mistérios", "Crimes Reais", "Espiritualidade", 
   "Motivação", "Saúde", "Tecnologia", "Curiosidades", "Documentários",
-  "Gameplay", "Culinária", "Viagens", "Pets", "Moda", "Educação"
+  "Gameplay", "Culinária", "Viagens", "Pets", "Moda", "Educação",
+  "Empreendedorismo", "Marketing Digital", "Desenvolvimento Pessoal", "Relacionamentos",
+  "Filosofia", "Ciência", "Astronomia", "Fofoca e Famosos", "Resumo de Filmes",
+  "Animes e Mangás", "Esportes", "Carros e Motos", "Política e Notícias",
+  "Engenharia e Construção", "Artesanato e DIY", "ASMR", "Música e Covers",
+  "Fotografia", "Programação"
 ];
 
 const NICHE_TRANSLATIONS = {
@@ -49,7 +54,26 @@ const NICHE_TRANSLATIONS = {
   "Viagens": { pt: "Viagens", en: "Travel", es: "Viajes", fr: "Voyage", de: "Reisen", it: "Viaggi", hi: "यात्रा", ja: "旅行" },
   "Pets": { pt: "Pets", en: "Pets", es: "Mascotas", fr: "Animaux", de: "Haustiere", it: "Animali", hi: "पालतू जानवर", ja: "ペット" },
   "Moda": { pt: "Moda", en: "Fashion", es: "Moda", fr: "Mode", de: "Mode", it: "Moda", hi: "फैशन", ja: "ファッション" },
-  "Educação": { pt: "Educação", en: "Education", es: "Educación", fr: "Éducation", de: "Bildung", it: "Educazione", hi: "शिक्षा", ja: "教育" }
+  "Educação": { pt: "Educação", en: "Education", es: "Educación", fr: "Éducation", de: "Bildung", it: "Educazione", hi: "शिक्षा", ja: "教育" },
+  "Empreendedorismo": { pt: "Empreendedorismo", en: "Entrepreneurship", es: "Emprendimiento" },
+  "Marketing Digital": { pt: "Marketing Digital", en: "Digital Marketing", es: "Marketing Digital" },
+  "Desenvolvimento Pessoal": { pt: "Desenvolvimento Pessoal", en: "Personal Development", es: "Desarrollo Personal" },
+  "Relacionamentos": { pt: "Relacionamentos", en: "Relationships", es: "Relaciones" },
+  "Filosofia": { pt: "Filosofia", en: "Philosophy", es: "Filosofía" },
+  "Ciência": { pt: "Ciência", en: "Science", es: "Ciencia" },
+  "Astronomia": { pt: "Astronomia", en: "Astronomy", es: "Astronomía" },
+  "Fofoca e Famosos": { pt: "Fofoca e Famosos", en: "Celebrity Gossip", es: "Chismes de Famosos" },
+  "Resumo de Filmes": { pt: "Resumo de Filmes", en: "Movie Recaps", es: "Resumen de Películas" },
+  "Animes e Mangás": { pt: "Animes e Mangás", en: "Anime and Manga", es: "Anime y Manga" },
+  "Esportes": { pt: "Esportes", en: "Sports", es: "Deportes" },
+  "Carros e Motos": { pt: "Carros e Motos", en: "Cars and Motorcycles", es: "Coches y Motos" },
+  "Política e Notícias": { pt: "Política e Notícias", en: "Politics and News", es: "Política y Noticias" },
+  "Engenharia e Construção": { pt: "Engenharia e Construção", en: "Engineering and Construction", es: "Ingeniería y Construcción" },
+  "Artesanato e DIY": { pt: "Artesanato e DIY", en: "Crafts and DIY", es: "Manualidades y Bricolaje" },
+  "ASMR": { pt: "ASMR", en: "ASMR", es: "ASMR" },
+  "Música e Covers": { pt: "Música e Covers", en: "Music and Covers", es: "Música y Covers" },
+  "Fotografia": { pt: "Fotografia", en: "Photography", es: "Fotografía" },
+  "Programação": { pt: "Programação", en: "Programming", es: "Programación" }
 };
 
 const LANGUAGES = [
@@ -71,15 +95,22 @@ const AGE_OPTIONS = [
   { label: "Menos de 1 Ano", value: 12 }
 ];
 
+const FORMAT_OPTIONS = [
+  { label: "Qualquer Formato", value: "any" },
+  { label: "Shorts (9:16)", value: "shorts" },
+  { label: "Vídeo Normal (16:9)", value: "normal" }
+];
+
 export const ChannelMiningTab = ({ setActiveTab }) => {
   const { configs } = useSystemStatus();
   const { miningState, setMiningState } = usePersistence();
-  const { channels, niche: selectedNiche, isSearching, maxAgeMonths = 0 } = miningState;
+  const { channels, niche: selectedNiche, isSearching, maxAgeMonths = 0, videoFormat = 'any' } = miningState;
 
   const setSelectedNiche = (val) => setMiningState(prev => ({ ...prev, niche: val }));
   const setChannels = (val) => setMiningState(prev => ({ ...prev, channels: val }));
   const setIsSearching = (val) => setMiningState(prev => ({ ...prev, isSearching: val }));
   const setMaxAgeMonths = (val) => setMiningState(prev => ({ ...prev, maxAgeMonths: val }));
+  const setVideoFormat = (val) => setMiningState(prev => ({ ...prev, videoFormat: val }));
 
   const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
   const [copiedId, setCopiedId] = useState(null);
@@ -129,7 +160,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
 
   const handleSearch = async () => {
     // Check Cache
-    const cacheKey = `mining_${selectedNiche}_${selectedLang.code}_${maxAgeMonths}`;
+    const cacheKey = `mining_${selectedNiche}_${selectedLang.code}_${maxAgeMonths}_${videoFormat}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       try {
@@ -159,7 +190,13 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
       date.setDate(date.getDate() - 30);
       const publishedAfter = date.toISOString();
 
-      const query = nicheTerm; // Clean query without forced English words
+      let query = nicheTerm; // Clean query without forced English words
+      if (videoFormat === 'shorts') {
+        query += ' #shorts';
+      } else if (videoFormat === 'normal') {
+        query += ' -#shorts';
+      }
+
       const res = await fetch(buildYouTubeUrl('search', {
         part: 'snippet',
         type: 'video',
@@ -226,7 +263,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
       setChannels(minedChannels);
       
       // Save to Cache
-      sessionStorage.setItem(`mining_${selectedNiche}_${selectedLang.code}_${maxAgeMonths}`, JSON.stringify({
+      sessionStorage.setItem(`mining_${selectedNiche}_${selectedLang.code}_${maxAgeMonths}_${videoFormat}`, JSON.stringify({
         timestamp: Date.now(),
         data: minedChannels
       }));
@@ -385,6 +422,21 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                 className="bg-dark/60 border border-white/5 rounded-2xl px-5 py-4 text-white font-bold text-sm focus:outline-none focus:border-neon-pink/50 hover:bg-dark/80 transition-all cursor-pointer w-full shadow-inner"
               >
                 {AGE_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-2 flex-1">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-2 flex items-center gap-2">
+                <Video className="w-4 h-4 text-green-400" /> Formato
+              </label>
+              <select 
+                value={videoFormat}
+                onChange={(e) => setVideoFormat(e.target.value)}
+                className="bg-dark/60 border border-white/5 rounded-2xl px-5 py-4 text-white font-bold text-sm focus:outline-none focus:border-green-400/50 hover:bg-dark/80 transition-all cursor-pointer w-full shadow-inner"
+              >
+                {FORMAT_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
