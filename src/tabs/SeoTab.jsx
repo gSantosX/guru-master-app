@@ -72,7 +72,10 @@ Forneça exatamente 3 hashtags principais e relevantes para colocar no final da 
 Forneça uma lista de 15 a 20 tags de alta busca (incluindo cauda longa e cauda curta) separadas estritamente por vírgulas. Sem marcadores de lista, apenas texto separado por vírgula.
 
 **4. COMENTÁRIO FIXADO**
-Crie um comentário curto e extremamente engajador para ser fixado no topo do vídeo. Ele deve fazer uma pergunta instigante ao público para forçar comentários e aumentar o engajamento geral.`;
+Crie um comentário curto e extremamente engajador para ser fixado no topo do vídeo. Ele deve fazer uma pergunta instigante ao público para forçar comentários e aumentar o engajamento geral.
+
+**5. TÍTULOS PARA TESTE A/B**
+Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito fortes em CTR (Click-Through Rate) e utilizar diferentes emoções (curiosidade, medo, choque, urgência). Formate como uma lista 1. 2. 3.`;
 
     try {
       const response = await callAI(prompt, { model: 'gemini-1.5-pro' });
@@ -81,18 +84,21 @@ Crie um comentário curto e extremamente engajador para ser fixado no topo do v�
         description: '',
         hashtags: '',
         tags: '',
-        comment: ''
+        comment: '',
+        titles: ''
       };
       
       const descMatch = response.match(/\*\*1\. DESCRIÇÃO OTIMIZADA\*\*([\s\S]*?)(?=\*\*2\. HASHTAGS\*\*|$)/);
       const hashMatch = response.match(/\*\*2\. HASHTAGS\*\*([\s\S]*?)(?=\*\*3\. TAGS DE VÍDEO\*\*|$)/);
       const tagsMatch = response.match(/\*\*3\. TAGS DE VÍDEO\*\*([\s\S]*?)(?=\*\*4\. COMENTÁRIO FIXADO\*\*|$)/);
-      const commentMatch = response.match(/\*\*4\. COMENTÁRIO FIXADO\*\*([\s\S]*?)$/);
+      const commentMatch = response.match(/\*\*4\. COMENTÁRIO FIXADO\*\*([\s\S]*?)(?=\*\*5\. TÍTULOS PARA TESTE A\/B\*\*|$)/);
+      const titlesMatch = response.match(/\*\*5\. TÍTULOS PARA TESTE A\/B\*\*([\s\S]*?)$/);
 
       if (descMatch) sections.description = descMatch[1].trim();
       if (hashMatch) sections.hashtags = hashMatch[1].trim();
       if (tagsMatch) sections.tags = tagsMatch[1].trim();
       if (commentMatch) sections.comment = commentMatch[1].trim();
+      if (titlesMatch) sections.titles = titlesMatch[1].trim();
 
       setSeoResult(sections);
     } catch (err) {
@@ -274,6 +280,25 @@ Crie um comentário curto e extremamente engajador para ser fixado no topo do v�
                  </div>
                  <div className="bg-black/30 border border-white/5 rounded-xl p-4 text-gray-300 font-medium text-sm border-l-2 border-l-green-500">
                    {seoResult.comment}
+                 </div>
+               </div>
+
+               {/* Títulos Alternativos A/B */}
+               <div className="relative group">
+                 <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2">
+                   <h3 className="text-xs font-black text-green-400 flex items-center gap-2 uppercase tracking-widest">
+                     <Type className="w-4 h-4" /> Títulos p/ Teste A/B (Test & Compare)
+                   </h3>
+                   <button 
+                     onClick={() => handleCopy(seoResult.titles, 'titles')}
+                     className="text-xs font-bold text-gray-500 hover:text-white transition-colors flex items-center gap-1"
+                   >
+                     {copiedField === 'titles' ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                     {copiedField === 'titles' ? 'Copiado!' : 'Copiar'}
+                   </button>
+                 </div>
+                 <div className="bg-black/30 border border-white/5 rounded-xl p-4 text-white font-bold text-sm leading-loose whitespace-pre-wrap">
+                   {seoResult.titles}
                  </div>
                </div>
 
