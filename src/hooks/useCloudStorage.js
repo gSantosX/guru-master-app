@@ -77,13 +77,27 @@ export function useCloudStorage(dataKey, defaultValue) {
     return () => { cancelled = true; };
   }, [dataKey]);
 
+  // Sync state globally across the same tab
+  useEffect(() => {
+    const handleGlobalSync = (e) => {
+      if (e.detail?.key === dataKey) {
+        setValue(e.detail.value);
+      }
+    };
+    window.addEventListener('guru_cloud_sync', handleGlobalSync);
+    return () => window.removeEventListener('guru_cloud_sync', handleGlobalSync);
+  }, [dataKey]);
+
   // Setter that mirrors localStorage and debounces cloud save
   const setCloudValue = useCallback((updater) => {
     setValue(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
 
-      // Instant local cache
-      try { localStorage.setItem(localKey, JSON.stringify(next)); } catch {}
+      // Instant local cache and global sync
+      try { 
+        localStorage.setItem(localKey, JSON.stringify(next)); 
+        window.dispatchEvent(new CustomEvent('guru_cloud_sync', { detail: { key: dataKey, value: next } }));
+      } catch {}
 
       // Debounced cloud save
       clearTimeout(saveTimerRef.current);
