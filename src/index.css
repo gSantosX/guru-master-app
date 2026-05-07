@@ -4,12 +4,74 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root, .theme-neon {
   --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
   --font-outfit: 'Outfit', system-ui, -apple-system, sans-serif;
-  --neon-cyan: #00f3ff;
-  --neon-purple: #bf40ff;
-  --neon-pink: #ff00ea;
+  --neon-cyan: 0 243 255;
+  --neon-purple: 191 64 255;
+  --neon-pink: 255 0 234;
+  --bg-dark: 10 10 15;
+  --bg-dark-lighter: 18 18 28;
+  --bg-dark-card: 26 26 36;
+  --color-white: 255 255 255;
+  --color-gray-100: 243 244 246;
+  --color-gray-200: 229 231 235;
+  --color-gray-300: 209 213 219;
+  --color-gray-400: 156 163 175;
+  --color-gray-500: 107 114 128;
+  --color-gray-600: 75 85 99;
+  --color-gray-700: 55 65 81;
+  --color-gray-800: 31 41 55;
+  --color-gray-900: 17 24 39;
+}
+
+.theme-minimal {
+  --neon-cyan: 255 255 255;
+  --neon-purple: 170 170 170;
+  --neon-pink: 221 221 221;
+}
+
+.theme-soft {
+  --neon-cyan: 167 139 250;
+  --neon-purple: 251 207 232;
+  --neon-pink: 251 207 232;
+  --bg-dark: 15 10 20;
+  --bg-dark-lighter: 26 18 36;
+  --bg-dark-card: 36 26 46;
+}
+
+.theme-light {
+  --neon-cyan: 2 132 199;
+  --neon-purple: 124 58 237;
+  --neon-pink: 219 39 119;
+  --bg-dark: 249 250 251;
+  --bg-dark-lighter: 255 255 255;
+  --bg-dark-card: 255 255 255;
+  --color-white: 17 24 39;
+  
+  --color-gray-100: 17 24 39;
+  --color-gray-200: 31 41 55;
+  --color-gray-300: 55 65 81;
+  --color-gray-400: 75 85 99;
+  --color-gray-500: 107 114 128;
+  --color-gray-600: 156 163 175;
+  --color-gray-700: 209 213 219;
+  --color-gray-800: 229 231 235;
+  --color-gray-900: 243 244 246;
+}
+
+.theme-light .glass-card {
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+.theme-light .glass-card:hover {
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+.theme-light input, .theme-light select, .theme-light textarea {
+  background-color: rgba(0,0,0,0.02);
+  color: #111827;
+  border-color: rgba(0,0,0,0.1);
 }
 
 @layer base {
@@ -38,11 +100,11 @@
   }
 
   .text-gradient-cyan {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#00f3ff] to-[#0066ff];
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-neon-cyan to-blue-600;
   }
 
   .text-gradient-purple {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#bf40ff] to-[#ff00ea];
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-neon-purple to-neon-pink;
   }
 
   .text-glow-cyan {
