@@ -57,6 +57,8 @@ export const SeoTab = () => {
 Eu vou te passar o Título e o Resumo/Roteiro de um vídeo.
 Sua missão é gerar o "Pacote de Upload" perfeito.
 
+REGRA CRÍTICA DE IDIOMA: Você deve detectar automaticamente o idioma em que o "TÍTULO DO VÍDEO" foi escrito. Todo o conteúdo gerado (Descrição, Hashtags, Tags, Comentário e Títulos A/B) DEVE ser escrito estritamente neste mesmo idioma detectado, para garantir coerência no upload.
+
 TÍTULO DO VÍDEO: "${videoTitle}"
 ROTEIRO/RESUMO: "${videoScript || 'Sem roteiro detalhado. Baseie-se apenas no título para inferir o contexto.'}"
 
