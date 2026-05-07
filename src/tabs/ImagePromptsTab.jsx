@@ -246,27 +246,38 @@ ${scriptToAnalyze.substring(0, 2500)}`;
     return () => window.removeEventListener('guru_scripts_updated', loadScripts);
   }, []);
 
+  // AUTO-INJECT VEO SCRIPT
+  useEffect(() => {
+    if (selectedScriptId) {
+      const scriptsList = cloudScripts.length > 0 ? cloudScripts : availableScripts;
+      const script = scriptsList.find(s => String(s.id) === String(selectedScriptId));
+      if (script && script.content) {
+        const veoData = generateVeoContent(script.content);
+        const parts = veoData.split(/\n\s*\n/).filter(p => p.trim());
+        const blocks = parts.map(p => {
+          const lines = p.trim().split('\n');
+          if (lines.length >= 3) return lines.slice(2).join(' ').trim();
+          return p.trim();
+        });
+        setSubtitleBlocks(blocks);
+        setSubtitleCount(blocks.length);
+        setFile({ name: `Legenda_VEO_${script.title || selectedScriptId}.veo`, size: veoData.length });
+        setPrompts("");
+      }
+    } else {
+      setFile(null);
+      setSubtitleBlocks([]);
+      setSubtitleCount(0);
+      setPrompts("");
+    }
+  }, [selectedScriptId, cloudScripts, availableScripts]);
+
   useEffect(() => {
     if (isActive) {
       const triggerId = localStorage.getItem('guru_image_prompt_trigger_id');
-      const autoAnalyze = localStorage.getItem('guru_image_prompt_auto_analyze');
-      
       if (triggerId) {
         setSelectedScriptId(triggerId);
         localStorage.removeItem('guru_image_prompt_trigger_id');
-        
-        const veoContent = localStorage.getItem('guru_image_prompt_veo_content');
-        if (veoContent) {
-           localStorage.removeItem('guru_image_prompt_veo_content');
-        }
-
-        if (autoAnalyze === 'true') {
-          localStorage.removeItem('guru_image_prompt_auto_analyze');
-          const currentScripts = loadScripts(); 
-          setTimeout(() => {
-            analyzeVisualIdentity(triggerId, currentScripts);
-          }, 1000);
-        }
       }
     }
   }, [isActive]);
@@ -1101,36 +1112,9 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
               ))}
            </select>
 
-           <button 
-              onClick={() => analyzeVisualIdentity()}
-              disabled={isAnalyzing || (!selectedScriptId && subtitleBlocks.length === 0)}
-              className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 group border-2 ${
-                visualDNA.scenario && !isAnalyzing
-                  ? 'bg-green-500/20 border-green-500/40 text-green-400 shadow-[0_0_20px_rgba(34,197,94,0.1)] hover:bg-green-500/30'
-                  : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20'
-              }`}
-            >
-              <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${visualDNA.scenario && !isAnalyzing ? 'bg-green-500/20' : 'bg-white/10 group-hover:bg-white/20'}`}>
-                {isAnalyzing ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-neon-pink" />
-                ) : visualDNA.scenario ? (
-                  <CheckCircle className="w-4 h-4 text-green-400" />
-                ) : (
-                  <Eye className="w-4 h-4 text-gray-400 group-hover:text-white" />
-                )}
-              </div>
-              <div className="text-left">
-                <span className="block leading-none">{isAnalyzing ? "Analisando..." : visualDNA.scenario ? "Identidade Analisada" : "Analisar Identidade Visual"}</span>
-                <span className={`block text-[8px] mt-0.5 ${visualDNA.scenario ? 'text-green-500/60' : 'text-gray-500'}`}>
-                  {visualDNA.scenario ? "DNA Cinematográfico Pronto" : "Obrigatório para Gerar Prompts"}
-                </span>
-              </div>
-            </button>
-            {analyzeError && (
-              <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs font-bold uppercase tracking-wider text-center animate-pulse">
-                {analyzeError}
-              </div>
-            )}
+           <div className="hidden">
+             {/* DNA Analysis Button Removed by user request */}
+           </div>
         </div>
 
         {/* Visual DNA Pre-Production Panel */}
@@ -1376,13 +1360,12 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
             <div className="flex gap-4">
               <button
                 onClick={() => {
-                   if (file) handleGenerate();
-                   else if (selectedScriptId) handleGenerateFromScript();
-                   else alert("⚠️ Carregue uma legenda ou selecione um roteiro.");
+                   if (file || subtitleBlocks.length > 0) handleGenerate();
+                   else alert("⚠️ Selecione um roteiro ou carregue uma legenda primeiro.");
                 }}
-                disabled={(isGenerating || !visualDNA.scenario) || (!file && !selectedScriptId)}
+                disabled={(isGenerating) || (!file && subtitleBlocks.length === 0)}
                 className={`flex-1 py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 ${
-                  (isGenerating || !visualDNA.scenario) || (!file && !selectedScriptId)
+                  (isGenerating) || (!file && subtitleBlocks.length === 0)
                     ? 'bg-white/5 border border-white/5 text-gray-600 cursor-not-allowed grayscale opacity-50'
                     : 'bg-gradient-to-r from-pink-600 to-neon-purple text-white hover:shadow-neon-pink hover:scale-[1.02] shadow-[0_0_20px_rgba(255,44,182,0.4)]'
                 }`}
@@ -1394,8 +1377,8 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
                   />
                 ) : (
                   <>
-                    {!visualDNA.scenario ? <X className="w-5 h-5 text-red-500" /> : <Wand2 className="w-5 h-5 shadow-neon animate-pulse" />} 
-                    {!visualDNA.scenario ? "Bloqueado: Requer Análise Visual" : `Gerar Prompts do Projeto`}
+                    <Wand2 className="w-5 h-5 shadow-neon animate-pulse" /> 
+                    Gerar Prompts do Projeto
                   </>
                 )}
               </button>
