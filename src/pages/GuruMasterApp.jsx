@@ -11,6 +11,7 @@ import { useCloudStorage } from '../hooks/useCloudStorage';
 const ScriptTab = lazyWithRetry(() => import('../tabs/ScriptTab').then(m => ({ default: m.ScriptTab })));
 const ReadyScriptsTab = lazyWithRetry(() => import('../tabs/ReadyScriptsTab').then(m => ({ default: m.ReadyScriptsTab })));
 const ImagePromptsTab = lazyWithRetry(() => import('../tabs/ImagePromptsTab').then(m => ({ default: m.ImagePromptsTab })));
+const SeoTab = lazyWithRetry(() => import('../tabs/SeoTab').then(m => ({ default: m.SeoTab })));
 const VideoCoverTab = lazyWithRetry(() => import('../tabs/VideoCoverTab').then(m => ({ default: m.VideoCoverTab })));
 const VideoTab = lazyWithRetry(() => import('../tabs/VideoTab').then(m => ({ default: m.VideoTab })));
 const ProgressTab = lazyWithRetry(() => import('../tabs/ProgressTab').then(m => ({ default: m.ProgressTab })));
@@ -32,6 +33,7 @@ const tabComponents = [
   { id: 'create-script',       Component: ScriptTab },
   { id: 'ready-scripts',       Component: ReadyScriptsTab },
   { id: 'image-prompts',       Component: ImagePromptsTab },
+  { id: 'seo-upload',          Component: SeoTab },
   { id: 'capa-video',          Component: VideoCoverTab },
   { id: 'generate-video',      Component: VideoTab },
   { id: 'progress',            Component: ProgressTab },

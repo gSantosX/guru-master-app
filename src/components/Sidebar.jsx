@@ -13,6 +13,7 @@ const getNavItems = (user = null) => {
     { id: 'create-script', label: t('sidebar.create_script'), icon: PenTool, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
     { id: 'ready-scripts', label: t('sidebar.ready_scripts'), icon: FileText, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
     { id: 'image-prompts', label: t('sidebar.image_prompts'), icon: ImageIcon, color: 'text-neon-pink', shadow: 'shadow-neon-pink' },
+    { id: 'seo-upload', label: 'SEO & Publicação', icon: Youtube, color: 'text-green-400', shadow: 'shadow-green-400' },
     { id: 'capa-video', label: t('sidebar.capa_video'), icon: ImageIcon, color: 'text-neon-purple', shadow: 'shadow-neon-purple' },
     { id: 'channel-mining', label: t('sidebar.channel_mining'), icon: Youtube, color: 'text-neon-cyan', shadow: 'shadow-neon-cyan' },
     { id: 'niche-identifier', label: t('sidebar.niche_identifier'), icon: Compass, color: 'text-neon-pink', shadow: 'shadow-neon-pink' },
