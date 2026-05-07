@@ -206,16 +206,12 @@ export const SettingsTab = () => {
   };
 
   const handleThemeChange = (newTheme) => {
-    setTheme(newTheme);
-    localStorage.setItem('guru_theme', newTheme);
-    window.dispatchEvent(new Event('guru_theme_change'));
+    setAppSettings(prev => ({ ...prev, theme: newTheme }));
   };
 
   const handleMotionChange = (e) => {
     const isChecked = typeof e === 'boolean' ? e : e.target.checked;
-    setReduceMotion(isChecked);
-    localStorage.setItem('guru_reduce_motion', isChecked);
-    window.dispatchEvent(new Event('guru_motion_change'));
+    setAppSettings(prev => ({ ...prev, reduceMotion: isChecked }));
   };
 
   // ── VALIDAÇÃO REAL DA CHAVE GOOGLE (Gemini) via /api/check ──────────────────
