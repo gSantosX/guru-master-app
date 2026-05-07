@@ -75,7 +75,7 @@ Forneça uma lista de 15 a 20 tags de alta busca (incluindo cauda longa e cauda 
 Crie um comentário curto e extremamente engajador para ser fixado no topo do vídeo. Ele deve fazer uma pergunta instigante ao público para forçar comentários e aumentar o engajamento geral.
 
 **5. TÍTULOS PARA TESTE A/B**
-Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito fortes em CTR (Click-Through Rate) e utilizar diferentes emoções (curiosidade, medo, choque, urgência). Formate como uma lista 1. 2. 3.`;
+Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito fortes em CTR (Click-Through Rate) e utilizar diferentes emoções (curiosidade, medo, choque, urgência). NÃO use números (1, 2, 3), marcadores ou aspas. Apenas escreva 1 título por linha.`;
 
     try {
       const response = await callAI(prompt, { model: 'gemini-1.5-pro' });
@@ -85,7 +85,7 @@ Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito forte
         hashtags: '',
         tags: '',
         comment: '',
-        titles: ''
+        titles: []
       };
       
       const descMatch = response.match(/\*\*1\. DESCRIÇÃO OTIMIZADA\*\*([\s\S]*?)(?=\*\*2\. HASHTAGS\*\*|$)/);
@@ -98,7 +98,11 @@ Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito forte
       if (hashMatch) sections.hashtags = hashMatch[1].trim();
       if (tagsMatch) sections.tags = tagsMatch[1].trim();
       if (commentMatch) sections.comment = commentMatch[1].trim();
-      if (titlesMatch) sections.titles = titlesMatch[1].trim();
+      if (titlesMatch) {
+        sections.titles = titlesMatch[1].trim().split('\n')
+          .map(t => t.replace(/^[\d\.\-\*\s]+/, '').replace(/^["']|["']$/g, '').trim())
+          .filter(t => t.length > 0);
+      }
 
       setSeoResult(sections);
     } catch (err) {
@@ -289,16 +293,24 @@ Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito forte
                    <h3 className="text-xs font-black text-green-400 flex items-center gap-2 uppercase tracking-widest">
                      <Type className="w-4 h-4" /> Títulos p/ Teste A/B (Test & Compare)
                    </h3>
-                   <button 
-                     onClick={() => handleCopy(seoResult.titles, 'titles')}
-                     className="text-xs font-bold text-gray-500 hover:text-white transition-colors flex items-center gap-1"
-                   >
-                     {copiedField === 'titles' ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
-                     {copiedField === 'titles' ? 'Copiado!' : 'Copiar'}
-                   </button>
                  </div>
-                 <div className="bg-black/30 border border-white/5 rounded-xl p-4 text-white font-bold text-sm leading-loose whitespace-pre-wrap">
-                   {seoResult.titles}
+                 <div className="flex flex-col gap-3">
+                   {Array.isArray(seoResult.titles) ? seoResult.titles.map((title, idx) => (
+                     <div key={idx} className="bg-black/30 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4 group/title hover:border-green-500/30 transition-colors">
+                       <span className="text-white font-bold text-sm leading-snug flex-1">{title}</span>
+                       <button 
+                         onClick={() => handleCopy(title, `title-${idx}`)}
+                         className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                         title="Copiar Título"
+                       >
+                         {copiedField === `title-${idx}` ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                       </button>
+                     </div>
+                   )) : (
+                     <div className="bg-black/30 border border-white/5 rounded-xl p-4 text-white font-bold text-sm leading-loose whitespace-pre-wrap">
+                       {seoResult.titles}
+                     </div>
+                   )}
                  </div>
                </div>
 
