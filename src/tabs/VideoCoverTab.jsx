@@ -98,7 +98,6 @@ export const VideoCoverTab = ({ isActive }) => {
         shockWords, 
         covers, 
         coverPrefs, 
-        description, 
         lastSelectedTitle 
     } = coverState;
 
@@ -108,9 +107,6 @@ export const VideoCoverTab = ({ isActive }) => {
     const [scripts, setScripts] = useState([]);
     const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
     const [copiedIndex, setCopiedIndex] = useState(null);
-    const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
-    const [withDisclaimer, setWithDisclaimer] = useState(false);
-    const [descCopied, setDescCopied] = useState(false);
     const [copiedSection, setCopiedSection] = useState(null);
 
     const handleCopy = (text, section) => {
@@ -267,64 +263,6 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
             ]);
         } finally {
             setIsGeneratingTitles(false);
-        }
-    };
-
-    const handleGenerateDescription = async () => {
-        if (!selectedScript || !lastSelectedTitle) return;
-        setIsGeneratingDescription(true);
-        try {
-            const apiKey = configs?.gemini_key || localStorage.getItem('guru_gemini_key');
-            if (!apiKey) throw new Error('Chave Gemini não configurada.');
-
-            const prompt = `Você é um ESPECIALISTA ELITE em SEO para YouTube, Copywriting e Storytelling Digital.
-
-CONTEXTO:
-- Título do Vídeo: "${lastSelectedTitle}"
-- Trecho do Roteiro: """${selectedScript.content?.substring(0, 1500) || 'Use apenas o título como base'}"""
-
----
-## ESTRUTURA OBRIGATÓRIA DA DESCRIÇÃO
-A descrição deve seguir exatamente esta arquitetura em ordem:
-
-**BLOCO 1 — GANCHO INICIAL (primeiras 2 linhas)**
-As primeiras 2 linhas aparecem no feed ANTES do "Ver mais". São o único texto que o algoritmo e o usuário veem primeiro. Devem:
-- Criar curiosidade imediata ou fazer uma afirmação impactante
-- Conter a palavra-chave principal do vídeo naturalmente
-- NUNCA começar com "Neste vídeo" ou "Olá pessoal"
-
-**BLOCO 2 — SOBRE O VÍDEO (3-4 linhas)**
-- Descreva o que o espectador vai descobrir/aprender/sentir
-- Use bullet points implícitos com linguagem dinâmica
-- Inclua 2-3 variações semânticas da palavra-chave principal
-
-**BLOCO 3 — CTA (1-2 linhas)**
-- Peça uma ação específica (se inscrever, comentar com uma palavra, ativar notificações)
-- A CTA deve surgir naturalmente da narrativa, não como obrigação
-- NUNCA use: "não se esqueça de curtir", "ativa o sininho"
-
-**BLOCO 4 — HASHTAGS (última linha)**
-- Exatamente 5 hashtags estratégicas
-- Mix: 1 hashtag ampla (nicho), 2 hashtags médias (subtópico), 2 hashtags específicas (tema do vídeo)
-- Format: #HashtagSemEspaço
-
----
-## REQUISITOS TÉCNICOS
-- IDIOMA: Obrigatoriamente o MESMO IDIOMA do título "${lastSelectedTitle}"
-- COMPRIMENTO: Entre 600 e 800 caracteres TOTAIS (incluindo hashtags)
-- DISCLAIMER: ${withDisclaimer ? 'OBRIGATÓRIO: Adicione antes das hashtags um aviso de ficção TRADUZIDO EXATAMENTE PARA O MESMO IDIOMA DO TÍTULO, com o seguinte sentido: "⚠️ Este vídeo é uma obra de ficção/entretenimento. Qualquer semelhança com pessoas ou eventos reais é mera coincidência."' : 'NÃO inclua avisos de ficção.'}
-- COERÊNCIA: Seja fiel ao título e ao espírito do roteiro
-- ZERO marketing genérico: Cada frase deve ser específica para ESTE vídeo
-
-Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem aspas, sem markdown.`;
-
-            const result = await callAI(prompt, { model: 'gemini-1.5-pro', gptKey: configs.gpt_key });
-            updateCoverState({ description: result.replace(/```markdown/g, '').replace(/```/g, '').trim() });
-        } catch (error) {
-            console.error('Erro ao gerar descrição:', error);
-            alert("Falha ao gerar descrição: " + error.message);
-        } finally {
-            setIsGeneratingDescription(false);
         }
     };
 
@@ -887,97 +825,7 @@ Retorne APENAS o texto da descrição pronto para copiar, sem introduções, sem
                 })}
             </div>
 
-            {/* Description Optimizer Section */}
-            <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-12 glass-card p-8 border border-neon-cyan/20 relative shrink-0 min-h-[140px]"
-            >
-                <div className="absolute top-0 right-0 w-64 h-64 bg-neon-cyan/5 rounded-full blur-[80px] pointer-events-none" />
-                
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 relative z-10">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <Sparkles className="w-6 h-6 text-neon-cyan" />
-                            <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter italic">Otimizador de Descrição Apex</h3>
-                        </div>
-                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-l-2 border-neon-cyan pl-3">
-                            Gerando para: <span className="text-neon-cyan">{lastSelectedTitle || 'Selecione um título acima'}</span>
-                        </p>
-                    </div>
 
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-3">
-                            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest cursor-pointer" htmlFor="disclaimer-toggle">
-                                Aviso de Ficção
-                            </label>
-                            <button 
-                                id="disclaimer-toggle"
-                                onClick={() => setWithDisclaimer(!withDisclaimer)}
-                                className={`w-12 h-6 rounded-full p-1 transition-all flex items-center ${withDisclaimer ? 'bg-neon-cyan' : 'bg-white/10'}`}
-                            >
-                                <div className={`w-4 h-4 bg-white rounded-full transition-all ${withDisclaimer ? 'translate-x-6' : 'translate-x-0'}`} />
-                            </button>
-                        </div>
-
-                        <button 
-                            onClick={handleGenerateDescription}
-                            disabled={isGeneratingDescription || !lastSelectedTitle}
-                            className="px-8 py-3 bg-gradient-to-r from-neon-cyan to-blue-600 text-dark font-black text-[10px] uppercase tracking-[0.2em] rounded-xl shadow-[0_0_20px_rgba(0,243,255,0.3)] hover:shadow-[0_0_30px_rgba(0,243,255,0.5)] transition-all active:scale-95 disabled:opacity-30 disabled:pointer-events-none flex items-center gap-2"
-                        >
-                            {isGeneratingDescription ? <Loader2 className="w-4 h-4 animate-spin text-dark" /> : <RefreshCw className="w-4 h-4 text-dark" />}
-                            Gerar Descrição
-                        </button>
-                    </div>
-                </div>
-
-                <AnimatePresence mode="wait">
-                    {description ? (
-                        <motion.div 
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                            className="relative group/desc"
-                        >
-                            <div className="bg-dark/60 border border-white/5 rounded-2xl p-8 font-medium text-gray-300 leading-relaxed text-sm md:text-base whitespace-pre-line shadow-inner">
-                                {description}
-                            </div>
-                            
-                            <div className="absolute top-4 right-4 group-hover/desc:opacity-100 transition-opacity">
-                                <button 
-                                    onClick={() => handleCopy(description, 'final-desc')}
-                                    className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 transition-all border shadow-lg active:scale-95
-                                        ${copiedSection === 'final-desc' 
-                                            ? 'bg-green-500/20 border-green-500 text-green-400' 
-                                            : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-neon-cyan'}
-                                    `}
-                                >
-                                    {copiedSection === 'final-desc' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                                    {copiedSection === 'final-desc' ? 'Copiado!' : 'Copiar Descrição'}
-                                </button>
-                            </div>
-
-                            <div className="mt-4 flex justify-between items-center px-2">
-                                <span className="text-[9px] font-black text-gray-600 uppercase tracking-widest">
-                                    Contagem: <span className={description.length < 600 || description.length > 800 ? 'text-red-500' : 'text-neon-cyan'}>{description.length}</span> caracteres
-                                </span>
-                                <div className="text-[9px] font-black text-gray-600 uppercase tracking-widest flex gap-4">
-                                    <span>Resumo ✓</span>
-                                    <span>Sobre ✓</span>
-                                    <span>CTA ✓</span>
-                                    <span>5 Hashtags ✓</span>
-                                </div>
-                            </div>
-                        </motion.div>
-                    ) : (
-                        <div className="h-32 flex items-center justify-center border border-dashed border-white/5 rounded-2xl opacity-30">
-                            <p className="text-xs font-black uppercase tracking-widest text-gray-400 italic">
-                                {lastSelectedTitle ? 'Pronto para otimizar. Clique em "Gerar".' : 'Aguardando seleção de título acima...'}
-                            </p>
-                        </div>
-                    )}
-                </AnimatePresence>
-            </motion.div>
 
             {/* Info Box */}
             <motion.div
