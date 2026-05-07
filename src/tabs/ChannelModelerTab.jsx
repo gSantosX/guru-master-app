@@ -372,7 +372,7 @@ ${latestText || 'Dados não disponíveis'}
 VOZ DA AUDIÊNCIA (Comentários):
 ${audienceText || 'Sem comentários.'}
 
-Sua resposta deve ter EXATAMENTE estas 6 partes EM PORTUGUÊS (PT-BR) — sem introdução, sem conclusão:
+Sua resposta deve ter EXATAMENTE estas 7 partes EM PORTUGUÊS (PT-BR) — sem introdução, sem conclusão:
 **1. DIAGNÓSTICO DO NICHO**
 Em 1-2 frases: Qual é o posicionamento real deste canal? O que ele vende emocionalmente?
 **2. FÓRMULA DE SUCESSO**
@@ -385,6 +385,8 @@ Que ângulos este canal AINDA NÃO explorou, mas que a audiência está pedindo 
 Uma estratégia concreta baseada no feedback da audiência para o usuário aplicar.
 **6. ARMADILHA A EVITAR**
 O erro que a audiência mais critica neste tipo de canal.
+**7. SUBNICHOS RECOMENDADOS**
+Apresente de forma BEM RESUMIDA E DIRETA 3 ideias práticas de como subnichar este canal ou criar canais paralelos lucrativos derivados desta exata temática.
 
 REGRAS: Use **NEGRITO** para os títulos da seção.`;
 
