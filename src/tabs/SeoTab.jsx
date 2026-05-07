@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Youtube, Copy, Check, Sparkles, PenTool, Type, Loader2, Search, Zap, Layers } from 'lucide-react';
+import { Youtube, Copy, Check, Sparkles, Type, Loader2, Search, Zap, Layers, ChevronDown } from 'lucide-react';
 import { callAI } from '../utils/aiUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import { useCloudStorage } from '../hooks/useCloudStorage';
 
 export const SeoTab = () => {
   const [videoTitle, setVideoTitle] = useState('');
@@ -10,6 +11,7 @@ export const SeoTab = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [seoResult, setSeoResult] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
+  const [scripts] = useCloudStorage('scripts', []);
 
   useEffect(() => {
     const triggerTitle = localStorage.getItem('guru_seo_trigger_title');
@@ -23,6 +25,18 @@ export const SeoTab = () => {
       localStorage.removeItem('guru_seo_trigger_script');
     }
   }, []);
+
+  const handleScriptSelect = (e) => {
+    const selectedId = e.target.value;
+    if (!selectedId) return;
+    const selected = scripts.find(s => s.id.toString() === selectedId);
+    if (selected) {
+      setVideoTitle(selected.title || '');
+      setVideoScript(selected.content || '');
+    }
+    // Reseta o select para permitir escolher o mesmo caso ele edite e queira voltar
+    e.target.value = "";
+  };
 
   const handleCopy = (text, field) => {
     navigator.clipboard.writeText(text);
@@ -116,6 +130,27 @@ Crie um comentário curto e extremamente engajador para ser fixado no topo do v�
              </h3>
              
              <div className="space-y-6">
+                {scripts && scripts.length > 0 && (
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Importar de Roteiro Salvo</label>
+                    <div className="relative">
+                      <select 
+                        onChange={handleScriptSelect}
+                        defaultValue=""
+                        className="w-full bg-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500/50 transition-colors appearance-none cursor-pointer"
+                      >
+                        <option value="" disabled>Selecione um roteiro pronto (Opcional)</option>
+                        {scripts.map(s => (
+                          <option key={s.id} value={s.id}>{s.title}</option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div>
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">Título Final</label>
                   <input 
