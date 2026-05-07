@@ -397,6 +397,7 @@ Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito forte
           </div>
         )}
       </div>
+      </div>
     </div>
   );
 };
