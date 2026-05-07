@@ -105,6 +105,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const [promptType, setPromptType] = useState('image'); // 'image' or 'video'
   const [outputFormat, setOutputFormat] = useState('text'); // 'text' or 'json'
   const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
   const cancelRef = useRef(false); // <--- Inject cancel abort signal here
   const [generationProgress, setGenerationProgress] = useState({ step: '', current: 0, total: 0, statuses: [] });
   const [isVerified, setIsVerified] = useState(false);
@@ -113,6 +114,9 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const [isRepairing, setIsRepairing] = useState(false);
   const [repairLogs, setRepairLogs] = useState([]);
   const [showScanner, setShowScanner] = useState(false);
+  
+  const [referenceImage, setReferenceImage] = useState(null);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
   const updateDNAField = (field, value) => {
     setVisualDNA({ ...visualDNA, [field]: value });
@@ -127,116 +131,80 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     return scriptsArray;
   };
 
-  const analyzeVisualIdentity = async (forceScriptId = null, overrideScripts = null) => {
+  const analyzeImageDNA = async (base64Data, mimeType) => {
+    setIsAnalyzingImage(true);
     setAnalyzeError("");
-    let scriptToAnalyze = "";
-    const targetId = forceScriptId || selectedScriptId;
-    const scriptsList = overrideScripts || availableScripts;
-
-    console.log("🔍 [DNA_DEBUG] Iniciando análise para ID:", targetId);
-
-    if (targetId) {
-      let script = scriptsList.find(s => String(s.id) === String(targetId));
-      
-      if (!script) {
-        console.warn("⚠️ [DNA_DEBUG] Script não encontrado no estado. Lendo localStorage...");
-        const freshScripts = JSON.parse(localStorage.getItem('guru_cloud_scripts') || '[]');
-        script = freshScripts.find(s => String(s.id) === String(targetId));
-      }
-
-      if (script) {
-        scriptToAnalyze = script.content;
-        
-        // AUTO-INJECT VEO FROM SCRIPT — always replace with the selected script's VEO
-        // This ensures switching scripts always updates the loaded .veo file
-        if (script.content) {
-          const veoData = generateVeoContent(script.content);
-           const parts = veoData.split(/\n\s*\n/).filter(p => p.trim());
-           const blocks = parts.map(p => {
-             const lines = p.trim().split('\n');
-             if (lines.length >= 3) return lines.slice(2).join(' ').trim();
-             return p.trim();
-           });
-           setSubtitleBlocks(blocks);
-           setSubtitleCount(blocks.length);
-           setFile({ name: `Legenda_VEO_${script.title || targetId}.veo`, size: veoData.length });
-           setPrompts("");
-        }
-
-      }
-    } else if (subtitleBlocks.length > 0) {
-      scriptToAnalyze = subtitleBlocks.slice(0, 50).join('\n');
-    }
-
-    if (!scriptToAnalyze) {
-      alert("⚠️ Selecione um roteiro ou carregue uma legenda primeiro.");
-      return;
-    }
-
-    setIsAnalyzing(true);
-    setAnalyzeError(null);
 
     try {
-      const analysisPrompt = `Analise o roteiro abaixo e retorne UM JSON com o DNA visual cinemátográfico. Responda SOMENTE com o JSON, sem markdown, sem texto adicional.
+      const analysisPrompt = `Você é um Diretor Cinematográfico de Elite. Analise esta imagem cirurgicamente e retorne UM JSON com o DNA visual da imagem. Responda SOMENTE com o JSON, sem markdown, sem texto adicional.
 
 Campos obrigatórios:
-- scenario: locais e arquitetura dominantes
-- era: período ou estilo temporal
+- scenario: locais e arquitetura dominantes na imagem
+- era: período ou estilo temporal percebido
 - mood: carga emocional visual
-- lighting: estilo de iluminação
-- palette: 3 cores principais
-- camera: movimentos de câmera
+- lighting: estilo de iluminação (ex: luz natural, high key, sombras duras)
+- palette: 3 cores principais (ex: tons terrosos, neon cyan e magenta)
+- camera: ângulo de câmera e percepção de lente
 - rec_genero: UM valor exato de: Ultra-realista | Cinema (Blockbuster) | Cartoon / Animação | Documentário | Film Noir | Ficção Científica | Terror / Dark | Fantasia Épica | Anime
-- rec_camera: array com 1-2 valores de: Vista aérea | Na altura dos olhos | Vista de cima | Vista de baixo | Travelling | Câmera lenta | Zoom in | Pan lateral
+- rec_camera: array com 1-2 valores de: Vista aérea | Na altura dos olhos | Vista de cima | Vista de baixo | Travelling | Câmera lenta | Zoom in | Pan lateral`;
 
-ROTEIRO:
-${scriptToAnalyze.substring(0, 2500)}`;
-
-      // ANÁLISE: Obrigatoriamente via Chave PAGA para ser instantânea e suportar o Gemini Pro
       const mainKey = localStorage.getItem('guru_gemini_key') || 'GLOBAL';
-      const response = await callGemini(mainKey, analysisPrompt, { model: 'gemini-1.5-pro', temperature: 0.1 });
+      const imagePart = {
+        inlineData: {
+          data: base64Data.split(',')[1],
+          mimeType: mimeType
+        }
+      };
 
-      // Extração robusta de JSON — pega o último bloco JSON válido da resposta
-      // (evita capturar JSON de exemplos que a IA pode ecoar no início da resposta)
+      const response = await callGemini(mainKey, analysisPrompt, { 
+        model: 'gemini-1.5-pro', 
+        temperature: 0.1,
+        imagePart: imagePart 
+      });
+
       const cleaned = response.replace(/```json\n?|```/g, '').trim();
       
-      // Encontra TODOS os blocos JSON na resposta e pega o último válido
       let dna = null;
       const jsonMatches = [...cleaned.matchAll(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/gs)];
       for (let mi = jsonMatches.length - 1; mi >= 0; mi--) {
         try {
           const candidate = JSON.parse(jsonMatches[mi][0]);
           if (candidate.scenario) { dna = candidate; break; }
-        } catch { /* tenta o próximo */ }
+        } catch { }
       }
-      // Fallback: regex simples no texto inteiro
       if (!dna) {
         const jsonMatch = cleaned.match(/\{[\s\S]*?\}(?=[^{]*$)/);
         if (jsonMatch) {
-          try { dna = JSON.parse(jsonMatch[0]); } catch { /* falhou */ }
+          try { dna = JSON.parse(jsonMatch[0]); } catch { }
         }
       }
-      if (!dna?.scenario) throw new Error('A IA não retornou um JSON válido. Tente novamente.');
-
+      if (!dna?.scenario) throw new Error('A IA não retornou um JSON válido.');
 
       setVisualDNA(dna);
       if (dna.rec_genero) setGenero(dna.rec_genero);
       if (dna.rec_camera && Array.isArray(dna.rec_camera)) setCameraMovimento(dna.rec_camera);
 
     } catch (error) {
-      console.error('❌ [Analyze] Erro:', error);
-      const is429 = error?.status === 429 || (error?.message || '').toLowerCase().includes('quota') || (error?.message || '').toLowerCase().includes('rate') || (error?.message || '').toLowerCase().includes('exhausted');
-      const isAuth = error?.status === 401 || error?.status === 403 || error?.status === 400 || (error?.message || '').toLowerCase().includes('api key') || (error?.message || '').toLowerCase().includes('invalid') || (error?.message || '').toLowerCase().includes('permission');
-      const msg = is429
-        ? '⚠️ Cota da chave atingida. Aguarde 1-2 minutos ou configure uma chave gratuita em Configurações → Criador de Prompts.'
-        : isAuth
-        ? `❌ Chave inválida ou API desabilitada: ${error.message}`
-        : `❌ Falha na análise: ${error.message}`;
-      setAnalyzeError(msg);
+      console.error('❌ [Analyze Image] Erro:', error);
+      setAnalyzeError(error.message);
+      setReferenceImage(null);
     } finally {
-      // SEMPRE executado — garante que a aba nunca trava
-      setIsAnalyzing(false);
+      setIsAnalyzingImage(false);
     }
+  };
+
+  const handleImageUpload = (file) => {
+    if (!file || !file.type.startsWith('image/')) {
+      alert("Por favor, envie um arquivo de imagem válido.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target.result;
+      setReferenceImage(base64);
+      analyzeImageDNA(base64, file.type);
+    };
+    reader.readAsDataURL(file);
   };
 
 
@@ -263,6 +231,10 @@ ${scriptToAnalyze.substring(0, 2500)}`;
         setSubtitleCount(blocks.length);
         setFile({ name: `Legenda_VEO_${script.title || selectedScriptId}.veo`, size: veoData.length });
         setPrompts("");
+        
+        // Clear DNA when switching script
+        setReferenceImage(null);
+        setVisualDNA({ scenario: '', era: '', mood: '', lighting: '', palette: '', camera: '' });
       }
     } else {
       setFile(null);
@@ -271,6 +243,23 @@ ${scriptToAnalyze.substring(0, 2500)}`;
       setPrompts("");
     }
   }, [selectedScriptId, cloudScripts, availableScripts]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    const handlePaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          handleImageUpload(file);
+          break;
+        }
+      }
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [isActive]);
 
   useEffect(() => {
     if (isActive) {
@@ -1112,9 +1101,57 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
               ))}
            </select>
 
-           <div className="hidden">
-             {/* DNA Analysis Button Removed by user request */}
+           {/* Visual DNA Image Reference */}
+           <div 
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  handleImageUpload(e.dataTransfer.files[0]);
+                }
+              }}
+              onClick={() => imageInputRef.current?.click()}
+              className={`ml-auto flex items-center gap-3 px-4 py-2 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
+                referenceImage 
+                  ? 'border-neon-cyan/50 bg-neon-cyan/10' 
+                  : 'border-white/20 bg-white/5 hover:border-white/40 hover:bg-white/10'
+              }`}
+           >
+              <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
+              
+              {isAnalyzingImage ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Extraindo DNA...</span>
+                    <span className="text-[8px] text-gray-400 uppercase tracking-wider">Visão Cirúrgica IA</span>
+                  </div>
+                </div>
+              ) : referenceImage ? (
+                <div className="flex items-center gap-3">
+                  <img src={referenceImage} alt="Referência" className="w-8 h-8 object-cover rounded-lg border border-neon-cyan/30" />
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight">DNA Visual Capturado</span>
+                    <span className="text-[8px] text-gray-400 uppercase tracking-wider hover:text-white">Clique para trocar imagem</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                    <ImageIcon className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <div className="flex flex-col text-left">
+                     <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest leading-tight">Referência Visual (Opcional)</span>
+                     <span className="text-[8px] text-gray-500 uppercase tracking-wider">Cole (Ctrl+V) ou clique</span>
+                  </div>
+                </div>
+              )}
            </div>
+           {analyzeError && (
+              <div className="w-full mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-[10px] font-bold uppercase tracking-wider text-center animate-pulse">
+                {analyzeError}
+              </div>
+           )}
         </div>
 
         {/* Visual DNA Pre-Production Panel */}

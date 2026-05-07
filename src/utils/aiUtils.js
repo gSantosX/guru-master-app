@@ -187,16 +187,18 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
               const safeOutputTokens = options.maxOutputTokens ? Math.min(options.maxOutputTokens, isLegacyPro ? 2048 : 8192) : (isLegacyPro ? 2048 : 8192);
 
               const queryParam = apiKey === 'GLOBAL' ? '' : `?key=${apiKey}`;
+              const promptParts = options.imagePart ? [options.imagePart, { text: prompt }] : [{ text: prompt }];
+
               const res = await fetch(resolveApiUrl(`/api/gemini/${apiVersion}/${cleanPath}:generateContent${queryParam}`), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ role: "user", parts: [{ text: prompt }] }],
-                  generationConfig: {
-                    maxOutputTokens: safeOutputTokens,
-                    temperature: options.temperature || 0.7,
-                    ...options.generationConfig
-                  }
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contents: [{ role: "user", parts: promptParts }],
+                    generationConfig: {
+                      maxOutputTokens: safeOutputTokens,
+                      temperature: options.temperature || 0.7,
+                      ...options.generationConfig
+                    }
                 })
               });
 
