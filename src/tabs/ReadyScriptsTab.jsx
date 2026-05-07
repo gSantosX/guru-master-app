@@ -209,6 +209,16 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     setActiveTab('image-prompts');
   };
 
+  const handleGoToSeo = (scriptToGo) => {
+    const target = (scriptToGo && scriptToGo.id) ? scriptToGo : activeScript;
+    if (!target) return;
+    
+    localStorage.setItem('guru_seo_trigger_title', target.title || '');
+    localStorage.setItem('guru_seo_trigger_script', target.content || '');
+    
+    setActiveTab('seo-upload');
+  };
+
   // VIEWER MODE
   if (activeScript) {
     return (
@@ -260,12 +270,20 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
             <button onClick={() => handleDownloadVeo()} className="flex-1 py-3 md:py-4 rounded-xl bg-dark-lighter border border-white/10 hover:border-white/30 text-white font-bold flex items-center justify-center gap-2 transition-all hover:bg-white/5 hover:scale-[1.01] shadow-lg text-sm md:text-base">
               <FileJson className="w-5 h-5 text-neon-purple" /> Baixar VEO
             </button>
-            <button 
-               onClick={() => handleGoToPrompts()}
-               className="flex-[1.5] py-3 md:py-4 rounded-xl bg-gradient-to-r from-neon-pink to-neon-purple text-white font-black uppercase tracking-superwide flex items-center justify-center gap-3 transition-all hover:scale-[1.02] shadow-neon-pink"
-            >
-               <Wand2 className="w-6 h-6" /> Gerar Prompts Visuais
-            </button>
+            <div className="flex-[1.5] flex gap-2">
+              <button 
+                 onClick={() => handleGoToPrompts()}
+                 className="flex-1 py-3 md:py-4 rounded-xl bg-gradient-to-r from-neon-pink to-neon-purple text-white font-black uppercase tracking-superwide flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-neon-pink text-[10px] md:text-xs"
+              >
+                 <Wand2 className="w-4 h-4 md:w-5 md:h-5" /> Prompts
+              </button>
+              <button 
+                 onClick={() => handleGoToSeo()}
+                 className="flex-1 py-3 md:py-4 rounded-xl bg-gradient-to-r from-green-500 to-green-700 text-white font-black uppercase tracking-superwide flex items-center justify-center gap-2 transition-all hover:scale-[1.02] shadow-[0_0_15px_rgba(34,197,94,0.3)] text-[10px] md:text-xs"
+              >
+                 <Youtube className="w-4 h-4 md:w-5 md:h-5" /> SEO / Upload
+              </button>
+            </div>
             <button 
               onClick={() => handleCopy()}
               className={`flex-1 py-3 md:py-4 rounded-xl font-black text-[10px] uppercase tracking-superwide transition-all transform active:scale-95 shadow-lg flex items-center justify-center gap-3 ${
@@ -399,16 +417,26 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
 
                   {/* Actions Footer - Grid Mode */}
                   <div className="p-3 bg-dark/80 border-t border-white/10 space-y-2">
-                    <button 
-                      onClick={(e) => {
-                          e.stopPropagation();
-                          handleGoToPrompts(script);
-                      }}
-                      className="w-full py-2.5 rounded-xl bg-neon-pink/10 border border-neon-pink/20 hover:bg-neon-pink/20 text-neon-pink font-black text-[10px] uppercase tracking-superwide transition-all flex items-center justify-center gap-2 group/go active:scale-95 shadow-lg shadow-neon-pink/5"
-                    >
-                      <Wand2 className="w-4 h-4 group-hover/go:rotate-12 transition-transform" />
-                      Gerar Prompts Visuais
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleGoToPrompts(script);
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-neon-pink/10 border border-neon-pink/20 hover:bg-neon-pink/20 text-neon-pink font-black text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 group/go active:scale-95 shadow-lg shadow-neon-pink/5"
+                      >
+                        <Wand2 className="w-3 h-3 group-hover/go:rotate-12 transition-transform" /> Prompts
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleGoToSeo(script);
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 hover:bg-green-500/20 text-green-400 font-black text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 group/go active:scale-95 shadow-lg shadow-green-500/5"
+                      >
+                        <Youtube className="w-3 h-3 group-hover/go:rotate-12 transition-transform" /> SEO
+                      </button>
+                    </div>
                     
                     <div className="flex gap-2">
                       <button 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Youtube, Copy, Check, Sparkles, PenTool, Type, Loader2, Search, Zap, Layers } from 'lucide-react';
 import { callAI } from '../utils/aiUtils';
@@ -10,6 +10,19 @@ export const SeoTab = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [seoResult, setSeoResult] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
+
+  useEffect(() => {
+    const triggerTitle = localStorage.getItem('guru_seo_trigger_title');
+    const triggerScript = localStorage.getItem('guru_seo_trigger_script');
+    
+    if (triggerTitle || triggerScript) {
+      setVideoTitle(triggerTitle || '');
+      setVideoScript(triggerScript || '');
+      
+      localStorage.removeItem('guru_seo_trigger_title');
+      localStorage.removeItem('guru_seo_trigger_script');
+    }
+  }, []);
 
   const handleCopy = (text, field) => {
     navigator.clipboard.writeText(text);
@@ -77,22 +90,23 @@ Crie um comentário curto e extremamente engajador para ser fixado no topo do v�
   };
 
   return (
-    <div className="flex flex-col h-full w-full max-w-[1200px] mx-auto p-4 md:p-8 overflow-hidden">
-      <header className="mb-8">
-        <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-700 p-[2px] shadow-[0_0_20px_rgba(34,197,94,0.3)]">
-            <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
-              <Youtube className="w-8 h-8 text-white fill-current" />
+    <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 flex flex-col gap-6 pb-12 pt-4">
+        <header className="mb-4">
+          <h2 className="text-3xl md:text-5xl font-black text-white flex items-center gap-4 tracking-tighter uppercase italic">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-green-700 p-[2px] shadow-[0_0_20px_rgba(34,197,94,0.3)]">
+              <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
+                <Youtube className="w-8 h-8 text-white fill-current" />
+              </div>
             </div>
-          </div>
-          SEO & Publicação
-        </h2>
-        <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-green-500 pl-4 ml-2 italic">
-          Pacote Completo de Metadados para Upload
-        </p>
-      </header>
+            SEO & Publicação
+          </h2>
+          <p className="text-gray-400 mt-3 font-bold text-sm uppercase tracking-[0.2em] border-l-4 border-green-500 pl-4 ml-2 italic">
+            Pacote Completo de Metadados para Upload
+          </p>
+        </header>
 
-      <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
+        <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
         {/* Lado Esquerdo: Inputs */}
         <div className="w-full lg:w-[450px] flex flex-col gap-6 shrink-0 overflow-y-auto custom-scrollbar pr-2 pb-10">
           <div className="bg-white/5 border border-white/10 rounded-3xl p-6 relative group overflow-hidden">
@@ -231,6 +245,7 @@ Crie um comentário curto e extremamente engajador para ser fixado no topo do v�
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
