@@ -11,6 +11,7 @@ export const SeoTab = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [seoResult, setSeoResult] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
+  const [isFiction, setIsFiction] = useState(false);
   const [scripts] = useCloudStorage('scripts', []);
 
   useEffect(() => {
@@ -61,7 +62,7 @@ REGRA CRÍTICA DE IDIOMA: Você deve detectar automaticamente o idioma em que o 
 
 TÍTULO DO VÍDEO: "${videoTitle}"
 ROTEIRO/RESUMO: "${videoScript || 'Sem roteiro detalhado. Baseie-se apenas no título para inferir o contexto.'}"
-
+${isFiction ? '\nATENÇÃO: O usuário marcou este conteúdo como FICÇÃO. É OBRIGATÓRIO incluir um disclaimer formal e profissional no final da "DESCRIÇÃO OTIMIZADA" informando que os eventos ou entidades apresentados são fictícios e qualquer semelhança com a realidade é coincidência. O disclaimer DEVE estar no mesmo idioma do título.\n' : ''}
 Gere as seguintes 4 seções usando EXATAMENTE estes cabeçalhos (com os asteriscos duplos):
 
 **1. DESCRIÇÃO OTIMIZADA**
@@ -182,6 +183,16 @@ Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito forte
                     placeholder="Cole aqui o seu roteiro completo ou um resumo do que é falado no vídeo para um SEO extremamente preciso..."
                     className="w-full h-48 bg-dark border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-green-500/50 transition-colors resize-none custom-scrollbar"
                   />
+                </div>
+
+                <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-4 rounded-xl cursor-pointer hover:border-green-500/30 transition-colors" onClick={() => setIsFiction(!isFiction)}>
+                  <div className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors ${isFiction ? 'bg-green-500 border-green-500' : 'border-gray-500 bg-dark'}`}>
+                    {isFiction && <Check className="w-3 h-3 text-dark" />}
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-sm font-bold text-white block">Conteúdo Fictício</span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-widest">Adiciona um aviso legal (disclaimer) na descrição.</span>
+                  </div>
                 </div>
 
                 <button 
