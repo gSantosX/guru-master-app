@@ -147,9 +147,9 @@ Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito forte
           </p>
         </header>
 
-        <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
+        <div className="flex flex-col lg:flex-row gap-8">
         {/* Lado Esquerdo: Inputs */}
-        <div className="w-full lg:w-[450px] flex flex-col gap-6 shrink-0 overflow-y-auto custom-scrollbar pr-2 pb-10">
+        <div className="w-full lg:w-[450px] flex flex-col gap-6 shrink-0 pb-10">
           <div className="bg-white/5 border border-white/10 rounded-3xl p-6 relative group overflow-hidden">
              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-transparent opacity-50" />
              <h3 className="text-sm font-black text-gray-400 mb-6 flex items-center gap-2 uppercase tracking-widest">
@@ -239,7 +239,7 @@ Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito forte
                <p className="text-sm font-medium mt-2 max-w-sm">Insira o título e o roteiro do seu vídeo para gerar a descrição perfeita, tags e o primeiro comentário fixado.</p>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto custom-scrollbar pr-4 space-y-8">
+            <div className="flex-1 pr-4 space-y-8">
                
                {/* Descrição */}
                <div className="relative group">
