@@ -365,6 +365,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
       setFile(null);
       setSubtitleBlocks([]);
       setSubtitleCount(0);
+      setPrompts("");
       return;
     }
 
@@ -383,6 +384,7 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
       setSubtitleBlocks(blocks);
       setSubtitleCount(blocks.length);
       setFile({ name: `Legenda_VEO_${script.title || selectedScriptId}.veo`, size: veoData.length });
+      setPrompts("");
     }
   }, [selectedScriptId, cloudScripts, availableScripts]);
 
@@ -1459,8 +1461,8 @@ Return a SINGLÊS PARAGRAPH in English describing the visual style as a unified 
                   </div>
                 ) : (
                   <>
-                    {!visualDNA.scenario ? <X className="w-5 h-5 text-red-500" /> : <Wand2 className="w-5 h-5 shadow-neon animate-pulse" />} 
-                    {!visualDNA.scenario ? "Bloqueado: Requer Análise Visual" : `Gerar Prompts do Projeto`}
+                    <Wand2 className="w-5 h-5 shadow-neon animate-pulse" /> 
+                    Gerar Prompts do Projeto
                   </>
                 )}
               </button>
