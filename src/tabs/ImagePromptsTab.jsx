@@ -1082,158 +1082,157 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         </p>
       </header>
 
-        {/* Script Selection & Automation Bar */}
-        <div className="p-4 glass-card border-neon-purple/20 flex flex-wrap items-center gap-4">
-           <div className="flex items-center gap-3 mr-4">
+        {/* Unified Configuration Panel */}
+        <div className="glass-card flex flex-col mb-8 border border-white/10 overflow-hidden shadow-2xl">
+          
+          {/* Row 1: Script Selection */}
+          <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center gap-4 bg-white/[0.01]">
+            <div className="flex items-center gap-3 md:w-56 shrink-0">
               <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20">
                  <FileText className="w-4 h-4 text-neon-purple" />
               </div>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fidelidade Máxima</span>
-           </div>
-           
-           <select 
-              value={selectedScriptId}
-              onChange={(e) => setSelectedScriptId(e.target.value)}
-              className="flex-1 min-w-[200px] bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-gray-400 focus:outline-none focus:border-neon-purple/50 hover:bg-white/10 transition-all cursor-pointer"
-           >
-              <option value="">-- MEUS PROJETOS SALVOS --</option>
-              {(cloudScripts.length > 0 ? cloudScripts : availableScripts).map(s => (
-                 <option key={s.id} value={s.id} className="bg-dark text-white">{s.title}</option>
-              ))}
-           </select>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Projeto Base</span>
+            </div>
+            
+            <select 
+               value={selectedScriptId}
+               onChange={(e) => setSelectedScriptId(e.target.value)}
+               className="flex-1 w-full bg-dark/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-gray-300 focus:outline-none focus:border-neon-purple/50 hover:bg-white/5 transition-all cursor-pointer"
+            >
+               <option value="">-- SELECIONE UM ROTEIRO --</option>
+               {(cloudScripts.length > 0 ? cloudScripts : availableScripts).map(s => (
+                  <option key={s.id} value={s.id} className="bg-dark text-white">{s.title}</option>
+               ))}
+            </select>
+          </div>
 
-           <div className="hidden">
-             {/* Removed dropzone from top bar */}
-           </div>
-        </div>
-
-        {/* Visual DNA Image Reference - CAMPO EXCLUSIVO */}
-        <div className="p-4 glass-card border-neon-cyan/20 bg-neon-cyan/5 flex flex-col md:flex-row items-start md:items-center gap-4 mb-2">
-           <div className="flex-1">
-             <h3 className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.2em] flex items-center gap-2 mb-1">
-               <Camera className="w-4 h-4 text-neon-cyan" /> Análise de Estilo Visual
-             </h3>
-             <p className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">
-               Faça upload ou cole (Ctrl+V) uma imagem de referência.
-             </p>
-           </div>
-           
-           <div 
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                  handleImageUpload(e.dataTransfer.files[0]);
-                }
-              }}
-              onClick={() => imageInputRef.current?.click()}
-              className={`flex-1 md:max-w-[400px] w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
-                referenceImage 
-                  ? 'border-neon-cyan/50 bg-neon-cyan/10' 
-                  : 'border-white/20 bg-dark/50 hover:border-white/40 hover:bg-white/10'
-              }`}
-           >
-              <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
-              
-              {isAnalyzingImage ? (
-                <div className="flex items-center gap-3 w-full">
-                  <Loader2 className="w-5 h-5 text-neon-cyan animate-spin shrink-0" />
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Analisando Estilo...</span>
-                    <span className="text-[8px] text-gray-400 uppercase tracking-wider">Visão Cirúrgica IA</span>
-                  </div>
-                </div>
-              ) : referenceImage && visualDNA.scenario ? (
-                <div className="flex items-center gap-3 w-full">
-                  <img src={referenceImage} alt="Referência" className="w-10 h-10 object-cover rounded-lg border border-neon-cyan/30 shrink-0" />
-                  <div className="flex flex-col flex-1 overflow-hidden">
-                    <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight mb-0.5">Estilo Ativo</span>
-                    <span className="text-[8px] text-gray-300 truncate" title={`${visualDNA.rec_genero || visualDNA.era} • ${visualDNA.lighting} • ${visualDNA.palette}`}>
-                      {visualDNA.rec_genero || visualDNA.era} • {visualDNA.lighting}
-                    </span>
-                  </div>
-                  <CheckCircle className="w-4 h-4 text-neon-cyan shrink-0" />
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 w-full">
-                  <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                    <ImageIcon className="w-5 h-5 text-gray-400" />
-                  </div>
-                  <div className="flex flex-col text-left">
-                     <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest leading-tight">Clique ou Cole a Imagem</span>
-                     <span className="text-[8px] text-gray-500 uppercase tracking-wider">O estilo baseará todos os prompts</span>
-                  </div>
-                </div>
-              )}
-           </div>
-        </div>
-        {analyzeError && (
-           <div className="w-full mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-[10px] font-bold uppercase tracking-wider text-center animate-pulse mb-4">
-             {analyzeError}
-           </div>
-        )}
-
-      {/* Output Format Controls */}
-      <div className="glass-card p-5 space-y-0">
-        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-white/10 pb-4 mb-0">
-          <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-neon-pink" /> 
-            Formato de Saída
-          </h3>
-
-          <div className="flex flex-wrap items-center gap-3">
-{/* Prompt Type toggle removido — modo imagem fixo */}
-
-            {/* Output Format: Normal / JSON */}
-            <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10">
-              <button
-                onClick={() => setOutputFormat('text')}
-                className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                  outputFormat === 'text'
-                    ? 'bg-neon-cyan/80 text-dark shadow-[0_0_15px_rgba(0,243,255,0.3)]'
-                    : 'text-gray-500 hover:text-white'
+          {/* Row 2: Visual DNA Image Reference */}
+          <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center gap-4 bg-neon-cyan/[0.02]">
+             <div className="flex items-center gap-3 md:w-56 shrink-0">
+               <div className="w-8 h-8 rounded-lg bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20">
+                 <Camera className="w-4 h-4 text-neon-cyan" />
+               </div>
+               <div className="flex flex-col">
+                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Estilo Visual</span>
+                 <span className="text-[8px] text-neon-cyan/70 uppercase tracking-widest font-bold">Opcional</span>
+               </div>
+             </div>
+             
+             <div 
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleImageUpload(e.dataTransfer.files[0]);
+                  }
+                }}
+                onClick={() => imageInputRef.current?.click()}
+                className={`flex-1 w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
+                  referenceImage 
+                    ? 'border-neon-cyan/50 bg-neon-cyan/10' 
+                    : 'border-white/20 bg-dark/50 hover:border-white/40 hover:bg-white/10'
                 }`}
-              >
-                <FileText className="w-4 h-4" /> Normal
-              </button>
-              <button
-                onClick={() => setOutputFormat('json')}
-                className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                  outputFormat === 'json'
-                    ? 'bg-amber-500/80 text-dark shadow-[0_0_15px_rgba(251,191,36,0.3)]'
-                    : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                <Zap className="w-4 h-4" /> JSON
-              </button>
+             >
+                <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
+                
+                {isAnalyzingImage ? (
+                  <div className="flex items-center gap-3 w-full">
+                    <Loader2 className="w-5 h-5 text-neon-cyan animate-spin shrink-0" />
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Analisando Estilo...</span>
+                      <span className="text-[8px] text-gray-400 uppercase tracking-wider">Visão Cirúrgica IA</span>
+                    </div>
+                  </div>
+                ) : referenceImage && visualDNA.scenario ? (
+                  <div className="flex items-center gap-3 w-full">
+                    <img src={referenceImage} alt="Referência" className="w-10 h-10 object-cover rounded-lg border border-neon-cyan/30 shrink-0" />
+                    <div className="flex flex-col flex-1 overflow-hidden">
+                      <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight mb-0.5">Estilo Ativo</span>
+                      <span className="text-[8px] text-gray-300 truncate" title={`${visualDNA.rec_genero || visualDNA.era} • ${visualDNA.lighting} • ${visualDNA.palette}`}>
+                        {visualDNA.rec_genero || visualDNA.era} • {visualDNA.lighting}
+                      </span>
+                    </div>
+                    <CheckCircle className="w-4 h-4 text-neon-cyan shrink-0" />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 w-full">
+                    <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                      <ImageIcon className="w-5 h-5 text-gray-400" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                       <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest leading-tight">Clique ou Cole a Imagem</span>
+                       <span className="text-[8px] text-gray-500 uppercase tracking-wider">O estilo baseará todos os prompts</span>
+                    </div>
+                  </div>
+                )}
+             </div>
+          </div>
+          {analyzeError && (
+             <div className="w-full p-2 bg-red-500/10 border-t border-red-500/30 text-red-400 text-[10px] font-bold uppercase tracking-wider text-center animate-pulse">
+               {analyzeError}
+             </div>
+          )}
+
+          {/* Row 3: Output Format Controls */}
+          <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/[0.01]">
+            <div className="flex items-center gap-3 md:w-56 shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-neon-pink/10 flex items-center justify-center border border-neon-pink/20">
+                 <Sparkles className="w-4 h-4 text-neon-pink" />
+              </div>
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Saída</span>
             </div>
 
-            {/* Speech Mode: Com Fala / Sem Fala */}
-            <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10">
-              <button
-                onClick={() => setPromptState(prev => ({ ...prev, speechMode: 'true' }))}
-                className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                  promptState.speechMode === 'true'
-                    ? 'bg-green-500/80 text-white shadow-[0_0_15px_rgba(34,197,94,0.3)]'
-                    : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                <Zap className="w-4 h-4" /> Com Fala
-              </button>
-              <button
-                onClick={() => setPromptState(prev => ({ ...prev, speechMode: 'false' }))}
-                className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                  promptState.speechMode === 'false'
-                    ? 'bg-red-500/80 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]'
-                    : 'text-gray-500 hover:text-white'
-                }`}
-              >
-                <X className="w-4 h-4" /> Sem Fala
-              </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Output Format: Normal / JSON */}
+              <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10">
+                <button
+                  onClick={() => setOutputFormat('text')}
+                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    outputFormat === 'text'
+                      ? 'bg-neon-cyan/80 text-dark shadow-[0_0_15px_rgba(0,243,255,0.3)]'
+                      : 'text-gray-500 hover:text-white'
+                  }`}
+                >
+                  <FileText className="w-4 h-4" /> Normal
+                </button>
+                <button
+                  onClick={() => setOutputFormat('json')}
+                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    outputFormat === 'json'
+                      ? 'bg-amber-500/80 text-dark shadow-[0_0_15px_rgba(251,191,36,0.3)]'
+                      : 'text-gray-500 hover:text-white'
+                  }`}
+                >
+                  <Zap className="w-4 h-4" /> JSON
+                </button>
+              </div>
+
+              {/* Speech Mode: Com Fala / Sem Fala */}
+              <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10">
+                <button
+                  onClick={() => setPromptState(prev => ({ ...prev, speechMode: 'true' }))}
+                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    promptState.speechMode === 'true'
+                      ? 'bg-green-500/80 text-white shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                      : 'text-gray-500 hover:text-white'
+                  }`}
+                >
+                  <Zap className="w-4 h-4" /> Com Fala
+                </button>
+                <button
+                  onClick={() => setPromptState(prev => ({ ...prev, speechMode: 'false' }))}
+                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    promptState.speechMode === 'false'
+                      ? 'bg-red-500/80 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]'
+                      : 'text-gray-500 hover:text-white'
+                  }`}
+                >
+                  <X className="w-4 h-4" /> Sem Fala
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
 
 
