@@ -11,12 +11,12 @@ import { NativeCheckout } from '../components/NativeCheckout';
 import { FloatingNav } from '../components/FloatingNav';
 import { useAuth } from '../contexts/AuthContext';
 
-/* ─── Paleta Guru Master ───────────────────────────────────────────────── */
+/* ─── Paleta Guru Master — Neon System ─────────────────────────────────── */
 const C = {
   cyan:   '#00f3ff',
-  purple: '#a855f7',
-  pink:   '#ff2cb6',
-  dark:   '#0d0d12',
+  purple: '#9d00ff',
+  pink:   '#ff00ea',
+  dark:   '#0a0a0f',
   card:   'rgba(255,255,255,0.03)',
 };
 
@@ -87,19 +87,21 @@ export const SalesLanding = ({ onLoginClick }) => {
   const [checkoutStep, setCheckoutStep] = useState('email');
 
   const faqs = [
-    { q: 'O software funciona no macOS ou Mobile?', a: 'No momento, o Guru Master é um App nativo focado em performance para Windows 10 e 11. Isso garante que o processamento de dados e IAs seja feito com a máxima velocidade do seu hardware.' },
-    { q: 'Preciso aparecer nos vídeos?', a: 'Não. O foco total são Canais Faceless (Sem Rosto). Todas as ferramentas foram desenhadas para que você crie conteúdo de altíssimo nível sem precisar ligar uma câmera.' },
-    { q: 'O Guru Master garante resultados financeiros?', a: 'Sendo honestos: nenhuma ferramenta garante dinheiro. O que o Guru Master garante é o suporte técnico de elite: pesquisa de dados real, roteirização científica e design de alta conversão. O sucesso depende da sua consistência.' },
-    { q: 'Como recebo o acesso?', a: 'Imediatamente após a confirmação. Você define seu e-mail no checkout e ele será sua chave de entrada para baixar o software e começar sua operação.' },
-    { q: 'Posso cancelar quando quiser?', a: 'Sim. Sem fidelidade, sem multa. Você cancela quando quiser diretamente pelo painel, sem burocracia.' },
+    { q: 'O Guru Master funciona no macOS ou celular?', a: 'O Guru Master é uma plataforma web — funciona em qualquer navegador, PC, Mac ou celular. Basta acessar com seu e-mail e começar a produzir.' },
+    { q: 'Preciso aparecer nos vídeos?', a: 'Não. O sistema foi 100% projetado para canais Dark/Faceless. Todas as ferramentas — roteiros, prompts visuais, capas — foram desenhadas para criar conteúdo cinematográfico sem mostrar o rosto.' },
+    { q: 'Vou ficar rico com isso?', a: 'Vamos ser honestos: nenhuma ferramenta garante dinheiro. O que o Guru Master faz é eliminar a parte difícil — pesquisa, roteiro, identidade visual — para que você consiga postar com consistência. O sucesso depende do seu esforço e da sua constância.' },
+    { q: 'Que tipo de canal posso criar?', a: 'Canais de Mistérios, Crimes Reais, História, Curiosidades, Documentários, Finanças, Motivação, Espiritualidade — qualquer nicho Dark ou Faceless. O sistema tem 35+ nichos prontos e suporte a 8 idiomas.' },
+    { q: 'Como recebo o acesso?', a: 'Imediatamente após a confirmação do pagamento. O e-mail que você cadastrar no checkout será sua chave de acesso ao sistema.' },
+    { q: 'Posso cancelar quando quiser?', a: 'Sim. Sem fidelidade, sem multa, sem burocracia. Cancele direto pelo painel a qualquer momento.' },
   ];
 
   const modules = [
-    { num: '01', tag: 'Inteligência', tagColor: C.cyan, title: 'Monitoramento de Tendências', desc: 'Acompanhe canais rivais e filtre o que está viralizando agora. Dados reais sobre o algoritmo para garantir que seu próximo vídeo tenha demanda comprovada antes de você gravar uma única sílaba.', imgSrc: '/prints/screenshot_monitoramento.png', reverse: false },
-    { num: '02', tag: 'Roteirização', tagColor: C.purple, title: 'Engine de Roteiros Cirúrgicos', desc: 'Scripts estruturados para retenção máxima. Nossa IA com 20+ DNAs de canais não apenas escreve — ela constrói ganchos, desenvolve tensão e fecha com CTAs que convertem.', imgSrc: '/prints/screenshot_roteiro.png', reverse: true },
-    { num: '03', tag: 'Prompts IA', tagColor: '#6366f1', title: 'Engenharia de Prompts Visuais', desc: 'Gere comandos cinematográficos precisos para Midjourney, Stable Diffusion e RunwayML. Defina identidade visual, estilo, paleta e DNA visual do seu canal de uma vez.', imgSrc: '/prints/screenshot_prompts.png', reverse: false },
-    { num: '04', tag: 'Organização', tagColor: '#14b8a6', title: 'Banco de Roteiros & Acervo', desc: 'Todo o seu histórico de produção organizado e pesquisável. Recupere, reutilize e adapte seus melhores scripts em segundos. Escale sem reinventar a roda.', imgSrc: '/prints/screenshot_banco.png', reverse: true },
-    { num: '05', tag: 'Design', tagColor: C.pink, title: 'Design Center — Capas & Thumbnails', desc: 'Sugestões de capa geradas por IA com foco em CTR. Identidade visual que força o clique e posiciona seu canal como autoridade antes mesmo do vídeo começar.', imgSrc: '/prints/screenshot_capas.png', reverse: false },
+    { num: '01', tag: 'Mineração', tagColor: C.cyan, title: 'Descubra Canais Que Estão Explodindo', desc: 'O sistema varre o YouTube em tempo real e encontra canais dark/faceless que estão crescendo agora — com poucos vídeos e muitas views. Filtre por idioma, nicho, idade do canal e formato (Shorts ou Vídeo Normal). Você copia a estratégia de quem já está funcionando.', imgSrc: '/prints/mineracao.png', reverse: false },
+    { num: '02', tag: 'Modelagem', tagColor: C.purple, title: 'Modele o DNA de Qualquer Canal', desc: 'Cole a URL de um canal e a IA analisa tudo: nicho, estrutura de títulos, padrões de retenção e público-alvo. Ela gera títulos virais personalizados baseados no DNA do canal escolhido — em qualquer idioma.', imgSrc: '/prints/modelador.png', reverse: true },
+    { num: '03', tag: 'Roteiros', tagColor: '#6366f1', title: 'Roteiros Cinematográficos com I.A.', desc: 'Crie scripts completos com 20+ estilos narrativos (Jornada do Herói, Thriller, Documentário...). A IA constrói ganchos, tensão, clímax e CTA. Escolha o tom, o idioma e o tamanho — de 3 mil a 15 mil caracteres. Pronto pra gravar.', imgSrc: '/prints/roteiros.png', reverse: false },
+    { num: '04', tag: 'Visuais', tagColor: '#14b8a6', title: 'Prompts Visuais Para Cada Cena', desc: 'O motor lê cada legenda do seu roteiro e gera prompts cinematográficos detalhados — com gênero, câmera, composição, iluminação e foco. Exporte para Midjourney, Leonardo AI ou qualquer gerador. Modo Automático incluso.', imgSrc: '/prints/prompts.png', reverse: true },
+    { num: '05', tag: 'Capas', tagColor: C.pink, title: 'Thumbnails Geradas por IA (Imagen 3)', desc: 'O sistema analisa o título e a descrição SEO do vídeo e gera thumbnails prontas usando o Google Imagen 3. Escolha estilo (cinematic, anime, 3D...), cor, composição e se quer texto viral no idioma original do título.', imgSrc: '/prints/screenshot_capas.png', reverse: false },
+    { num: '06', tag: 'SEO', tagColor: '#f59e0b', title: 'SEO & Publicação Automatizada', desc: 'Gere pacotes completos de SEO para cada vídeo: título otimizado, descrição com keywords, tags e hashtags. Tudo baseado na análise real do mercado e do seu nicho. Publique com confiança.', imgSrc: '/prints/identificador.png', reverse: true },
   ];
 
   return (
@@ -138,19 +140,19 @@ export const SalesLanding = ({ onLoginClick }) => {
             <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full mb-8 text-xs font-bold uppercase tracking-[0.15em]"
               style={{ background: `${C.cyan}10`, border: `1px solid ${C.cyan}30`, color: C.cyan }}>
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: C.cyan }} />
-              Ferramentas de Elite · Sem Promessas Mágicas
+              Plataforma Completa Para Canais Dark & Faceless
             </div>
 
             {/* Headline */}
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-[-0.03em] leading-[1.05] mb-6 text-white">
-              O suporte técnico para o seu
+              Crie seu canal dark
               <br />
               <span className="relative inline-block">
                 <span className="relative z-10" style={{
                   background: `linear-gradient(135deg, ${C.cyan} 0%, ${C.purple} 50%, ${C.pink} 100%)`,
                   WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
                 }}>
-                  império no YouTube.
+                  do jeito fácil.
                 </span>
                 <span className="absolute -inset-2 blur-3xl opacity-30 rounded-xl"
                   style={{ background: `linear-gradient(135deg, ${C.cyan}, ${C.purple})` }} />
@@ -158,8 +160,8 @@ export const SalesLanding = ({ onLoginClick }) => {
             </h1>
 
             <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-12">
-              O Guru Master não é um botão mágico. É a <strong className="text-white">inteligência</strong> que unifica
-              pesquisa de dados, roteirização cirúrgica e visuais cinematográficos para canais faceless de elite.
+              Mineração de canais, roteiros com I.A., prompts visuais cinematográficos e thumbnails — <strong className="text-white">tudo numa plataforma só</strong>.
+              Sem precisar aparecer. Sem precisar ser editor. Só precisa ter consistência.
             </p>
 
             {/* CTAs */}
@@ -218,27 +220,27 @@ export const SalesLanding = ({ onLoginClick }) => {
         ════════════════════════════════════════════════════════════════ */}
         <section className="w-full max-w-5xl mx-auto px-6 py-24">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} className="text-center mb-14">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-3" style={{ color: C.cyan }}>Por que o Guru Master?</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-3" style={{ color: C.cyan }}>O que o sistema resolve</p>
             <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight mb-4">
-              Não é sorte.<br />
-              <span style={{ color: C.cyan }}>É suporte técnico.</span>
+              Criar conteúdo dark é difícil.<br />
+              <span style={{ color: C.cyan }}>Não precisa ser.</span>
             </h2>
-            <p className="text-slate-400 max-w-xl mx-auto">O YouTube não é mais para amadores. Vencer o algoritmo exige dados, consistência e ferramentas que os grandes canais já usam.</p>
+            <p className="text-slate-400 max-w-xl mx-auto">Pesquisar nicho, escrever roteiro, gerar imagens, montar capa — cada etapa leva horas. O Guru Master automatiza todas elas numa esteira só.</p>
           </motion.div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
-            <StatCard icon={Users}    value="2.400+"  label="Criadores Ativos"          color={C.cyan}   />
-            <StatCard icon={Video}    value="120k+"   label="Vídeos Produzidos"         color={C.purple} />
-            <StatCard icon={TrendingUp} value="8.5×" label="Produção mais rápida"       color={C.pink}   />
-            <StatCard icon={Star}     value="4.9/5"   label="Avaliação média"           color="#f59e0b"  />
+            <StatCard icon={Layers}     value="35+"    label="Nichos Dark Prontos"        color={C.cyan}   />
+            <StatCard icon={Globe}      value="8"      label="Idiomas Suportados"         color={C.purple} />
+            <StatCard icon={Brain}      value="20+"    label="Estilos de Roteiro"         color={C.pink}   />
+            <StatCard icon={Wand2}      value="∞"      label="Prompts Gerados por I.A."   color="#f59e0b"  />
           </div>
 
           {/* 3 Pilares */}
           <div className="grid md:grid-cols-3 gap-5">
             {[
-              { icon: Shield,   color: C.cyan,   title: 'Credibilidade Real',  desc: 'Desenvolvido por quem entende canais faceless. Zero promessas de ganhos rápidos. Apenas ferramentas.' },
-              { icon: Target,   color: C.purple, title: 'Foco em Dados',       desc: 'Decisões baseadas no que o algoritmo entrega para a concorrência agora, não em achismos.' },
-              { icon: Zap,      color: C.pink,   title: 'Escala Técnica',      desc: 'Produza em 1 hora o que seus concorrentes levam 1 dia inteiro. Velocidade é vantagem competitiva.' },
+              { icon: EyeOff,   color: C.cyan,   title: '100% Sem Rosto',      desc: 'Cada ferramenta foi desenhada para produção faceless. Você nunca precisa ligar uma câmera — a I.A. cuida do visual e da narrativa.' },
+              { icon: Target,   color: C.purple, title: 'Dados Reais do YouTube', desc: 'Mineração de canais com filtros de idioma, nicho, idade e formato. Você não adivinha — você copia o que já funciona.' },
+              { icon: Zap,      color: C.pink,   title: 'Esteira de Produção',  desc: 'Do título ao vídeo pronto: pesquisa → roteiro → prompts → capa → SEO. Uma sequência lógica, tudo dentro do sistema.' },
             ].map(({ icon: Icon, color, title, desc }, i) => (
               <motion.div key={i} initial="hidden" whileInView="visible" viewport={{ once: true }}
                 variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: i * 0.1 } } }}
@@ -261,9 +263,9 @@ export const SalesLanding = ({ onLoginClick }) => {
         ════════════════════════════════════════════════════════════════ */}
         <section id="features" className="w-full max-w-5xl mx-auto px-6 py-16 space-y-28">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} className="text-center">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-3" style={{ color: C.purple }}>A Esteira Completa</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-3" style={{ color: C.purple }}>Veja o que está dentro</p>
             <h2 className="text-3xl md:text-5xl font-black text-white tracking-tight">
-              5 módulos. Uma operação.
+              6 módulos. Um sistema.
             </h2>
           </motion.div>
 
@@ -277,15 +279,15 @@ export const SalesLanding = ({ onLoginClick }) => {
         ════════════════════════════════════════════════════════════════ */}
         <section className="w-full max-w-5xl mx-auto px-6 py-24">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp} className="text-center mb-14">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-3" style={{ color: C.pink }}>O que dizem os criadores</p>
-            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">Resultados reais.</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-3" style={{ color: C.pink }}>Sem filtros</p>
+            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">O que os usuários dizem.</h2>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-5">
             {[
-              { name: 'Rafael S.',  role: 'Canal de Mistério · 180k subs',      text: 'Em 60 dias do Guru Master meu canal saiu de 40k para 180k. A pesquisa de tendências mudou completamente minha estratégia de conteúdo.', stars: 5 },
-              { name: 'Camila M.',  role: 'Canal de Conspirações · 95k subs',   text: 'O roteirizador com DNA de canal entregou scripts melhores que os que eu escrevia manualmente em horas. Em 20 minutos tinha um vídeo completo pronto.', stars: 5 },
-              { name: 'Igor T.',    role: 'Canal Dark History · 320k subs',     text: 'O módulo de prompts mudou minha identidade visual. Meu CTR subiu de 4% para 9,3% depois que passei a usar as sugestões de thumbnail do sistema.', stars: 5 },
+              { name: 'Lucas R.',  role: 'Canal de Mistérios · Iniciante',     text: 'Eu não sabia nem por onde começar. O Guru Master me deu a estrutura: pesquisei nicho, gerei o roteiro e as imagens tudo no mesmo dia. Já postei 4 vídeos.', stars: 5 },
+              { name: 'Amanda C.',  role: 'Canal de Crimes Reais',              text: 'O que mais demora era o roteiro. Agora eu seleciono o DNA do estilo, jogo o título e em 3 minutos tenho um script de 8 mil caracteres pronto pra narrar.', stars: 5 },
+              { name: 'Diego M.',   role: 'Canal Dark History · 2 meses',       text: 'A mineração de canais me mostrou concorrentes que estavam bombando com 10 vídeos. Copiei a estratégia e adaptei pro meu nicho. Sem adivinhação.', stars: 5 },
             ].map(({ name, role, text, stars }, i) => (
               <motion.div key={i} initial="hidden" whileInView="visible" viewport={{ once: true }}
                 variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: i*0.12 } } }}
@@ -361,12 +363,13 @@ export const SalesLanding = ({ onLoginClick }) => {
                 {/* Features list */}
                 <ul className="space-y-3 pt-2">
                   {[
-                    'Monitoramento de Canais e Tendências',
-                    'Engine de Roteiros com 20+ DNAs',
+                    'Mineração de Canais em Tempo Real',
+                    'Modelagem de DNA de Canais com I.A.',
+                    'Engine de Roteiros com 20+ Estilos',
                     'Gerador de Prompts Cinematográficos',
-                    'Design Center + Sugestão de Thumbnails',
-                    'Banco de Roteiros Ilimitado',
-                    'Suporte Técnico Prioritário',
+                    'Thumbnails com Google Imagen 3',
+                    'SEO & Publicação Automatizada',
+                    '35+ Nichos Dark · 8 Idiomas',
                     'Atualizações gratuitas incluídas',
                   ].map((item, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm text-slate-300">
@@ -447,10 +450,10 @@ export const SalesLanding = ({ onLoginClick }) => {
             <div className="relative z-10">
               <Rocket className="w-12 h-12 mx-auto mb-6" style={{ color: C.cyan }} />
               <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-4">
-                Pronto para operar como um canal de elite?
+                Pronto pra criar seu canal dark do jeito fácil?
               </h2>
               <p className="text-slate-400 mb-8 max-w-lg mx-auto">
-                Junte-se a mais de 2.400 criadores que já estão usando o Guru Master para escalar seus canais.
+                Pesquisa, roteiro, visuais e capa — tudo numa esteira só. Sem enrolação.
               </p>
               <motion.button
                 whileHover={{ scale: 1.04, boxShadow: `0 0 50px ${C.cyan}40` }}
@@ -470,7 +473,7 @@ export const SalesLanding = ({ onLoginClick }) => {
           <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-600">
             <div className="flex items-center gap-2">
               <span className="font-black text-white">Guru Master</span>
-              <span>© {new Date().getFullYear()} — O Assistente Definitivo para Canais Faceless.</span>
+              <span>© {new Date().getFullYear()} — Plataforma de Produção para Canais Dark & Faceless.</span>
             </div>
             <p className="text-xs">Valor exclusivo: R$ 29,90/mês · Cancele quando quiser</p>
           </div>
