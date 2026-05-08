@@ -18,7 +18,8 @@ import {
   Eye,
   ArrowRight,
   Loader2,
-  Video
+  Video,
+  Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -1101,7 +1102,22 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
               ))}
            </select>
 
-           {/* Visual DNA Image Reference */}
+           <div className="hidden">
+             {/* Removed dropzone from top bar */}
+           </div>
+        </div>
+
+        {/* Visual DNA Image Reference - CAMPO EXCLUSIVO */}
+        <div className="p-4 glass-card border-neon-cyan/20 bg-neon-cyan/5 flex flex-col md:flex-row items-start md:items-center gap-4 mb-2">
+           <div className="flex-1">
+             <h3 className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.2em] flex items-center gap-2 mb-1">
+               <Camera className="w-4 h-4 text-neon-cyan" /> Análise de Estilo Visual
+             </h3>
+             <p className="text-[9px] text-gray-400 uppercase font-bold tracking-widest">
+               Faça upload ou cole (Ctrl+V) uma imagem de referência.
+             </p>
+           </div>
+           
            <div 
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
@@ -1111,102 +1127,51 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
                 }
               }}
               onClick={() => imageInputRef.current?.click()}
-              className={`ml-auto flex items-center gap-3 px-4 py-2 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
+              className={`flex-1 md:max-w-[400px] w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
                 referenceImage 
                   ? 'border-neon-cyan/50 bg-neon-cyan/10' 
-                  : 'border-white/20 bg-white/5 hover:border-white/40 hover:bg-white/10'
+                  : 'border-white/20 bg-dark/50 hover:border-white/40 hover:bg-white/10'
               }`}
            >
               <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
               
               {isAnalyzingImage ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
+                <div className="flex items-center gap-3 w-full">
+                  <Loader2 className="w-5 h-5 text-neon-cyan animate-spin shrink-0" />
                   <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Extraindo DNA...</span>
+                    <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Analisando Estilo...</span>
                     <span className="text-[8px] text-gray-400 uppercase tracking-wider">Visão Cirúrgica IA</span>
                   </div>
                 </div>
-              ) : referenceImage ? (
-                <div className="flex items-center gap-3">
-                  <img src={referenceImage} alt="Referência" className="w-8 h-8 object-cover rounded-lg border border-neon-cyan/30" />
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight">DNA Visual Capturado</span>
-                    <span className="text-[8px] text-gray-400 uppercase tracking-wider hover:text-white">Clique para trocar imagem</span>
+              ) : referenceImage && visualDNA.scenario ? (
+                <div className="flex items-center gap-3 w-full">
+                  <img src={referenceImage} alt="Referência" className="w-10 h-10 object-cover rounded-lg border border-neon-cyan/30 shrink-0" />
+                  <div className="flex flex-col flex-1 overflow-hidden">
+                    <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight mb-0.5">Estilo Ativo</span>
+                    <span className="text-[8px] text-gray-300 truncate" title={`${visualDNA.rec_genero || visualDNA.era} • ${visualDNA.lighting} • ${visualDNA.palette}`}>
+                      {visualDNA.rec_genero || visualDNA.era} • {visualDNA.lighting}
+                    </span>
                   </div>
+                  <CheckCircle className="w-4 h-4 text-neon-cyan shrink-0" />
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
-                    <ImageIcon className="w-4 h-4 text-gray-400" />
+                <div className="flex items-center gap-3 w-full">
+                  <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                    <ImageIcon className="w-5 h-5 text-gray-400" />
                   </div>
                   <div className="flex flex-col text-left">
-                     <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest leading-tight">Referência Visual (Opcional)</span>
-                     <span className="text-[8px] text-gray-500 uppercase tracking-wider">Cole (Ctrl+V) ou clique</span>
+                     <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest leading-tight">Clique ou Cole a Imagem</span>
+                     <span className="text-[8px] text-gray-500 uppercase tracking-wider">O estilo baseará todos os prompts</span>
                   </div>
                 </div>
               )}
            </div>
-           {analyzeError && (
-              <div className="w-full mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-[10px] font-bold uppercase tracking-wider text-center animate-pulse">
-                {analyzeError}
-              </div>
-           )}
         </div>
-
-        {/* Visual DNA Pre-Production Panel */}
-        <AnimatePresence>
-          {visualDNA.scenario && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="glass-card p-6 border-neon-cyan/30 bg-neon-cyan/5 space-y-6"
-            >
-              <div className="flex justify-between items-center border-b border-white/10 pb-4">
-                <header>
-                  <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-neon-cyan" /> 
-                    Painel de Pré-Produção — <span className="text-neon-cyan">Identidade Visual Confirmada</span>
-                  </h3>
-                  <p className="text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-widest">O Diretor AI definiu as leis visuais do seu projeto. Ajuste se necessário.</p>
-                </header>
-                <button onClick={() => setVisualDNA({ scenario: '', era: '', mood: '', lighting: '', palette: '', camera: '' })} className="text-gray-500 hover:text-white transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  { id: 'scenario', label: 'Cenário Global', icon: ImageIcon },
-                  { id: 'era', label: 'Época/Ambiente', icon: FileText },
-                  { id: 'mood', label: 'Atmosfera/Mood', icon: Sparkles },
-                  { id: 'lighting', label: 'Iluminação Master', icon: Zap },
-                  { id: 'palette', label: 'Paleta de Cores', icon: File },
-                  { id: 'camera', label: 'Linguagem de Câmera', icon: Wand2 }
-                ].map(field => (
-                  <div key={field.id} className="space-y-2">
-                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
-                      <field.icon className="w-3 h-3 text-neon-cyan" /> {field.label}
-                    </label>
-                    <textarea 
-                      value={visualDNA[field.id]}
-                      onChange={(e) => updateDNAField(field.id, e.target.value)}
-                      className="w-full bg-dark/40 border border-white/10 rounded-lg p-3 text-xs text-gray-300 focus:outline-none focus:border-neon-cyan/50 h-20 custom-scrollbar resize-none font-medium leading-relaxed"
-                    />
-                  </div>
-                ))}
-              </div>
-              
-              <div className="flex items-center gap-3 p-3 bg-neon-cyan/10 border border-neon-cyan/20 rounded-xl">
-                 <div className="w-8 h-8 rounded-lg bg-neon-cyan/20 flex items-center justify-center shrink-0">
-                    <CheckCircle className="w-4 h-4 text-neon-cyan" />
-                 </div>
-                 <p className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Identidade Visual Ativa. Todos os <b>{subtitleCount} prompts</b> seguirão estas diretrizes.</p>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {analyzeError && (
+           <div className="w-full mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-[10px] font-bold uppercase tracking-wider text-center animate-pulse mb-4">
+             {analyzeError}
+           </div>
+        )}
 
       {/* Output Format Controls */}
       <div className="glass-card p-5 space-y-0">
