@@ -39,6 +39,99 @@ import { generateVeoContent } from '../utils/veoUtils';
 const _getPromptsApiKeyStub = () => '';
 
 
+const visualStylesGroups = [
+  {
+    group: "🎬 Cinematográfico",
+    options: [
+      "Cinematic Lighting, 8k resolution",
+      "Noir Clássico (Preto e Branco, sombras duras)",
+      "Cyberpunk (Neon, escuro, chuvoso)",
+      "Cinematografia Analógica (Filme 35mm, granulação)",
+      "Estilo Documentário (Realista, câmera na mão)",
+      "Fantasia Épica (Cores vibrantes, grandioso)",
+      "Terror Psicológico (Tons frios, escuro, tenso)",
+      "Drama Indie (Cores quentes, intimista, suave)",
+      "Ação Hollywoodiana (Alto contraste, teal & orange)",
+      "Thriller Policial (Tons dessaturados, verde/azul)"
+    ]
+  },
+  {
+    group: "🎨 Animação & Cartoon",
+    options: [
+      "Anime Japonês (Estilo Studio Ghibli)",
+      "Anime Shounen (Estilos vibrantes, ação)",
+      "Pixar/Disney 3D (Texturas ricas, iluminação suave)",
+      "Cartoon Network Anos 90 (Traço grosso, 2D plano)",
+      "Stop Motion (Estilo Claymation/Massinha)",
+      "Cel Shading (Estilo quadrinhos/games)",
+      "Pintura Aquarela Animada",
+      "Estilo Aranhaverso (Halftone, pop art 3D)",
+      "Ilustração Vetorial Plana (Flat design)",
+      "Animação Cut-out (Papel recortado)"
+    ]
+  },
+  {
+    group: "📸 Fotografia Realista",
+    options: [
+      "Retrato Fotorealista de Estúdio",
+      "Fotografia Macro (Detalhes extremos, DOF raso)",
+      "Fotografia de Rua (Street Photography, p&b)",
+      "Polaroid / Câmera Instantânea",
+      "Fotografia de Moda (Editorial Vogue, alta costura)",
+      "Fotografia de Natureza (Golden hour, cores naturais)",
+      "Estilo Paparazzi (Flash forte direto)",
+      "Fotografia Tilt-Shift (Efeito miniatura)",
+      "Longa Exposição (Trilhas de luz)",
+      "Fotografia Subaquática"
+    ]
+  },
+  {
+    group: "🖌️ Arte Digital & Ilustração",
+    options: [
+      "Concept Art de Vídeo Game",
+      "Pintura a Óleo Clássica (Estilo Renascentista)",
+      "Pintura Digital Impressionista",
+      "Synthwave / Retrowave (Grid, neon rosa e azul)",
+      "Arte Conceptual Steampunk (Engrenagens, cobre)",
+      "Desenho a Lápis / Esboço detalhado",
+      "Ilustração Dark Fantasy",
+      "Pop Art (Estilo Andy Warhol)",
+      "Ilustração de Livro Infantil (Traço fofo e colorido)",
+      "Matte Painting (Cenários colossais digitais)"
+    ]
+  },
+  {
+    group: "🕰️ Retrô & Vintage",
+    options: [
+      "VHS Camcorder (Glitch, scanlines, data na tela)",
+      "Anos 80 Nostalgia (Cores pastéis, Miami Vice)",
+      "Século 19 Vitoriano / Sépia",
+      "Cartaz de Propaganda Vintage (Anos 50)",
+      "Estilo Jornal Antigo (Gravura)"
+    ]
+  },
+  {
+    group: "🌌 Sci-Fi & Fantasia",
+    options: [
+      "Utopia Futurista (Limpo, branco, vidro)",
+      "Distopia Pós-Apocalíptica (Sujo, ruínas, ferrugem)",
+      "Alienígena / Bio-Mecânico (Estilo H.R. Giger)",
+      "Fantasia Sombria (Gothic Dark Fantasy)",
+      "Cyber-Renascimento (Alta tecnologia + estilo barroco)"
+    ]
+  },
+  {
+    group: "📐 Minimalista & Design",
+    options: [
+      "Minimalismo Escandinavo (Branco, madeira, clean)",
+      "Design Bauhaus (Cores primárias, geométricas)",
+      "Low Poly 3D (Formas poligonais simples)",
+      "Isométrico 3D (Estilo diorama)",
+      "Linha Contínua (One-line art)"
+    ]
+  }
+];
+
 export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const { status, configs } = useSystemStatus();
   const [cloudScripts] = useCloudStorage('scripts', []);
@@ -1082,99 +1175,132 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         </p>
       </header>
 
-        {/* Unified Configuration Panel */}
-        <div className="glass-card flex flex-col mb-8 border border-white/10 overflow-hidden shadow-2xl">
+        {/* Configuration Panels */}
+        <div className="flex flex-col gap-4 mb-8">
           
-          {/* Row 1: Script Selection */}
-          <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center gap-4 bg-white/[0.01]">
-            <div className="flex items-center gap-3 md:w-56 shrink-0">
-              <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20">
-                 <FileText className="w-4 h-4 text-neon-purple" />
-              </div>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Projeto Base</span>
-            </div>
+          {/* Top Row: Side by Side (Script & Style) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
             
-            <select 
-               value={selectedScriptId}
-               onChange={(e) => setSelectedScriptId(e.target.value)}
-               className="flex-1 w-full bg-dark/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-gray-300 focus:outline-none focus:border-neon-purple/50 hover:bg-white/5 transition-all cursor-pointer"
-            >
-               <option value="">-- SELECIONE UM ROTEIRO --</option>
-               {(cloudScripts.length > 0 ? cloudScripts : availableScripts).map(s => (
-                  <option key={s.id} value={s.id} className="bg-dark text-white">{s.title}</option>
-               ))}
-            </select>
-          </div>
+            {/* Box 1: Script Selection */}
+            <div className="glass-card p-5 border border-white/10 flex flex-col gap-4 h-full">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20">
+                   <FileText className="w-4 h-4 text-neon-purple" />
+                </div>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Projeto Base</span>
+              </div>
+              
+              <select 
+                 value={selectedScriptId}
+                 onChange={(e) => setSelectedScriptId(e.target.value)}
+                 className="w-full mt-auto bg-dark/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-gray-300 focus:outline-none focus:border-neon-purple/50 hover:bg-white/5 transition-all cursor-pointer"
+              >
+                 <option value="">-- SELECIONE UM ROTEIRO --</option>
+                 {(cloudScripts.length > 0 ? cloudScripts : availableScripts).map(s => (
+                    <option key={s.id} value={s.id} className="bg-dark text-white">{s.title}</option>
+                 ))}
+              </select>
+            </div>
 
-          {/* Row 2: Visual DNA Image Reference */}
-          <div className="p-5 border-b border-white/5 flex flex-col md:flex-row md:items-center gap-4 bg-neon-cyan/[0.02]">
-             <div className="flex items-center gap-3 md:w-56 shrink-0">
-               <div className="w-8 h-8 rounded-lg bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20">
-                 <Camera className="w-4 h-4 text-neon-cyan" />
+            {/* Box 2: Visual DNA Image Reference */}
+            <div className="glass-card p-5 border border-neon-cyan/20 bg-neon-cyan/5 flex flex-col gap-4 h-full">
+               <div className="flex items-center gap-3">
+                 <div className="w-8 h-8 rounded-lg bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20">
+                   <Camera className="w-4 h-4 text-neon-cyan" />
+                 </div>
+                 <div className="flex flex-col">
+                   <span className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.2em]">Estilo Visual</span>
+                   <span className="text-[8px] text-neon-cyan/70 uppercase tracking-widest font-bold">Opcional</span>
+                 </div>
                </div>
-               <div className="flex flex-col">
-                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Estilo Visual</span>
-                 <span className="text-[8px] text-neon-cyan/70 uppercase tracking-widest font-bold">Opcional</span>
+               
+               <select 
+                  value={genero || ''}
+                  onChange={(e) => {
+                     setGenero(e.target.value);
+                     if (e.target.value) {
+                        setVisualDNA(prev => ({ ...prev, scenario: e.target.value }));
+                     } else if (!referenceImage) {
+                        setVisualDNA({ scenario: '', era: '', mood: '', lighting: '', palette: '', camera: '' });
+                     }
+                  }}
+                  className="w-full mt-auto bg-dark/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-gray-300 focus:outline-none focus:border-neon-cyan/50 hover:bg-white/5 transition-all cursor-pointer"
+               >
+                  <option value="">-- SELECIONE ENTRE 55 ESTILOS PRONTOS --</option>
+                  {visualStylesGroups.map((group, idx) => (
+                     <optgroup key={idx} label={group.group} className="bg-dark text-neon-cyan font-bold">
+                        {group.options.map((opt, oIdx) => (
+                           <option key={oIdx} value={opt} className="bg-dark text-white font-normal">{opt}</option>
+                        ))}
+                     </optgroup>
+                  ))}
+               </select>
+
+               <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-white/10"></div>
+                  <span className="flex-shrink-0 mx-4 text-gray-500 text-[8px] uppercase font-bold tracking-widest">OU SUBA UMA REFERÊNCIA</span>
+                  <div className="flex-grow border-t border-white/10"></div>
                </div>
-             </div>
-             
-             <div 
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                    handleImageUpload(e.dataTransfer.files[0]);
-                  }
-                }}
-                onClick={() => imageInputRef.current?.click()}
-                className={`flex-1 w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
-                  referenceImage 
-                    ? 'border-neon-cyan/50 bg-neon-cyan/10' 
-                    : 'border-white/20 bg-dark/50 hover:border-white/40 hover:bg-white/10'
-                }`}
-             >
-                <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
-                
-                {isAnalyzingImage ? (
-                  <div className="flex items-center gap-3 w-full">
-                    <Loader2 className="w-5 h-5 text-neon-cyan animate-spin shrink-0" />
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Analisando Estilo...</span>
-                      <span className="text-[8px] text-gray-400 uppercase tracking-wider">Visão Cirúrgica IA</span>
+
+               <div 
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                      handleImageUpload(e.dataTransfer.files[0]);
+                    }
+                  }}
+                  onClick={() => imageInputRef.current?.click()}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
+                    referenceImage 
+                      ? 'border-neon-cyan/50 bg-neon-cyan/10' 
+                      : 'border-white/20 bg-dark/50 hover:border-white/40 hover:bg-white/10'
+                  }`}
+               >
+                  <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
+                  
+                  {isAnalyzingImage ? (
+                    <div className="flex items-center gap-3 w-full">
+                      <Loader2 className="w-5 h-5 text-neon-cyan animate-spin shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Analisando Estilo...</span>
+                        <span className="text-[8px] text-gray-400 uppercase tracking-wider">Visão Cirúrgica IA</span>
+                      </div>
                     </div>
+                  ) : referenceImage && visualDNA.scenario ? (
+                    <div className="flex items-center gap-3 w-full">
+                      <img src={referenceImage} alt="Referência" className="w-10 h-10 object-cover rounded-lg border border-neon-cyan/30 shrink-0" />
+                      <div className="flex flex-col flex-1 overflow-hidden">
+                        <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight mb-0.5">Estilo Ativo</span>
+                        <span className="text-[8px] text-gray-300 truncate" title={`${visualDNA.rec_genero || visualDNA.era} • ${visualDNA.lighting} • ${visualDNA.palette}`}>
+                          {visualDNA.rec_genero || visualDNA.era} • {visualDNA.lighting}
+                        </span>
+                      </div>
+                      <CheckCircle className="w-4 h-4 text-neon-cyan shrink-0" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                        <ImageIcon className="w-5 h-5 text-gray-400" />
+                      </div>
+                      <div className="flex flex-col text-left">
+                         <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest leading-tight">Clique ou Cole a Imagem</span>
+                         <span className="text-[8px] text-gray-500 uppercase tracking-wider">O estilo baseará todos os prompts</span>
+                      </div>
+                    </div>
+                  )}
+               </div>
+               
+               {analyzeError && (
+                  <div className="w-full mt-2 p-2 bg-red-500/10 border-t border-red-500/30 text-red-400 text-[10px] font-bold uppercase tracking-wider text-center animate-pulse">
+                    {analyzeError}
                   </div>
-                ) : referenceImage && visualDNA.scenario ? (
-                  <div className="flex items-center gap-3 w-full">
-                    <img src={referenceImage} alt="Referência" className="w-10 h-10 object-cover rounded-lg border border-neon-cyan/30 shrink-0" />
-                    <div className="flex flex-col flex-1 overflow-hidden">
-                      <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight mb-0.5">Estilo Ativo</span>
-                      <span className="text-[8px] text-gray-300 truncate" title={`${visualDNA.rec_genero || visualDNA.era} • ${visualDNA.lighting} • ${visualDNA.palette}`}>
-                        {visualDNA.rec_genero || visualDNA.era} • {visualDNA.lighting}
-                      </span>
-                    </div>
-                    <CheckCircle className="w-4 h-4 text-neon-cyan shrink-0" />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 w-full">
-                    <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                      <ImageIcon className="w-5 h-5 text-gray-400" />
-                    </div>
-                    <div className="flex flex-col text-left">
-                       <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest leading-tight">Clique ou Cole a Imagem</span>
-                       <span className="text-[8px] text-gray-500 uppercase tracking-wider">O estilo baseará todos os prompts</span>
-                    </div>
-                  </div>
-                )}
-             </div>
+               )}
+            </div>
           </div>
-          {analyzeError && (
-             <div className="w-full p-2 bg-red-500/10 border-t border-red-500/30 text-red-400 text-[10px] font-bold uppercase tracking-wider text-center animate-pulse">
-               {analyzeError}
-             </div>
-          )}
 
           {/* Row 3: Output Format Controls */}
-          <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/[0.01]">
+          <div className="glass-card p-5 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/[0.01]">
             <div className="flex items-center gap-3 md:w-56 shrink-0">
               <div className="w-8 h-8 rounded-lg bg-neon-pink/10 flex items-center justify-center border border-neon-pink/20">
                  <Sparkles className="w-4 h-4 text-neon-pink" />
