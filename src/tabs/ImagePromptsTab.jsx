@@ -574,20 +574,20 @@ Campos obrigatórios:
   };
 
   // Cine param data
-  const GENERO_TAGS = ['Ficção científica', 'Film noir', 'Terror', 'Animação 3D', 'Documentário', 'Fantasia épica', 'Retrato cinematográfico', 'Anime'];
-  const CAMERA_TAGS = ['Vista aérea', 'Na altura dos olhos', 'Vista de cima', 'Vista de baixo', 'Travelling', 'Câmera lenta', 'Zoom in', 'Pan lateral'];
-  const COMPOSICAO_TAGS = ['Plano geral', 'Close-up', 'Plano médio', 'Retrato', 'Plano único', 'Plano duplo'];
-  const FOCO_TAGS = ['Foco raso', 'Foco profundo', 'Lente macro', 'Grande-angular', 'Filtro difusor', 'Teleobjetiva'];
-  const ATMOSFERA_TAGS = ['Tons azuis frios', 'Tons quentes dourados', 'Noite estrelada', 'Luz neon', 'Pôr do sol', 'Névoa', 'Chuva', 'Alta exposição'];
+  const GENERO_TAGS = ['Automático', 'Ficção científica', 'Film noir', 'Terror', 'Animação 3D', 'Documentário', 'Fantasia épica', 'Retrato cinematográfico', 'Anime'];
+  const CAMERA_TAGS = ['Automático', 'Vista aérea', 'Na altura dos olhos', 'Vista de cima', 'Vista de baixo', 'Travelling', 'Câmera lenta', 'Zoom in', 'Pan lateral'];
+  const COMPOSICAO_TAGS = ['Automático', 'Plano geral', 'Close-up', 'Plano médio', 'Retrato', 'Plano único', 'Plano duplo'];
+  const FOCO_TAGS = ['Automático', 'Foco raso', 'Foco profundo', 'Lente macro', 'Grande-angular', 'Filtro difusor', 'Teleobjetiva'];
+  const ATMOSFERA_TAGS = ['Automático', 'Tons azuis frios', 'Tons quentes dourados', 'Noite estrelada', 'Luz neon', 'Pôr do sol', 'Névoa', 'Chuva', 'Alta exposição'];
 
   const getSystemPrompt = (count = 0) => {
     // Build cinematographic brief from selected parameters
     const cineParams = [
-      genero ? `- Estilo/Gênero: ${genero}` : '',
-      cameraMovimento?.length ? `- Câmera & Movimento: ${cameraMovimento.join(', ')}` : '',
-      composicao?.length ? `- Composição: ${composicao.join(', ')}` : '',
-      focoLente?.length ? `- Foco & Lente: ${focoLente.join(', ')}` : '',
-      atmosferaLuz?.length ? `- Atmosfera & Luz: ${atmosferaLuz.join(', ')}` : '',
+      genero ? `- Estilo/Gênero: ${genero === 'Automático' ? 'Adapte o gênero ao contexto do roteiro' : genero}` : '',
+      cameraMovimento?.length ? `- Câmera & Movimento: ${cameraMovimento.includes('Automático') ? 'Determine automaticamente os melhores ângulos e movimentos por cena' : cameraMovimento.join(', ')}` : '',
+      composicao?.length ? `- Composição: ${composicao.includes('Automático') ? 'Escolha a composição ideal baseada no peso dramático da cena' : composicao.join(', ')}` : '',
+      focoLente?.length ? `- Foco & Lente: ${focoLente.includes('Automático') ? 'Ajuste foco e lente de forma realista para maximizar o impacto visual' : focoLente.join(', ')}` : '',
+      atmosferaLuz?.length ? `- Atmosfera & Luz: ${atmosferaLuz.includes('Automático') ? 'Crie a melhor atmosfera visual baseada na emoção do roteiro' : atmosferaLuz.join(', ')}` : '',
     ].filter(Boolean).join('\n    ');
 
     const dnaContext = `
