@@ -1308,7 +1308,32 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Saída</span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-1 flex-wrap items-center justify-end gap-3 md:gap-6">
+              
+              {/* Prompt Type: Imagem / Vídeo */}
+              <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10 mr-auto">
+                <button
+                  onClick={() => setPromptType('image')}
+                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    promptType === 'image'
+                      ? 'bg-neon-purple/80 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                      : 'text-gray-500 hover:text-white'
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4" /> Imagem
+                </button>
+                <button
+                  onClick={() => setPromptType('video')}
+                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                    promptType === 'video'
+                      ? 'bg-neon-cyan/80 text-dark shadow-[0_0_15px_rgba(0,243,255,0.3)]'
+                      : 'text-gray-500 hover:text-white'
+                  }`}
+                >
+                  <Video className="w-4 h-4" /> Vídeo
+                </button>
+              </div>
+
               {/* Output Format: Normal / JSON */}
               <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10">
                 <button
