@@ -36,19 +36,20 @@ const THUMBNAIL_STYLES = [
 ];
 
 // Helper: build a detailed visual prompt for the cover using universal callAI
-async function buildDetailedCoverPrompt(title, prefs = {}) {
+async function buildDetailedCoverPrompt(title, scriptContext, prefs = {}) {
     const { includeText, colorStyle, distance, styleId } = prefs;
     const selectedStyle = THUMBNAIL_STYLES.find(s => s.id === styleId) || THUMBNAIL_STYLES[0];
 
     const textInstruction = includeText 
-        ? `MANDATORY: Detect the language of "${title}" and add punchy, viral overlay text in that SAME language. Use large, bold, high-contrast typography.`
+        ? `MANDATORY: Detect the exact language of "${title}". Add a punchy, viral overlay text (max 3 words) in that SAME language. You MUST enclose the text in double quotes in the prompt so Imagen 3 can render it (e.g., A large text overlay reading "YOUR TEXT HERE").`
         : `ABSOLUTE RESTRICTION: Do NOT include ANY text, letters, subtitles, labels, watermarks, symbols, or alphabetic characters in the image. Pure visual storytelling ONLY.`;
 
     const instruction = `You are a WORLD-CLASS YouTube Thumbnail Art Director specialized in viral CTR and cinematic lighting.
 
 VIDEO TITLE: "${title}"
+VIDEO CONTEXT / SEO DESCRIPTION: "${scriptContext ? scriptContext.substring(0, 500) : 'No context provided. Base the imagery purely on the title.'}"
 
-MISSION: Create a hyper-detailed, production-ready "GOLD STANDARD" image generation prompt.
+MISSION: Create a hyper-detailed, production-ready "GOLD STANDARD" image generation prompt specifically optimized for Google Imagen 3.
 
 VISUAL STYLE: ${selectedStyle.label}
 DIRECTIVES: ${selectedStyle.prompt}
@@ -59,17 +60,17 @@ USER PREFERENCES:
 - Composition: ${distance === 'wide' ? 'WIDE EPIC SHOT.' : 'EXTREME CLOSE-UP.'}
 
 MANDATORY ELITE RULES:
-1. SUBJECT: Describe the main subject with microscopic detail (skin pores, sweating, hair follicles).
+1. SUBJECT: Describe the main subject with microscopic detail, directly reflecting the core message of the Video Title and Context.
 2. EXPRESSION: Extreme intensity (fear, awe, shock) — descriptive and visceral.
 3. LIGHTING: Cinematic rim light, god rays, volumetric fog, and dramatic shadows.
 4. LENS: Specify professional gear like "Shot on 35mm Sigma Art lens, f/1.4, 8k resolution".
-5. NO CLICHÉS: Avoid "hyperrealistic" or "photorealistic". Use technical photography terms instead.
+5. IMAGEN 3 OPTIMIZATION: Write the prompt as a continuous, flowing description. Avoid comma-separated keyword salads.
 
 OUTPUT FORMAT (MANDATORY):
-PROMPT: [Ultra-detailed visual description]
-NEGATIVE PROMPT: [Technical anti-quality tokens, blurry, low resolution, bad anatomy, text in image, artifacts, watermarks, cartoonish (unless specified)]
+PROMPT: [Ultra-detailed continuous flowing visual description]
+NEGATIVE PROMPT: [Technical anti-quality tokens, blurry, low resolution, bad anatomy, text in image (unless requested), artifacts, watermarks, cartoonish (unless specified)]
 
-Return ONLY the prompt and negative prompt in English. No markdown, no quotes.`;
+Return ONLY the prompt and negative prompt in English. No markdown, no quotes around the whole block.`;
 
     return await callAI(instruction, { model: "gemini-1.5-pro" });
 }
@@ -285,7 +286,7 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
         setCoverState(prev => ({ ...prev, covers: { ...prev.covers, [idx]: { loading: true, prompt: null, error: null } } }));
         try {
             const prefs = coverPrefs.global || { includeText: false, colorStyle: 'standard', distance: 'close', styleId: 'cinematic' };
-            const visualPrompt = await buildDetailedCoverPrompt(title, prefs);
+            const visualPrompt = await buildDetailedCoverPrompt(title, selectedScript?.content || '', prefs);
             setCoverState(prev => ({ ...prev, covers: { ...prev.covers, [idx]: { loading: false, prompt: visualPrompt, error: null } } }));
         } catch (error) {
             console.error('Erro ao gerar prompt da capa:', error);
@@ -314,7 +315,7 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
             
             if (!finalPrompt) {
                 const prefs = coverPrefs.global || { includeText: false, colorStyle: 'standard', distance: 'close', styleId: 'cinematic' };
-                finalPrompt = await buildDetailedCoverPrompt(title, prefs);
+                finalPrompt = await buildDetailedCoverPrompt(title, selectedScript?.content || '', prefs);
             }
 
             // LIMPEZA DO PROMPT: O modelo do Imagen 4 não entende a estrutura "PROMPT: ... NEGATIVE PROMPT: ...".
