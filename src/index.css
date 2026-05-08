@@ -8,7 +8,7 @@
   --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
   --font-outfit: 'Outfit', system-ui, -apple-system, sans-serif;
   --neon-cyan: 0 243 255;
-  --neon-purple: 191 64 255;
+  --neon-purple: 157 0 255;
   --neon-pink: 255 0 234;
   --bg-dark: 10 10 15;
   --bg-dark-lighter: 18 18 28;
@@ -123,11 +123,11 @@
   }
 
   .text-gradient-cyan {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-neon-cyan to-blue-600;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#00f3ff] to-[#0066ff];
   }
 
   .text-gradient-purple {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-neon-purple to-neon-pink;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#bf40ff] to-[#ff00ea];
   }
 
   .text-glow-cyan {
