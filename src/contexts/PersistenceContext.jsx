@@ -35,9 +35,11 @@ export const PersistenceProvider = ({ children }) => {
   // 2. Channel Mining Global State
   const [miningState, setMiningState] = useCloudStorage('mining_state', {
     channels: [],
-    niche: '',
+    niche: 'Finanças',
     isSearching: false,
-    maxAgeMonths: 0
+    maxAgeMonths: 0,
+    videoFormat: 'normal',
+    langCode: 'pt'
   });
 
   // 3. Image Prompts Global State

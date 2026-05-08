@@ -104,15 +104,16 @@ const FORMAT_OPTIONS = [
 export const ChannelMiningTab = ({ setActiveTab }) => {
   const { configs } = useSystemStatus();
   const { miningState, setMiningState } = usePersistence();
-  const { channels, niche: selectedNiche, isSearching, maxAgeMonths = 0, videoFormat = 'any' } = miningState;
+  const { channels, niche: selectedNiche, isSearching, maxAgeMonths = 0, videoFormat = 'normal', langCode = 'pt' } = miningState;
 
   const setSelectedNiche = (val) => setMiningState(prev => ({ ...prev, niche: val }));
   const setChannels = (val) => setMiningState(prev => ({ ...prev, channels: val }));
   const setIsSearching = (val) => setMiningState(prev => ({ ...prev, isSearching: val }));
   const setMaxAgeMonths = (val) => setMiningState(prev => ({ ...prev, maxAgeMonths: val }));
   const setVideoFormat = (val) => setMiningState(prev => ({ ...prev, videoFormat: val }));
+  const setSelectedLangCode = (val) => setMiningState(prev => ({ ...prev, langCode: val }));
 
-  const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
+  const selectedLang = LANGUAGES.find(l => l.code === langCode) || LANGUAGES[0];
   const [copiedId, setCopiedId] = useState(null);
   
   // Title Generation States
@@ -184,20 +185,14 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                         : selectedNiche;
 
       // 2. Construct Search Query
-      // Remove encodeURIComponent since URLSearchParams in buildYouTubeUrl handles it.
       // We look for highly viewed videos published recently to find small channels getting traction.
       const date = new Date();
       date.setDate(date.getDate() - 30);
       const publishedAfter = date.toISOString();
 
       let query = nicheTerm; // Clean query without forced English words
-      if (videoFormat === 'shorts') {
-        query += ' #shorts';
-      } else if (videoFormat === 'normal') {
-        query += ' -#shorts';
-      }
-
-      const res = await fetch(buildYouTubeUrl('search', {
+      
+      const searchParams = {
         part: 'snippet',
         type: 'video',
         q: query,
@@ -206,7 +201,16 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
         maxResults: '50',
         order: 'viewCount',
         publishedAfter: publishedAfter
-      }));
+      };
+
+      if (videoFormat === 'shorts') {
+        searchParams.videoDuration = 'short';
+        searchParams.q += ' #shorts';
+      } else if (videoFormat === 'normal') {
+        searchParams.videoDuration = 'medium'; // 4 - 20 mins guarantees a standard video format
+      }
+
+      const res = await fetch(buildYouTubeUrl('search', searchParams));
       const data = await res.json();
       
       // Verifica erro da API antes de acessar .items
@@ -388,7 +392,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
               </label>
               <select 
                 value={selectedLang.code}
-                onChange={(e) => setSelectedLang(LANGUAGES.find(l => l.code === e.target.value))}
+                onChange={(e) => setSelectedLangCode(e.target.value)}
                 className="bg-dark/60 border border-white/5 rounded-2xl px-5 py-4 text-white font-bold text-sm focus:outline-none focus:border-neon-cyan/50 hover:bg-dark/80 transition-all cursor-pointer w-full shadow-inner"
               >
                 {LANGUAGES.map(lang => (
@@ -402,7 +406,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                 <Layers className="w-4 h-4 text-neon-purple" /> {t('mining.niche_label')}
               </label>
               <select 
-                value={selectedNiche}
+                value={selectedNiche || 'Finanças'}
                 onChange={(e) => setSelectedNiche(e.target.value)}
                 className="bg-dark/60 border border-white/5 rounded-2xl px-5 py-4 text-white font-bold text-sm focus:outline-none focus:border-neon-purple/50 hover:bg-dark/80 transition-all cursor-pointer w-full shadow-inner"
               >
