@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Trash2, AlertTriangle, ChevronRight, ArrowLeft, Download, FileJson, File as FilePdf, Copy, Check, Wand2 } from 'lucide-react';
+import { FileText, Trash2, AlertTriangle, ChevronRight, ArrowLeft, Download, FileJson, File as FilePdf, Copy, Check, Wand2, Youtube } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 import { generateVeoContent } from '../utils/veoUtils';
