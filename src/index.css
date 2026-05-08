@@ -44,50 +44,57 @@
   --neon-cyan: 2 132 199;
   --neon-purple: 124 58 237;
   --neon-pink: 219 39 119;
-  --bg-dark: 236 240 245;
+  
+  /* Fundo principal bem mais escuro para as caixas brancas saltarem aos olhos */
+  --bg-dark: 218 224 232; 
   --bg-dark-lighter: 255 255 255;
   --bg-dark-card: 255 255 255;
-  --color-white: 15 23 42;
   
-  --color-gray-100: 30 41 59;
-  --color-gray-200: 51 65 85;
-  --color-gray-300: 71 85 105;
-  --color-gray-400: 71 85 105;
-  --color-gray-500: 100 116 139;
-  --color-gray-600: 148 163 184;
-  --color-gray-700: 203 213 225;
-  --color-gray-800: 226 232 240;
-  --color-gray-900: 236 240 245;
+  /* Textos originalmente "brancos" viram PRETO absoluto */
+  --color-white: 10 10 10;
+  
+  /* Escala de cinza completamente invertida para máximo contraste nas fontes */
+  --color-gray-100: 17 24 39;
+  --color-gray-200: 31 41 55;
+  --color-gray-300: 31 41 55;
+  --color-gray-400: 55 65 81; /* Substitui text-gray-400 por um cinza BEM escuro e legível */
+  --color-gray-500: 75 85 99;
+  --color-gray-600: 107 114 128;
+  --color-gray-700: 156 163 175;
+  --color-gray-800: 209 213 219;
+  --color-gray-900: 229 231 235;
 }
 
 .theme-light .glass-card {
-  background-color: rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.05) !important;
-  border-color: rgba(0, 0, 0, 0.1) !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
 }
 .theme-light .glass-card:hover {
-  background-color: rgba(255, 255, 255, 1) !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1) !important;
-  border-color: rgba(0, 0, 0, 0.15) !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 15px 50px -10px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(0, 0, 0, 0.25) !important;
 }
 .theme-light input, .theme-light select, .theme-light textarea {
-  background-color: rgba(0,0,0,0.03) !important;
+  background-color: #f1f5f9 !important; /* Um fundo bem delimitado para os campos de texto */
   color: #0f172a !important;
-  border-color: rgba(0,0,0,0.1) !important;
+  border: 1px solid rgba(0,0,0,0.2) !important;
+  font-weight: 500 !important;
 }
 .theme-light input:focus, .theme-light select:focus, .theme-light textarea:focus {
-  background-color: rgba(255,255,255,1) !important;
-  border-color: rgba(2, 132, 199, 0.5) !important;
-  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.1) !important;
+  background-color: #ffffff !important;
+  border-color: rgba(2, 132, 199, 0.6) !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
 }
 .theme-light select option, .theme-light select optgroup {
   background-color: #ffffff !important;
   color: #0f172a !important;
+  font-weight: 600 !important;
 }
 .theme-light .glass-panel {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  border-right-color: rgba(0, 0, 0, 0.1) !important;
-  box-shadow: 5px 0 20px rgba(0, 0, 0, 0.03) !important;
+  background-color: #ffffff !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 5px 0 30px rgba(0, 0, 0, 0.08) !important;
 }
 
 @layer base {
