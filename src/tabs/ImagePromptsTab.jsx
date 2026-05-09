@@ -716,12 +716,9 @@ OUTPUT FORMAT (one per subtitle, empty line between):
 [2]: Ultra-Realista — Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita. [shot type] [detailed visual scene from subtitle]. NEGATIVE PROMPT: CGI, 3D render, cartoon, anime, watercolor, text, watermark, blurry, distorted, oversaturation.
 
 ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "negative": "..." }, ... ]` : `Respond ONLY with the [N]: prompt blocks. No intro text, no summary.`}`;
-
       }
     }
   };
-  
-
 
   const handleGenerate = async () => {
     if (!file && !prompts) {
@@ -739,10 +736,10 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
     setPrompts("");
     cancelRef.current = false;
 
-    // ── MODO IMAGEM (text): Geração em Lote (10 cenas por chamada) para máxima velocidade ──
+    // ── MODO IMAGEM (text): Geração em Lote ──
     if (promptType === 'image' && outputFormat !== 'json') {
       const total = subtitleBlocks.length;
-      const BATCH_SIZE = 10; // 10 cenas por chamada = 10x mais rápido
+      const BATCH_SIZE = 5; // 5 cenas por chamada — menor = mais precisão por legenda
       const totalBatches = Math.ceil(total / BATCH_SIZE);
       
       setGenerationProgress({ 
@@ -771,33 +768,37 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         const end = Math.min(start + BATCH_SIZE, total);
         const batchSubtitles = subtitleBlocks.slice(start, end);
         
-        // Constrói a lista de legendas com IDs para a IA manter a ordem
-        const subtitlesWithIds = batchSubtitles.map((s, i) => `[${start + i + 1}]: ${s}`).join('\n');
+        // Constrói a lista de legendas com IDs — numeradas com contexto
+        const subtitlesWithIds = batchSubtitles.map((s, i) => `--- SUBTITLE [${start + i + 1}] ---\n${s}`).join('\n\n');
 
         const systemPrompt = `You are a MASTER image prompt engineer specializing in ${genero || 'cinematic photography'}.
-        TASK: Write ONE English prompt for EACH subtitle provided below.
-        
-        VISUAL DNA (MANDATORY — apply to EVERY prompt without exception):
-        ${dnaPart}
-        ${batchCineParams ? `\nCINEMATIC PARAMETERS (MANDATORY): ${batchCineParams}` : ''}
-        
-        CRITICAL STYLE RULE: ${genero && genero !== 'Automático' ? `Every prompt MUST be in "${genero}" style. ${genero.includes('Anima') || genero.includes('Anime') || genero.includes('Cartoon') ? 'Use animation/illustration language — NOT photographic language. Do NOT say "8K photography" or "photorealistic" — instead use terms like "digital illustration", "cel shading", "stylized rendering", "flat colors", "bold outlines" appropriate to the animation style.' : genero.includes('noir') ? 'Use noir visual language: high contrast, deep shadows, venetian blind lighting, silhouettes, rain-slicked streets.' : genero.includes('Terror') ? 'Use horror visual language: unsettling angles, deep shadows, desaturated palette, eerie atmosphere.' : 'Maintain the visual language consistent with the chosen genre.'}` : 'Adapt the visual style to match the content of each subtitle.'}
-        
-        RULES: 
-        - Respond ONLY in English.
-        - Use exactly the format [N]: [Prompt Text] NEGATIVE PROMPT: [Negatives]
-        - Keep prompts between 70-110 words.
-        - Ensure 100% parity: Prompt [N] must describe Subtitle [N].
-        - The NEGATIVE PROMPT must contradict the chosen style (e.g., if style is Cartoon, negate: photorealistic, photograph, real skin texture)
-        
-        SUBTITLES TO PROCESS:
-        ${subtitlesWithIds}`;
+
+MISSION: Read EACH subtitle below carefully. Each subtitle describes a DIFFERENT MOMENT in a video. You must write ONE UNIQUE prompt that visually represents ONLY what THAT specific subtitle says. Do NOT generalize. Do NOT repeat.
+
+VISUAL DNA (apply as background style to every prompt):
+${dnaPart}
+${batchCineParams ? `\nCINEMATIC PARAMETERS: ${batchCineParams}` : ''}
+
+${genero && genero !== 'Automático' ? `STYLE: Every prompt must use "${genero}" visual language.${genero.includes('Anima') || genero.includes('Anime') || genero.includes('Cartoon') ? ' Use illustration terms (digital illustration, cel shading, stylized) — NOT photographic terms.' : ''}` : ''}
+
+ANTI-REPETITION RULES (CRITICAL):
+1. READ each subtitle word by word. Identify the UNIQUE KEY ELEMENT that makes it different from the others.
+2. Each prompt MUST describe a VISUALLY DISTINCT scene. If subtitle [${start + 1}] talks about "a dark forest" and [${start + 2}] talks about "a king's throne", the prompts must show completely different environments.
+3. Extract the MAIN SUBJECT, ACTION, and LOCATION from each subtitle — these must be different across prompts.
+4. If two subtitles seem similar, focus on the SPECIFIC DETAILS that differentiate them (different angle, different object, different emotion).
+5. NEVER copy-paste the same description across multiple prompts.
+
+FORMAT (one per subtitle, blank line between):
+[N]: [70-110 words: unique visual scene based on subtitle N] NEGATIVE PROMPT: [negatives]
+
+${subtitlesWithIds}
+
+Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subtitle [N]. No intro, no summary.`;
 
         for (let a = 0; a < 3; a++) {
           try {
             if (a > 0) await new Promise(r => setTimeout(r, a * 2000));
             
-            // Prioriza a chave de prompts (gratuita) com fallback para 'GLOBAL'
             const apiKey = getPromptsApiKey() || 'GLOBAL';
             const resp = await callGemini(apiKey, systemPrompt, { model: 'gemini-1.5-flash' });
             
@@ -810,7 +811,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
               if (match) {
                 const id = parseInt(match[1]);
                 const content = match[2].trim();
-                if (id >= start + 1 && id <= end) {
+                if (id >= start + 1 && id <= end && content.length > 30) {
                   resultsArr[id - 1] = content;
                   statusArr[id - 1] = 'done';
                   foundCount++;
@@ -827,7 +828,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         return false;
       };
 
-      const PARALLEL_BATCHES = 4; // 4 lotes simultâneos (40 cenas por vez)
+      const PARALLEL_BATCHES = 3; // 3 lotes simultâneos (15 cenas por vez) — menos paralelismo = menos repetição
       for (let p = 0; p < totalBatches; p += PARALLEL_BATCHES) {
         if (cancelRef.current) break;
         const batchPromises = [];
