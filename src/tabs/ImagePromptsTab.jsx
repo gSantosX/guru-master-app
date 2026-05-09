@@ -230,17 +230,21 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     setAnalyzeError("");
 
     try {
-      const analysisPrompt = `Você é um Diretor Cinematográfico de Elite. Analise esta imagem cirurgicamente e retorne UM JSON com o DNA visual da imagem. Responda SOMENTE com o JSON, sem markdown, sem texto adicional.
+      const analysisPrompt = `Você é um Diretor Cinematográfico e Analista Visual de Elite. Analise esta imagem com precisão cirúrgica e retorne UM JSON com o DNA visual completo. Responda SOMENTE com o JSON, sem markdown, sem texto adicional.
 
-Campos obrigatórios:
-- scenario: locais e arquitetura dominantes na imagem
-- era: período ou estilo temporal percebido
-- mood: carga emocional visual
-- lighting: estilo de iluminação (ex: luz natural, high key, sombras duras)
-- palette: 3 cores principais (ex: tons terrosos, neon cyan e magenta)
-- camera: ângulo de câmera e percepção de lente
-- rec_genero: UM valor exato de: Ultra-realista | Cinema (Blockbuster) | Cartoon / Animação | Documentário | Film Noir | Ficção Científica | Terror / Dark | Fantasia Épica | Anime
-- rec_camera: array com 1-2 valores de: Vista aérea | Na altura dos olhos | Vista de cima | Vista de baixo | Travelling | Câmera lenta | Zoom in | Pan lateral`;
+Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
+- scenario: descrição detalhada dos locais, arquitetura, objetos e elementos visuais dominantes (mínimo 20 palavras)
+- era: período ou estética temporal precisa (ex: "Retrofuturismo anos 80", "Medieval europeu século XIV", "Contemporâneo urbano noturno")
+- mood: carga emocional exata com intensidade (ex: "Tensão claustrofobica com desconforto crescente", "Nostalgia melancólica e contemplativa")
+- lighting: descrição técnica precisa da iluminação (ex: "Rim light lateral âmbar com fill light azul frio, ratio 3:1, sombras definidas")
+- palette: 4-5 cores HEX dominantes com descrição (ex: "#1a1a2e escuro profundo, #00f3ff ciano neon, #ff6b35 laranja quente, #e0e0e0 cinza neutro")
+- camera: ângulo exato, distância focal estimada e estilo (ex: "Plano médio frontal, ~50mm, profundidade de campo rasa com bokeh suave")
+- rendering: técnica de renderização precisa (ex: "Cel shading com contornos grossos", "Fotorealismo digital hiper-detalhado", "Pintura digital com pinceladas visíveis", "Flat design vetorial com sombras planas")
+- texture: textura e acabamento da superfície (ex: "Suave e limpo, sem granução", "Granução de filme 35mm ISO 800", "Texturas ricas e táteis")
+- rec_genero: UM valor exato desta lista: Ficção científica | Film noir | Terror | Animação 3D | Documentário | Fantasia épica | Retrato cinematográfico | Anime
+- rec_camera: array com 1-3 valores de: Vista aérea | Na altura dos olhos | Vista de cima | Vista de baixo | Travelling | Câmera lenta | Zoom in | Pan lateral
+- rec_composicao: array com 1-2 valores de: Plano geral | Close-up | Plano médio | Retrato | Plano único | Plano duplo
+- rec_atmosfera: array com 1-2 valores de: Tons azuis frios | Tons quentes dourados | Noite estrelada | Luz neon | Pôr do sol | Névoa | Chuva | Alta exposição`;
 
       const mainKey = localStorage.getItem('guru_gemini_key') || 'GLOBAL';
       const imagePart = {
@@ -277,6 +281,8 @@ Campos obrigatórios:
       setVisualDNA(dna);
       if (dna.rec_genero) setGenero(dna.rec_genero);
       if (dna.rec_camera && Array.isArray(dna.rec_camera)) setCameraMovimento(dna.rec_camera);
+      if (dna.rec_composicao && Array.isArray(dna.rec_composicao)) setComposicao(dna.rec_composicao);
+      if (dna.rec_atmosfera && Array.isArray(dna.rec_atmosfera)) setAtmosferaLuz(dna.rec_atmosfera);
 
     } catch (error) {
       console.error('❌ [Analyze Image] Erro:', error);
@@ -749,7 +755,16 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
       const resultsArr = new Array(total).fill('');
       const statusArr  = new Array(total).fill('pending');
       
-      const dnaPart = `Scenario: ${visualDNA.scenario || 'Real-world'} | Era: ${visualDNA.era || 'Contemporary'} | Mood: ${visualDNA.mood || 'Cinematic'} | Lighting: ${visualDNA.lighting || 'Natural light'} | Palette: ${visualDNA.palette || 'Realistic'} | Camera: ${visualDNA.camera || 'Cinematic angles'}`;
+      const dnaPart = `Scenario: ${visualDNA.scenario || 'Real-world'} | Era: ${visualDNA.era || 'Contemporary'} | Mood: ${visualDNA.mood || 'Cinematic'} | Lighting: ${visualDNA.lighting || 'Natural light'} | Palette: ${visualDNA.palette || 'Realistic'} | Camera: ${visualDNA.camera || 'Cinematic angles'}${visualDNA.rendering ? ` | Rendering: ${visualDNA.rendering}` : ''}${visualDNA.texture ? ` | Texture: ${visualDNA.texture}` : ''}`;
+
+      // Build cinematographic parameters string for batch mode
+      const batchCineParams = [
+        genero && genero !== 'Automático' ? `Style/Genre: ${genero}` : '',
+        cameraMovimento?.length && !cameraMovimento.includes('Automático') ? `Camera: ${cameraMovimento.join(', ')}` : '',
+        composicao?.length && !composicao.includes('Automático') ? `Composition: ${composicao.join(', ')}` : '',
+        focoLente?.length && !focoLente.includes('Automático') ? `Focus/Lens: ${focoLente.join(', ')}` : '',
+        atmosferaLuz?.length && !atmosferaLuz.includes('Automático') ? `Atmosphere: ${atmosferaLuz.join(', ')}` : '',
+      ].filter(Boolean).join(' | ');
       
       const genBatch = async (batchIdx) => {
         const start = batchIdx * BATCH_SIZE;
@@ -759,14 +774,21 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         // Constrói a lista de legendas com IDs para a IA manter a ordem
         const subtitlesWithIds = batchSubtitles.map((s, i) => `[${start + i + 1}]: ${s}`).join('\n');
 
-        const systemPrompt = `You are a MASTER ultra-realistic image prompt engineer. 
-        TASK: Write ONE English photographic prompt for EACH subtitle provided below.
-        VISUAL DNA: ${dnaPart}
+        const systemPrompt = `You are a MASTER image prompt engineer specializing in ${genero || 'cinematic photography'}.
+        TASK: Write ONE English prompt for EACH subtitle provided below.
+        
+        VISUAL DNA (MANDATORY — apply to EVERY prompt without exception):
+        ${dnaPart}
+        ${batchCineParams ? `\nCINEMATIC PARAMETERS (MANDATORY): ${batchCineParams}` : ''}
+        
+        CRITICAL STYLE RULE: ${genero && genero !== 'Automático' ? `Every prompt MUST be in "${genero}" style. ${genero.includes('Anima') || genero.includes('Anime') || genero.includes('Cartoon') ? 'Use animation/illustration language — NOT photographic language. Do NOT say "8K photography" or "photorealistic" — instead use terms like "digital illustration", "cel shading", "stylized rendering", "flat colors", "bold outlines" appropriate to the animation style.' : genero.includes('noir') ? 'Use noir visual language: high contrast, deep shadows, venetian blind lighting, silhouettes, rain-slicked streets.' : genero.includes('Terror') ? 'Use horror visual language: unsettling angles, deep shadows, desaturated palette, eerie atmosphere.' : 'Maintain the visual language consistent with the chosen genre.'}` : 'Adapt the visual style to match the content of each subtitle.'}
+        
         RULES: 
-        - Respond ONLY in English. 
+        - Respond ONLY in English.
         - Use exactly the format [N]: [Prompt Text] NEGATIVE PROMPT: [Negatives]
-        - Keep prompts between 60-100 words.
+        - Keep prompts between 70-110 words.
         - Ensure 100% parity: Prompt [N] must describe Subtitle [N].
+        - The NEGATIVE PROMPT must contradict the chosen style (e.g., if style is Cartoon, negate: photorealistic, photograph, real skin texture)
         
         SUBTITLES TO PROCESS:
         ${subtitlesWithIds}`;
@@ -1272,8 +1294,8 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
                       <img src={referenceImage} alt="Referência" className="w-10 h-10 object-cover rounded-lg border border-neon-cyan/30 shrink-0" />
                       <div className="flex flex-col flex-1 overflow-hidden">
                         <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight mb-0.5">Estilo Ativo</span>
-                        <span className="text-[8px] text-gray-300 truncate" title={`${visualDNA.rec_genero || visualDNA.era} • ${visualDNA.lighting} • ${visualDNA.palette}`}>
-                          {visualDNA.rec_genero || visualDNA.era} • {visualDNA.lighting}
+                        <span className="text-[8px] text-gray-300 truncate" title={`${visualDNA.rec_genero || genero || 'Livre'} • ${visualDNA.rendering || visualDNA.lighting} • ${visualDNA.palette}`}>
+                          {visualDNA.rec_genero || genero || 'Livre'} • {visualDNA.rendering || visualDNA.lighting}{visualDNA.texture ? `, ${visualDNA.texture}` : ''}
                         </span>
                       </div>
                       <CheckCircle className="w-4 h-4 text-neon-cyan shrink-0" />
