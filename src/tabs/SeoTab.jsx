@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Youtube, Copy, Check, Sparkles, Type, Loader2, Search, Zap, Layers, ChevronDown } from 'lucide-react';
+import { Youtube, Copy, Check, Sparkles, Type, Loader2, Search, Zap, Layers, ChevronDown, MonitorPlay, CreditCard, Plus, Minus } from 'lucide-react';
 import { callAI } from '../utils/aiUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useCloudStorage } from '../hooks/useCloudStorage';
@@ -14,6 +14,14 @@ export const SeoTab = ({ isActive, setActiveTab }) => {
   const [isFiction, setIsFiction] = useState(false);
   const [scripts] = useCloudStorage('scripts', []);
   const [seoPools, setSeoPools] = useCloudStorage('seo_pools', []);
+
+  // Tela Final & Cards
+  const [endScreenCount, setEndScreenCount] = useState(3);
+  const [cardsCount, setCardsCount] = useState(3);
+  const [endScreenResult, setEndScreenResult] = useState(null);
+  const [cardsResult, setCardsResult] = useState(null);
+  const [isGeneratingEndScreen, setIsGeneratingEndScreen] = useState(false);
+  const [isGeneratingCards, setIsGeneratingCards] = useState(false);
 
   useEffect(() => {
     const triggerTitle = localStorage.getItem('guru_seo_trigger_title');
@@ -127,6 +135,75 @@ Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito forte
       alert("Erro ao gerar SEO: " + err.message);
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleGenerateEndScreen = async () => {
+    if (!videoTitle.trim()) { alert('Insira o título do vídeo primeiro.'); return; }
+    setIsGeneratingEndScreen(true);
+    setEndScreenResult(null);
+    try {
+      const descContext = seoResult?.description ? `\nDESCRIÇÃO SEO: "${seoResult.description.substring(0, 500)}"` : '';
+      const prompt = `Você é um especialista em YouTube End Screens (Telas Finais).
+
+REGRA DE IDIOMA: Detecte o idioma do título abaixo. TODO o conteúdo gerado DEVE estar nesse mesmo idioma.
+
+TÍTULO DO VÍDEO: "${videoTitle}"${descContext}
+
+Gere EXATAMENTE ${endScreenCount} elementos para a Tela Final do vídeo.
+
+Para cada elemento, use EXATAMENTE este formato:
+**ELEMENTO [N]**
+- Tipo: [Vídeo Sugerido | Playlist | Inscrição | Link Externo]
+- Texto CTA: [Texto curto e persuasivo que aparece na tela, máximo 60 caracteres]
+- Posição: [Esquerda | Direita | Centro | Canto inferior esquerdo | Canto inferior direito]
+- Duração: [ex: 5-20 segundos antes do fim]
+- Descrição: [Explicação breve de por que este elemento funciona para reter o espectador]
+
+Dicas: Priorize "Vídeo Sugerido" e "Inscrição" pois são os que mais aumentam Watch Time e Subs. O CTA deve ser irresistível.`;
+
+      const response = await callAI(prompt, { model: 'gemini-1.5-flash' });
+      setEndScreenResult(response.trim());
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao gerar Tela Final: ' + err.message);
+    } finally {
+      setIsGeneratingEndScreen(false);
+    }
+  };
+
+  const handleGenerateCards = async () => {
+    if (!videoTitle.trim()) { alert('Insira o título do vídeo primeiro.'); return; }
+    setIsGeneratingCards(true);
+    setCardsResult(null);
+    try {
+      const descContext = seoResult?.description ? `\nDESCRIÇÃO SEO: "${seoResult.description.substring(0, 500)}"` : '';
+      const scriptContext = videoScript ? `\nROTEIRO: "${videoScript.substring(0, 1000)}"` : '';
+      const prompt = `Você é um especialista em YouTube Cards (Cartões Interativos).
+
+REGRA DE IDIOMA: Detecte o idioma do título abaixo. TODO o conteúdo gerado DEVE estar nesse mesmo idioma.
+
+TÍTULO DO VÍDEO: "${videoTitle}"${descContext}${scriptContext}
+
+Gere EXATAMENTE ${cardsCount} cards estratégicos para inserir durante o vídeo.
+
+Para cada card, use EXATAMENTE este formato:
+**CARD [N]**
+- Tipo: [Vídeo | Playlist | Enquete | Canal | Link]
+- Timestamp: [ex: 2:30 — momento sugerido baseado no conteúdo]
+- Título do Card: [Texto curto e chamativo, máximo 50 caracteres]
+- Mensagem Teaser: [Texto persuasivo que aparece primeiro para o espectador clicar, máximo 80 caracteres]
+- Motivo: [Por que esse momento é estratégico — qual gancho do roteiro justifica o card]
+
+Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, revelação ou mudança de assunto). Enquetes aumentam engajamento. Vídeos sugeridos aumentam Watch Time. Distribua os timestamps uniformemente ao longo do vídeo.`;
+
+      const response = await callAI(prompt, { model: 'gemini-1.5-flash' });
+      setCardsResult(response.trim());
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao gerar Cards: ' + err.message);
+    } finally {
+      setIsGeneratingCards(false);
     }
   };
 
@@ -339,6 +416,94 @@ Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito forte
                    )) : (
                      <div className="bg-black/30 border border-white/5 rounded-xl p-4 text-white font-bold text-sm leading-loose whitespace-pre-wrap">
                        {seoResult.titles}
+                     </div>
+                   )}
+                 </div>
+               </div>
+
+               {/* ── Tela Final (End Screen) ── */}
+               <div className="relative group">
+                 <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2">
+                   <h3 className="text-xs font-black text-green-400 flex items-center gap-2 uppercase tracking-widest">
+                     <MonitorPlay className="w-4 h-4" /> Tela Final (End Screen)
+                   </h3>
+                 </div>
+                 <div className="bg-black/30 border border-white/5 rounded-xl p-4 space-y-4">
+                   <div className="flex items-center gap-4">
+                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Elementos:</span>
+                     <div className="flex items-center gap-2">
+                       <button onClick={() => setEndScreenCount(Math.max(1, endScreenCount - 1))} className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:border-green-500/50 transition-colors"><Minus className="w-3 h-3" /></button>
+                       <span className="text-white font-black text-lg w-8 text-center">{endScreenCount}</span>
+                       <button onClick={() => setEndScreenCount(Math.min(4, endScreenCount + 1))} className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:border-green-500/50 transition-colors"><Plus className="w-3 h-3" /></button>
+                     </div>
+                     <button
+                       onClick={handleGenerateEndScreen}
+                       disabled={isGeneratingEndScreen}
+                       className="ml-auto px-4 py-2 bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-green-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
+                     >
+                       {isGeneratingEndScreen ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                       {isGeneratingEndScreen ? 'Gerando...' : 'Gerar'}
+                     </button>
+                   </div>
+                   {isGeneratingEndScreen && (
+                     <div className="flex items-center justify-center py-6"><Loader2 className="w-6 h-6 text-green-500 animate-spin" /></div>
+                   )}
+                   {endScreenResult && (
+                     <div className="relative">
+                       <button
+                         onClick={() => handleCopy(endScreenResult, 'endscreen')}
+                         className="absolute top-2 right-2 text-xs font-bold text-gray-500 hover:text-white transition-colors flex items-center gap-1 bg-black/50 px-2 py-1 rounded-lg z-10"
+                       >
+                         {copiedField === 'endscreen' ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                         {copiedField === 'endscreen' ? 'Copiado!' : 'Copiar'}
+                       </button>
+                       <div className="bg-dark/50 border border-white/5 rounded-xl p-4 text-gray-300 font-medium text-sm leading-relaxed whitespace-pre-wrap">
+                         {endScreenResult}
+                       </div>
+                     </div>
+                   )}
+                 </div>
+               </div>
+
+               {/* ── Cards (Cartões) ── */}
+               <div className="relative group">
+                 <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2">
+                   <h3 className="text-xs font-black text-green-400 flex items-center gap-2 uppercase tracking-widest">
+                     <CreditCard className="w-4 h-4" /> Cards (Cartões Interativos)
+                   </h3>
+                 </div>
+                 <div className="bg-black/30 border border-white/5 rounded-xl p-4 space-y-4">
+                   <div className="flex items-center gap-4">
+                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quantidade:</span>
+                     <div className="flex items-center gap-2">
+                       <button onClick={() => setCardsCount(Math.max(1, cardsCount - 1))} className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:border-green-500/50 transition-colors"><Minus className="w-3 h-3" /></button>
+                       <span className="text-white font-black text-lg w-8 text-center">{cardsCount}</span>
+                       <button onClick={() => setCardsCount(Math.min(5, cardsCount + 1))} className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:border-green-500/50 transition-colors"><Plus className="w-3 h-3" /></button>
+                     </div>
+                     <button
+                       onClick={handleGenerateCards}
+                       disabled={isGeneratingCards}
+                       className="ml-auto px-4 py-2 bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-green-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
+                     >
+                       {isGeneratingCards ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                       {isGeneratingCards ? 'Gerando...' : 'Gerar'}
+                     </button>
+                   </div>
+                   {isGeneratingCards && (
+                     <div className="flex items-center justify-center py-6"><Loader2 className="w-6 h-6 text-green-500 animate-spin" /></div>
+                   )}
+                   {cardsResult && (
+                     <div className="relative">
+                       <button
+                         onClick={() => handleCopy(cardsResult, 'cards')}
+                         className="absolute top-2 right-2 text-xs font-bold text-gray-500 hover:text-white transition-colors flex items-center gap-1 bg-black/50 px-2 py-1 rounded-lg z-10"
+                       >
+                         {copiedField === 'cards' ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                         {copiedField === 'cards' ? 'Copiado!' : 'Copiar'}
+                       </button>
+                       <div className="bg-dark/50 border border-white/5 rounded-xl p-4 text-gray-300 font-medium text-sm leading-relaxed whitespace-pre-wrap">
+                         {cardsResult}
+                       </div>
                      </div>
                    )}
                  </div>
