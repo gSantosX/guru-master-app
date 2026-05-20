@@ -700,6 +700,10 @@ REGRAS DE FORMATO:
                           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Visualizações</p>
                           <p className="text-lg font-black text-white">{formatNumber(channel.viewCount)}</p>
                         </div>
+                        <div>
+                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Vídeos</p>
+                          <p className="text-lg font-black text-white">{formatNumber(channel.videoCount)}</p>
+                        </div>
                       </div>
 
                       <div className="absolute bottom-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
