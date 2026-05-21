@@ -87,7 +87,7 @@ Forneça uma lista de 15 a 20 tags de alta busca (incluindo cauda longa e cauda 
 Crie um comentário curto e extremamente engajador para ser fixado no topo do vídeo. Ele deve fazer uma pergunta instigante ao público para forçar comentários e aumentar o engajamento geral.
 
 **5. TÍTULOS PARA TESTE A/B**
-Gere 3 títulos virais alternativos baseados no tema. Eles devem ser muito fortes em CTR (Click-Through Rate) e utilizar diferentes emoções (curiosidade, medo, choque, urgência). NÃO use números (1, 2, 3), marcadores ou aspas. Apenas escreva 1 título por linha.`;
+Gere 2 títulos virais alternativos baseados no tema. Eles devem ser muito fortes em CTR (Click-Through Rate) e utilizar diferentes emoções (curiosidade, medo, choque, urgência). NÃO use números (1, 2, 3), marcadores ou aspas. Apenas escreva 1 título por linha.`;
 
     try {
       const response = await callAI(prompt, { model: 'gemini-1.5-pro' });

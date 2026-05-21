@@ -144,8 +144,7 @@ export const VideoCoverTab = ({ isActive }) => {
         const newTitles = [
             { text: pool.title, label: 'Título Original', isOriginal: true },
             { text: abTitles[0] || 'Variação A/B 1', label: 'Teste A/B 1', is_best: false },
-            { text: abTitles[1] || 'Variação A/B 2', label: 'Teste A/B 2', is_best: true },
-            { text: abTitles[2] || 'Variação A/B 3', label: 'Teste A/B 3', is_best: false }
+            { text: abTitles[1] || 'Variação A/B 2', label: 'Teste A/B 2', is_best: true }
         ].filter(t => t.text && t.text.trim() !== '' && !t.text.includes('Variação A/B'));
 
         updateCoverState({
