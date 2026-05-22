@@ -28,6 +28,9 @@ const pendingSaves = {};
 
 export function useCloudStorage(dataKey, defaultValue) {
   const localKey = `guru_cloud_${dataKey}`;
+  
+  // ID único para identificar esta chamada específica do hook e evitar loops de disparos
+  const instanceId = useRef(Math.random()).current;
 
   // Initialize from localStorage cache first (instant)
   const [value, setValue] = useState(() => {
@@ -85,6 +88,13 @@ export function useCloudStorage(dataKey, defaultValue) {
       // Instant local cache
       try { localStorage.setItem(localKey, JSON.stringify(next)); } catch {}
 
+      // Dispara um evento para notificar outras instâncias na mesma aba de forma assíncrona
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent(`guru_cloud_storage_update_${dataKey}`, {
+          detail: { value: next, senderId: instanceId }
+        }));
+      }, 0);
+
       // Debounced cloud save
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
@@ -99,7 +109,32 @@ export function useCloudStorage(dataKey, defaultValue) {
 
       return next;
     });
-  }, [dataKey, localKey]);
+  }, [dataKey, localKey, instanceId]);
+
+  // Escuta atualizações de outras instâncias (mesma aba ou abas diferentes)
+  useEffect(() => {
+    const handleCustomEvent = (e) => {
+      if (e.detail && e.detail.senderId !== instanceId) {
+        setValue(e.detail.value);
+      }
+    };
+
+    const handleStorageEvent = (e) => {
+      if (e.key === localKey) {
+        try {
+          setValue(e.newValue ? JSON.parse(e.newValue) : defaultValue);
+        } catch {}
+      }
+    };
+
+    window.addEventListener(`guru_cloud_storage_update_${dataKey}`, handleCustomEvent);
+    window.addEventListener('storage', handleStorageEvent);
+
+    return () => {
+      window.removeEventListener(`guru_cloud_storage_update_${dataKey}`, handleCustomEvent);
+      window.removeEventListener('storage', handleStorageEvent);
+    };
+  }, [dataKey, localKey, defaultValue, instanceId]);
 
   return [value, setCloudValue, isLoaded];
 }
