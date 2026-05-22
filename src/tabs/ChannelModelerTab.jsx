@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Trash2, ExternalLink, TrendingUp, BarChart2, Sparkles, Brain, Youtube, Clock, Eye, Video, Activity, Copy, Check, ChevronLeft, RefreshCw, Globe, Wand2, Download } from 'lucide-react';
+import { Search, Plus, Trash2, ExternalLink, TrendingUp, BarChart2, Sparkles, Brain, Youtube, Clock, Eye, Video, Activity, Copy, Check, ChevronLeft, RefreshCw, Globe, Wand2, Download, ChevronDown } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -69,6 +69,147 @@ const VISUAL_STYLES = [
   "Ilustrado / 3D Pop",
   "Outro Estilo (Personalizado)"
 ];
+
+const getInstantRecommendations = (channel) => {
+  return {
+    subjects: [
+      { name: "Renda Passiva & Dividendos", chance: "alta" },
+      { name: "Investimentos para Iniciantes", chance: "alta" },
+      { name: "Criptomoedas & Bitcoin", chance: "media" },
+      { name: "Economia Doméstica & Poupança", chance: "media" }
+    ],
+    visualStyles: [
+      { name: "Dark & Misterioso", chance: "alta" },
+      { name: "Vibrante & Neon", chance: "alta" },
+      { name: "Clean & Corporativo", chance: "media" },
+      { name: "Minimalista & Elegante", chance: "media" }
+    ],
+    languages: [
+      { name: "Português (Brasil)", chance: "alta" },
+      { name: "Inglês (US)", chance: "alta" },
+      { name: "Espanhol (América Latina)", chance: "media" }
+    ]
+  };
+};
+
+const CustomSelect = ({ 
+  label, 
+  value, 
+  onChange, 
+  options, 
+  customValue, 
+  onCustomChange, 
+  customPlaceholder, 
+  customOptionLabel = "Outro (Personalizado)" 
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const currentOption = options.find(opt => opt.name === value) || { name: value, chance: null };
+  const currentChance = currentOption.chance;
+  const isHighChance = currentChance === 'alta';
+
+  return (
+    <div className="flex flex-col gap-2 relative" ref={dropdownRef}>
+      <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{label}</label>
+      
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full bg-dark border text-gray-300 text-sm rounded-xl px-4 py-2.5 flex items-center justify-between cursor-pointer transition-all duration-300 ${
+          isHighChance 
+            ? 'border-green-500/80 bg-green-500/5 shadow-[0_0_15px_rgba(34,197,94,0.2)] text-green-300 hover:bg-green-500/10' 
+            : 'border-white/10 hover:border-white/20 hover:bg-white/5'
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <span className="truncate">{value}</span>
+          {currentChance === 'alta' && (
+            <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full bg-green-500/20 text-green-400 border border-green-500/30 shrink-0">
+              alta chance
+            </span>
+          )}
+          {currentChance === 'media' && (
+            <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 shrink-0">
+              média chance
+            </span>
+          )}
+        </div>
+        <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </div>
+
+      {isOpen && (
+        <div className="absolute top-[calc(100%+4px)] left-0 w-full bg-black/95 border border-white/10 rounded-xl overflow-hidden z-50 shadow-[0_10px_30px_rgba(0,0,0,0.8)] max-h-60 overflow-y-auto custom-scrollbar">
+          {options.map((opt) => {
+            const optName = opt.name;
+            const optChance = opt.chance;
+            const isSelected = optName === value;
+
+            let chanceBadge = null;
+            let itemClass = "text-gray-300 hover:bg-white/5";
+
+            if (optChance === 'alta') {
+              chanceBadge = (
+                <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                  alta chance
+                </span>
+              );
+              itemClass = isSelected 
+                ? "bg-green-500/10 text-green-300 border-l-2 border-green-500 font-bold" 
+                : "text-green-400/90 hover:bg-green-500/5 hover:text-green-300";
+            } else if (optChance === 'media') {
+              chanceBadge = (
+                <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                  média chance
+                </span>
+              );
+              itemClass = isSelected 
+                ? "bg-purple-500/10 text-purple-300 border-l-2 border-purple-500 font-bold" 
+                : "text-purple-400/90 hover:bg-purple-500/5 hover:text-purple-300";
+            } else {
+              if (isSelected) {
+                itemClass = "bg-white/10 text-white font-bold";
+              }
+            }
+
+            return (
+              <div
+                key={optName}
+                onClick={() => {
+                  onChange(optName);
+                  setIsOpen(false);
+                }}
+                className={`px-4 py-2.5 text-sm flex items-center justify-between cursor-pointer transition-colors ${itemClass}`}
+              >
+                <span className="truncate">{optName}</span>
+                {chanceBadge}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {onCustomChange && value === customOptionLabel && (
+        <input
+          type="text"
+          placeholder={customPlaceholder}
+          value={customValue}
+          onChange={(e) => onCustomChange(e.target.value)}
+          className="mt-1 w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm focus:border-neon-cyan focus:outline-none text-white font-bold"
+        />
+      )}
+    </div>
+  );
+};
 
 // Heuristic helpers for instant pre-fill
 const getInstantStrategy = (channel) => {
@@ -400,6 +541,10 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
   const [customTopic, setCustomTopic] = useState('');
   const [selectedVisualStyle, setSelectedVisualStyle] = useState('Padrão do Canal');
   const [customVisualStyle, setCustomVisualStyle] = useState('');
+
+  // Custom success-chance recommendations
+  const [recommendations, setRecommendations] = useState(() => getInstantRecommendations(null));
+  const [isAnalyzingRecommendations, setIsAnalyzingRecommendations] = useState(false);
   
   // Utilities
   const [isCopied, setIsCopied] = useState(false);
@@ -649,20 +794,34 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
         showToast('Este canal já foi adicionado ao modelador.', 'warning');
         const c = channels.find(x => x.id === data.id);
         setSelectedChannel(c);
-        resetAnalyses();
+        resetAnalyses(c);
       } else {
         setChannels(prev => [data, ...prev.filter(c => c.id !== data.id)].slice(0, 9));
         setNewUrl('');
         setSelectedChannel(data);
-        resetAnalyses();
+        resetAnalyses(data);
       }
     } catch (err) { showToast(t('channels.fetch_error') + ': ' + err.message, 'error'); } finally { setIsAdding(false); }
   };
 
-  const resetAnalyses = () => {
+  const resetAnalyses = (channel = null) => {
     setStrategyResult(null);
     setCountryResult(null);
     setTitlesResult(null);
+    const targetChannel = channel || selectedChannel;
+    if (targetChannel) {
+      const instantRecs = getInstantRecommendations(targetChannel);
+      setRecommendations(instantRecs);
+      
+      const firstHighChanceSubject = instantRecs.subjects.find(s => s.chance === 'alta') || instantRecs.subjects[0];
+      if (firstHighChanceSubject) setSelectedTopic(firstHighChanceSubject.name);
+      
+      const firstHighChanceStyle = instantRecs.visualStyles.find(s => s.chance === 'alta') || instantRecs.visualStyles[0];
+      if (firstHighChanceStyle) setSelectedVisualStyle(firstHighChanceStyle.name);
+      
+      const firstHighChanceLang = instantRecs.languages.find(l => l.chance === 'alta') || instantRecs.languages[0];
+      if (firstHighChanceLang) setSelectedLanguage(firstHighChanceLang.name);
+    }
   };
 
   const handleRefreshChannel = async (force = true) => {
@@ -757,11 +916,77 @@ Formato OBRIGATÓRIO (PT-BR) - SEJA EXTREMAMENTE DIRETO E RESUMIDO (máximo 1 fr
     })();
   };
 
+  const runRecommendationsAnalysis = async () => {
+    if (!selectedChannel) return;
+    
+    setIsAnalyzingRecommendations(true);
+    
+    const prompt = `Você é um analista estratégico especializado em canais de finanças do YouTube e otimização de CTR.
+Analise o canal "${selectedChannel.title}" e sua descrição: "${selectedChannel.description}".
+
+Com base nos dados fornecidos do canal, faça uma análise estratégica detalhada para propor o seguinte:
+1. De 3 a 5 assuntos de finanças (específicos do nicho financeiro) que teriam maior chance de sucesso para vídeos deste canal.
+2. De 3 a 5 estilos visuais adaptados para thumbnails/vídeos deste canal que sejam alinhados à identidade dele.
+3. De 1 a 3 idiomas de destino para os quais o canal poderia expandir.
+
+Para cada recomendação, você deve atribuir uma probabilidade/chance de sucesso ("alta" ou "media"). 
+A maior chance de sucesso (ou recomendação número 1 de cada categoria) DEVE receber a classificação "alta".
+
+Retorne a resposta estritamente no formato JSON abaixo, sem blocos de código markdown ou texto extra:
+{
+  "subjects": [
+    { "name": "Nome do Assunto de Finanças", "chance": "alta" },
+    ...
+  ],
+  "visualStyles": [
+    { "name": "Nome do Estilo Visual", "chance": "alta" },
+    ...
+  ],
+  "languages": [
+    { "name": "Nome do Idioma", "chance": "alta" },
+    ...
+  ]
+}
+
+Lista de idiomas possíveis para referência: Português (Brasil), Inglês (US), Espanhol (América Latina), Espanhol (Espanha), Francês, Alemão, Japonês, Coreano, etc.
+Lista de estilos visuais possíveis para referência: Dark & Misterioso, Clean & Corporativo, Minimalista & Elegante, Vibrante & Neon, Futurista & Tech, Ilustrado / 3D Pop, etc.`;
+
+    try {
+      const response = await callAI(prompt, { model: 'gemini-2.5-flash' });
+      if (response) {
+        // Tentar limpar e fazer o parse da resposta
+        const cleanResponse = response.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(cleanResponse);
+        
+        if (parsed.subjects && parsed.visualStyles && parsed.languages) {
+          setRecommendations(parsed);
+          
+          // Auto-selecionar o primeiro de alta chance para cada um
+          const firstHighChanceSubject = parsed.subjects.find(s => s.chance === 'alta') || parsed.subjects[0];
+          if (firstHighChanceSubject) setSelectedTopic(firstHighChanceSubject.name);
+          
+          const firstHighChanceStyle = parsed.visualStyles.find(s => s.chance === 'alta') || parsed.visualStyles[0];
+          if (firstHighChanceStyle) setSelectedVisualStyle(firstHighChanceStyle.name);
+          
+          const firstHighChanceLang = parsed.languages.find(l => l.chance === 'alta') || parsed.languages[0];
+          if (firstHighChanceLang) setSelectedLanguage(firstHighChanceLang.name);
+        }
+      }
+    } catch (err) {
+      console.error("Failed parsing recommendations analysis:", err);
+    } finally {
+      setIsAnalyzingRecommendations(false);
+    }
+  };
+
   const runStrategyAnalysis = async () => {
     if (!selectedChannel) return;
     
     // Auto-trigger country analysis in parallel
     runCountryAnalysis();
+
+    // Auto-trigger recommendations analysis in parallel
+    runRecommendationsAnalysis();
 
     // Set instant prefill result
     const instant = getInstantStrategy(selectedChannel);
@@ -932,7 +1157,7 @@ REGRAS CRÍTICAS:
                       exit={{ opacity: 0, scale: 0.9 }}
                       onClick={() => {
                         setSelectedChannel(channel);
-                        resetAnalyses();
+                        resetAnalyses(channel);
                       }}
                       className="bg-white/5 border border-white/5 rounded-2xl p-6 group hover:border-neon-cyan/40 transition-all cursor-pointer relative overflow-hidden shadow-xl hover:-translate-y-1"
                     >
@@ -1244,64 +1469,47 @@ REGRAS CRÍTICAS:
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   {/* Campo de Assunto */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Assunto (Nicho de Finanças)</label>
-                    <select
-                      value={selectedTopic}
-                      onChange={(e) => setSelectedTopic(e.target.value)}
-                      className="w-full bg-dark border border-white/10 text-gray-300 text-sm rounded-xl px-4 py-2.5 focus:border-neon-cyan focus:outline-none"
-                    >
-                      {FINANCE_SUBJECTS.map(topic => (
-                        <option key={topic} value={topic}>{topic}</option>
-                      ))}
-                    </select>
-                    {selectedTopic === 'Outro Assunto (Personalizado)' && (
-                      <input
-                        type="text"
-                        placeholder="Digite o assunto personalizado..."
-                        value={customTopic}
-                        onChange={(e) => setCustomTopic(e.target.value)}
-                        className="mt-2 w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm focus:border-neon-cyan focus:outline-none text-white font-bold"
-                      />
-                    )}
-                  </div>
+                  <CustomSelect
+                    label="Assunto (Nicho de Finanças)"
+                    value={selectedTopic}
+                    onChange={setSelectedTopic}
+                    options={[
+                      ...(recommendations.subjects || []),
+                      ...FINANCE_SUBJECTS.filter(topic => !(recommendations.subjects || []).some(s => s.name === topic) && topic !== 'Outro Assunto (Personalizado)').map(topic => ({ name: topic, chance: null })),
+                      { name: 'Outro Assunto (Personalizado)', chance: null }
+                    ]}
+                    customValue={customTopic}
+                    onCustomChange={setCustomTopic}
+                    customPlaceholder="Digite o assunto personalizado..."
+                    customOptionLabel="Outro Assunto (Personalizado)"
+                  />
 
                   {/* Campo de Estilo Visual */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Estilo Visual da Thumb/Vídeo</label>
-                    <select
-                      value={selectedVisualStyle}
-                      onChange={(e) => setSelectedVisualStyle(e.target.value)}
-                      className="w-full bg-dark border border-white/10 text-gray-300 text-sm rounded-xl px-4 py-2.5 focus:border-neon-cyan focus:outline-none"
-                    >
-                      {VISUAL_STYLES.map(style => (
-                        <option key={style} value={style}>{style}</option>
-                      ))}
-                    </select>
-                    {selectedVisualStyle === 'Outro Estilo (Personalizado)' && (
-                      <input
-                        type="text"
-                        placeholder="Digite o estilo visual personalizado..."
-                        value={customVisualStyle}
-                        onChange={(e) => setCustomVisualStyle(e.target.value)}
-                        className="mt-2 w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm focus:border-neon-cyan focus:outline-none text-white font-bold"
-                      />
-                    )}
-                  </div>
+                  <CustomSelect
+                    label="Estilo Visual da Thumb/Vídeo"
+                    value={selectedVisualStyle}
+                    onChange={setSelectedVisualStyle}
+                    options={[
+                      ...(recommendations.visualStyles || []),
+                      ...VISUAL_STYLES.filter(style => !(recommendations.visualStyles || []).some(s => s.name === style) && style !== 'Outro Estilo (Personalizado)').map(style => ({ name: style, chance: null })),
+                      { name: 'Outro Estilo (Personalizado)', chance: null }
+                    ]}
+                    customValue={customVisualStyle}
+                    onCustomChange={setCustomVisualStyle}
+                    customPlaceholder="Digite o estilo visual personalizado..."
+                    customOptionLabel="Outro Estilo (Personalizado)"
+                  />
 
                   {/* Idioma da Geração */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Idioma de Destino</label>
-                    <select 
-                      value={selectedLanguage}
-                      onChange={(e) => setSelectedLanguage(e.target.value)}
-                      className="w-full bg-dark border border-white/10 text-gray-300 text-sm rounded-xl px-4 py-2.5 focus:border-neon-cyan focus:outline-none"
-                    >
-                      {GLOBAL_LANGUAGES.map(lang => (
-                         <option key={lang} value={lang}>{lang}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <CustomSelect
+                    label="Idioma de Destino"
+                    value={selectedLanguage}
+                    onChange={setSelectedLanguage}
+                    options={[
+                      ...(recommendations.languages || []),
+                      ...GLOBAL_LANGUAGES.filter(lang => !(recommendations.languages || []).some(l => l.name === lang)).map(lang => ({ name: lang, chance: null }))
+                    ]}
+                  />
                 </div>
 
                 {isAnalyzingTitles && !titlesResult ? (
