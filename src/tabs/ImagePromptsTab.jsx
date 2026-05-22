@@ -1343,214 +1343,172 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
         </p>
       </header>
 
-        {/* Configuration Panels */}
-        <div className="flex flex-col gap-4 mb-8">
+        {/* Configuration Panel */}
+        <div className="glass-card p-6 border border-white/10 flex flex-col gap-6 bg-white/[0.01] mb-8">
           
-          {/* Top Row: Side by Side (Script & Style) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+          {/* Header */}
+          <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-pink to-neon-purple flex items-center justify-center shadow-[0_0_10px_rgba(255,44,182,0.2)]">
+              <Wand2 className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[11px] font-black text-white uppercase tracking-widest">Configuração da Produção</span>
+              <span className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Ajuste o roteiro base, formato e estilo visual</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* Box 1: Script Selection */}
-            <div className="glass-card p-5 border border-white/10 flex flex-col gap-4 h-full">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-neon-purple/10 flex items-center justify-center border border-neon-purple/20">
-                   <FileText className="w-4 h-4 text-neon-purple" />
+            {/* Col 1: Roteiro & Formato de Saída */}
+            <div className="flex flex-col gap-5">
+              
+              {/* Script Selection */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-neon-purple" />
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Projeto Base</span>
                 </div>
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Projeto Base</span>
+                <select 
+                   value={selectedScriptId}
+                   onChange={(e) => setSelectedScriptId(e.target.value)}
+                   className="w-full bg-dark/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-gray-300 focus:outline-none focus:border-neon-purple/50 hover:bg-white/5 transition-all cursor-pointer"
+                >
+                   <option value="">-- SELECIONE UM ROTEIRO --</option>
+                   {(cloudScripts.length > 0 ? cloudScripts : availableScripts).map(s => (
+                      <option key={s.id} value={s.id} className="bg-dark text-white">{s.title}</option>
+                   ))}
+                </select>
               </div>
-              
-              <select 
-                 value={selectedScriptId}
-                 onChange={(e) => setSelectedScriptId(e.target.value)}
-                 className="w-full mt-auto bg-dark/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-gray-300 focus:outline-none focus:border-neon-purple/50 hover:bg-white/5 transition-all cursor-pointer"
-              >
-                 <option value="">-- SELECIONE UM ROTEIRO --</option>
-                 {(cloudScripts.length > 0 ? cloudScripts : availableScripts).map(s => (
-                    <option key={s.id} value={s.id} className="bg-dark text-white">{s.title}</option>
-                 ))}
-              </select>
+
+              {/* Output Format (Normal / JSON) */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-neon-pink" />
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Formato do Prompt</span>
+                </div>
+                <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10 w-fit">
+                  <button
+                    onClick={() => setOutputFormat('text')}
+                    className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                      outputFormat === 'text'
+                        ? 'bg-neon-cyan/80 text-dark shadow-[0_0_15px_rgba(0,243,255,0.3)]'
+                        : 'text-gray-500 hover:text-white'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" /> Normal
+                  </button>
+                  <button
+                    onClick={() => setOutputFormat('json')}
+                    className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                      outputFormat === 'json'
+                        ? 'bg-amber-500/80 text-dark shadow-[0_0_15px_rgba(251,191,36,0.3)]'
+                        : 'text-gray-500 hover:text-white'
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5" /> JSON
+                  </button>
+                </div>
+              </div>
+
             </div>
 
-            {/* Box 2: Visual DNA Image Reference */}
-            <div className="glass-card p-5 border border-neon-cyan/20 bg-neon-cyan/5 flex flex-col gap-4 h-full">
-               <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-lg bg-neon-cyan/10 flex items-center justify-center border border-neon-cyan/20">
-                   <Camera className="w-4 h-4 text-neon-cyan" />
-                 </div>
-                 <div className="flex flex-col">
-                   <span className="text-[10px] font-black text-neon-cyan uppercase tracking-[0.2em]">Estilo Visual</span>
-                   <span className="text-[8px] text-neon-cyan/70 uppercase tracking-widest font-bold">Opcional</span>
-                 </div>
-               </div>
-               
-               <select 
-                  value={genero || ''}
-                  onChange={(e) => {
-                     setGenero(e.target.value);
-                     if (e.target.value) {
-                        setVisualDNA(prev => ({ ...prev, scenario: e.target.value }));
-                     } else if (!referenceImage) {
-                        setVisualDNA({ scenario: '', era: '', mood: '', lighting: '', palette: '', camera: '' });
-                     }
-                  }}
-                  className="w-full mt-auto bg-dark/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-gray-300 focus:outline-none focus:border-neon-cyan/50 hover:bg-white/5 transition-all cursor-pointer"
-               >
-                  <option value="">-- SELECIONE ENTRE 55 ESTILOS PRONTOS --</option>
-                  {visualStylesGroups.map((group, idx) => (
-                     <optgroup key={idx} label={group.group} className="bg-dark text-neon-cyan font-bold">
-                        {group.options.map((opt, oIdx) => (
-                           <option key={oIdx} value={opt} className="bg-dark text-white font-normal">{opt}</option>
-                        ))}
-                     </optgroup>
-                  ))}
-               </select>
+            {/* Col 2: Estilo Visual & Imagem DNA */}
+            <div className="flex flex-col gap-5">
 
-               <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-white/10"></div>
-                  <span className="flex-shrink-0 mx-4 text-gray-500 text-[8px] uppercase font-bold tracking-widest">OU SUBA UMA REFERÊNCIA</span>
-                  <div className="flex-grow border-t border-white/10"></div>
-               </div>
-
-               <div 
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                      handleImageUpload(e.dataTransfer.files[0]);
-                    }
-                  }}
-                  onClick={() => imageInputRef.current?.click()}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
-                    referenceImage 
-                      ? 'border-neon-cyan/50 bg-neon-cyan/10' 
-                      : 'border-white/20 bg-dark/50 hover:border-white/40 hover:bg-white/10'
-                  }`}
-               >
-                  <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
-                  
-                  {isAnalyzingImage ? (
-                    <div className="flex items-center gap-3 w-full">
-                      <Loader2 className="w-5 h-5 text-neon-cyan animate-spin shrink-0" />
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Analisando Estilo...</span>
-                        <span className="text-[8px] text-gray-400 uppercase tracking-wider">Visão Cirúrgica IA</span>
-                      </div>
-                    </div>
-                  ) : referenceImage && visualDNA.scenario ? (
-                    <div className="flex items-center gap-3 w-full">
-                      <img src={referenceImage} alt="Referência" className="w-10 h-10 object-cover rounded-lg border border-neon-cyan/30 shrink-0" />
-                      <div className="flex flex-col flex-1 overflow-hidden">
-                        <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight mb-0.5">Estilo Ativo</span>
-                        <span className="text-[8px] text-gray-300 truncate" title={`${visualDNA.rec_genero || genero || 'Livre'} • ${visualDNA.rendering || visualDNA.lighting} • ${visualDNA.palette}`}>
-                          {visualDNA.rec_genero || genero || 'Livre'} • {visualDNA.rendering || visualDNA.lighting}{visualDNA.texture ? `, ${visualDNA.texture}` : ''}
-                        </span>
-                      </div>
-                      <CheckCircle className="w-4 h-4 text-neon-cyan shrink-0" />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3 w-full">
-                      <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                        <ImageIcon className="w-5 h-5 text-gray-400" />
-                      </div>
-                      <div className="flex flex-col text-left">
-                         <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest leading-tight">Clique ou Cole a Imagem</span>
-                         <span className="text-[8px] text-gray-500 uppercase tracking-wider">O estilo baseará todos os prompts</span>
-                      </div>
-                    </div>
-                  )}
-               </div>
-               
-               {analyzeError && (
-                  <div className="w-full mt-2 p-2 bg-red-500/10 border-t border-red-500/30 text-red-400 text-[10px] font-bold uppercase tracking-wider text-center animate-pulse">
-                    {analyzeError}
+              {/* Visual Style Selector */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Camera className="w-3.5 h-3.5 text-neon-cyan" />
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest">Estilo Visual</span>
+                    <span className="text-[8px] text-neon-cyan/50 uppercase tracking-widest font-bold">(Opcional)</span>
                   </div>
-               )}
+                </div>
+                <select 
+                   value={genero || ''}
+                   onChange={(e) => {
+                      setGenero(e.target.value);
+                      if (e.target.value) {
+                         setVisualDNA(prev => ({ ...prev, scenario: e.target.value }));
+                      } else if (!referenceImage) {
+                         setVisualDNA({ scenario: '', era: '', mood: '', lighting: '', palette: '', camera: '' });
+                      }
+                   }}
+                   className="w-full bg-dark/50 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-gray-300 focus:outline-none focus:border-neon-cyan/50 hover:bg-white/5 transition-all cursor-pointer"
+                >
+                   <option value="">-- SELECIONE ENTRE 55 ESTILOS PRONTOS --</option>
+                   {visualStylesGroups.map((group, idx) => (
+                      <optgroup key={idx} label={group.group} className="bg-dark text-neon-cyan font-bold">
+                         {group.options.map((opt, oIdx) => (
+                            <option key={oIdx} value={opt} className="bg-dark text-white font-normal">{opt}</option>
+                         ))}
+                      </optgroup>
+                   ))}
+                </select>
+              </div>
+
+              {/* Upload reference image */}
+              <div className="flex flex-col gap-2">
+                <div 
+                   onDragOver={(e) => e.preventDefault()}
+                   onDrop={(e) => {
+                     e.preventDefault();
+                     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                       handleImageUpload(e.dataTransfer.files[0]);
+                     }
+                   }}
+                   onClick={() => imageInputRef.current?.click()}
+                   className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
+                     referenceImage 
+                       ? 'border-neon-cyan/50 bg-neon-cyan/10' 
+                       : 'border-white/10 bg-dark/50 hover:border-white/20 hover:bg-white/10'
+                   }`}
+                >
+                   <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
+                   
+                   {isAnalyzingImage ? (
+                     <div className="flex items-center gap-3 w-full">
+                       <Loader2 className="w-5 h-5 text-neon-cyan animate-spin shrink-0" />
+                       <div className="flex flex-col text-left">
+                         <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Analisando Estilo...</span>
+                         <span className="text-[8px] text-gray-400 uppercase tracking-wider">Visão Cirúrgica IA</span>
+                       </div>
+                     </div>
+                   ) : referenceImage && visualDNA.scenario ? (
+                     <div className="flex items-center gap-3 w-full">
+                       <img src={referenceImage} alt="Referência" className="w-10 h-10 object-cover rounded-lg border border-neon-cyan/30 shrink-0" />
+                       <div className="flex flex-col flex-1 overflow-hidden text-left">
+                         <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight mb-0.5">Estilo Ativo</span>
+                         <span className="text-[8px] text-gray-300 truncate" title={`${visualDNA.rec_genero || genero || 'Livre'} • ${visualDNA.rendering || visualDNA.lighting} • ${visualDNA.palette}`}>
+                           {visualDNA.rec_genero || genero || 'Livre'} • {visualDNA.rendering || visualDNA.lighting}{visualDNA.texture ? `, ${visualDNA.texture}` : ''}
+                         </span>
+                       </div>
+                       <CheckCircle className="w-4 h-4 text-neon-cyan shrink-0" />
+                     </div>
+                   ) : (
+                     <div className="flex items-center gap-3 w-full">
+                       <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                         <ImageIcon className="w-5 h-5 text-gray-400" />
+                       </div>
+                       <div className="flex flex-col text-left">
+                          <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest leading-tight">Clique ou Cole a Imagem de Referência</span>
+                          <span className="text-[8px] text-gray-500 uppercase tracking-wider">Identificar estilo por imagem</span>
+                       </div>
+                     </div>
+                   )}
+                </div>
+                
+                {analyzeError && (
+                   <div className="w-full p-2 bg-red-500/10 border-t border-red-500/30 text-red-400 text-[10px] font-bold uppercase tracking-wider text-center animate-pulse">
+                     {analyzeError}
+                   </div>
+                )}
+              </div>
+
             </div>
+
           </div>
 
-          {/* Row 3: Output Format Controls */}
-          <div className="glass-card p-5 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/[0.01]">
-            <div className="flex items-center gap-3 md:w-56 shrink-0">
-              <div className="w-8 h-8 rounded-lg bg-neon-pink/10 flex items-center justify-center border border-neon-pink/20">
-                 <Sparkles className="w-4 h-4 text-neon-pink" />
-              </div>
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Saída</span>
-            </div>
-
-            <div className="flex flex-1 flex-wrap items-center justify-end gap-3 md:gap-6">
-              
-              {/* Prompt Type: Imagem / Vídeo */}
-              <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10 mr-auto">
-                <button
-                  onClick={() => setPromptType('image')}
-                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    promptType === 'image'
-                      ? 'bg-neon-purple/80 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)]'
-                      : 'text-gray-500 hover:text-white'
-                  }`}
-                >
-                  <ImageIcon className="w-4 h-4" /> Imagem
-                </button>
-                <button
-                  onClick={() => setPromptType('video')}
-                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    promptType === 'video'
-                      ? 'bg-neon-cyan/80 text-dark shadow-[0_0_15px_rgba(0,243,255,0.3)]'
-                      : 'text-gray-500 hover:text-white'
-                  }`}
-                >
-                  <Video className="w-4 h-4" /> Vídeo
-                </button>
-              </div>
-
-              {/* Output Format: Normal / JSON */}
-              <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10">
-                <button
-                  onClick={() => setOutputFormat('text')}
-                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    outputFormat === 'text'
-                      ? 'bg-neon-cyan/80 text-dark shadow-[0_0_15px_rgba(0,243,255,0.3)]'
-                      : 'text-gray-500 hover:text-white'
-                  }`}
-                >
-                  <FileText className="w-4 h-4" /> Normal
-                </button>
-                <button
-                  onClick={() => setOutputFormat('json')}
-                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    outputFormat === 'json'
-                      ? 'bg-amber-500/80 text-dark shadow-[0_0_15px_rgba(251,191,36,0.3)]'
-                      : 'text-gray-500 hover:text-white'
-                  }`}
-                >
-                  <Zap className="w-4 h-4" /> JSON
-                </button>
-              </div>
-
-              {/* Speech Mode: Com Fala / Sem Fala */}
-              <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10">
-                <button
-                  onClick={() => setPromptState(prev => ({ ...prev, speechMode: 'true' }))}
-                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    promptState.speechMode === 'true'
-                      ? 'bg-green-500/80 text-white shadow-[0_0_15px_rgba(34,197,94,0.3)]'
-                      : 'text-gray-500 hover:text-white'
-                  }`}
-                >
-                  <Zap className="w-4 h-4" /> Com Fala
-                </button>
-                <button
-                  onClick={() => setPromptState(prev => ({ ...prev, speechMode: 'false' }))}
-                  className={`flex items-center justify-center gap-2 px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                    promptState.speechMode === 'false'
-                      ? 'bg-red-500/80 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]'
-                      : 'text-gray-500 hover:text-white'
-                  }`}
-                >
-                  <X className="w-4 h-4" /> Sem Fala
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
 
