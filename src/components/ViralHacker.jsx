@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Globe, Loader2, Copy, Check, ShieldCheck, XCircle, TrendingUp, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
+import { Zap, Globe, Copy, Check, ShieldCheck, XCircle, TrendingUp, AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LoadingSpinner } from './LoadingSpinner';
 import { callGemini, callGPT, callAI } from '../utils/aiUtils';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { t } from '../utils/i18n';
@@ -300,7 +301,7 @@ Liste os ${titleCount} títulos seguindo o formato: Título: [Texto] || Traduç�
                      </div>
                   </div>
                   {isGeneratingTitles ? (
-                    <Loader2 className="w-6 h-6 text-neon-cyan animate-spin" />
+                    <LoadingSpinner size="xs" />
                   ) : (
                     <Zap className={`w-6 h-6 transition-colors ${!selectedLanguage ? 'text-gray-700' : 'text-neon-cyan/40 group-hover/btn:text-neon-cyan'}`} />
                   )}
@@ -321,9 +322,14 @@ Liste os ${titleCount} títulos seguindo o formato: Título: [Texto] || Traduç�
             initial={{ opacity: 0, height: 0 }} 
             animate={{ opacity: 1, height: 'auto' }} 
             exit={{ opacity: 0, height: 0 }}
-            className="flex flex-col items-center justify-center py-20 gap-5 border-t border-white/5 overflow-hidden"
+            className="border-t border-white/5 overflow-hidden"
           >
-             <div className="w-16 h-16 rounded-full border-4 border-neon-cyan/20 border-t-neon-cyan animate-spin shadow-neon" />
+             <LoadingSpinner 
+               title="Hacker de Viralização" 
+               message="Forjando títulos impossíveis de ignorar..." 
+               size="lg" 
+               icon={Sparkles} 
+             />
           </motion.div>
         ) : generatedTitles.length > 0 && (
           <motion.div 

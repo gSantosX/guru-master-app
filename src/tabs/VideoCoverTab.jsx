@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap, Box, Copy, Check, Palette, CloudMoon, Target, Maximize, MousePointer2, Globe, Terminal, AlertTriangle, Loader2, Camera, Brush, PenTool, Monitor, Ghost, Sun, Moon, Star, Flame, Droplet, Wind, Tv } from 'lucide-react';
+import { ImageIcon, Wand2, Download, RefreshCw, AlertCircle, Type, Sparkles, Zap, Box, Copy, Check, Palette, CloudMoon, Target, Maximize, MousePointer2, Globe, Terminal, AlertTriangle, Camera, Brush, PenTool, Monitor, Ghost, Sun, Moon, Star, Flame, Droplet, Wind, Tv } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -826,7 +826,7 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
                                         </span>
                                         {isGeneratingTitles && !isOriginal && (
                                             <span className="flex items-center gap-1.5 text-[8px] font-bold text-neon-cyan bg-neon-cyan/10 border border-neon-cyan/20 px-2 py-0.5 rounded animate-pulse">
-                                                <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                                <LoadingSpinner size="xs" />
                                                 Refinando com IA...
                                             </span>
                                         )}
@@ -912,6 +912,14 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
                                                     </button>
                                                 </div>
                                             </>
+                                        ) : covers[idx]?.isGeneratingImage ? (
+                                            <div className="flex flex-col items-center justify-center p-4">
+                                                <LoadingSpinner size="sm" message="Criando Imagem..." />
+                                            </div>
+                                        ) : covers[idx]?.loading ? (
+                                            <div className="flex flex-col items-center justify-center p-4">
+                                                <LoadingSpinner size="sm" message="Criando Prompt..." />
+                                            </div>
                                         ) : (
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-500/30">
                                                 <ImageIcon className="w-8 h-8" />

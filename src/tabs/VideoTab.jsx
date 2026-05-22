@@ -679,7 +679,16 @@ export const VideoTab = () => {
           </div>
           
           <div className="flex-1 p-6 relative z-10 flex flex-col items-center justify-start overflow-y-auto custom-scrollbar">
-             {renderSuccess && activeJobId ? (
+             {isGenerating ? (
+                <div className="w-full h-full flex flex-col items-center justify-center my-auto min-h-[300px]">
+                   <LoadingSpinner 
+                     size="lg" 
+                     icon={Video} 
+                     title="Compilando Vídeo" 
+                     message="Carregando mídias e inicializando motor FFmpeg..." 
+                   />
+                </div>
+             ) : renderSuccess && activeJobId ? (
                 <div className="w-full h-full flex items-center justify-center">
                    <ActiveRenderMonitor 
                      jobId={activeJobId} 

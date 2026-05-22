@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Target, 
   Search, 
-  Loader2, 
   Sparkles, 
   Check, 
   Copy, 
@@ -556,7 +555,7 @@ Retorne APENAS a lista numerada.`;
                disabled={isSearching}
                className="w-full py-4 bg-gradient-to-r from-neon-purple to-neon-pink text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(255,44,182,0.4)] hover:shadow-[0_0_30px_rgba(0,243,255,0.6)] hover:from-neon-cyan hover:to-blue-600 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 h-[52px]"
              >
-                {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <RadarScanIcon />}
+                {isSearching ? <LoadingSpinner size="xs" message="" /> : <RadarScanIcon />}
                 {isSearching ? loadingStep : "Extrair Mercado"}
              </button>
           </div>
@@ -573,11 +572,12 @@ Retorne APENAS a lista numerada.`;
                  className="glass-card p-32 flex flex-col items-center justify-center border border-white/5 relative overflow-hidden"
               >
                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none" />
-                 <LoadingSpinner message="Realizando Varredura Continental..." size="xl" />
-                 <p className="mt-8 text-[11px] font-black text-neon-purple uppercase tracking-[0.4em] animate-pulse glow-text">{loadingStep}</p>
-                 <div className="w-64 h-1 bg-white/5 mt-4 overflow-hidden rounded-full relative">
-                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-neon-cyan to-neon-purple w-full animate-[shimmer_2s_infinite]" />
-                 </div>
+                 <LoadingSpinner 
+                    icon={Compass} 
+                    title="Identificador de Nichos" 
+                    message={loadingStep || "Realizando Varredura Continental..."} 
+                    size="xl" 
+                 />
               </motion.div>
            ) : result ? (
               <motion.div 
@@ -589,7 +589,7 @@ Retorne APENAS a lista numerada.`;
                  <div className="flex justify-end mb-2 gap-2 items-center">
                     {isRefiningNiche && (
                        <div className="flex items-center gap-2 px-3 py-1.5 bg-neon-purple/20 border border-neon-purple/30 rounded-xl text-[10px] font-black text-neon-purple uppercase tracking-widest animate-pulse mr-auto">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <LoadingSpinner size="xs" message="" />
                           Refinando Nicho...
                        </div>
                     )}
@@ -691,18 +691,19 @@ Retorne APENAS a lista numerada.`;
                         </span>
                         {isAnalyzingStrategy && (
                           <span className="flex items-center gap-1.5 px-2 py-1 bg-neon-purple/20 border border-neon-purple/30 rounded-lg text-[9px] font-black text-neon-purple uppercase tracking-widest animate-pulse">
-                            <Loader2 className="w-3 h-3 animate-spin" /> Refinando...
+                             <LoadingSpinner size="xs" message="" /> Refinando...
                           </span>
                         )}
                       </h3>
                       
                       {isAnalyzingStrategy && !strategyResult ? (
-                        <div className="flex flex-col items-center justify-center py-10 space-y-4">
-                           <Loader2 className="w-8 h-8 text-neon-purple animate-spin" />
-                           <p className="text-xs font-black text-neon-purple uppercase tracking-[0.2em] animate-pulse">
-                             Mapeando táticas do nicho...
-                           </p>
-                        </div>
+                         <LoadingSpinner 
+                           title="Análise Estratégica"
+                           message="Mapeando táticas do nicho..." 
+                           size="lg" 
+                           icon={Brain}
+                           className="py-10" 
+                         />
                       ) : strategyResult ? (
                         <div className="space-y-6 prose prose-invert prose-sm max-w-none prose-p:text-gray-300 prose-headings:text-white prose-strong:text-neon-cyan">
                            <div className="whitespace-pre-wrap leading-relaxed text-[13px] sm:text-sm font-medium">
@@ -734,7 +735,7 @@ Retorne APENAS a lista numerada.`;
                             <Type className="w-4 h-4" /> Gerador de Títulos Virais
                             {isAnalyzingTitles && (
                               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-neon-cyan/20 border border-neon-cyan/30 rounded text-[9px] font-black text-neon-cyan uppercase tracking-widest animate-pulse ml-2">
-                                <Loader2 className="w-2.5 h-2.5 animate-spin" /> Refinando...
+                                 <LoadingSpinner size="xs" message="" /> Refinando...
                               </span>
                             )}
                           </span>
@@ -753,19 +754,20 @@ Retorne APENAS a lista numerada.`;
                               disabled={isAnalyzingTitles || isAnalyzingStrategy || !result}
                               className="flex items-center justify-center gap-2 px-4 py-2 bg-neon-cyan hover:bg-cyan-400 text-black rounded-lg font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                             >
-                              {isAnalyzingTitles ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                              {isAnalyzingTitles ? <LoadingSpinner size="xs" message="" /> : <Wand2 className="w-4 h-4" />}
                               Gerar 10 Títulos
                             </button>
                           </div>
                        </h4>
 
                        {isAnalyzingTitles && !titlesResult ? (
-                          <div className="flex flex-col items-center justify-center py-12 space-y-4 bg-black/20 rounded-xl border border-white/5">
-                             <Loader2 className="w-8 h-8 text-neon-cyan animate-spin" />
-                             <p className="text-xs font-black text-neon-cyan uppercase tracking-[0.2em] animate-pulse">
-                               Forjando ganchos impossíveis de ignorar...
-                             </p>
-                          </div>
+                          <LoadingSpinner 
+                            title="Gerador de Títulos"
+                            message="Forjando ganchos impossíveis de ignorar..." 
+                            size="lg" 
+                            icon={Type}
+                            className="py-12 bg-black/20 rounded-xl border border-white/5" 
+                          />
                        ) : titlesResult ? (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                              {titlesResult.split('\n').filter(t => t.trim().match(/^\d/)).map((titleLine, i) => {

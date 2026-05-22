@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Trash2, ExternalLink, TrendingUp, BarChart2, Sparkles, Brain, Youtube, Clock, Eye, Video, Activity, Copy, Check, ChevronLeft, RefreshCw, Globe, Loader2, Wand2, Download } from 'lucide-react';
+import { Search, Plus, Trash2, ExternalLink, TrendingUp, BarChart2, Sparkles, Brain, Youtube, Clock, Eye, Video, Activity, Copy, Check, ChevronLeft, RefreshCw, Globe, Wand2, Download } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -821,7 +821,7 @@ Retorne APENAS a lista numerada.`;
                     disabled={isDownloadingPdf}
                     className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 hover:text-red-300 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest disabled:opacity-50"
                   >
-                    {isDownloadingPdf ? <Loader2 className="w-3 h-3 animate-spin" /> : <><Download className="w-3 h-3" /> Baixar PDF</>}
+                    {isDownloadingPdf ? <LoadingSpinner size="xs" message="" /> : <><Download className="w-3 h-3" /> Baixar PDF</>}
                   </button>
                   <button 
                     onClick={handleRefreshChannel}
@@ -925,13 +925,19 @@ Retorne APENAS a lista numerada.`;
                   </h3>
                   {isRefiningStrategy && (
                     <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-neon-purple/20 text-neon-purple animate-pulse border border-neon-purple/30">
-                      <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                      <LoadingSpinner size="xs" message="" />
                       Refinando...
                     </span>
                   )}
                 </div>
                 {isAnalyzingStrategy && !strategyResult ? (
-                   <LoadingSpinner message="Mapeando padrão do canal..." size="lg" className="py-10" />
+                   <LoadingSpinner 
+                     title="Modelador de Canais"
+                     message="Mapeando padrão do canal..." 
+                     size="lg" 
+                     icon={Youtube}
+                     className="py-10" 
+                   />
                 ) : strategyResult ? (
                    <div className="text-white font-sans text-lg leading-loose">
                      <div className="whitespace-pre-wrap">
@@ -969,7 +975,7 @@ Retorne APENAS a lista numerada.`;
                     </h3>
                     {isRefiningCountry && (
                       <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-neon-cyan/20 text-neon-cyan animate-pulse border border-neon-cyan/30">
-                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                        <LoadingSpinner size="xs" message="" />
                         Refinando...
                       </span>
                     )}
@@ -985,7 +991,13 @@ Retorne APENAS a lista numerada.`;
                 </div>
                 
                 {isAnalyzingCountry && !countryResult ? (
-                   <LoadingSpinner message="Buscando concorrência em 15 países pelo YouTube..." size="lg" className="py-10" />
+                   <LoadingSpinner 
+                     title="Análise Internacional"
+                     message="Buscando concorrência em 15 países pelo YouTube..." 
+                     size="lg" 
+                     icon={Globe}
+                     className="py-10" 
+                   />
                 ) : countryResult ? (
                    <div className="bg-black/30 border border-white/5 p-6 rounded-xl">
                      <div className="text-white font-sans text-base leading-relaxed whitespace-pre-wrap">
@@ -1018,7 +1030,7 @@ Retorne APENAS a lista numerada.`;
                     </h3>
                     {isRefiningTitles && (
                       <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/10 text-white animate-pulse border border-white/20">
-                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                        <LoadingSpinner size="xs" message="" />
                         Refinando...
                       </span>
                     )}
@@ -1038,13 +1050,19 @@ Retorne APENAS a lista numerada.`;
                       disabled={isRefiningTitles || isAnalyzingTitles}
                       className="px-6 py-2 bg-white text-dark font-black rounded-xl hover:bg-gray-200 transition-all text-xs flex items-center gap-2"
                     >
-                      {isRefiningTitles || isAnalyzingTitles ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Wand2 className="w-4 h-4" /> Gerar 10 Títulos</>}
+                      {isRefiningTitles || isAnalyzingTitles ? <LoadingSpinner size="xs" message="" /> : <><Wand2 className="w-4 h-4" /> Gerar 10 Títulos</>}
                     </button>
                   </div>
                 </div>
 
                 {isAnalyzingTitles && !titlesResult ? (
-                   <LoadingSpinner message="Escrevendo títulos de alto CTR..." size="lg" className="py-10" />
+                   <LoadingSpinner 
+                     title="Gerador de Títulos"
+                     message="Escrevendo títulos de alto CTR..." 
+                     size="lg" 
+                     icon={Sparkles}
+                     className="py-10" 
+                   />
                 ) : titlesResult ? (
                    <div className="space-y-3">
                      {titlesResult.split('\n').map((title, idx) => {

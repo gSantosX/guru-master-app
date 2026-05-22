@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Trash2, ExternalLink, TrendingUp, BarChart2, Sparkles, Brain, Youtube, Clock, Eye, Video, Activity, Copy, Check, ChevronLeft, RefreshCw, Globe, Loader2, Wand2 } from 'lucide-react';
+import { Search, Plus, Trash2, ExternalLink, TrendingUp, BarChart2, Sparkles, Brain, Youtube, Clock, Eye, Video, Activity, Copy, Check, ChevronLeft, RefreshCw, Globe, Wand2 } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
@@ -1105,7 +1105,7 @@ REGRAS DE FORMATO:
                     className="flex flex-col items-center justify-center p-6 bg-white/5 border-2 border-neon-cyan/10 rounded-2xl hover:bg-neon-cyan/5 hover:border-neon-cyan transition-all group gap-4 text-center disabled:opacity-50 relative"
                   >
                     <div className="w-16 h-16 rounded-xl bg-neon-cyan/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      {isAnalyzing && analysisType === 'titles' ? <div className="w-8 h-8 border-2 border-neon-cyan/20 border-t-neon-cyan rounded-full animate-spin" /> : <Youtube className="w-8 h-8 text-neon-cyan" />}
+                      {isAnalyzing && analysisType === 'titles' ? <LoadingSpinner size="sm" message="" /> : <Youtube className="w-8 h-8 text-neon-cyan" />}
                     </div>
                     <div>
                       <p className="text-lg font-black text-white">Gerar Títulos Virais</p>
@@ -1119,7 +1119,7 @@ REGRAS DE FORMATO:
                     className="flex flex-col items-center justify-center p-6 bg-white/5 border-2 border-neon-purple/10 rounded-2xl hover:bg-neon-purple/5 hover:border-neon-purple transition-all group gap-4 text-center disabled:opacity-50 relative"
                   >
                     <div className="w-16 h-16 rounded-xl bg-neon-purple/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      {isAnalyzing && analysisType === 'niche' ? <div className="w-8 h-8 border-2 border-neon-purple/20 border-t-neon-purple rounded-full animate-spin" /> : <Brain className="w-8 h-8 text-neon-purple" />}
+                      {isAnalyzing && analysisType === 'niche' ? <LoadingSpinner size="sm" message="" /> : <Brain className="w-8 h-8 text-neon-purple" />}
                     </div>
                     <div>
                       <p className="text-lg font-black text-white">Dicas e Estratégia</p>
@@ -1172,7 +1172,7 @@ REGRAS DE FORMATO:
                                {analysisType === 'titles' ? 'Títulos Sugeridos' : 'Plano Estratégico'}
                                {isAnalyzing && (
                                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 animate-pulse ml-2">
-                                   <Loader2 className="w-2.5 h-2.5 animate-spin" /> Refinando com IA...
+                                  <LoadingSpinner size="xs" message="" /> Refinando com IA...
                                  </span>
                                )}
                             </h4>
@@ -1191,7 +1191,7 @@ REGRAS DE FORMATO:
                                   }`}
                                 >
                                   {isTranslating
-                                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                                    ? <LoadingSpinner size="xs" message="" />
                                     : <><Globe className="w-3 h-3" /> {Object.keys(translations).length > 0 ? 'Traduzido' : 'Traduzir'}</>}
                                 </button>
                               )}

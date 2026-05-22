@@ -95,9 +95,8 @@ export const ProgressTab = () => {
       <div className="flex-1">
         {projects.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-400 glass-card">
-            <LoadingSpinner size="lg" message="Aguardando Projetos..." />
-            <h3 className="text-xl font-medium text-white mb-2">Fila Vazia</h3>
-            <p className="max-w-md text-center">Nenhum projeto está renderizando no momento. Vá para Gerar Vídeo para iniciar um novo pipeline.</p>
+            <LoadingSpinner size="lg" icon={Activity} title="Aguardando Projetos" message="Fila de renderização vazia..." />
+            <p className="max-w-md text-center text-sm text-gray-500 mt-2">Nenhum projeto está renderizando no momento. Vá para Gerar Vídeo para iniciar um novo pipeline.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-10">

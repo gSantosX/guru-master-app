@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { stackPush } from '../utils/stackUtils';
-import { Wand2, Type, Layout, Target, FileText, Download, FileJson, File as FilePdf, Settings, BookOpen, Copy, Check, Sparkles, Languages, Gauge, Heart, Zap, Loader2, Save, Trash2, Share2, Trash, Eye, X, ChevronRight } from 'lucide-react';
+import { Wand2, Type, Layout, Target, FileText, Download, FileJson, File as FilePdf, Settings, BookOpen, Copy, Check, Sparkles, Languages, Gauge, Heart, Zap, Save, Trash2, Share2, Trash, Eye, X, ChevronRight } from 'lucide-react';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import jsPDF from 'jspdf';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -709,7 +709,7 @@ CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
                       }
                     `}
                   >
-                    {isAnalyzingTitle ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-neon-cyan" />}
+                    {isAnalyzingTitle ? <LoadingSpinner size="xs" message="" /> : <Sparkles className="w-4 h-4 text-neon-cyan" />}
                   </button>
                </div>
                <div className="absolute bottom-0 left-4 right-14 h-[1px] bg-gradient-to-r from-transparent via-neon-cyan/20 to-transparent scale-x-0 group-focus-within:scale-x-100 transition-transform duration-500" />
@@ -896,7 +896,7 @@ CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
             >
               {isGenerating ? (
                 <span className="flex items-center gap-3">
-                  <Loader2 className="w-6 h-6 animate-spin text-neon-cyan" />
+                  <LoadingSpinner size="xs" message="" />
                 </span>
               ) : (
                 <>
@@ -957,10 +957,12 @@ CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
           >
             {isGenerating && !generatedScript ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-12 space-y-4">
-                 <div className="relative">
-                    <LoadingSpinner size="lg" />
-                    <Sparkles className="absolute -top-4 -right-4 w-6 h-6 text-neon-cyan animate-pulse" />
-                 </div>
+                 <LoadingSpinner 
+                   size="lg" 
+                   icon={Wand2} 
+                   title="Criando Roteiro" 
+                   message={`${statusMessage} (${generationProgress}%)`} 
+                 />
               </div>
             ) : generatedScript ? (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">

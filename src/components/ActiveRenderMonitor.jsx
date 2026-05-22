@@ -7,10 +7,10 @@ import {
   AlertTriangle, 
   ExternalLink, 
   Download, 
-  Loader2,
   FileVideo
 } from 'lucide-react';
 import { resolveApiUrl } from '../utils/apiUtils';
+import { LoadingSpinner } from './LoadingSpinner';
 
 /**
  * ActiveRenderMonitor — Elite Video Generation Feedback
@@ -83,9 +83,13 @@ export const ActiveRenderMonitor = ({ jobId, onFinished }) => {
 
   if (!job) {
     return (
-      <div className="glass-card p-12 flex flex-col items-center justify-center space-y-6">
-        <Loader2 className="w-10 h-10 text-neon-purple animate-spin" />
-        <p className="text-gray-400 font-black uppercase tracking-widest text-[10px]">Iniciando Motor de Renderização...</p>
+      <div className="glass-card p-12 flex flex-col items-center justify-center space-y-6 min-h-[300px]">
+        <LoadingSpinner 
+          size="lg" 
+          icon={FileVideo} 
+          title="Iniciando Motor" 
+          message="Iniciando motor de renderização local..." 
+        />
       </div>
     );
   }
@@ -132,7 +136,7 @@ export const ActiveRenderMonitor = ({ jobId, onFinished }) => {
             <Zap className="w-3 h-3 text-neon-purple" /> Status do Motor
           </h4>
           <p className="text-sm font-bold text-white flex items-center gap-2">
-            {!isComplete && <Loader2 className="w-3 h-3 animate-spin text-neon-purple" />}
+            {!isComplete && <LoadingSpinner size="xs" message="" />}
             {job.status}
           </p>
         </div>

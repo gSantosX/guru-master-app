@@ -17,7 +17,6 @@ import {
   ChevronRight,
   Eye,
   ArrowRight,
-  Loader2,
   Video,
   Camera,
   Type
@@ -204,8 +203,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
 
   // ── Chave exclusiva do Gerador de Prompts ─────────────────────────────────
   // Prioridade: 1) gemini_prompts_key (Supabase) → 2) google_script_key (campo pessoal)
-  //             → 3) localStorage direto → 4) chave paga como fallback final
-  const MASTER_GEMINI_KEY = 'AIzaSyBBCgHN2uMfey5aR_Y4CJDOeyqY_oLSFG0';
+  //             → 3) localStorage direto → 4) chave geral do Gemini → 5) GLOBAL (chave mestra)
   const getPromptsApiKey = React.useCallback(() => {
     // 1ª prioridade: chave gratuita exclusiva de prompts (Supabase)
     if (configs?.gemini_prompts_key?.trim()) {
@@ -220,8 +218,14 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     if (lsPrompts?.trim()) return lsPrompts.trim();
     const lsScript = localStorage.getItem('guru_google_script_key');
     if (lsScript?.trim()) return lsScript.trim();
-    // Bloqueia o uso da chave mestra do sistema para o Gerador de Prompts (exige chave pessoal)
-    return null;
+    // 4ª prioridade: chave geral do Gemini (configs ou localStorage)
+    if (configs?.gemini_key?.trim()) {
+      return configs.gemini_key.trim();
+    }
+    const lsGemini = localStorage.getItem('guru_gemini_key');
+    if (lsGemini?.trim()) return lsGemini.trim();
+    // Fallback final: usar a chave global/mestra do sistema
+    return 'GLOBAL';
   }, [configs]);
 
   const { 
@@ -289,6 +293,51 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const updateDNAField = (field, value) => {
     setVisualDNA({ ...visualDNA, [field]: value });
   };
+
+  const resolveDNA = React.useCallback((lang = 'pt') => {
+    // Priority 1: Reference Image DNA (if we have referenceImage and visualDNA.scenario is populated)
+    if (referenceImage && visualDNA && visualDNA.scenario) {
+      return {
+        scenario: visualDNA.scenario,
+        era: visualDNA.era || (lang === 'en' ? 'Contemporary' : 'Contemporâneo'),
+        mood: visualDNA.mood || (lang === 'en' ? 'Cinematic' : 'Cinematográfico'),
+        lighting: visualDNA.lighting || (lang === 'en' ? 'Natural cinematic lighting' : 'Iluminação natural cinematográfica'),
+        palette: visualDNA.palette || (lang === 'en' ? 'Realistic colors' : 'Cores realistas'),
+        camera: visualDNA.camera || (lang === 'en' ? 'Cinematic angles' : 'Ângulos cinematográficos'),
+        rendering: visualDNA.rendering || '',
+        texture: visualDNA.texture || '',
+        genero: visualDNA.rec_genero || genero || 'Livre'
+      };
+    }
+
+    // Priority 2: Selected Visual Style Dropdown (if genero is selected)
+    if (genero && genero !== 'Automático') {
+      return {
+        scenario: genero,
+        era: lang === 'en' ? 'Based on style description' : 'Baseado na estética selecionada',
+        mood: lang === 'en' ? 'Cinematic' : 'Cinematográfico',
+        lighting: lang === 'en' ? 'Atmospheric lighting matching style' : 'Iluminação atmosférica condizente com o estilo',
+        palette: lang === 'en' ? 'Curated color palette matching style' : 'Paleta de cores curada condizente com o estilo',
+        camera: lang === 'en' ? 'Dynamic camera work' : 'Trabalho de câmera dinâmico',
+        rendering: genero,
+        texture: '',
+        genero: genero
+      };
+    }
+
+    // Priority 3: Fallback (Ultra-Realistic format)
+    return {
+      scenario: lang === 'en' ? 'Ultra-Realistic cinematic setting' : 'Cenário cinematográfico ultra-realista',
+      era: lang === 'en' ? 'Contemporary' : 'Contemporâneo',
+      mood: lang === 'en' ? 'Realistic, immersive, high fidelity' : 'Realista, imersivo, alta fidelidade',
+      lighting: lang === 'en' ? '8k resolution, perfect studio/natural lighting, volumetric glow' : 'Resolução 8k, iluminação perfeita natural ou de estúdio, brilho volumétrico',
+      palette: lang === 'en' ? 'Balanced realistic color grading, high contrast' : 'Gradação de cor realista equilibrada, alto contraste',
+      camera: lang === 'en' ? 'Sharp focus, professional cinematography, 35mm lens feel' : 'Foco nítido, cinematografia profissional, sensação de lente 35mm',
+      rendering: lang === 'en' ? 'Photorealistic 3D render style / High fidelity photography' : 'Estilo fotorealista / Fotografia de alta fidelidade',
+      texture: lang === 'en' ? 'Rich textures, sharp details, natural grain' : 'Texturas ricas, detalhes nítidos, grão natural',
+      genero: lang === 'en' ? 'Ultra-Realistic' : 'Ultra Realista'
+    };
+  }, [referenceImage, visualDNA, genero]);
 
   const loadScripts = () => {
     // Agora o dropdown utilizará "cloudScripts" que já é um estado reativo,
@@ -675,17 +724,19 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
     const inputTypePt = inputType === 'subtitle' ? 'legenda' : 'frase do roteiro';
     const inputTypeEn = inputType === 'subtitle' ? 'subtitle' : 'script sentence';
 
+    const resolved = resolveDNA(promptType === 'video' ? 'pt' : 'en');
+
     const dnaContext = `
     ## DNA VISUAL DO ROTEIRO (REGRAS INVIOLÁVEIS)
-    - Cenário e Arquitetura: ${visualDNA.scenario || 'A ser definido'}
-    - Época/Ambiente: ${visualDNA.era || 'A ser definido'}
-    - Mood Emocional: ${visualDNA.mood || 'A ser definido'}
-    - Iluminação Mestre: ${visualDNA.lighting || 'A ser definido'}
-    - Paleta de Cores: ${visualDNA.palette || 'A ser definido'}
-    - Linguagem de Câmera base: ${visualDNA.camera || 'A ser definido'}
-    ${visualDNA.rendering ? `- Renderização/Estilo Técnico: ${visualDNA.rendering}` : ''}
-    ${visualDNA.texture ? `- Textura/Acabamento: ${visualDNA.texture}` : ''}
-    ${textRulePt}
+    - Cenário e Arquitetura: ${resolved.scenario}
+    - Época/Ambiente: ${resolved.era}
+    - Mood Emocional: ${resolved.mood}
+    - Iluminação Mestre: ${resolved.lighting}
+    - Paleta de Cores: ${resolved.palette}
+    - Linguagem de Câmera base: ${resolved.camera}
+    ${resolved.rendering ? `- Renderização/Estilo Técnico: ${resolved.rendering}` : ''}
+    ${resolved.texture ? `- Textura/Acabamento: ${resolved.texture}` : ''}
+    ${promptType === 'video' ? textRulePt : textRuleEn}
 
     ## PARÂMETROS CINEMATOGRÁFICOS SELECIONADOS (PRIORIDADE MÁXIMA)
     ${cineParams || '- Nenhum parâmetro específico selecionado — use criatividade baseada no DNA acima'}
@@ -708,13 +759,13 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
         return `You are an ELITE Image Prompt Engineer. Generate exactly ${count} ultra-realistic image prompts in ENGLISH, one per ${inputTypeEn} block.
 
 VISUAL DNA (apply to every prompt):
-- Scenario: ${visualDNA.scenario || 'Real-world environment'}
-- Era: ${visualDNA.era || 'Contemporary'}
-- Mood: ${visualDNA.mood || 'Cinematic'}
-- Lighting: ${visualDNA.lighting || 'Natural light'}
-- Palette: ${visualDNA.palette || 'Realistic, muted'}
-- Camera: ${visualDNA.camera || 'Cinematic angles'}
-${visualDNA.rendering ? `- Rendering/Technical Style: ${visualDNA.rendering}\n` : ''}${visualDNA.texture ? `- Texture/Finish: ${visualDNA.texture}\n` : ''}${textRuleEn}
+- Scenario: ${resolved.scenario}
+- Era: ${resolved.era}
+- Mood: ${resolved.mood}
+- Lighting: ${resolved.lighting}
+- Palette: ${resolved.palette}
+- Camera: ${resolved.camera}
+${resolved.rendering ? `- Rendering/Technical Style: ${resolved.rendering}\n` : ''}${resolved.texture ? `- Texture/Finish: ${resolved.texture}\n` : ''}${textRuleEn}
 ${cineParams ? `\nPARAMETERS: ${cineParams}` : ''}
 
 RULES:
@@ -776,13 +827,13 @@ ${outputFormat === 'json' ? `OUTPUT: JSON [ { "id": N, "prompt": "...", "negativ
         return `You are a MASTER ultra-realistic image prompt engineer. Generate exactly ${count} photographic prompts in ENGLISH, one per ${inputTypeEn}.
 
 VISUAL DNA (inviolable — apply to every prompt):
-- Scenario: ${visualDNA.scenario || 'Real-world environment'}
-- Era: ${visualDNA.era || 'Contemporary'}
-- Mood: ${visualDNA.mood || 'Cinematic, grounded'}
-- Lighting: ${visualDNA.lighting || 'Natural cinematic light'}
-- Palette: ${visualDNA.palette || 'Realistic, muted'}
-- Camera: ${visualDNA.camera || 'Varied cinematic angles'}
-${visualDNA.rendering ? `- Rendering/Technical Style: ${visualDNA.rendering}\n` : ''}${visualDNA.texture ? `- Texture/Finish: ${visualDNA.texture}\n` : ''}${textRuleEn}
+- Scenario: ${resolved.scenario}
+- Era: ${resolved.era}
+- Mood: ${resolved.mood}
+- Lighting: ${resolved.lighting}
+- Palette: ${resolved.palette}
+- Camera: ${resolved.camera}
+${resolved.rendering ? `- Rendering/Technical Style: ${resolved.rendering}\n` : ''}${resolved.texture ? `- Texture/Finish: ${resolved.texture}\n` : ''}${textRuleEn}
 ${cineParams ? `\nPARAMETERS: ${cineParams}` : ''}
 
 RULES:
@@ -836,7 +887,8 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
       const resultsArr = new Array(total).fill("");
       const statusArr  = new Array(total).fill('pending');
       
-      const dnaPart = `Scenario: ${visualDNA.scenario || 'Real-world'} | Era: ${visualDNA.era || 'Contemporary'} | Mood: ${visualDNA.mood || 'Cinematic'} | Lighting: ${visualDNA.lighting || 'Natural light'} | Palette: ${visualDNA.palette || 'Realistic'} | Camera: ${visualDNA.camera || 'Cinematic angles'}${visualDNA.rendering ? ` | Rendering: ${visualDNA.rendering}` : ''}${visualDNA.texture ? ` | Texture: ${visualDNA.texture}` : ''}`;
+      const resolvedDNA = resolveDNA('en');
+      const dnaPart = `Scenario: ${resolvedDNA.scenario} | Era: ${resolvedDNA.era} | Mood: ${resolvedDNA.mood} | Lighting: ${resolvedDNA.lighting} | Palette: ${resolvedDNA.palette} | Camera: ${resolvedDNA.camera}${resolvedDNA.rendering ? ` | Rendering: ${resolvedDNA.rendering}` : ''}${resolvedDNA.texture ? ` | Texture: ${resolvedDNA.texture}` : ''}`;
 
       const textRuleBatch = withText
         ? "TYPOGRAPHY AND TEXT: Integrated typographic elements, signage, or contextual graphics are PERMITTED and encouraged. In negative prompts, do NOT exclude text or watermarks."
@@ -844,7 +896,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
 
       // Build cinematographic parameters string for batch mode
       const batchCineParams = [
-        genero && genero !== 'Automático' ? `Style/Genre: ${genero}` : '',
+        resolvedDNA.genero && resolvedDNA.genero !== 'Automático' ? `Style/Genre: ${resolvedDNA.genero}` : '',
         cameraMovimento?.length && !cameraMovimento.includes('Automático') ? `Camera: ${cameraMovimento.join(', ')}` : '',
         composicao?.length && !composicao.includes('Automático') ? `Composition: ${composicao.join(', ')}` : '',
         focoLente?.length && !focoLente.includes('Automático') ? `Focus/Lens: ${focoLente.join(', ')}` : '',
@@ -859,7 +911,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         // Constrói a lista de legendas com IDs — numeradas com contexto
         const subtitlesWithIds = batchSubtitles.map((s, i) => `--- SUBTITLE [${start + i + 1}] ---\n${s}`).join('\n\n');
 
-        const systemPrompt = `You are a MASTER image prompt engineer specializing in ${genero || 'cinematic photography'}.
+        const systemPrompt = `You are a MASTER image prompt engineer specializing in ${resolvedDNA.genero || 'cinematic photography'}.
 
 MISSION: Read EACH subtitle below carefully. Each subtitle describes a DIFFERENT MOMENT in a video. You must write ONE UNIQUE prompt that visually represents ONLY what THAT specific subtitle says. Do NOT generalize. Do NOT repeat.
 
@@ -868,7 +920,7 @@ ${dnaPart}
 ${batchCineParams ? `\nCINEMATIC PARAMETERS: ${batchCineParams}` : ''}
 - ${textRuleBatch}
 
-${genero && genero !== 'Automático' ? `STYLE: Every prompt must use "${genero}" visual language.${genero.includes('Anima') || genero.includes('Anime') || genero.includes('Cartoon') ? ' Use illustration terms (digital illustration, cel shading, stylized) — NOT photographic terms.' : ''}` : ''}
+${resolvedDNA.genero && resolvedDNA.genero !== 'Automático' ? `STYLE: Every prompt must use "${resolvedDNA.genero}" visual language.${resolvedDNA.genero.includes('Anima') || resolvedDNA.genero.includes('Anime') || resolvedDNA.genero.includes('Cartoon') ? ' Use illustration terms (digital illustration, cel shading, stylized) — NOT photographic terms.' : ''}` : ''}
 
 ANTI-REPETITION RULES (CRITICAL):
 1. READ each subtitle word by word. Identify the UNIQUE KEY ELEMENT that makes it different from the others.
@@ -1487,24 +1539,40 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
                    <input type="file" ref={imageInputRef} className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
                    
                    {isAnalyzingImage ? (
-                     <div className="flex items-center gap-3 w-full">
-                       <Loader2 className="w-5 h-5 text-neon-cyan animate-spin shrink-0" />
-                       <div className="flex flex-col text-left">
-                         <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Analisando Estilo...</span>
-                         <span className="text-[8px] text-gray-400 uppercase tracking-wider">Visão Cirúrgica IA</span>
-                       </div>
-                     </div>
+                      <div className="flex items-center gap-3 w-full">
+                        <LoadingSpinner size="xs" message="" className="shrink-0" />
+                        <div className="flex flex-col text-left">
+                          <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest leading-tight">Analisando Estilo...</span>
+                          <span className="text-[8px] text-gray-400 uppercase tracking-wider">Visão Cirúrgica IA</span>
+                        </div>
+                      </div>
                    ) : referenceImage && visualDNA.scenario ? (
-                     <div className="flex items-center gap-3 w-full">
-                       <img src={referenceImage} alt="Referência" className="w-10 h-10 object-cover rounded-lg border border-neon-cyan/30 shrink-0" />
-                       <div className="flex flex-col flex-1 overflow-hidden text-left">
-                         <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight mb-0.5">Estilo Ativo</span>
-                         <span className="text-[8px] text-gray-300 truncate" title={`${visualDNA.rec_genero || genero || 'Livre'} • ${visualDNA.rendering || visualDNA.lighting} • ${visualDNA.palette}`}>
-                           {visualDNA.rec_genero || genero || 'Livre'} • {visualDNA.rendering || visualDNA.lighting}{visualDNA.texture ? `, ${visualDNA.texture}` : ''}
-                         </span>
-                       </div>
-                       <CheckCircle className="w-4 h-4 text-neon-cyan shrink-0" />
-                     </div>
+                      <div className="flex items-center gap-3 w-full">
+                        <img src={referenceImage} alt="Referência" className="w-10 h-10 object-cover rounded-lg border border-neon-cyan/30 shrink-0" />
+                        <div className="flex flex-col flex-1 overflow-hidden text-left">
+                          <span className="text-[9px] font-black text-neon-cyan uppercase tracking-widest leading-tight mb-0.5">Estilo Ativo</span>
+                          <span className="text-[8px] text-gray-300 truncate" title={`${visualDNA.rec_genero || genero || 'Livre'} • ${visualDNA.rendering || visualDNA.lighting} • ${visualDNA.palette}`}>
+                            {visualDNA.rec_genero || genero || 'Livre'} • {visualDNA.rendering || visualDNA.lighting}{visualDNA.texture ? `, ${visualDNA.texture}` : ''}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <CheckCircle className="w-4 h-4 text-neon-cyan" />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReferenceImage(null);
+                              setVisualDNA({ scenario: '', era: '', mood: '', lighting: '', palette: '', camera: '' });
+                              setGenero('');
+                              setAnalyzeError('');
+                            }}
+                            className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                            title="Remover imagem"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
                    ) : (
                      <div className="flex items-center gap-3 w-full">
                        <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
@@ -1726,12 +1794,12 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
               )}
               {isVerifying ? (
                 <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-lg">
-                  <Loader2 className="w-3 h-3 animate-spin text-neon-cyan" />
+                  <LoadingSpinner size="xs" message="" />
                   <span className="text-[8px] font-black text-neon-cyan uppercase tracking-widest">Analisando...</span>
                 </div>
               ) : isRepairing ? (
                 <div className="flex items-center gap-2 px-3 py-1 bg-neon-pink/10 border border-neon-pink/30 rounded-lg">
-                  <RefreshCw className="w-3 h-3 animate-spin text-neon-pink" />
+                  <LoadingSpinner size="xs" message="" />
                   <span className="text-[8px] font-black text-neon-pink uppercase tracking-widest">Corrigindo {errorCount} Erros...</span>
                 </div>
               ) : prompts && !isGenerating && (
@@ -1825,42 +1893,17 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
               )}
             </AnimatePresence>
 
-            {isGenerating ? (
-              <div className="h-full flex flex-col items-center justify-center text-center space-y-6 py-12">
-                {/* Circular Spinner */}
-                <div className="relative flex items-center justify-center">
-                  {/* Glowing background */}
-                  <div className="absolute w-24 h-24 rounded-full bg-neon-pink/10 blur-xl animate-pulse" />
-                  
-                  {/* Outer spinning ring */}
-                  <div className="w-20 h-20 rounded-full border-4 border-t-neon-pink border-r-transparent border-b-neon-purple border-l-transparent animate-spin" />
-                  
-                  {/* Inner spinning ring (counter-rotation) */}
-                  <div 
-                    className="absolute w-16 h-16 rounded-full border-4 border-t-transparent border-r-neon-cyan border-b-transparent border-l-neon-cyan opacity-70"
-                    style={{ animation: 'spin 2s linear infinite reverse' }}
-                  />
-                  
-                  {/* Central icon */}
-                  <div className="absolute flex items-center justify-center animate-pulse">
-                    <Wand2 className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="text-lg font-black text-white uppercase tracking-wider">
-                    Criando Prompts
-                  </h4>
-                  <div className="text-4xl font-black text-neon-pink text-glow-pink flex items-baseline justify-center gap-1">
-                    <span>{generationProgress.current || 0}</span>
-                    <span className="text-lg text-gray-500">/ {generationProgress.total || subtitleCount}</span>
-                  </div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest animate-pulse max-w-xs mx-auto">
-                    {generationProgress.step || "Refinando prompts..."}
-                  </p>
-                </div>
-              </div>
-            ) : prompts ? (
+             {isGenerating ? (
+               <LoadingSpinner 
+                 size="lg"
+                 icon={Wand2}
+                 title="Criando Prompts"
+                 current={generationProgress.current || 0}
+                 total={generationProgress.total || subtitleCount}
+                 message={generationProgress.step || "Refinando prompts..."}
+                 fullHeight={true}
+               />
+             ) : prompts ? (
               <div className={`transition-all duration-700 ${showScanner ? 'blur-[1px] opacity-70 scale-[0.99]' : 'blur-0 opacity-100 scale-100'}`}>
                 <div className="h-full overflow-hidden italic line-clamp-[12] text-gray-500 opacity-50 select-none">
                   {prompts}

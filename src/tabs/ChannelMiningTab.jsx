@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Youtube, 
   Search, 
-  Loader2, 
   Globe, 
   TrendingUp, 
   Video, 
@@ -475,7 +474,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
               disabled={isSearching}
               className="flex-shrink-0 md:w-auto w-full px-10 py-4 h-[54px] bg-gradient-to-r from-neon-purple to-neon-cyan text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(34,211,238,0.4)] hover:shadow-[0_0_30px_rgba(0,243,255,0.6)] transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
             >
-              {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Search className="w-5 h-5" /> {t('mining.btn_search')}</>}
+              {isSearching ? <LoadingSpinner size="xs" message="" /> : <><Search className="w-5 h-5" /> {t('mining.btn_search')}</>}
             </button>
           </div>
         </div>
@@ -489,7 +488,12 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                exit={{ opacity: 0 }}
                className="h-full flex flex-col items-center justify-center p-20"
              >
-               <LoadingSpinner size="lg" />
+               <LoadingSpinner 
+                 size="lg" 
+                 icon={Youtube} 
+                 title="Minerando Canais" 
+                 message="Detectando canais rising stars no YouTube..." 
+               />
              </motion.div>
           ) : channels.length > 0 ? (
             <motion.div 
@@ -620,12 +624,12 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                    <div>
                      <h3 className="text-2xl font-black text-white tracking-tight uppercase italic flex items-center gap-3">
                        Agente de Títulos Virais
-                       {isRefiningTitles && (
-                         <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-neon-cyan/20 text-neon-cyan animate-pulse border border-neon-cyan/30 normal-case tracking-normal">
-                           <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                           Refinando com IA...
-                         </span>
-                       )}
+                        {isRefiningTitles && (
+                          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-neon-cyan/20 text-neon-cyan animate-pulse border border-neon-cyan/30 normal-case tracking-normal">
+                            <LoadingSpinner size="xs" message="" />
+                            Refinando com IA...
+                          </span>
+                        )}
                      </h3>
                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">Analisando: {selectedChannel?.title}</p>
                    </div>
@@ -641,17 +645,12 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
               {/* Modal Content */}
               <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
                 {isGeneratingTitles ? (
-                  <div className="flex flex-col items-center justify-center py-20 space-y-8">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-neon-cyan/20 blur-[50px] animate-pulse rounded-full" />
-                      <LoadingSpinner size="lg" message="" />
-                    </div>
-                    <div className="text-center space-y-3">
-                       <div className="flex justify-center gap-1">
-                          {[1,2,3].map(i => <motion.div key={i} animate={{ y: [0, -4, 0] }} transition={{ repeat: Infinity, duration: 1, delay: i*0.2 }} className="w-1.5 h-1.5 bg-neon-cyan rounded-full" />)}
-                       </div>
-                    </div>
-                  </div>
+                    <LoadingSpinner 
+                      size="lg" 
+                      icon={Sparkles} 
+                      title="Gerando Títulos Virais" 
+                      message="Analisando histórico de vídeos e gerando ideias..." 
+                    />
                 ) : generatedResults ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                     {/* Left: Agent Insight */}

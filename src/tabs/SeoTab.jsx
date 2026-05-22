@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Youtube, Copy, Check, Sparkles, Type, Loader2, Search, Zap, Layers, ChevronDown, MonitorPlay, CreditCard, Plus, Minus } from 'lucide-react';
+import { Youtube, Copy, Check, Sparkles, Type, Search, Zap, Layers, ChevronDown, MonitorPlay, CreditCard, Plus, Minus } from 'lucide-react';
 import { callAI } from '../utils/aiUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useCloudStorage } from '../hooks/useCloudStorage';
@@ -515,7 +515,7 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
                   disabled={isGenerating || !videoTitle.trim()}
                   className="w-full py-4 bg-green-500 hover:bg-green-400 text-dark font-black rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)]"
                 >
-                  {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
+                  {isGenerating ? <LoadingSpinner size="xs" message="" /> : <Zap className="w-5 h-5" />}
                   {isGenerating ? 'GERANDO PACOTE SEO...' : 'GERAR PACOTE DE UPLOAD'}
                 </button>
              </div>
@@ -528,7 +528,12 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
           
           {isGenerating && !seoResult ? (
             <div className="flex-1 flex flex-col items-center justify-center h-full">
-              <LoadingSpinner message="Otimizando palavras-chave e analisando algoritmo..." color="text-green-500" />
+              <LoadingSpinner 
+                icon={Search} 
+                title="Otimização de SEO" 
+                message="Otimizando palavras-chave e analisando algoritmo..." 
+                size="lg" 
+              />
             </div>
           ) : !seoResult ? (
             <div className="flex-1 flex flex-col items-center justify-center opacity-30 text-center h-full">
@@ -540,7 +545,7 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
             <div className="flex-1 pr-4 space-y-8">
                {isGenerating && (
                  <div className="flex items-center gap-2 text-xs font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-xl animate-pulse mb-6 w-fit">
-                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <LoadingSpinner size="xs" message="" />
                    <span>IA: Refinando conteúdo em background...</span>
                  </div>
                )}
@@ -709,18 +714,18 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
                        disabled={isGeneratingEndScreen}
                        className="ml-auto px-4 py-2 bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-green-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
                      >
-                       {isGeneratingEndScreen ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                        {isGeneratingEndScreen ? <LoadingSpinner size="xs" message="" /> : <Zap className="w-3 h-3" />}
                        {isGeneratingEndScreen ? 'Refinando...' : 'Gerar'}
                      </button>
                    </div>
                    {isGeneratingEndScreen && !endScreenResult && (
-                     <div className="flex items-center justify-center py-6"><Loader2 className="w-6 h-6 text-green-500 animate-spin" /></div>
+                      <LoadingSpinner size="md" icon={MonitorPlay} title="" message="Gerando Tela Final..." className="py-6" />
                    )}
                    {endScreenResult && (
                      <div className="relative">
                        {isGeneratingEndScreen && (
                          <div className="absolute top-2 left-2 text-[10px] font-bold text-green-400 bg-green-500/10 px-2.5 py-1 rounded-lg border border-green-500/20 animate-pulse flex items-center gap-1.5 z-10">
-                           <Loader2 className="w-3 h-3 animate-spin" />
+                             <LoadingSpinner size="xs" message="" />
                            <span>Refinando...</span>
                          </div>
                        )}
@@ -759,18 +764,18 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
                        disabled={isGeneratingCards}
                        className="ml-auto px-4 py-2 bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-green-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
                      >
-                       {isGeneratingCards ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                        {isGeneratingCards ? <LoadingSpinner size="xs" message="" /> : <Zap className="w-3 h-3" />}
                        {isGeneratingCards ? 'Gerando...' : 'Gerar'}
                      </button>
                    </div>
                    {isGeneratingCards && !cardsResult && (
-                     <div className="flex items-center justify-center py-6"><Loader2 className="w-6 h-6 text-green-500 animate-spin" /></div>
+                      <LoadingSpinner size="md" icon={CreditCard} title="" message="Gerando Cartões Interativos..." className="py-6" />
                    )}
                    {cardsResult && (
                      <div className="relative">
                         {isGeneratingCards && (
                           <div className="absolute top-2 left-2 text-[10px] font-bold text-green-400 bg-green-500/10 px-2.5 py-1 rounded-lg border border-green-500/20 animate-pulse flex items-center gap-1.5 z-10">
-                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <LoadingSpinner size="xs" message="" />
                             <span>Refinando...</span>
                           </div>
                         )}
