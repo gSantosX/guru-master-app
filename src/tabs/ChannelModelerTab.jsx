@@ -445,7 +445,7 @@ const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)
   };
 
   const selectedTemplates = templates[lang] || templates.pt;
-  const selectedDiffs = differentials[lang] || differentials.pt;
+  const selectedDiffs = differentials.pt; // O diferencial em azul deve estar sempre em pt-br
   return Array.from({ length: count }, (_, i) => {
     const template = selectedTemplates[i % selectedTemplates.length];
     const diff = selectedDiffs[i % selectedDiffs.length];
@@ -1062,16 +1062,19 @@ ${audienceText || 'N/A'}
 
 ${strategyResult ? `INSIGHTS DA ESTRATÉGIA:\n${strategyResult}\n` : ''}
 
-MISSÃO: Gerar 10 títulos NOVOS de altíssimo CTR em ${selectedLanguage}.
+MISSÃO: Gerar 10 títulos NOVOS de altíssimo CTR.
+- O Título do Vídeo (antes da barra "|") deve estar no idioma selecionado: ${selectedLanguage}.
+- O texto do Diferencial (após a barra "|") deve estar OBRIGATORIAMENTE em Português do Brasil (PT-BR), mesmo que o idioma selecionado para o título seja diferente.
+
 Você deve se inspirar na fórmula psicológica de sucesso e no estilo de títulos do canal analisado, mas adaptando e direcionando a geração para:
 - ASSUNTO PRINCIPAL DO VÍDEO: "${topicToUse || 'Finanças'}"
 - ESTILO VISUAL / ESTÉTICA DA THUMBNAIL E VÍDEO: "${styleToUse || 'Padrão do Canal'}"
 
 REGRAS CRÍTICAS:
-- Formato OBRIGATÓRIO por linha: "Número. Título do Vídeo | Diferencial: Uma dica curtíssima de retenção/roteiro + sugestão visual coerente com estética ${styleToUse || 'do canal'}".
-- Exemplo: "1. Título Impactante Focado em ${topicToUse || 'Assunto'} | Diferencial: Comece abrindo um loop visual nos primeiros 5s usando estética no estilo ${styleToUse || 'do canal'}."
+- Formato OBRIGATÓRIO por linha: "Número. Título do Vídeo no idioma ${selectedLanguage} | Diferencial: Uma dica curtíssima de retenção/roteiro em Português (Brasil) + sugestão visual coerente com estética ${styleToUse || 'do canal'} em Português (Brasil)".
+- Exemplo: "1. [Título em ${selectedLanguage}] | Diferencial: Comece abrindo um loop visual nos primeiros 5s usando estética no estilo ${styleToUse || 'do canal'}."
 - Não use formatação markdown de negrito ou itálico no título. Apenas a lista numerada pura.
-- O título deve ser extremamente chamativo (CTR alto), focado no assunto fornecido, e o diferencial deve ser cirúrgico e curto.
+- O título deve ser extremamente chamativo (CTR alto), focado no assunto fornecido, e o diferencial deve ser cirúrgico, curto e em PT-BR.
 - Retorne APENAS a lista numerada no formato solicitado.`;
 
     (async () => {
