@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 
 const PersistenceContext = createContext();
@@ -100,6 +100,12 @@ export const PersistenceProvider = ({ children }) => {
     lastSavedId: null
   });
 
+  // Triggers for reactive cross-tab navigation and actions
+  const [imagePromptTrigger, setImagePromptTrigger] = useState(null);
+  const [seoTrigger, setSeoTrigger] = useState(null);
+  const [coverTrigger, setCoverTrigger] = useState(null);
+  const [whiskTrigger, setWhiskTrigger] = useState(null);
+
   // Helper to update video settings
   const updateVideoSettings = (newSettings) => {
     setVideoState(prev => ({
@@ -133,7 +139,15 @@ export const PersistenceProvider = ({ children }) => {
       coverState,
       setCoverState,
       scriptState,
-      setScriptState
+      setScriptState,
+      imagePromptTrigger,
+      setImagePromptTrigger,
+      seoTrigger,
+      setSeoTrigger,
+      coverTrigger,
+      setCoverTrigger,
+      whiskTrigger,
+      setWhiskTrigger
     }}>
       {children}
     </PersistenceContext.Provider>

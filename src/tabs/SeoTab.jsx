@@ -4,8 +4,12 @@ import { Youtube, Copy, Check, Sparkles, Type, Loader2, Search, Zap, Layers, Che
 import { callAI } from '../utils/aiUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useCloudStorage } from '../hooks/useCloudStorage';
+import { useSystemStatus } from '../contexts/SystemStatusContext';
+import { usePersistence } from '../contexts/PersistenceContext';
 
 export const SeoTab = ({ isActive, setActiveTab }) => {
+  const { showToast } = useSystemStatus();
+  const { seoTrigger, setSeoTrigger, setCoverTrigger } = usePersistence();
   const [videoTitle, setVideoTitle] = useState('');
   const [videoScript, setVideoScript] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -45,17 +49,20 @@ export const SeoTab = ({ isActive, setActiveTab }) => {
   const [isGeneratingCards, setIsGeneratingCards] = useState(false);
 
   useEffect(() => {
-    const triggerTitle = localStorage.getItem('guru_seo_trigger_title');
-    const triggerScript = localStorage.getItem('guru_seo_trigger_script');
-    
-    if (triggerTitle || triggerScript) {
-      setVideoTitle(triggerTitle || '');
-      setVideoScript(triggerScript || '');
-      
-      localStorage.removeItem('guru_seo_trigger_title');
-      localStorage.removeItem('guru_seo_trigger_script');
+    if (seoTrigger) {
+      if (typeof seoTrigger === 'object') {
+        setVideoTitle(seoTrigger.title || '');
+        setVideoScript(seoTrigger.content || '');
+      } else {
+        const found = scripts.find(s => String(s.id) === String(seoTrigger));
+        if (found) {
+          setVideoTitle(found.title || '');
+          setVideoScript(found.content || '');
+        }
+      }
+      setSeoTrigger(null);
     }
-  }, []);
+  }, [seoTrigger, scripts, setSeoTrigger]);
 
   const handleScriptSelect = (e) => {
     const selectedId = e.target.value;
@@ -89,7 +96,7 @@ export const SeoTab = ({ isActive, setActiveTab }) => {
 
   const handleGenerate = async () => {
     if (!videoTitle.trim()) {
-      alert("Por favor, insira o título do vídeo.");
+      showToast("Por favor, insira o título do vídeo.", "warning");
       return;
     }
 
@@ -123,7 +130,7 @@ Crie um comentário curto e extremamente engajador para ser fixado no topo do v�
 Gere 2 títulos virais alternativos baseados no tema. Eles devem ser muito fortes em CTR (Click-Through Rate) e utilizar diferentes emoções (curiosidade, medo, choque, urgência). NÃO use números (1, 2, 3), marcadores ou aspas. Apenas escreva 1 título por linha.`;
 
     try {
-      const response = await callAI(prompt, { model: 'gemini-1.5-pro' });
+      const response = await callAI(prompt, { model: 'gemini-2.5-flash' });
       
       const sections = {
         description: '',
@@ -166,14 +173,14 @@ Gere 2 títulos virais alternativos baseados no tema. Eles devem ser muito forte
       });
     } catch (err) {
       console.error(err);
-      alert("Erro ao gerar SEO: " + err.message);
+      showToast("Erro ao gerar SEO: " + err.message, "error");
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleGenerateEndScreen = async () => {
-    if (!videoTitle.trim()) { alert('Insira o título do vídeo primeiro.'); return; }
+    if (!videoTitle.trim()) { showToast('Insira o título do vídeo primeiro.', 'warning'); return; }
     setIsGeneratingEndScreen(true);
     setEndScreenResult(null);
     try {
@@ -196,18 +203,18 @@ Para cada elemento, use EXATAMENTE este formato:
 
 Dicas: Priorize "Vídeo Sugerido" e "Inscrição" pois são os que mais aumentam Watch Time e Subs. O CTA deve ser irresistível.`;
 
-      const response = await callAI(prompt, { model: 'gemini-1.5-flash' });
+      const response = await callAI(prompt, { model: 'gemini-2.5-flash' });
       setEndScreenResult(response.trim());
     } catch (err) {
       console.error(err);
-      alert('Erro ao gerar Tela Final: ' + err.message);
+      showToast('Erro ao gerar Tela Final: ' + err.message, 'error');
     } finally {
       setIsGeneratingEndScreen(false);
     }
   };
 
   const handleGenerateCards = async () => {
-    if (!videoTitle.trim()) { alert('Insira o título do vídeo primeiro.'); return; }
+    if (!videoTitle.trim()) { showToast('Insira o título do vídeo primeiro.', 'warning'); return; }
     setIsGeneratingCards(true);
     setCardsResult(null);
     try {
@@ -231,11 +238,11 @@ Para cada card, use EXATAMENTE este formato:
 
 Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, revelação ou mudança de assunto). Enquetes aumentam engajamento. Vídeos sugeridos aumentam Watch Time. Distribua os timestamps uniformemente ao longo do vídeo.`;
 
-      const response = await callAI(prompt, { model: 'gemini-1.5-flash' });
+      const response = await callAI(prompt, { model: 'gemini-2.5-flash' });
       setCardsResult(response.trim());
     } catch (err) {
       console.error(err);
-      alert('Erro ao gerar Cards: ' + err.message);
+      showToast('Erro ao gerar Cards: ' + err.message, 'error');
     } finally {
       setIsGeneratingCards(false);
     }
@@ -624,7 +631,7 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
                   </button>
                   <button 
                     onClick={() => {
-                      localStorage.setItem('guru_cover_trigger_pool_id', pool.id);
+                      setCoverTrigger(pool.id);
                       if (setActiveTab) setActiveTab('video-cover');
                     }}
                     className="flex-1 py-2 rounded-xl bg-green-500 text-dark text-xs font-black uppercase tracking-widest hover:bg-green-400 active:scale-95 transition-all shadow-[0_0_15px_rgba(34,197,94,0.2)]"

@@ -292,11 +292,11 @@ export const SettingsTab = () => {
         setActiveRenders([]);
         setCompletedRenders([]);
         await fetchStorageInfo();
-        alert(t('settings.clear_success'));
+        showToast(t('settings.clear_success'), "success");
         window.dispatchEvent(new Event('guru_completed_updated'));
         window.dispatchEvent(new Event('guru_scripts_updated'));
       } catch (e) {
-        alert("Erro ao limpar cache remoto.");
+        showToast("Erro ao limpar cache remoto.", "error");
       }
     }
   };

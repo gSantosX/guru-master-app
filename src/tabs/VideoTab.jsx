@@ -4,12 +4,14 @@ import { resolveApiUrl } from '../utils/apiUtils';
 import { ActiveRenderMonitor } from '../components/ActiveRenderMonitor';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { usePersistence } from '../contexts/PersistenceContext';
+import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { translateSRT } from '../utils/aiUtils';
 import { stackRead, stackPush, MAX_STACK } from '../utils/stackUtils';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 
 export const VideoTab = () => {
   const { videoState, setVideoState, updateVideoSettings, clearVideoState } = usePersistence();
+  const { showToast } = useSystemStatus();
   const { resolution, fps, transitionStyle, zoomStyle, zoomSpeed, filterStyle, outputDir, narrationVolume, videoVolume, musicVolume, encoder, renderPreset } = videoState.settings;
   const { audioFile, musicFile, imageFiles, videoFiles, subtitleFile } = videoState;
 
@@ -98,7 +100,7 @@ export const VideoTab = () => {
          localStorage.setItem('guru_output_dir', res.folderPath);
       }
     } else {
-      alert("⚠️ Seleção de pasta nativa disponível apenas no App Desktop.\n\nNo navegador, os vídeos serão salvos na pasta padrão: \n/backend/output/\n\nAbra o App Desktop para escolher outro local.");
+      showToast("⚠️ Seleção de pasta nativa disponível apenas no App Desktop.\n\nNo navegador, os vídeos serão salvos na pasta padrão: \n/backend/output/\n\nAbra o App Desktop para escolher outro local.", "warning");
     }
   };
 
@@ -107,7 +109,7 @@ export const VideoTab = () => {
     if (!subtitleFile) return;
     const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
     if (!geminiKey) {
-      alert("Chave Gemini necessária para tradução!");
+      showToast("Chave Gemini necessária para tradução!", "error");
       return;
     }
 
@@ -123,10 +125,10 @@ export const VideoTab = () => {
       const blob = new Blob([translated], { type: 'text/plain' });
       const newFile = new File([blob], `${subtitleFile.name.replace('.srt', '')}_${targetLang}.srt`, { type: 'text/plain' });
       setSubtitleFile(newFile);
-      alert(`Legenda traduzida para ${targetLang} com sucesso!`);
+      showToast(`Legenda traduzida para ${targetLang} com sucesso!`, "success");
     } catch (error) {
       console.error(error);
-      alert("Erro na tradução: " + error.message);
+      showToast("Erro na tradução: " + error.message, "error");
     } finally {
       setIsTranslating(false);
     }
@@ -134,12 +136,12 @@ export const VideoTab = () => {
 
   const handleStartRender = async () => {
     if (!audioFile && imageFiles.length === 0 && videoFiles.length === 0) {
-      alert("Por favor, adicione pelo menos um áudio e algumas mídias antes de renderizar.");
+      showToast("Por favor, adicione pelo menos um áudio e algumas mídias antes de renderizar.", "error");
       return;
     }
 
     if (activeRenders.length >= MAX_STACK) {
-        alert(`Limite de ${MAX_STACK} renderizações simultâneas atingido.`);
+        showToast(`Limite de ${MAX_STACK} renderizações simultâneas atingido.`, "error");
         return;
     }
 
@@ -231,11 +233,11 @@ export const VideoTab = () => {
                              errorMessage.toLowerCase().includes('failed');
 
       if (errorMessage.includes('413')) {
-        alert("O servidor recusou o envio (Erro 413: Payload Too Large). Aumentamos o limite para 10GB no backend, mas certifique-se de que os arquivos não excedam isso ou que o computador tenha memória RAM suficiente.");
+        showToast("O servidor recusou o envio (Erro 413: Payload Too Large). Aumentamos o limite para 10GB no backend, mas certifique-se de que os arquivos não excedam isso ou que o computador tenha memória RAM suficiente.", "error");
       } else if (error.name === 'AbortError' || isNetworkError) {
-        alert("A conexão com o servidor local falhou ou foi interrompida. \n\nSe você está enviando 100+ vídeos, o upload pode demorar alguns minutos. Se o erro for imediato, verifique se o Backend Python está rodando na porta 5000.");
+        showToast("A conexão com o servidor local falhou ou foi interrompida. \n\nSe você está enviando 100+ vídeos, o upload pode demorar alguns minutos. Se o erro for imediato, verifique se o Backend Python está rodando na porta 5000.", "error");
       } else {
-        alert("Erro ao conectar ao motor local! \n\nDetalhe: " + errorMessage + "\n\nO Backend Python (Flask) está rodando e aceitando mídias massivas?");
+        showToast("Erro ao conectar ao motor local! \n\nDetalhe: " + errorMessage + "\n\nO Backend Python (Flask) está rodando e aceitando mídias massivas?", "error");
       }
       setIsGenerating(false);
     }

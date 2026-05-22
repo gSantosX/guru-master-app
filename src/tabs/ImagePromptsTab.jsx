@@ -133,7 +133,7 @@ const visualStylesGroups = [
 ];
 
 export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
-  const { status, configs } = useSystemStatus();
+  const { status, configs, showToast } = useSystemStatus();
   const [cloudScripts] = useCloudStorage('scripts', []);
 
   // ── Chave exclusiva do Gerador de Prompts ─────────────────────────────────
@@ -158,7 +158,13 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     return null;
   }, [configs]);
 
-  const { promptState, setPromptState } = usePersistence();
+  const { 
+    promptState, 
+    setPromptState,
+    imagePromptTrigger,
+    setImagePromptTrigger,
+    setWhiskTrigger
+  } = usePersistence();
   const { 
     file, 
     subtitleBlocks, 
@@ -255,7 +261,7 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
       };
 
       const response = await callGemini(mainKey, analysisPrompt, { 
-        model: 'gemini-1.5-pro', 
+        model: 'gemini-2.5-flash', 
         temperature: 0.1,
         imagePart: imagePart 
       });
@@ -295,7 +301,7 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
 
   const handleImageUpload = (file) => {
     if (!file || !file.type.startsWith('image/')) {
-      alert("Por favor, envie um arquivo de imagem válido.");
+      showToast("Por favor, envie um arquivo de imagem válido.", "error");
       return;
     }
     const reader = new FileReader();
@@ -362,14 +368,11 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
   }, [isActive]);
 
   useEffect(() => {
-    if (isActive) {
-      const triggerId = localStorage.getItem('guru_image_prompt_trigger_id');
-      if (triggerId) {
-        setSelectedScriptId(triggerId);
-        localStorage.removeItem('guru_image_prompt_trigger_id');
-      }
+    if (isActive && imagePromptTrigger) {
+      setSelectedScriptId(imagePromptTrigger);
+      setImagePromptTrigger(null);
     }
-  }, [isActive]);
+  }, [isActive, imagePromptTrigger]);
 
   const [showFullOutput, setShowFullOutput] = useState(false);
   const [copyingId, setCopyingId] = useState(null);
@@ -551,7 +554,7 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
         Separate each complete block with ONE empty line.
         Repair these blocks keeping original descriptions:
         ${repaired}`;
-        const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-1.5-flash' }); // flash é mais rápido e garantido na chave free
+        const aiRepaired = await callGemini(getPromptsApiKey(), repairPrompt, { model: 'gemini-2.5-flash' });
         repaired = aiRepaired.trim();
         setRepairLogs(prev => [...prev, "✓ Reparo de Estrutura via IA Concluído"]);
       }
@@ -722,13 +725,13 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
 
   const handleGenerate = async () => {
     if (!file && !prompts) {
-      alert("Por favor, faça upload de uma legenda (.srt ou .txt) primeiro.");
+      showToast("Por favor, faça upload de uma legenda (.srt ou .txt) primeiro.", "error");
       return;
     }
 
     const apiKey = getPromptsApiKey();
     if (!apiKey) {
-      alert("⚠️ Chave Gratuita Necessária! Por favor, vá em 'Configurações -> Suas Chaves Pessoais' e insira a sua Google API Key (Criador de Prompts) para utilizar esta ferramenta.");
+      showToast("⚠️ Chave Gratuita Necessária! Por favor, vá em 'Configurações -> Suas Chaves Pessoais' e insira a sua Google API Key (Criador de Prompts) para utilizar esta ferramenta.", "warning");
       return;
     }
 
@@ -800,7 +803,7 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
             if (a > 0) await new Promise(r => setTimeout(r, a * 2000));
             
             const apiKey = getPromptsApiKey() || 'GLOBAL';
-            const resp = await callGemini(apiKey, systemPrompt, { model: 'gemini-1.5-flash' });
+            const resp = await callGemini(apiKey, systemPrompt, { model: 'gemini-2.5-flash' });
             
             // Extração dos prompts por ID [N]:
             const lines = resp.split('\n').filter(l => l.includes(']:'));
@@ -918,7 +921,7 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
         try {
           chunkStatuses[i] = "generating";
           const apiKey = getPromptsApiKey() || 'GLOBAL';
-          const responseText = await callGemini(apiKey, promptParam, { model: 'gemini-1.5-flash' });
+          const responseText = await callGemini(apiKey, promptParam, { model: 'gemini-2.5-flash' });
           
           let chunkText = "";
           if (isJson) {
@@ -1033,7 +1036,7 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
 
     } catch (error) {
       console.error(error);
-      alert("Erro na geração paralela: " + error.message);
+      showToast("Erro na geração paralela: " + error.message, "error");
     } finally {
       setIsGenerating(false);
       setGenerationProgress({ step: '', current: 0, total: 0 });
@@ -1047,7 +1050,7 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
 
     const apiKey = getPromptsApiKey();
     if (!apiKey) {
-      alert("⚠️ Chave Gratuita Necessária! Por favor, vá em 'Configurações -> Suas Chaves Pessoais' e insira a sua Google API Key (Criador de Prompts) para utilizar esta ferramenta.");
+      showToast("⚠️ Chave Gratuita Necessária! Por favor, vá em 'Configurações -> Suas Chaves Pessoais' e insira a sua Google API Key (Criador de Prompts) para utilizar esta ferramenta.", "warning");
       return;
     }
 
@@ -1147,7 +1150,7 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
       };
       setPromptPools(prev => [newPool, ...prev].slice(0, 50));
     } catch (error) {
-      alert("Erro na geração paralela de roteiro: " + error.message);
+      showToast("Erro na geração paralela de roteiro: " + error.message, "error");
     } finally {
       setIsGenerating(false);
       setGenerationProgress({ step: '', current: 0, total: 0 });
@@ -1175,11 +1178,12 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
     URL.revokeObjectURL(url);
   };
 
-  /* const handleTransferToFlow = () => {
+  const handleTransferToFlow = () => {
     if (!prompts) return;
-    localStorage.setItem('guru_flow_transfer', prompts);
+    setWhiskTrigger(prompts);
+    showToast("Prompts enviados para a aba Whisk!", "success");
     if (setActiveTab) setActiveTab('whisk');
-  }; */
+  };
 
   return (
     <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto font-sans overflow-hidden">
@@ -1536,7 +1540,7 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
               <button
                 onClick={() => {
                    if (file || subtitleBlocks.length > 0) handleGenerate();
-                   else alert("⚠️ Selecione um roteiro ou carregue uma legenda primeiro.");
+                   else showToast("⚠️ Selecione um roteiro ou carregue uma legenda primeiro.", "warning");
                 }}
                 disabled={(isGenerating) || (!file && subtitleBlocks.length === 0)}
                 className={`flex-1 py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300 ${
@@ -1653,6 +1657,14 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
               >
                 Visualizar
               </button>
+              {prompts && !isGenerating && (
+                <button 
+                  onClick={handleTransferToFlow}
+                  className="px-3 py-1 bg-gradient-to-r from-neon-purple to-neon-pink border border-neon-purple/20 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:shadow-[0_0_15px_rgba(255,44,182,0.4)] transition-all"
+                >
+                  Transferir p/ Whisk
+                </button>
+              )}
             </div>
           </div>
 
@@ -1784,6 +1796,12 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
                       </p>
                    </div>
                   <div className="flex items-center gap-4">
+                     <button 
+                        onClick={handleTransferToFlow}
+                        className="px-8 py-5 rounded-2xl bg-gradient-to-r from-neon-purple to-neon-pink text-white font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3 hover:shadow-[0_0_15px_rgba(255,44,182,0.4)]"
+                     >
+                        <Wand2 className="w-5 h-5" /> Enviar p/ Whisk
+                     </button>
                      <button 
                         onClick={handleDownload}
                         className="px-8 py-5 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 text-white font-black text-xs uppercase tracking-widest transition-all flex items-center gap-3"

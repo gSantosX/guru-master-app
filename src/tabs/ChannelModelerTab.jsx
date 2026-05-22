@@ -47,7 +47,7 @@ const GLOBAL_LANGUAGES = [
 ];
 
 export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
-  const { configs } = useSystemStatus();
+  const { configs, showToast } = useSystemStatus();
   const { user } = useAuth();
   
   // Chave isolada por usuário para histórico privado
@@ -155,7 +155,7 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
       pdf.save(`Modelagem_${selectedChannel?.title || 'Canal'}.pdf`);
     } catch (err) {
       console.error('PDF Error:', err);
-      alert('Erro ao gerar PDF.');
+      showToast('Erro ao gerar PDF.', 'error');
     } finally {
       setIsDownloadingPdf(false);
     }
@@ -316,12 +316,12 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
 
   const handleAddChannel = async () => {
     const info = extractChannelIdOrHandle(newUrl);
-    if (!info) { alert(t('channels.invalid_url')); return; }
+    if (!info) { showToast(t('channels.invalid_url'), 'error'); return; }
     setIsAdding(true);
     try {
       const data = await fetchChannelData(info);
       if (channels.find(c => c.id === data.id)) {
-        alert('Este canal já foi adicionado ao modelador.');
+        showToast('Este canal já foi adicionado ao modelador.', 'warning');
         const c = channels.find(x => x.id === data.id);
         setSelectedChannel(c);
         resetAnalyses();
@@ -331,7 +331,7 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
         setSelectedChannel(data);
         resetAnalyses();
       }
-    } catch (err) { alert(t('channels.fetch_error') + ': ' + err.message); } finally { setIsAdding(false); }
+    } catch (err) { showToast(t('channels.fetch_error') + ': ' + err.message, 'error'); } finally { setIsAdding(false); }
   };
 
   const resetAnalyses = () => {
@@ -346,7 +346,7 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
       const data = await fetchChannelData({ type: 'id', value: selectedChannel.id }, force);
       setChannels(prev => prev.map(c => c.id === data.id ? data : c));
       setSelectedChannel(data);
-    } catch (err) { alert('Erro ao atualizar dados: ' + err.message); }
+    } catch (err) { showToast('Erro ao atualizar dados: ' + err.message, 'error'); }
   };
 
   const getAnalysisContext = () => {
@@ -391,7 +391,7 @@ Apresente de forma BEM RESUMIDA E DIRETA 3 ideias práticas de como subnichar es
 REGRAS: Use **NEGRITO** para os títulos da seção.`;
 
     try {
-      const result = await callAI(prompt, { model: 'gemini-1.5-pro' });
+      const result = await callAI(prompt, { model: 'gemini-2.5-flash' });
       if (!result) throw new Error('Resposta vazia da IA.');
       setStrategyResult(result);
     } catch (err) {
@@ -409,7 +409,7 @@ REGRAS: Use **NEGRITO** para os títulos da seção.`;
 
     try {
       const termPrompt = `Baseado no canal "${selectedChannel.title}" que fala sobre: ${selectedChannel.description}. Forneça APENAS 1 TERMO DE PESQUISA (uma palavra ou frase curta em INGLÊS) que seja o núcleo deste canal para fazer uma busca no YouTube e medir a concorrência global. RETORNE APENAS O TERMO.`;
-      const searchTerm = await callAI(termPrompt, { model: 'gemini-1.5-pro' });
+      const searchTerm = await callAI(termPrompt, { model: 'gemini-2.5-flash' });
       const cleanTerm = searchTerm.replace(/["']/g, '').trim();
 
       const countryData = {};
@@ -450,7 +450,7 @@ Formato OBRIGATÓRIO (PT-BR):
 - [País 2]: [Breve motivo]
 - [País 3]: [Breve motivo]`;
 
-      const analysis = await callAI(analysisPrompt, { model: 'gemini-1.5-pro' });
+      const analysis = await callAI(analysisPrompt, { model: 'gemini-2.5-flash' });
       setCountryResult(analysis);
       
       // Auto-select language based on the result
@@ -493,7 +493,7 @@ REGRAS CRÍTICAS:
 Retorne APENAS a lista numerada.`;
 
     try {
-      const result = await callAI(prompt, { model: 'gemini-1.5-pro' });
+      const result = await callAI(prompt, { model: 'gemini-2.5-flash' });
       setTitlesResult(result);
     } catch (err) {
       console.error(err);

@@ -198,14 +198,13 @@ export const GuruMasterApp = () => {
               style={{
                 position: 'absolute',
                 inset: 0,
-                padding: '1.5rem',
                 overflowY: 'auto',
                 opacity: isActive ? 1 : 0,
                 pointerEvents: isActive ? 'auto' : 'none',
                 transition: 'opacity 0.3s ease',
                 zIndex: isActive ? 10 : 1,
               }}
-              className="custom-scrollbar"
+              className="custom-scrollbar p-4 md:p-8"
             >
               <Suspense fallback={
                 <div className="flex h-full items-center justify-center">

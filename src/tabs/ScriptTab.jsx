@@ -199,12 +199,12 @@ const FORMALITY_OPTIONS = ["Baixo", "Médio", "Alto"];
 
 export const ScriptTab = ({ setActiveTab }) => {
   const { configs, showToast } = useSystemStatus();
-  const { scriptState, setScriptState } = usePersistence();
+  const { scriptState, setScriptState, setImagePromptTrigger } = usePersistence();
   const [cloudScripts, setCloudScripts] = useCloudStorage('scripts', []);
 
   // Helper: chama AI para geração de roteiro usando o modelo TOP (Pro).
   const callScriptAI = async (prompt, opts = {}) => {
-    return await callAI(prompt, { ...opts, model: 'gemini-1.5-pro' });
+    return await callAI(prompt, { ...opts, model: 'gemini-2.5-flash' });
   };
   
   const {
@@ -467,12 +467,7 @@ CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
       // If for some reason we lost the ID, try to find the most recent one from cloud
       const scripts = Array.isArray(cloudScripts) ? cloudScripts : [];
       if (scripts.length > 0) {
-        localStorage.setItem('guru_image_prompt_trigger_id', scripts[0].id.toString());
-        localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
-        if (scripts[0]?.content) {
-           const veoData = generateVeoContent(scripts[0].content);
-           localStorage.setItem('guru_image_prompt_veo_content', veoData);
-        }
+        setImagePromptTrigger(scripts[0].id.toString());
         setActiveTab('image-prompts');
         return;
       }
@@ -480,12 +475,7 @@ CONTEXTO FINAL DO ROTEIRO ATÉ AGORA:
       return;
     }
     
-    localStorage.setItem('guru_image_prompt_trigger_id', lastSavedId.toString());
-    localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
-    if (generatedScript?.content) {
-       const veoData = generateVeoContent(generatedScript.content);
-       localStorage.setItem('guru_image_prompt_veo_content', veoData);
-    }
+    setImagePromptTrigger(lastSavedId.toString());
     setActiveTab('image-prompts');
   };
 

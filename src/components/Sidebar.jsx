@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { t } from '../utils/i18n';
 import { useAuth } from '../contexts/AuthContext';
+import { useSystemStatus } from '../contexts/SystemStatusContext';
 
 const getNavItems = (user = null) => {
   const items = [
@@ -36,6 +37,7 @@ const getNavItems = (user = null) => {
 
 export const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const { user, logout } = useAuth();
+  const { showToast } = useSystemStatus();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [userProfile, setUserProfile] = useState({
@@ -80,18 +82,18 @@ export const Sidebar = ({ activeTab, setActiveTab, isMobileMenuOpen, setIsMobile
       const checkData = await checkRes.json();
       if (!checkRes.ok) throw new Error(checkData.error || "Erro ao verificar versão");
       if (!checkData.needs_update) {
-        alert("Guru Master já está na versão mais recente.");
+        showToast("Guru Master já está na versão mais recente.", "info");
         return;
       }
       const confirmMsg = `Nova atualização disponível!\n\nDescrição: ${checkData.message}\n\nDeseja atualizar agora? Seus dados e chaves de API serão preservados.`;
       if (!window.confirm(confirmMsg)) return;
       const res = await fetch(resolveApiUrl('/api/update'), { method: 'POST' });
       const data = await res.json();
-      if (res.ok) alert(data.message);
-      else alert("Erro na atualização: " + (data.message || "Falha desconhecida"));
+      if (res.ok) showToast(data.message, "success");
+      else showToast("Erro na atualização: " + (data.message || "Falha desconhecida"), "error");
     } catch (error) {
        console.error("Update error:", error);
-       alert("Ocorreu um erro: " + error.message);
+       showToast("Ocorreu um erro: " + error.message, "error");
     } finally {
       setIsUpdating(false);
     }

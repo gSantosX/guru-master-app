@@ -5,6 +5,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { t } from '../utils/i18n';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
+import { usePersistence } from '../contexts/PersistenceContext';
 
 export const WhiskTab = ({ isActive }) => {
   const [activeSubTab, setActiveSubTab] = useState('control'); // 'control', 'settings'
@@ -20,7 +21,8 @@ export const WhiskTab = ({ isActive }) => {
   const [promptQueue, setPromptQueue] = useState([]);
   const [initialFileCount, setInitialFileCount] = useState(0);
   const [initialQueueCount, setInitialQueueCount] = useState(0);
-  const { status: globalStatus } = useSystemStatus();
+  const { status: globalStatus, showToast } = useSystemStatus();
+  const { whiskTrigger, setWhiskTrigger } = usePersistence();
   const [generationMode, setGenerationMode] = useState('video'); // 'video' or 'image'
 
   useEffect(() => {
@@ -28,15 +30,13 @@ export const WhiskTab = ({ isActive }) => {
       fetchWhiskStatus();
       fetchWhiskSettings();
       
-      // Check for transferred prompts from ScriptTab
-      const transferred = localStorage.getItem('guru_flow_transfer');
-      if (transferred) {
-        setPrompts(transferred);
-        localStorage.removeItem('guru_flow_transfer');
+      if (whiskTrigger) {
+        setPrompts(whiskTrigger);
+        setWhiskTrigger(null);
         setActiveSubTab('control');
       }
     }
-  }, [isActive]);
+  }, [isActive, whiskTrigger, setWhiskTrigger]);
 
   // Sync prompts textarea with visual queue
   useEffect(() => {
@@ -151,7 +151,7 @@ export const WhiskTab = ({ isActive }) => {
       setIsRunning(true);
       setStatus(t('whisk.status_running'));
     } catch (e) {
-      alert("Erro ao iniciar automação.");
+      showToast("Erro ao iniciar automação.", "error");
     }
   };
 
@@ -170,11 +170,11 @@ export const WhiskTab = ({ isActive }) => {
     try {
       const res = await fetch(resolveApiUrl('/api/whisk/clear'), { method: 'POST' });
       if (res.ok) {
-        alert(t('whisk.folder_cleared'));
+        showToast(t('whisk.folder_cleared'), "success");
         fetchWhiskStatus();
       }
     } catch (e) {
-      alert("Erro ao limpar pasta.");
+      showToast("Erro ao limpar pasta.", "error");
     }
   };
 
@@ -188,7 +188,7 @@ export const WhiskTab = ({ isActive }) => {
       }
     } catch (e) {
       console.error("Error selecting folder:", e);
-      alert("Erro ao selecionar pasta.");
+      showToast("Erro ao selecionar pasta.", "error");
     }
   };
 

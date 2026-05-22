@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Download, Trash2, CheckCircle, FolderOpen, Archive } from 'lucide-react';
 import { resolveApiUrl } from '../utils/apiUtils';
+import { useSystemStatus } from '../contexts/SystemStatusContext';
 
 export const CompletedTab = () => {
+  const { showToast } = useSystemStatus();
   const [projects, setProjects] = useState([]);
 
   useEffect(() => {
@@ -31,14 +33,14 @@ export const CompletedTab = () => {
       if (window.electronAPI && window.electronAPI.openInFolder && project.path) {
           const result = await window.electronAPI.openInFolder(project.path);
           if (!result.success) {
-              alert("Não foi possível abrir o local. O arquivo pode ter sido movido ou excluído.");
+              showToast("Não foi possível abrir o local. O arquivo pode ter sido movido ou excluído.", "error");
           }
       } else {
-          alert("O caminho automático não está disponível para este projeto. O recurso funciona apenas para projetos recém-gerados e no app Desktop.");
+          showToast("O caminho automático não está disponível para este projeto. O recurso funciona apenas para projetos recém-gerados e no app Desktop.", "info");
       }
     } catch (err) {
       console.error("Erro ao abrir pasta:", err);
-      alert("Erro ao tentar acessar o arquivo.");
+      showToast("Erro ao tentar acessar o arquivo.", "error");
     }
   };
 

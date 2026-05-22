@@ -32,6 +32,7 @@ import { callAI } from '../utils/aiUtils';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useCloudStorage } from '../hooks/useCloudStorage';
+import { usePersistence } from '../contexts/PersistenceContext';
 
 const LANGUAGES = [
   { name: "Inglês (EUA/Reino Unido) 🚀", code: "en-US", region: "US", rpm: 6.50 },
@@ -55,7 +56,8 @@ const LANGUAGES = [
 ];
 
 export const NicheIdentifierTab = ({ setActiveTab }) => {
-  const { configs } = useSystemStatus();
+  const { configs, showToast } = useSystemStatus();
+  const { setWhiskTrigger } = usePersistence();
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState(LANGUAGES[0]);
   const [isSearching, setIsSearching] = useState(false);
@@ -111,8 +113,9 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
   const transferToAutoFlow = () => {
     if(!result) return;
     const bridgeData = `NICHO GERADO:\n${result.nicheName}\n\nTEMAS IDEAIS:\n${result.videoThemes.join(" | ")}\n\nTÍTULOS IDEAIS:\n${result.titleStructures.join(" | ")}`;
-    localStorage.setItem('guru_flow_transfer', bridgeData);
-    alert("Função Auto Flow temporariamente indisponível (Em manutenção). Dados copiados.");
+    setWhiskTrigger(bridgeData);
+    showToast("Dados enviados para a aba Whisk!", "success");
+    setActiveTab('whisk');
   };
 
   const handleSearch = async () => {
@@ -219,7 +222,7 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
         ]
       }`;
 
-      const response = await callAI(prompt, { model: 'gemini-1.5-pro', gptKey });
+      const response = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey });
       const cleanJson = response.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(cleanJson);
       
@@ -227,7 +230,7 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
       saveToHistory(parsed, language);
     } catch (error) {
       console.error(error);
-      alert("Falha Sistêmica na Extração do Youtube/Gemini:\\n" + error.message);
+      showToast("Falha Sistêmica na Extração do Youtube/Gemini:\n" + error.message, "error");
     } finally {
       setIsSearching(false);
       setLoadingStep('');
@@ -331,7 +334,7 @@ REGRAS: Use **NEGRITO** para os títulos da seção.`;
 
     try {
       const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
-      const res = await callAI(prompt, { model: 'gemini-1.5-pro', gptKey });
+      const res = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey });
       if (!res) throw new Error('Resposta vazia da IA.');
       setStrategyResult(res);
     } catch (err) {
@@ -367,7 +370,7 @@ Retorne APENAS a lista numerada.`;
 
     try {
       const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
-      const res = await callAI(prompt, { model: 'gemini-1.5-pro', gptKey });
+      const res = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey });
       if (!res) throw new Error('Resposta vazia da IA.');
       setTitlesResult(res);
     } catch (err) {
@@ -576,7 +579,7 @@ Retorne APENAS a lista numerada.`;
                               <button 
                                 onClick={() => {
                                   navigator.clipboard.writeText(strategyResult);
-                                  alert('Análise Estratégica copiada!');
+                                  showToast('Análise Estratégica copiada!', 'success');
                                 }}
                                 className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors text-xs font-black uppercase tracking-widest"
                               >
@@ -637,7 +640,8 @@ Retorne APENAS a lista numerada.`;
                                         setCopiedTitleIndex(i);
                                         setTimeout(() => setCopiedTitleIndex(null), 2000);
                                         const bridgeData = `NICHO GERADO:\n${result.nicheName}\n\nTÍTULO SELECIONADO:\n${titleText}\n\nPÚBLICO ALVO:\n${result.targetAudience}`;
-                                        localStorage.setItem('guru_flow_transfer', bridgeData);
+                                        setWhiskTrigger(bridgeData);
+                                        showToast("Título copiado e enviado para o Whisk!", "success");
                                       }}
                                       className="p-1.5 rounded-lg transition-all border flex items-center justify-center shrink-0 hover:bg-white/10 border-transparent hover:border-white/20 text-gray-500 hover:text-white"
                                       title="Copiar para usar no roteiro"

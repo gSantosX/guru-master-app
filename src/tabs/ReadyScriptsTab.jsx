@@ -4,8 +4,12 @@ import { FileText, Trash2, AlertTriangle, ChevronRight, ArrowLeft, Download, Fil
 import jsPDF from 'jspdf';
 import { useCloudStorage } from '../hooks/useCloudStorage';
 import { generateVeoContent } from '../utils/veoUtils';
+import { useSystemStatus } from '../contexts/SystemStatusContext';
+import { usePersistence } from '../contexts/PersistenceContext';
 
 export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
+  const { showToast } = useSystemStatus();
+  const { setImagePromptTrigger, setSeoTrigger } = usePersistence();
   const [scripts, setScripts] = useCloudStorage('scripts', []);
   const [activeScript, setActiveScript] = useState(null);
   const [copyingId, setCopyingId] = useState(null);
@@ -61,7 +65,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     // Evitar que o evento do React seja tratado como objeto de script
     const target = (scriptToDownload && scriptToDownload.id) ? scriptToDownload : activeScript;
     if (!target) {
-        alert("Erro: Nenhum roteiro identificado.");
+        showToast("Erro: Nenhum roteiro identificado.", "error");
         return;
     }
     
@@ -82,7 +86,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
         URL.revokeObjectURL(url);
     } catch (err) {
         console.error("Erro ao baixar TXT:", err);
-        alert("Falha ao salvar arquivo: " + err.message);
+        showToast("Falha ao salvar arquivo: " + err.message, "error");
     }
   };
 
@@ -106,7 +110,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
         a.click();
         URL.revokeObjectURL(url);
     } catch (err) {
-        alert("Erro ao gerar SRT: " + err.message);
+        showToast("Erro ao gerar SRT: " + err.message, "error");
     }
   };
 
@@ -130,7 +134,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
         a.click();
         URL.revokeObjectURL(url);
     } catch (err) {
-        alert("Erro ao gerar VEO: " + err.message);
+        showToast("Erro ao gerar VEO: " + err.message, "error");
     }
   };
 
@@ -167,7 +171,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
 
         doc.save(`${(target.title || 'roteiro').replace(/ /g, '_')}.pdf`);
     } catch (err) {
-        alert("Erro ao exportar PDF: " + err.message);
+        showToast("Erro ao exportar PDF: " + err.message, "error");
         console.error(err);
     }
   };
@@ -191,7 +195,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
       setTimeout(() => setCopyingId(null), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
-      alert("Erro ao copiar para área de transferência: " + err.message);
+      showToast("Erro ao copiar para área de transferência: " + err.message, "error");
     }
   };
 
@@ -199,13 +203,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     const target = (scriptToGo && scriptToGo.id) ? scriptToGo : activeScript;
     if (!target) return;
     
-    // Set triggers for ImagePromptsTab
-    localStorage.setItem('guru_image_prompt_trigger_id', target.id.toString());
-    localStorage.setItem('guru_image_prompt_auto_analyze', 'true');
-    const veoData = generateVeoContent(target.content);
-    localStorage.setItem('guru_image_prompt_veo_content', veoData);
-    
-    // Switch Tab
+    setImagePromptTrigger(target.id.toString());
     setActiveTab('image-prompts');
   };
 
@@ -213,9 +211,7 @@ export const ReadyScriptsTab = ({ setActiveTab, isActive = true }) => {
     const target = (scriptToGo && scriptToGo.id) ? scriptToGo : activeScript;
     if (!target) return;
     
-    localStorage.setItem('guru_seo_trigger_title', target.title || '');
-    localStorage.setItem('guru_seo_trigger_script', target.content || '');
-    
+    setSeoTrigger(target.id.toString());
     setActiveTab('seo-upload');
   };
 

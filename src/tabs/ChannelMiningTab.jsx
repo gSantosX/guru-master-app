@@ -102,7 +102,7 @@ const FORMAT_OPTIONS = [
 ];
 
 export const ChannelMiningTab = ({ setActiveTab }) => {
-  const { configs } = useSystemStatus();
+  const { configs, showToast } = useSystemStatus();
   const { miningState, setMiningState } = usePersistence();
   const { channels, niche: selectedNiche, isSearching, maxAgeMonths = 0, videoFormat = 'normal', langCode = 'pt' } = miningState;
 
@@ -273,13 +273,13 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
       }));
 
       if (minedChannels.length === 0) {
-        alert(maxAgeMonths > 0 
+        showToast(maxAgeMonths > 0 
           ? `Nenhum canal bombando com menos de ${maxAgeMonths} meses foi encontrado neste nicho agora. Tente remover o filtro de Idade ou mudar o Nicho.` 
-          : "Não encontramos canais com os critérios atuais para este nicho. Tente outro tema ou idioma!");
+          : "Não encontramos canais com os critérios atuais para este nicho. Tente outro tema ou idioma!", "warning");
       }
     } catch (error) {
       console.error("Mining error:", error);
-      alert("Falha na Mineração:\n" + error.message);
+      showToast("Falha na Mineração: " + error.message, "error");
     } finally {
       setIsSearching(false);
     }
@@ -330,7 +330,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
         Previous Knowledge context: ${JSON.stringify(knowledge.structures.slice(-5))}
       `;
 
-      const response = await callAI(analysisPrompt, { model: 'gemini-1.5-pro', gptKey: configs.gpt_key });
+      const response = await callAI(analysisPrompt, { model: 'gemini-2.5-flash', gptKey: configs.gpt_key });
       const cleanJson = response.replace(/```json|```/g, '').trim();
       const results = JSON.parse(cleanJson);
 
@@ -346,7 +346,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
       setGenerationStep('Concluído!');
     } catch (error) {
       console.error("Title Generation Error:", error);
-      alert("Falha na Geração de Títulos:\n" + error.message);
+      showToast("Falha na Geração de Títulos: " + error.message, "error");
     } finally {
       setIsGeneratingTitles(false);
     }
@@ -586,7 +586,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
               className="w-full max-w-4xl max-h-full bg-dark/90 border border-white/10 rounded-[40px] shadow-2xl overflow-hidden flex flex-col"
             >
               {/* Modal Header */}
-              <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+              <div className="p-5 md:p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
                 <div className="flex items-center gap-5">
                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-neon-purple to-neon-cyan p-[2px] shadow-lg">
                       <div className="w-full h-full bg-dark rounded-2xl flex items-center justify-center">
@@ -609,7 +609,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
               </div>
 
               {/* Modal Content */}
-              <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar">
                 {isGeneratingTitles ? (
                   <div className="flex flex-col items-center justify-center py-20 space-y-8">
                     <div className="relative">
@@ -686,7 +686,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                             className="group bg-white/5 border border-white/10 rounded-2xl p-5 hover:bg-white/[0.08] hover:border-green-500/30 transition-all cursor-pointer relative overflow-hidden"
                             onClick={() => {
                               navigator.clipboard.writeText(title);
-                              alert("Título copiado!");
+                              showToast("Título copiado!", "success");
                             }}
                           >
                              <div className="absolute top-0 right-0 w-12 h-12 bg-green-500/5 rounded-full blur-xl group-hover:bg-green-500/10 transition-all" />

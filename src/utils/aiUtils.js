@@ -147,15 +147,15 @@ export const callGemini = async (apiKeys, prompt, options = {}) => {
 
       // 2. Fallbacks universais cruzando todas as gerações de chaves (novas e antigas)
       const fallbacks = [
+        'models/gemini-2.5-flash',
+        'models/gemini-3.1-flash-lite-preview',
+        'models/gemini-2.0-flash-exp',
+        'models/gemini-1.5-flash-latest',
+        'models/gemini-1.5-flash',
         'models/gemini-3.1-pro-preview',
         'models/gemini-2.5-pro',
         'models/gemini-1.5-pro-latest',
         'models/gemini-1.5-pro',
-        'models/gemini-3.1-flash-lite-preview',
-        'models/gemini-2.5-flash',
-        'models/gemini-2.0-flash-exp',
-        'models/gemini-1.5-flash-latest',
-        'models/gemini-1.5-flash',
         'models/gemini-pro-latest', // Essencial para a chave Mestra Global
         'models/gemini-pro' // Último recurso de emergência para chaves legadas
       ];
@@ -569,8 +569,8 @@ export const callAI = async (prompt, options = {}) => {
   if (activeAI === 'Gemini') {
     const mainKeys = (localStorage.getItem('guru_gemini_key') || '').trim() || 'GLOBAL';
     const idx = parseInt(localStorage.getItem('guru_gemini_active_idx') || '0');
-    // Prioriza o modelo exigido pela função (ex: gemini-1.5-pro para análises profundas), senão usa o das Configurações, senão default PRO
-    const finalModel = options.model || (userModel && userModel.startsWith('gemini') ? userModel : 'gemini-1.5-pro');
+    // Prioriza o modelo exigido pela função (ex: gemini-2.5-flash para análises profundas), senão usa o das Configurações, senão default FLASH
+    const finalModel = options.model || (userModel && userModel.startsWith('gemini') ? userModel : 'gemini-2.5-flash');
     return await callGemini(mainKeys, prompt, { ...options, model: finalModel, forcedIndex: idx });
   } else if (activeAI === 'OpenAI' || activeAI === 'GPT') {
     const keys = localStorage.getItem('guru_gpt_key') || '';

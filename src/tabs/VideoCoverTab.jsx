@@ -72,7 +72,7 @@ NEGATIVE PROMPT: [Technical anti-quality tokens, blurry, low resolution, bad ana
 
 Return ONLY the prompt and negative prompt in English. No markdown, no quotes around the whole block.`;
 
-    return await callAI(instruction, { model: "gemini-1.5-pro" });
+    return await callAI(instruction, { model: "gemini-2.5-flash" });
 }
 
 // Helper: generate actual image via Pollinations.ai (free, no key)
@@ -89,8 +89,8 @@ function buildPollinationsUrl(fullText, seed) {
 }
 
 export const VideoCoverTab = ({ isActive }) => {
-    const { configs } = useSystemStatus();
-    const { coverState, setCoverState } = usePersistence();
+    const { configs, showToast } = useSystemStatus();
+    const { coverState, setCoverState, coverTrigger, setCoverTrigger } = usePersistence();
     
     // Destructuring global state for easier use
     const { 
@@ -177,15 +177,14 @@ export const VideoCoverTab = ({ isActive }) => {
     // Escuta o redirecionamento da Aba SEO
     useEffect(() => {
         if (!isActive) return;
-        const triggerId = localStorage.getItem('guru_cover_trigger_pool_id');
-        if (triggerId && pools && pools.length > 0) {
-            const pool = pools.find(p => p.id.toString() === triggerId);
+        if (coverTrigger && pools && pools.length > 0) {
+            const pool = pools.find(p => p.id.toString() === coverTrigger.toString());
             if (pool) {
                 handleSelectPool(pool);
-                localStorage.removeItem('guru_cover_trigger_pool_id');
+                setCoverTrigger(null);
             }
         }
-    }, [isActive, pools]);
+    }, [isActive, pools, coverTrigger, setCoverTrigger]);
 
     const handleSelectPool = (pool) => {
         const abTitles = Array.isArray(pool.seoResult?.titles) ? pool.seoResult.titles : [];
@@ -283,7 +282,7 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
   }
 }`;
 
-            const result = await callAI(prompt, { model: 'gemini-1.5-pro', gptKey: configs.gpt_key });
+            const result = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey: configs.gpt_key });
 
             let parsed = { variations: [], shockWords: { one: '-', two: '-', three: '-' } };
             try {
@@ -404,7 +403,7 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
                     } 
                 } 
             }));
-            alert("Erro ao gerar imagem: " + (error.message || "Verifique sua cota."));
+            showToast("Erro ao gerar imagem: " + (error.message || "Verifique sua cota."), "error");
         }
     };
 

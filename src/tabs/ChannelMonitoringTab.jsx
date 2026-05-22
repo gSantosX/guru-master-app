@@ -9,7 +9,7 @@ import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
 
 export const ChannelMonitoringTab = ({ isActive, setActiveTab }) => {
-  const { configs } = useSystemStatus();
+  const { configs, showToast } = useSystemStatus();
   const [channels, setChannels] = useState(() => {
     const saved = localStorage.getItem('guru_monitored_channels');
     return saved ? JSON.parse(saved) : [];
@@ -83,7 +83,7 @@ Rules:
 - Adapt idioms naturally — do NOT translate literally if it sounds unnatural
 - Return ONLY the JSON object, no markdown, no explanations`;
 
-      const result = await callAI(prompt, { model: 'gemini-1.5-pro' });
+      const result = await callAI(prompt, { model: 'gemini-2.5-flash' });
       const clean = result.replace(/```json/g, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(clean);
 
@@ -365,7 +365,7 @@ Rules:
   const handleAddChannel = async () => {
     const info = extractChannelIdOrHandle(newUrl);
     if (!info) {
-      alert(t('channels.invalid_url'));
+      showToast(t('channels.invalid_url'), 'error');
       return;
     }
 
@@ -373,13 +373,13 @@ Rules:
     try {
       const data = await fetchChannelData(info);
       if (channels.find(c => c.id === data.id)) {
-        alert('Este canal já está sendo monitorado.');
+        showToast('Este canal já está sendo monitorado.', 'warning');
       } else {
         setChannels([...channels, data]);
         setNewUrl('');
       }
     } catch (err) {
-      alert(t('channels.fetch_error') + ': ' + err.message);
+      showToast(t('channels.fetch_error') + ': ' + err.message, 'error');
     } finally {
       setIsAdding(false);
     }
@@ -393,7 +393,7 @@ Rules:
       setChannels(prev => prev.map(c => c.id === data.id ? data : c));
       setSelectedChannel(data);
     } catch (err) {
-      alert('Erro ao atualizar dados: ' + err.message);
+      showToast('Erro ao atualizar dados: ' + err.message, 'error');
     } finally {
       setIsAnalyzing(false);
     }
@@ -434,7 +434,7 @@ Rules:
     const grokKeys = configs.grok_key;
 
     if (!gptKeys && !geminiKeys && !grokKeys) {
-      alert(`Erro: Nenhuma chave de API configurada. Vá em Configurações.`);
+      showToast(`Erro: Nenhuma chave de API configurada. Vá em Configurações.`, 'error');
       setIsAnalyzing(false);
       return;
     }
@@ -567,7 +567,7 @@ REGRAS DE FORMATO:
     }
 
     try {
-      const result = await callAI(prompt, { model: 'gemini-1.5-pro' });
+      const result = await callAI(prompt, { model: 'gemini-2.5-flash' });
       
       if (!result || result.trim().length === 0) {
         throw new Error('A IA retornou uma resposta vazia. Tente novamente ou verifique sua chave API.');
@@ -586,7 +586,7 @@ REGRAS DE FORMATO:
         })
       }).catch(err => console.error('Learning Fail', err));
     } catch (err) {
-      alert('Erro na análise: ' + err.message);
+      showToast('Erro na análise: ' + err.message, 'error');
     } finally {
       setIsAnalyzing(false);
     }
