@@ -54,6 +54,18 @@ export const SeoTab = ({ isActive, setActiveTab }) => {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  const handleCopyAllTitles = () => {
+    const titlesToCopy = [];
+    if (videoTitle) titlesToCopy.push(videoTitle);
+    if (Array.isArray(seoResult?.titles)) {
+      titlesToCopy.push(...seoResult.titles);
+    } else if (seoResult?.titles) {
+      titlesToCopy.push(seoResult.titles);
+    }
+    const text = titlesToCopy.filter(Boolean).join('\n');
+    handleCopy(text, 'all-titles');
+  };
+
   const handleGenerate = async () => {
     if (!videoTitle.trim()) {
       alert("Por favor, insira o título do vídeo.");
@@ -400,20 +412,61 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
                    <h3 className="text-xs font-black text-green-400 flex items-center gap-2 uppercase tracking-widest">
                      <Type className="w-4 h-4" /> Títulos p/ Teste A/B (Test & Compare)
                    </h3>
+                   <button 
+                     onClick={handleCopyAllTitles}
+                     className="text-[10px] font-bold text-gray-400 hover:text-white transition-colors flex items-center gap-1.5 bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-xl border border-white/10"
+                   >
+                     {copiedField === 'all-titles' ? (
+                       <>
+                         <Check className="w-3.5 h-3.5 text-green-400" />
+                         <span>Copiado!</span>
+                       </>
+                     ) : (
+                       <>
+                         <Copy className="w-3.5 h-3.5" />
+                         <span>Copiar Todos</span>
+                       </>
+                     )}
+                   </button>
                  </div>
                  <div className="flex flex-col gap-3">
+                   {/* Título Original */}
+                   {videoTitle && (
+                     <div className="bg-black/30 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4 group/title hover:border-green-500/30 transition-colors">
+                       <div className="flex items-center gap-3 flex-1 min-w-0">
+                         <span className="text-[9px] font-bold uppercase tracking-wider bg-white/10 text-gray-300 border border-white/10 px-2 py-0.5 rounded shrink-0">
+                           Original
+                         </span>
+                         <span className="text-white font-bold text-sm leading-snug flex-1">{videoTitle}</span>
+                       </div>
+                       <button 
+                         onClick={() => handleCopy(videoTitle, 'title-original')}
+                         className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                         title="Copiar Título Original"
+                       >
+                         {copiedField === 'title-original' ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                       </button>
+                     </div>
+                   )}
+
+                   {/* Títulos Gerados A/B */}
                    {Array.isArray(seoResult.titles) ? seoResult.titles.map((title, idx) => (
                      <div key={idx} className="bg-black/30 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4 group/title hover:border-green-500/30 transition-colors">
-                       <span className="text-white font-bold text-sm leading-snug flex-1">{title}</span>
+                       <div className="flex items-center gap-3 flex-1 min-w-0">
+                         <span className="text-[9px] font-bold uppercase tracking-wider bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded shrink-0">
+                           Teste A/B {idx + 1}
+                         </span>
+                         <span className="text-white font-bold text-sm leading-snug flex-1">{title}</span>
+                       </div>
                        <button 
                          onClick={() => handleCopy(title, `title-${idx}`)}
                          className="p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
-                         title="Copiar Título"
+                         title={`Copiar Teste A/B ${idx + 1}`}
                        >
                          {copiedField === `title-${idx}` ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                        </button>
                      </div>
-                   )) : (
+                   )) : seoResult.titles && (
                      <div className="bg-black/30 border border-white/5 rounded-xl p-4 text-white font-bold text-sm leading-loose whitespace-pre-wrap">
                        {seoResult.titles}
                      </div>
