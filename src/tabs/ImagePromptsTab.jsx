@@ -19,7 +19,8 @@ import {
   ArrowRight,
   Loader2,
   Video,
-  Camera
+  Camera,
+  Type
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -132,7 +133,7 @@ const visualStylesGroups = [
   }
 ];
 
-function getInstantImagePromptsArray(blocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, type) {
+function getInstantImagePromptsArray(blocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, type, withText = false) {
   const isVideo = type === 'video';
 
   const styleStr = genero && genero !== 'Automático' ? genero : (visualDNA.scenario || 'cinematográfico realista');
@@ -160,21 +161,21 @@ function getInstantImagePromptsArray(blocks, visualDNA, genero, cameraMovimento,
     const cleanBlock = block ? block.trim() : `Cena ${id}`;
 
     if (isVideo) {
-      const promptText = `Um plano cinematográfico detalhado retratando: ${cleanBlock}. O estilo visual segue a estética de ${styleStr}, filmado com câmera em ${camStr}. A composição está em ${compStr}, com lentes configuradas em ${focusStr}. A iluminação é de ${lightingStr}, com uma paleta de cores baseada em ${paletteStr}, criando uma ${atmStr}.`;
-      const negativeText = `baixa qualidade, borrado, distorção, pixelado, artefatos de compressão, câmera tremida, anatomia incorreta, mãos distorcidas, rosto deformado, expressão facial artificial, movimentos robóticos, física irreal, texto na tela, marca d'água, legenda, CGI barato.`;
+      const promptText = `Um plano cinematográfico detalhado retratando: ${cleanBlock}. O estilo visual segue a estética de ${styleStr}, filmado com câmera em ${camStr}. A composição está em ${compStr}, com lentes configuradas em ${focusStr}. A iluminação é de ${lightingStr}, com uma paleta de cores baseada em ${paletteStr}, criando uma ${atmStr}.${withText ? ' Inclui elementos de texto estilizado, tipografia ou sinalização coerente com a cena.' : ''}`;
+      const negativeText = `baixa qualidade, borrado, distorção, pixelado, artefatos de compressão, câmera tremida, anatomia incorreta, mãos distorcidas, rosto deformado, expressão facial artificial, movimentos robóticos, física irreal, CGI barato${withText ? '' : ', texto na tela, marca d\'água, legenda'}.`;
       return `[PROMPT]: ${promptText}[NEGATIVO]: ${negativeText}`;
     } else {
-      const promptText = `Ultra-Realista — Fotografia cinematográfica 8K, estilo ${styleStr}, câmera ${camStr}, composição ${compStr}, foco ${focusStr}. Iluminação ${lightingStr}, paleta de cores ${paletteStr}, com ${atmStr}.`;
-      const negativeText = `CGI, 3D render, cartoon, anime, watercolor, text, watermark, blurry, distorted, oversaturation.`;
+      const promptText = `Ultra-Realista — Fotografia cinematográfica 8K, estilo ${styleStr}, câmera ${camStr}, composição ${compStr}, foco ${focusStr}. Iluminação ${lightingStr}, paleta de cores ${paletteStr}, com ${atmStr}.${withText ? ' Including integrated typographic text, signage, or contextual graphics.' : ''}`;
+      const negativeText = `CGI, 3D render, cartoon, anime, watercolor, blurry, distorted, oversaturation${withText ? '' : ', text, watermark'}.`;
       return `[${id}]: ${promptText} NEGATIVE PROMPT: ${negativeText}`;
     }
   });
 }
 
-function getInstantImagePrompts(blocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, format, type) {
+function getInstantImagePrompts(blocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, format, type, withText = false) {
   const isJson = format === 'json';
   const isVideo = type === 'video';
-  const arr = getInstantImagePromptsArray(blocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, type);
+  const arr = getInstantImagePromptsArray(blocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, type, withText);
 
   if (isJson) {
     const parsed = arr.map((item, idx) => {
@@ -243,7 +244,8 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     cameraMovimento,
     composicao,
     focoLente,
-    atmosferaLuz
+    atmosferaLuz,
+    withText = false
   } = promptState;
 
   const setFile = (val) => setPromptState(prev => ({ ...prev, file: typeof val === 'function' ? val(prev.file) : val }));
@@ -259,6 +261,7 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const setComposicao = (val) => setPromptState(prev => ({ ...prev, composicao: typeof val === 'function' ? val(prev.composicao) : val }));
   const setFocoLente = (val) => setPromptState(prev => ({ ...prev, focoLente: typeof val === 'function' ? val(prev.focoLente) : val }));
   const setAtmosferaLuz = (val) => setPromptState(prev => ({ ...prev, atmosferaLuz: typeof val === 'function' ? val(prev.atmosferaLuz) : val }));
+  const setWithText = (val) => setPromptState(prev => ({ ...prev, withText: typeof val === 'function' ? val(prev.withText) : val }));
 
   const [isDragging, setIsDragging] = useState(false);
   const [subtitleCount, setSubtitleCount] = useState(subtitleBlocks.length);
@@ -647,14 +650,11 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
     setter(current.includes(tag) ? current.filter(t => t !== tag) : [...current, tag]);
   };
 
-  // Cine param data
-  const GENERO_TAGS = ['Automático', 'Ficção científica', 'Film noir', 'Terror', 'Animação 3D', 'Documentário', 'Fantasia épica', 'Retrato cinematográfico', 'Anime'];
-  const CAMERA_TAGS = ['Automático', 'Vista aérea', 'Na altura dos olhos', 'Vista de cima', 'Vista de baixo', 'Travelling', 'Câmera lenta', 'Zoom in', 'Pan lateral'];
   const COMPOSICAO_TAGS = ['Automático', 'Plano geral', 'Close-up', 'Plano médio', 'Retrato', 'Plano único', 'Plano duplo'];
   const FOCO_TAGS = ['Automático', 'Foco raso', 'Foco profundo', 'Lente macro', 'Grande-angular', 'Filtro difusor', 'Teleobjetiva'];
   const ATMOSFERA_TAGS = ['Automático', 'Tons azuis frios', 'Tons quentes dourados', 'Noite estrelada', 'Luz neon', 'Pôr do sol', 'Névoa', 'Chuva', 'Alta exposição'];
 
-  const getSystemPrompt = (count = 0) => {
+  const getSystemPrompt = (count = 0, inputType = 'subtitle') => {
     // Build cinematographic brief from selected parameters
     const cineParams = [
       genero ? `- Estilo/Gênero: ${genero === 'Automático' ? 'Adapte o gênero ao contexto do roteiro' : genero}` : '',
@@ -664,6 +664,17 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
       atmosferaLuz?.length ? `- Atmosfera & Luz: ${atmosferaLuz.includes('Automático') ? 'Crie a melhor atmosfera visual baseada na emoção do roteiro' : atmosferaLuz.join(', ')}` : '',
     ].filter(Boolean).join('\n    ');
 
+    const textRulePt = withText 
+      ? "- TIPOGRAFIA E TEXTO: É PERMITIDO e recomendado incluir elements de texto tipográfico, sinalização, cartazes ou letreiros estilizados integrados ao ambiente da cena."
+      : "- TEXTO E MARCA D'ÁGUA: Proíba totalmente a geração de qualquer texto, legenda, marca d'água, assinatura ou logo sobre a imagem (adicione isso no prompt negativo).";
+
+    const textRuleEn = withText
+      ? "- TYPOGRAPHY AND TEXT: Stylized typographic elements, signage, labels, or integrated contextual text are PERMITTED and encouraged where appropriate."
+      : "- TEXT AND WATERMARK: Strictly ban any form of text, lettering, watermark, signature, or logo from appearing in the image (include 'text, watermark' in negative prompts).";
+
+    const inputTypePt = inputType === 'subtitle' ? 'legenda' : 'frase do roteiro';
+    const inputTypeEn = inputType === 'subtitle' ? 'subtitle' : 'script sentence';
+
     const dnaContext = `
     ## DNA VISUAL DO ROTEIRO (REGRAS INVIOLÁVEIS)
     - Cenário e Arquitetura: ${visualDNA.scenario || 'A ser definido'}
@@ -672,6 +683,9 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
     - Iluminação Mestre: ${visualDNA.lighting || 'A ser definido'}
     - Paleta de Cores: ${visualDNA.palette || 'A ser definido'}
     - Linguagem de Câmera base: ${visualDNA.camera || 'A ser definido'}
+    ${visualDNA.rendering ? `- Renderização/Estilo Técnico: ${visualDNA.rendering}` : ''}
+    ${visualDNA.texture ? `- Textura/Acabamento: ${visualDNA.texture}` : ''}
+    ${textRulePt}
 
     ## PARÂMETROS CINEMATOGRÁFICOS SELECIONADOS (PRIORIDADE MÁXIMA)
     ${cineParams || '- Nenhum parâmetro específico selecionado — use criatividade baseada no DNA acima'}
@@ -689,9 +703,9 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
       [PROMPT]: [conteúdo completo aqui em uma linha][NEGATIVO]: [lista de elementos indesejados aqui]
       [linha em branco]
       
-      ${outputFormat === 'json' ? `SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÍDA: Um bloco por legenda, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
+      ${outputFormat === 'json' ? `SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `SAÍDA: Um bloco por ${inputTypePt}, [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
       } else {
-        return `You are an ELITE Image Prompt Engineer. Generate exactly ${count} ultra-realistic image prompts in ENGLISH, one per subtitle block.
+        return `You are an ELITE Image Prompt Engineer. Generate exactly ${count} ultra-realistic image prompts in ENGLISH, one per ${inputTypeEn} block.
 
 VISUAL DNA (apply to every prompt):
 - Scenario: ${visualDNA.scenario || 'Real-world environment'}
@@ -700,19 +714,20 @@ VISUAL DNA (apply to every prompt):
 - Lighting: ${visualDNA.lighting || 'Natural light'}
 - Palette: ${visualDNA.palette || 'Realistic, muted'}
 - Camera: ${visualDNA.camera || 'Cinematic angles'}
+${visualDNA.rendering ? `- Rendering/Technical Style: ${visualDNA.rendering}\n` : ''}${visualDNA.texture ? `- Texture/Finish: ${visualDNA.texture}\n` : ''}${textRuleEn}
 ${cineParams ? `\nPARAMETERS: ${cineParams}` : ''}
 
 RULES:
 - ENGLISH ONLY — no Portuguese, no other language
-- ONE prompt per subtitle — do NOT skip or merge any
+- ONE prompt per ${inputTypeEn} — do NOT skip or merge any
 - Reality and physics only — no fantasy
 - NEGATIVE PROMPT on the same line as the prompt
-- Label each prompt with the subtitle ID using [N]: format
+- Label each prompt with the ${inputTypeEn} ID using [N]: format
 
-OUTPUT FORMAT (one per subtitle, empty line between):
-[1]: Ultra-Realista — 8K cinematic photography. [shot type + visual description of subtitle content]. NEGATIVE PROMPT: CGI, cartoon, blurry, distorted, text, watermark.
+OUTPUT FORMAT (one per ${inputTypeEn}, empty line between):
+[1]: Ultra-Realista — 8K cinematic photography. [shot type + visual description of ${inputTypeEn} content]. NEGATIVE PROMPT: CGI, cartoon, blurry, distorted${withText ? '' : ', text, watermark'}.
 
-[2]: Ultra-Realista — 8K cinematic photography. [shot type + visual description of subtitle content]. NEGATIVE PROMPT: CGI, cartoon, blurry, distorted, text, watermark.
+[2]: Ultra-Realista — 8K cinematic photography. [shot type + visual description of ${inputTypeEn} content]. NEGATIVE PROMPT: CGI, cartoon, blurry, distorted${withText ? '' : ', text, watermark'}.
 
 ${outputFormat === 'json' ? `OUTPUT: JSON [ { "id": N, "prompt": "...", "negative": "..." } ]` : `Respond ONLY with the numbered [N]: prompt blocks. No intro, no summary.`}`;
       }
@@ -721,7 +736,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON [ { "id": N, "prompt": "...", "negativ
 
       if (promptType === 'video') {
         // VEO 3.1 GOLD STANDARD — Instruções completas
-        const veoExample = `[PROMPT]: Uma astrônoma de meia-idade com cabelos grisalhos presos em um coque descuidado e olhos castanhos cansados, vestindo um macacão espacial laranja desgastado com remendos nas mangas, flutua lentamente em gravidade zero dentro de uma estação espacial abandonada, segurando com as duas mãos uma fotografia desbotada enquanto lágrimas esféricas se desprendem de seus olhos e flutuam ao redor de seu rosto, ao fundo janelas circulares revelam o vazio negro do espaço com a Terra azul ao longe, estilo drama científico intimista com influências de Alfonso Cuarón, câmera em travelling suave se aproximando em arco circular ao nível dos olhos, composição em retrato fechado, foco raso com bokeh profundo desfocando o fundo estrelado, iluminação fria e azulada vinda das janelas contrastando com o calor âmbar de uma luz de emergência piscando, som ambiente de respiração pesada dentro do capacete e um zumbido elétrico baixo e contínuo ao fundo.[NEGATIVO]: baixa qualidade, borrado, distorção, pixelado, artefatos de compressão, câmera tremida, anatomia incorreta, mãos distorcidas, rosto deformado, expressão facial artificial, movimentos robóticos, física irreal, texto na tela, marca d'água, legenda, CGI barato, iluminação artificial excessiva, super-exposição, cores saturadas artificialmente, múltiplos personagens não solicitados.`;
+        const veoExample = `[PROMPT]: Uma astrônoma de meia-idade com cabelos grisalhos presos em um coque descuidado e olhos castanhos cansados, vestindo um macacão espacial laranja desgastado com remendos nas mangas, flutua lentamente em gravidade zero dentro de uma estação espacial abandonada, segurando com as duas mãos uma fotografia desbotada enquanto lágrimas esféricas se desprendem de seus olhos e flutuam ao redor de seu rosto, ao fundo janelas circulares revelam o vazio negro do espaço com a Terra azul ao longe, estilo drama científico intimista com influências de Alfonso Cuarón, câmera em travelling suave se aproximando em arco circular ao nível dos olhos, composição em retrato fechado, foco raso com bokeh profundo desfocando o fundo estrelado, iluminação fria e azulada vinda das janelas contrastando com o calor âmbar de uma luz de emergência piscando, som ambiente de respiração pesada dentro do capacete e um zumbido elétrico baixo e contínuo ao fundo.[NEGATIVO]: baixa qualidade, borrado, distorção, pixelado, artefatos de compressão, câmera tremida, anatomia incorreta, mãos distorcidas, rosto deformado, expressão facial artificial, movimentos robóticos, física irreal, CGI barato, iluminação artificial excessiva, super-exposição, cores saturadas artificialmente, múltiplos personagens não solicitados${withText ? '' : ', texto na tela, marca d\'água, legenda'}.`;
 
         return `Você é o SUPREMO Diretor Cinematográfico AI e Engenheiro de Prompts para Veo 3.1.
       COMANDO: GERE PROMPTS CINEMATOGRÁFICOS MAGISTRAIS SEGUINDO O PADRÃO OURO VEO 3.1.
@@ -755,10 +770,10 @@ ${outputFormat === 'json' ? `OUTPUT: JSON [ { "id": N, "prompt": "...", "negativ
 
       NÍVEL DE DETALHE: 80–150 palavras por prompt. Evite termos vagos — use descritores concretos e sensoriais.
       IDIOMA: SEMPRE Português do Brasil.
-      ${outputFormat === 'json' ? `## SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA: UM BLOCO POR LEGENDA — [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
+      ${outputFormat === 'json' ? `## SAÍDA: JSON [ { "id": X, "prompt": "...", "negativo": "..." }, ... ]` : `## SAÍDA: UM BLOCO POR ${inputTypePt.toUpperCase()} — [PROMPT]: e [NEGATIVO]: na MESMA LINHA`}`;
       } else {
         // Image Quality — same format as fast but with more detail
-        return `You are a MASTER ultra-realistic image prompt engineer. Generate exactly ${count} photographic prompts in ENGLISH, one per subtitle.
+        return `You are a MASTER ultra-realistic image prompt engineer. Generate exactly ${count} photographic prompts in ENGLISH, one per ${inputTypeEn}.
 
 VISUAL DNA (inviolable — apply to every prompt):
 - Scenario: ${visualDNA.scenario || 'Real-world environment'}
@@ -767,21 +782,22 @@ VISUAL DNA (inviolable — apply to every prompt):
 - Lighting: ${visualDNA.lighting || 'Natural cinematic light'}
 - Palette: ${visualDNA.palette || 'Realistic, muted'}
 - Camera: ${visualDNA.camera || 'Varied cinematic angles'}
+${visualDNA.rendering ? `- Rendering/Technical Style: ${visualDNA.rendering}\n` : ''}${visualDNA.texture ? `- Texture/Finish: ${visualDNA.texture}\n` : ''}${textRuleEn}
 ${cineParams ? `\nPARAMETERS: ${cineParams}` : ''}
 
 RULES:
 - ENGLISH ONLY — no Portuguese, no other language
-- ONE prompt per subtitle — do NOT skip or merge
-- Translate each subtitle into photographic visual terms (reality + physics only)
+- ONE prompt per ${inputTypeEn} — do NOT skip or merge
+- Translate each ${inputTypeEn} into photographic visual terms (reality + physics only)
 - 70–110 words per prompt body
 - No fantasy, no impossible elements
 - NEGATIVE PROMPT on the SAME LINE as the prompt
-- Label each prompt with the subtitle ID using [N]: format
+- Label each prompt with the ${inputTypeEn} ID using [N]: format
 
-OUTPUT FORMAT (one per subtitle, empty line between):
-[1]: Ultra-Realista — Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita. [shot type] [detailed visual scene from subtitle]. NEGATIVE PROMPT: CGI, 3D render, cartoon, anime, watercolor, text, watermark, blurry, distorted, oversaturation.
+OUTPUT FORMAT (one per ${inputTypeEn}, empty line between):
+[1]: Ultra-Realista — Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita. [shot type] [detailed visual scene from ${inputTypeEn}]. NEGATIVE PROMPT: CGI, 3D render, cartoon, anime, watercolor, blurry, distorted, oversaturation${withText ? '' : ', text, watermark'}.
 
-[2]: Ultra-Realista — Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita. [shot type] [detailed visual scene from subtitle]. NEGATIVE PROMPT: CGI, 3D render, cartoon, anime, watercolor, text, watermark, blurry, distorted, oversaturation.
+[2]: Ultra-Realista — Fotografia cinematográfica 8K hiper-real, iluminação natural perfeita. [shot type] [detailed visual scene from ${inputTypeEn}]. NEGATIVE PROMPT: CGI, 3D render, cartoon, anime, watercolor, blurry, distorted, oversaturation${withText ? '' : ', text, watermark'}.
 
 ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "negative": "..." }, ... ]` : `Respond ONLY with the [N]: prompt blocks. No intro text, no summary.`}`;
       }
@@ -801,19 +817,7 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
     }
 
     setIsGenerating(true);
-    const instantPrompts = getInstantImagePrompts(
-      subtitleBlocks,
-      visualDNA,
-      genero,
-      cameraMovimento,
-      composicao,
-      focoLente,
-      atmosferaLuz,
-      outputFormat,
-      promptType,
-      genMode
-    );
-    setPrompts(instantPrompts);
+    setPrompts("");
     cancelRef.current = false;
 
     // ── MODO IMAGEM (text): Geração em Lote ──
@@ -829,20 +833,14 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         statuses: new Array(total).fill('pending') 
       });
 
-      const instantArr = getInstantImagePromptsArray(
-        subtitleBlocks,
-        visualDNA,
-        genero,
-        cameraMovimento,
-        composicao,
-        focoLente,
-        atmosferaLuz,
-        'image'
-      );
-      const resultsArr = [...instantArr];
+      const resultsArr = new Array(total).fill("");
       const statusArr  = new Array(total).fill('pending');
       
       const dnaPart = `Scenario: ${visualDNA.scenario || 'Real-world'} | Era: ${visualDNA.era || 'Contemporary'} | Mood: ${visualDNA.mood || 'Cinematic'} | Lighting: ${visualDNA.lighting || 'Natural light'} | Palette: ${visualDNA.palette || 'Realistic'} | Camera: ${visualDNA.camera || 'Cinematic angles'}${visualDNA.rendering ? ` | Rendering: ${visualDNA.rendering}` : ''}${visualDNA.texture ? ` | Texture: ${visualDNA.texture}` : ''}`;
+
+      const textRuleBatch = withText
+        ? "TYPOGRAPHY AND TEXT: Integrated typographic elements, signage, or contextual graphics are PERMITTED and encouraged. In negative prompts, do NOT exclude text or watermarks."
+        : "TEXT AND WATERMARKS: Do NOT include any text, typography, watermarks, or signatures on the image. In negative prompts, always include 'text, watermark'.";
 
       // Build cinematographic parameters string for batch mode
       const batchCineParams = [
@@ -868,6 +866,7 @@ MISSION: Read EACH subtitle below carefully. Each subtitle describes a DIFFERENT
 VISUAL DNA (apply as background style to every prompt):
 ${dnaPart}
 ${batchCineParams ? `\nCINEMATIC PARAMETERS: ${batchCineParams}` : ''}
+- ${textRuleBatch}
 
 ${genero && genero !== 'Automático' ? `STYLE: Every prompt must use "${genero}" visual language.${genero.includes('Anima') || genero.includes('Anime') || genero.includes('Cartoon') ? ' Use illustration terms (digital illustration, cel shading, stylized) — NOT photographic terms.' : ''}` : ''}
 
@@ -928,12 +927,12 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
         
         await Promise.all(batchPromises);
         
-        const doneCount = Math.min((p + PARALLEL_BATCHES) * BATCH_SIZE, total);
+        const doneCount = statusArr.filter(s => s === 'done').length;
         setGenerationProgress(prev => ({ 
           ...prev, 
           current: doneCount, 
           statuses: [...statusArr], 
-          step: doneCount < total ? `Gerando blocos (${doneCount}/${total})...` : 'Finalizando...' 
+          step: doneCount < total ? `Gerando prompts (${doneCount}/${total})...` : 'Finalizando...' 
         }));
         setPrompts(resultsArr.filter(Boolean).join('\n\n'));
         
@@ -966,33 +965,14 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
     const CHUNK_SIZE = 8;      // 8 legendas por chunk (era 5) — mais dados por chamada = menos chamadas
     const CHUNK_PARALLEL = 6;  // 6 chunks simultâneos (era 3) — flash-lite suporta 30 RPM
     const totalChunks = Math.ceil(subtitleBlocks.length / CHUNK_SIZE);
-    setGenerationProgress({ step: 'Processando Legendas...', current: 0, total: totalChunks, statuses: new Array(totalChunks).fill("pending") });
+    setGenerationProgress({ 
+      step: 'Processando Legendas...', 
+      current: 0, 
+      total: subtitleBlocks.length, 
+      statuses: new Array(totalChunks).fill("pending") 
+    });
  
-    const instantArr = getInstantImagePromptsArray(subtitleBlocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, promptType);
     const resultsStorage = new Array(totalChunks).fill("");
-    for (let i = 0; i < totalChunks; i++) {
-      const startIdx = i * CHUNK_SIZE;
-      const chunkPrompts = instantArr.slice(startIdx, startIdx + CHUNK_SIZE);
-      if (isJson) {
-        const chunkObjects = chunkPrompts.map((item, idx) => {
-          const id = startIdx + idx + 1;
-          if (promptType === 'video') {
-            const pParts = item.split('[NEGATIVO]:');
-            const promptText = pParts[0].replace('[PROMPT]:', '').trim();
-            const negText = pParts[1] ? pParts[1].trim() : '';
-            return { id, prompt: promptText, negativo: negText };
-          } else {
-            const pParts = item.split('NEGATIVE PROMPT:');
-            const promptText = pParts[0].replace(new RegExp(`^\\[${id}\\]:\\s*`), '').trim();
-            const negText = pParts[1] ? pParts[1].trim() : '';
-            return { id, prompt: promptText, negative: negText };
-          }
-        });
-        resultsStorage[i] = JSON.stringify(chunkObjects, null, 2);
-      } else {
-        resultsStorage[i] = chunkPrompts.join('\n\n');
-      }
-    }
     const chunkStatuses  = new Array(totalChunks).fill("pending");
 
     const isJson = outputFormat === 'json';
@@ -1011,7 +991,7 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
       const generateLabel = isVeoVideoMode
         ? `GERE EXATAMENTE ${chunkSubtitleCount} PROMPTS VEO 3.1 MAGISTRAIS (PORTUGUÊS DO BRASIL):`
         : `GENERATE EXACTLY ${chunkSubtitleCount} ELITE PROMPTS (ENGLISH ONLY):`;
-      const promptParam = `${getSystemPrompt(chunkSubtitleCount)}\n\n---\n${countRuleLang}\nDo NOT generate more or fewer than ${chunkSubtitleCount} prompts.\nYou MUST label each prompt with its subtitle ID using the format [N]: (e.g., [1]:, [2]:, [3]:)\n---\n\nINPUT (CHUNK ${i+1}) - ${chunkSubtitleCount} SUBTITLES:\n${formattedInput}\n\n${generateLabel}`;
+      const promptParam = `${getSystemPrompt(chunkSubtitleCount, 'subtitle')}\n\n---\n${countRuleLang}\nDo NOT generate more or fewer than ${chunkSubtitleCount} prompts.\nYou MUST label each prompt with its subtitle ID using the format [N]: (e.g., [1]:, [2]:, [3]:)\n---\n\nINPUT (CHUNK ${i+1}) - ${chunkSubtitleCount} SUBTITLES:\n${formattedInput}\n\n${generateLabel}`;
 
       chunkStatuses[i] = "generating";
       setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses] }));
@@ -1062,9 +1042,17 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
           resultsStorage[i] = chunkText;
           chunkStatuses[i] = "done";
           setPrompts(resultsStorage.filter(Boolean).join('\n\n'));
+          let donePromptsCount = 0;
+          chunkStatuses.forEach((status, idx) => {
+            if (status === 'done') {
+              const isLast = idx === totalChunks - 1;
+              const chunkLength = isLast ? (subtitleBlocks.length - idx * CHUNK_SIZE) : CHUNK_SIZE;
+              donePromptsCount += chunkLength;
+            }
+          });
           setGenerationProgress(prev => ({
             ...prev,
-            current: chunkStatuses.filter(s => s === 'done').length,
+            current: donePromptsCount,
             statuses: [...chunkStatuses]
           }));
           return; // sucesso — sai do loop de retry
@@ -1074,7 +1062,19 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
           if (retryCount >= 2) {
             resultsStorage[i] = `[ERRO BLOCO ${i+1}: ${err.message}]`;
             chunkStatuses[i] = "error";
-            setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses] }));
+            let donePromptsCount = 0;
+            chunkStatuses.forEach((status, idx) => {
+              if (status === 'done') {
+                const isLast = idx === totalChunks - 1;
+                const chunkLength = isLast ? (subtitleBlocks.length - idx * CHUNK_SIZE) : CHUNK_SIZE;
+                donePromptsCount += chunkLength;
+              }
+            });
+            setGenerationProgress(prev => ({ 
+              ...prev, 
+              current: donePromptsCount, 
+              statuses: [...chunkStatuses] 
+            }));
             setPrompts(resultsStorage.filter(Boolean).join('\n\n'));
           }
         }
@@ -1127,8 +1127,8 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
       setPrompts(finalContent);
       setGenerationProgress({ 
         step: 'Geração Concluída!', 
-        current: totalChunks, 
-        total: totalChunks, 
+        current: subtitleBlocks.length, 
+        total: subtitleBlocks.length, 
         statuses: chunkStatuses 
       });
 
@@ -1173,45 +1173,17 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
       const batchSize = 15;
       const totalBlocks = Math.ceil(scriptSegments.length / batchSize);
 
-      const instantPrompts = getInstantImagePrompts(
-        scriptSegments,
-        visualDNA,
-        genero,
-        cameraMovimento,
-        composicao,
-        focoLente,
-        atmosferaLuz,
-        outputFormat,
-        'image',
-        genMode
-      );
-      setPrompts(instantPrompts);
+      setSubtitleCount(scriptSegments.length);
+      setPrompts("");
 
       setGenerationProgress({ 
         step: 'Iniciando Geração Paralela...', 
         current: 0, 
-        total: totalBlocks,
+        total: scriptSegments.length,
         statuses: new Array(totalBlocks).fill("pending")
       });
-
-      const instantArr = getInstantImagePromptsArray(
-        scriptSegments,
-        visualDNA,
-        genero,
-        cameraMovimento,
-        composicao,
-        focoLente,
-        atmosferaLuz,
-        'image'
-      );
       
       const resultsArray = new Array(totalBlocks).fill("");
-      for (let i = 0; i < totalBlocks; i++) {
-        const startIdx = i * batchSize;
-        const chunkPrompts = instantArr.slice(startIdx, startIdx + batchSize);
-        resultsArray[i] = chunkPrompts.join('\n\n');
-      }
-
       const chunkStatuses = new Array(totalBlocks).fill("pending");
 
       const PARALLEL_SCRIPT = 6;
@@ -1223,13 +1195,20 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
           const i = p + b;
           batch.push((async () => {
             const startIdx = i * batchSize;
-            const segment = scriptSegments.slice(startIdx, startIdx + batchSize).join(' ');
+            const segmentArray = scriptSegments.slice(startIdx, startIdx + batchSize);
+            const segment = segmentArray.join(' ');
+            const currentBatchCount = segmentArray.length;
      
             // Update status
             chunkStatuses[i] = "generating";
             setGenerationProgress(prev => ({ ...prev, statuses: [...chunkStatuses] }));
      
-            const promptBatchQuery = `${getSystemPrompt()}\n\nSCRIPT SEGMENT (BLOCK ${i+1}):\n"${segment}"\n\nGENERATE ELITE PROMPTS (ENGLISH ONLY):`;
+            const isVeoVideoMode = promptType === 'video' && genMode === 'quality';
+            const generateLabel = isVeoVideoMode
+              ? `GERE EXATAMENTE ${currentBatchCount} PROMPTS VEO 3.1 MAGISTRAIS (PORTUGUÊS DO BRASIL):`
+              : `GENERATE EXACTLY ${currentBatchCount} ELITE PROMPTS (ENGLISH ONLY):`;
+     
+            const promptBatchQuery = `${getSystemPrompt(currentBatchCount, 'sentence')}\n\nSCRIPT SEGMENT (BLOCK ${i+1}) - ${currentBatchCount} SENTENCES:\n"${segment}"\n\n${generateLabel}`;
      
             // Stagger para não bater 30 RPM instantâneo
             if (b > 0) await new Promise(r => setTimeout(r, b * 200));
@@ -1257,11 +1236,19 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
               chunkStatuses[i] = "error";
               return { index: i, error: err.message };
             } finally {
+              let donePromptsCount = 0;
+              chunkStatuses.forEach((status, idx) => {
+                if (status === 'done') {
+                  const isLast = idx === totalBlocks - 1;
+                  const chunkLength = isLast ? (scriptSegments.length - idx * batchSize) : batchSize;
+                  donePromptsCount += chunkLength;
+                }
+              });
               setGenerationProgress(prev => ({ 
                 ...prev, 
-                current: Math.min(prev.current + 1, totalBlocks),
+                current: donePromptsCount,
                 statuses: [...chunkStatuses],
-                step: `Gerando blocos... (${Math.min(prev.current + 1, totalBlocks)}/${totalBlocks})`
+                step: `Gerando prompts (${donePromptsCount}/${scriptSegments.length})...`
               }));
             }
           })());
@@ -1380,33 +1367,66 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
                 </select>
               </div>
 
-              {/* Output Format (Normal / JSON) */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-neon-pink" />
-                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Formato do Prompt</span>
+              {/* Formato do Prompt & Texto nas Imagens */}
+              <div className="flex flex-row flex-wrap gap-6 items-center">
+                {/* Output Format (Normal / JSON) */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-neon-pink" />
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Formato do Prompt</span>
+                  </div>
+                  <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10 w-fit">
+                    <button
+                      onClick={() => setOutputFormat('text')}
+                      className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                        outputFormat === 'text'
+                          ? 'bg-neon-cyan/80 text-dark shadow-[0_0_15px_rgba(0,243,255,0.3)]'
+                          : 'text-gray-500 hover:text-white'
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" /> Normal
+                    </button>
+                    <button
+                      onClick={() => setOutputFormat('json')}
+                      className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                        outputFormat === 'json'
+                          ? 'bg-amber-500/80 text-dark shadow-[0_0_15px_rgba(251,191,36,0.3)]'
+                          : 'text-gray-500 hover:text-white'
+                      }`}
+                    >
+                      <Zap className="w-3.5 h-3.5" /> JSON
+                    </button>
+                  </div>
                 </div>
-                <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10 w-fit">
-                  <button
-                    onClick={() => setOutputFormat('text')}
-                    className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
-                      outputFormat === 'text'
-                        ? 'bg-neon-cyan/80 text-dark shadow-[0_0_15px_rgba(0,243,255,0.3)]'
-                        : 'text-gray-500 hover:text-white'
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5" /> Normal
-                  </button>
-                  <button
-                    onClick={() => setOutputFormat('json')}
-                    className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
-                      outputFormat === 'json'
-                        ? 'bg-amber-500/80 text-dark shadow-[0_0_15px_rgba(251,191,36,0.3)]'
-                        : 'text-gray-500 hover:text-white'
-                    }`}
-                  >
-                    <Zap className="w-3.5 h-3.5" /> JSON
-                  </button>
+
+                {/* Texto nas Imagens */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Type className="w-3.5 h-3.5 text-neon-purple" />
+                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Texto nas Imagens</span>
+                  </div>
+                  <div className="flex bg-dark/50 p-1 rounded-xl border border-white/10 w-fit">
+                    <button
+                      onClick={() => setWithText(true)}
+                      className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                        withText
+                          ? 'bg-neon-pink/80 text-white shadow-[0_0_15px_rgba(255,44,182,0.3)]'
+                          : 'text-gray-500 hover:text-white'
+                      }`}
+                    >
+                      <Type className="w-3.5 h-3.5" /> Com Texto
+                    </button>
+                    <button
+                      onClick={() => setWithText(false)}
+                      className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${
+                        !withText
+                          ? 'bg-neon-cyan/80 text-dark shadow-[0_0_15px_rgba(0,243,255,0.3)]'
+                          : 'text-gray-500 hover:text-white'
+                      }`}
+                    >
+                      <X className="w-3.5 h-3.5" /> Sem Texto
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1605,8 +1625,10 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
               </div>
               <div className="flex flex-col items-center justify-center py-6 bg-dark-lighter/30 rounded-xl border border-white/5 shadow-inner">
                 <div className="text-5xl font-black text-white tracking-tighter flex items-baseline gap-2">
-                  <span className="text-neon-pink text-glow-pink">{(prompts || "").split(/\n\n+/).filter(p => p.trim().length > 20).length}</span>
-                  {subtitleCount > 0 && <span className="text-xl text-gray-500">/ {subtitleCount}</span>}
+                  <span className="text-neon-pink text-glow-pink">{generationProgress.current || 0}</span>
+                  {(generationProgress.total || subtitleCount) > 0 && (
+                    <span className="text-xl text-gray-500">/ {generationProgress.total || subtitleCount}</span>
+                  )}
                 </div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2 animate-pulse">
                   Prompts Gerados
@@ -1694,7 +1716,7 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
               Saída Gerada
             </h3>
             <div className="flex gap-2">
-              {prompts && (
+              {prompts && !isGenerating && (
                 <button 
                   onClick={handleClearPrompts}
                   className="px-3 py-1 bg-red-500/10 border border-red-500/30 text-red-500 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all"
@@ -1751,7 +1773,7 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
               )}
               <button 
                 onClick={() => prompts && setShowFullOutput(true)}
-                disabled={!prompts}
+                disabled={!prompts || isGenerating}
                 className="px-3 py-1 bg-white/5 border border-white/10 text-gray-400 rounded-lg text-[9px] font-black uppercase tracking-widest hover:text-white hover:border-white/30 transition-all disabled:opacity-30"
               >
                 Visualizar
@@ -1803,7 +1825,42 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
               )}
             </AnimatePresence>
 
-            {prompts ? (
+            {isGenerating ? (
+              <div className="h-full flex flex-col items-center justify-center text-center space-y-6 py-12">
+                {/* Circular Spinner */}
+                <div className="relative flex items-center justify-center">
+                  {/* Glowing background */}
+                  <div className="absolute w-24 h-24 rounded-full bg-neon-pink/10 blur-xl animate-pulse" />
+                  
+                  {/* Outer spinning ring */}
+                  <div className="w-20 h-20 rounded-full border-4 border-t-neon-pink border-r-transparent border-b-neon-purple border-l-transparent animate-spin" />
+                  
+                  {/* Inner spinning ring (counter-rotation) */}
+                  <div 
+                    className="absolute w-16 h-16 rounded-full border-4 border-t-transparent border-r-neon-cyan border-b-transparent border-l-neon-cyan opacity-70"
+                    style={{ animation: 'spin 2s linear infinite reverse' }}
+                  />
+                  
+                  {/* Central icon */}
+                  <div className="absolute flex items-center justify-center animate-pulse">
+                    <Wand2 className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="text-lg font-black text-white uppercase tracking-wider">
+                    Criando Prompts
+                  </h4>
+                  <div className="text-4xl font-black text-neon-pink text-glow-pink flex items-baseline justify-center gap-1">
+                    <span>{generationProgress.current || 0}</span>
+                    <span className="text-lg text-gray-500">/ {generationProgress.total || subtitleCount}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest animate-pulse max-w-xs mx-auto">
+                    {generationProgress.step || "Refinando prompts..."}
+                  </p>
+                </div>
+              </div>
+            ) : prompts ? (
               <div className={`transition-all duration-700 ${showScanner ? 'blur-[1px] opacity-70 scale-[0.99]' : 'blur-0 opacity-100 scale-100'}`}>
                 <div className="h-full overflow-hidden italic line-clamp-[12] text-gray-500 opacity-50 select-none">
                   {prompts}
@@ -1824,14 +1881,8 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
               </div>
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-center text-gray-500 italic space-y-4">
-                {isGenerating ? (
-                  <LoadingSpinner message={generationProgress.step || "Refinando prompts..."} size="md" />
-                ) : (
-                  <>
-                    <ImageIcon className="w-12 h-12 opacity-20" />
-                    <p className="text-[10px] uppercase tracking-widest">Seus prompts aparecerão aqui...</p>
-                  </>
-                )}
+                <ImageIcon className="w-12 h-12 opacity-20" />
+                <p className="text-[10px] uppercase tracking-widest">Seus prompts aparecerão aqui...</p>
               </div>
             )}
           </div>
