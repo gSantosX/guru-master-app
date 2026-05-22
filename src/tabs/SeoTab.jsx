@@ -12,8 +12,29 @@ export const SeoTab = ({ isActive, setActiveTab }) => {
   const [seoResult, setSeoResult] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
   const [isFiction, setIsFiction] = useState(false);
-  const [scripts] = useCloudStorage('scripts', []);
+  const [scripts, setScripts] = useCloudStorage('scripts', []);
   const [seoPools, setSeoPools] = useCloudStorage('seo_pools', []);
+
+  // Sync scripts from cache instantly when a new script is saved in ScriptTab
+  useEffect(() => {
+    const syncFromCache = () => {
+      try {
+        const cached = localStorage.getItem('guru_cloud_scripts');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            setScripts(parsed);
+          }
+        }
+      } catch (e) {
+        console.warn('[SeoTab] Falha ao sincronizar cache de roteiros:', e);
+      }
+    };
+
+    syncFromCache();
+    window.addEventListener('guru_scripts_updated', syncFromCache);
+    return () => window.removeEventListener('guru_scripts_updated', syncFromCache);
+  }, [setScripts]);
 
   // Tela Final & Cards
   const [endScreenCount, setEndScreenCount] = useState(3);
@@ -125,7 +146,8 @@ Gere 2 títulos virais alternativos baseados no tema. Eles devem ser muito forte
       if (titlesMatch) {
         sections.titles = titlesMatch[1].trim().split('\n')
           .map(t => t.replace(/^[\d\.\-\*\s]+/, '').replace(/^["']|["']$/g, '').trim())
-          .filter(t => t.length > 0);
+          .filter(t => t.length > 0)
+          .slice(0, 2);
       }
 
       setSeoResult(sections);
@@ -450,7 +472,7 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
                    )}
 
                    {/* Títulos Gerados A/B */}
-                   {Array.isArray(seoResult.titles) ? seoResult.titles.map((title, idx) => (
+                   {Array.isArray(seoResult.titles) ? seoResult.titles.slice(0, 2).map((title, idx) => (
                      <div key={idx} className="bg-black/30 border border-white/5 rounded-xl p-3 flex items-center justify-between gap-4 group/title hover:border-green-500/30 transition-colors">
                        <div className="flex items-center gap-3 flex-1 min-w-0">
                          <span className="text-[9px] font-bold uppercase tracking-wider bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded shrink-0">

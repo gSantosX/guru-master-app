@@ -95,7 +95,7 @@ export const VideoCoverTab = ({ isActive }) => {
     // Destructuring global state for easier use
     const { 
         selectedScript, 
-        titles, 
+        titles: rawTitles, 
         shockWords, 
         covers, 
         coverPrefs, 
@@ -104,6 +104,54 @@ export const VideoCoverTab = ({ isActive }) => {
 
     // Helper to update specific parts of the coverState
     const updateCoverState = (updates) => setCoverState(prev => ({ ...prev, ...updates }));
+
+    // Filter to ensure only Título Original, Teste A/B 1, and Teste A/B 2 remain
+    const titles = [];
+    let abCount = 0;
+    for (const t of (rawTitles || [])) {
+        if (t.isOriginal) {
+            titles.push(t);
+        } else {
+            abCount++;
+            if (abCount <= 2) {
+                titles.push({
+                    ...t,
+                    label: `Teste A/B ${abCount}`
+                });
+            }
+        }
+    }
+
+    // Cleanup persisted titles to remove any stale or extra A/B states
+    useEffect(() => {
+        if (coverState.titles) {
+            let currentAbCount = 0;
+            const cleaned = [];
+            let needsCleanup = false;
+            for (const t of coverState.titles) {
+                if (t.isOriginal) {
+                    cleaned.push(t);
+                } else {
+                    currentAbCount++;
+                    if (currentAbCount <= 2) {
+                        const expectedLabel = `Teste A/B ${currentAbCount}`;
+                        if (t.label !== expectedLabel) {
+                            needsCleanup = true;
+                        }
+                        cleaned.push({
+                            ...t,
+                            label: expectedLabel
+                        });
+                    } else {
+                        needsCleanup = true;
+                    }
+                }
+            }
+            if (needsCleanup) {
+                setCoverState(prev => ({ ...prev, titles: cleaned }));
+            }
+        }
+    }, [coverState.titles, setCoverState]);
 
     const [scripts, setScripts] = useState([]);
     const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
@@ -176,11 +224,11 @@ export const VideoCoverTab = ({ isActive }) => {
             if (!apiKey) throw new Error('Chave Gemini não configurada.');
 
             const prompt = `Você é um ESPECIALISTA ELITE em CTR, Copywriting e Algoritmos do YouTube.
-
+ 
 TÍTULO ORIGINAL DO VÍDEO: "${originalTitle}"
-
+ 
 MISSÃO: Criar 2 variações de título com altíssimo potencial de viralização, MAIS 3 Palavras Choque para a thumbnail.
-
+ 
 ---
 ## ANATOMIA DE TÍTULO VIRAL (aplique em AMBAS as variações)
 Todo título deve ter simultaneamente:
@@ -189,7 +237,7 @@ Todo título deve ter simultaneamente:
 3. EMOÇÃO PRIMÁRIA: Escolha UMA — medo, curiosidade, esperança, indignação ou surpresa
 4. COMPRIMENTO: Entre 40 e 80 caracteres (ideal para YouTube feed e Shorts)
 5. PALAVRA DE ABERTURA DE IMPACTO: A primeira palavra deve ser a mais forte da frase
-
+ 
 ---
 ## VARIAÇÃO 1 — GATILHO: CURIOSIDADE EXTREMA
 Estrutura obrigatória: [Revelação inesperada] + [Contexto específico] + [Implicação pessoal implícita]
@@ -197,14 +245,14 @@ Estrutura obrigatória: [Revelação inesperada] + [Contexto específico] + [Imp
 - Evite explicar demais — o mistério é o gancho
 - A variação NÃO deve repetir palavras do título original
 - is_best: false
-
+ 
 ## VARIAÇÃO 2 — GATILHO: PROMESSA IRRESISTÍVEL + URGÊNCIA
 Estrutura obrigatória: [Resultado específico e concreto] + [Tempo ou condição] + [Elemento de exclusividade ou urgência]
-- Use números quando possível (aumentam CTR em até 36%)
+- Use numbers quando possível (aumentam CTR em até 36%)
 - A promessa deve parecer alcançável mas surpreendente
 - A variação NÃO deve repetir palavras da Variação 1
 - is_best: true (esta é a mais viral)
-
+ 
 ---
 ## PALAVRAS CHOQUE PARA THUMBNAIL
 Palavras de impacto visual máximo para usar em sobreposição de texto na capa:
@@ -212,14 +260,14 @@ Palavras de impacto visual máximo para usar em sobreposição de texto na capa:
 - "two": DUAS palavras — cria contradição ou promessa (máx 12 letras cada). Exemplos: SÓ ISSO?, POR QUÊ?, FOI TARDE
 - "three": TRÊS palavras — frase de impacto completa. Exemplos: VAI MUDAR TUDO, NÃO ERA ASSIM, SABIA DESDE SEMPRE
 IMPORTANTE: Use o MESMO IDIOMA do título original. Letras maiúsculas.
-
+ 
 ---
 ## BLACKLIST — NÃO USE
 ❌ Palavras genéricas: "incrível", "surpreendente", "chocante" sem substância
 ❌ Estruturas batidas: "A verdade que ninguém conta", "O segredo que escondem"
 ❌ Títulos com mais de 85 caracteres
 ❌ Títulos que serviriam para qualquer vídeo
-
+ 
 ---
 ## FORMATO DE RETORNO
 Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem explicações):
@@ -258,8 +306,8 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
             updateCoverState({
                 titles: [
                     { text: originalTitle.substring(0, 100), label: 'Título Original', isOriginal: true },
-                    { text: (parsed.variations?.[0]?.text || 'Erro ao gerar').substring(0, 100), label: parsed.variations?.[0]?.label || 'Variação 1', is_best: Boolean(parsed.variations?.[0]?.is_best) },
-                    { text: (parsed.variations?.[1]?.text || 'Erro ao gerar').substring(0, 100), label: parsed.variations?.[1]?.label || 'Variação 2', is_best: Boolean(parsed.variations?.[1]?.is_best) }
+                    { text: (parsed.variations?.[0]?.text || 'Erro ao gerar').substring(0, 100), label: 'Teste A/B 1', is_best: Boolean(parsed.variations?.[0]?.is_best) },
+                    { text: (parsed.variations?.[1]?.text || 'Erro ao gerar').substring(0, 100), label: 'Teste A/B 2', is_best: Boolean(parsed.variations?.[1]?.is_best) }
                 ],
                 shockWords: {
                     one: sw.one || sw.palavra1 || sw.first || '-',
@@ -271,11 +319,13 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
             });
         } catch (error) {
             console.error('Erro ao gerar variações:', error);
-            setTitles([
-                { text: originalTitle, label: 'Título Original', isOriginal: true },
-                { text: 'Falha ao conectar.', label: 'Variação 1', is_best: false },
-                { text: 'Tente novamente.', label: 'Variação 2', is_best: true }
-            ]);
+            updateCoverState({
+                titles: [
+                    { text: originalTitle, label: 'Título Original', isOriginal: true },
+                    { text: 'Falha ao conectar.', label: 'Teste A/B 1', is_best: false },
+                    { text: 'Tente novamente.', label: 'Teste A/B 2', is_best: true }
+                ]
+            });
         } finally {
             setIsGeneratingTitles(false);
         }
