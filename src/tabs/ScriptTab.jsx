@@ -346,6 +346,27 @@ Sua missão é criar um roteiro MAGISTRAL, PROFISSIONAL e ALTAMENTE ENGAJADOR.
 - O texto deve estar PRONTO PARA NARRAR, sem interrupções técnicas.
 - Fluxo contínuo com ganchos (loops) entre as seções.
 
+--- DIRETRIZES DE FORMATO E CONTEÚDO ---
+- Natureza do Conteúdo (${natureza}): ${
+  natureza.includes('Dados Reais') 
+    ? 'Baseie a escrita em dados reais, fatos históricos, estatísticas precisas e eventos verídicos reais.' 
+    : 'Use criatividade pura, elementos de ficção, metáforas imaginativas e storytelling livre.'
+}
+- Protocolo de Segurança (${safety}): ${
+  safety.includes('Seguro') && !safety.includes('Meio')
+    ? 'Escreva um texto 100% seguro para famílias (family-friendly), evitando palavras chocantes, violentas, polêmicas ou termos que possam desmonetizar o vídeo no YouTube.'
+    : safety.includes('Meio Seguro')
+    ? 'Equilibre tensão e realismo, permitindo drama e mistério sem ultrapassar os limites de termos excessivamente explícitos.'
+    : 'Sem filtros restritivos na linguagem (Formato Livre): use termos de alto impacto, drama bruto e máxima tensão narrativa.'
+}
+- Formato Estrutural (${formato}): ${
+  formato.includes('Por Partes')
+    ? 'Estruture o roteiro em partes complementares com transições e ganchos (loops) naturais de conexão, mas sem incluir marcações textuais como "Parte 1", "Introdução", etc.'
+    : formato.includes('Lista')
+    ? 'Desenvolva o roteiro em formato de tópicos, itens ou pontos ditos no próprio texto (ex: "Primeiro...", "Segundo...", "O terceiro fator..."), integrando-os de forma fluida à narração.'
+    : 'Desenvolva como um texto corrido contínuo e orgânico, sem divisões ou quebras estruturais visíveis.'
+}
+
 Título: ${titulo}
 Nicho: ${nicho}
 DNA: ${dna} | Alma: ${alma} | CTA: ${cta}
