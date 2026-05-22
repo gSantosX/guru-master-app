@@ -55,12 +55,113 @@ const LANGUAGES = [
   { name: "Global (Inglês Massivo)", code: "en", region: "US", rpm: 3.00 }
 ];
 
+function getInstantNiche(topic, language) {
+  const baseTopic = topic ? topic.trim() : "Mistérios da História Oculta";
+  
+  const keywords = baseTopic.toLowerCase();
+  let categoryMultiplier = 1.5;
+  let nicheName = `Canal de ${baseTopic}`;
+  
+  if (keywords.includes("curiosidade") || keywords.includes("fato") || keywords.includes("mistério") || keywords.includes("história")) {
+    nicheName = `Curiosidades & Fatos Macabros Inexplorados`;
+    categoryMultiplier = 1.3;
+  } else if (keywords.includes("finança") || keywords.includes("dinheiro") || keywords.includes("cripto") || keywords.includes("invest")) {
+    nicheName = `Finanças Pessoais e Segredos de Micro-Investimentos`;
+    categoryMultiplier = 2.4;
+  } else if (keywords.includes("saúde") || keywords.includes("corpo") || keywords.includes("mente") || keywords.includes("medita")) {
+    nicheName = `Biohacking Mental e Rotinas de Sono Profundo`;
+    categoryMultiplier = 1.8;
+  } else {
+    nicheName = `Mistérios do Infra-Nicho de ${baseTopic}`;
+    categoryMultiplier = 1.6;
+  }
+
+  return {
+    nicheName: nicheName,
+    viralPotential: 9,
+    saturationScore: 3,
+    productionDifficulty: 2,
+    categoryMultiplier: categoryMultiplier,
+    trendMomentum: "Nascente (Oceano Azul)",
+    strategyDescription: `Criação automatizada de vídeos em formato de mini-documentários ou fatos rápidos focados no sub-tema de ${baseTopic}. A produção será baseada em roteirização por IA, vozes cinemáticas e cortes dinâmicos de imagens de arquivo e animações rápidas.`,
+    gapAnalysis: `A maioria dos canais concorrentes foca em abordagens genéricas e superficiais. O gap tático aqui é explorar sub-tópicos hiper-específicos com forte apelo de curiosidade mórbida ou ganho financeiro prático imediato, utilizando loops abertos nos primeiros 5 segundos.`,
+    channelArchetype: "Mini-Documentários Rápidos de 5-7 min",
+    monetizationStrategy: `Parceria com plataformas de info-produtos (Clickbank/Hotmart) vendendo e-books e guias especializados ocultos no primeiro comentário fixado, além de patrocínios de ferramentas do nicho.`,
+    toolsRequired: ["ElevenLabs (Voz ultra-realista)", "Midjourney (Imagens cinematográficas)", "CapCut (Edição dinâmica)"],
+    targetAudience: "Jovens e adultos obcecados por mistérios ou auto-aperfeiçoamento, que adoram consumir conteúdo rápido de alta qualidade visual.",
+    channelNames: [`Segredos de ${baseTopic}`, `${baseTopic} Sem Filtros`, `O Efeito ${baseTopic}`],
+    videoThemes: [
+      `A Verdade Oculta que Ninguém te Conta sobre ${baseTopic}`,
+      `Como o algoritmo escondeu este segredo de ${baseTopic}`,
+      `3 Coisas que você deveria saber sobre ${baseTopic} antes de ser tarde`
+    ],
+    titleStructures: [
+      `O Lado Sombrio de ${baseTopic} que a Mídia Esconde`,
+      `Por Que 99% das Pessoas Falham em ${baseTopic} (E Como Evitar)`,
+      `O Segredo de 3 Mil Anos sobre ${baseTopic} Revelado`
+    ],
+    thumbnailIdeas: [
+      `Imagem com contraste absurdo mostrando um elemento oculto e uma seta vermelha apontando de leve`,
+      `Rosto expressivo gerado por IA com expressão de espanto com fundo escuro e texto gigante neon`
+    ],
+    thumbnailStyle: {
+      primaryColor: "#a855f7",
+      secondaryColor: "#06b6d4",
+      mood: "Cinematográfico Misterioso",
+      keyElement: "Contraste e Texturas Escuras"
+    },
+    competitors: [
+      { name: "Canal Alpha", strength: "Edição rápida", weakness: "Falta de profundidade nos ganchos emocionais" },
+      { name: "Canal Beta", strength: "Miniaturas chamativas", weakness: "Vozes robóticas genéricas de baixa qualidade" }
+    ],
+    isRefinement: true
+  };
+}
+
+function getInstantStrategy(nicheName) {
+  return `**1. DIAGNÓSTICO DO NICHO**
+Este nicho de "${nicheName}" baseia-se na forte psicologia da curiosidade e na busca por respostas rápidas. Ele vende o sentimento de exclusividade e acesso a informações secretas ou facilitadas que poucas pessoas dominam.
+
+**2. FÓRMULA DE SUCESSO**
+- **Gancho Inicial Inabalável:** Primeiros 5 segundos com uma pergunta retórica provocativa ou uma revelação chocante.
+- **Roteiro em Loops de Curiosidade:** Abrir um loop de história e só fechar no final do vídeo para manter a retenção acima de 60%.
+- **Design de Som Imersivo:** Efeitos sonoros sutis (woosh, risers) a cada mudança de cena (que deve ocorrer a cada 3 segundos).
+
+**3. VOZ DA AUDIÊNCIA (O QUE ELES BUSCAM)**
+- Querem respostas práticas e rápidas, sem enrolação inicial.
+- Buscam conexão emocional (medo de perder algo ou desejo extremo de ganho).
+- Sentem falta de narradores com tom de voz confiável e imagens que ilustrem exatamente o que está sendo dito.
+
+**4. LACUNA DE OPORTUNIDADE**
+Os canais atuais utilizam banco de imagens genérico e vozes do Azure/Google Cloud saturadas. Criar uma voz polida (ElevenLabs) focada em contar histórias exclusivas (storytelling) em vez de fatos soltos criará um monopólio de audiência imediato.
+
+**5. DICA DE OURO REPLICÁVEL**
+Insira um comentário fixado com um link de afiliado ultra segmentado. Por exemplo: se o vídeo fala de produtividade, promova um template notion ou e-book de R$ 27 nos primeiros 10 segundos com uma chamada de ação ("Veja o segredo no comentário fixado").
+
+**6. ARMADILHA A EVITAR**
+Fazer introduções longas com vinhetas ou pedir curtidas nos primeiros 2 minutos. Isso destrói a retenção do YouTube de imediato e impede que o algoritmo recomende seu vídeo.`;
+}
+
+function getInstantNicheTitles(nicheName, lang) {
+  return `1. O Lado Oculto de ${nicheName} que Poucos Conhecem
+2. O Erro que 97% das Pessoas Cometem ao Tentar Entender ${nicheName}
+3. Por que Você Deve Começar a Prestar Atenção em ${nicheName} Agora Mesmo
+4. O Segredo Revelado sobre ${nicheName} que Pode Mudar Seu Canal
+5. Como os Maiores Canais Dominam o Mercado de ${nicheName}
+6. A Verdade Inconveniente que Ninguém te Conta sobre ${nicheName}
+7. 3 Estratégias Práticas de ${nicheName} para Aplicar em Segundos
+8. O Guia Secreto de ${nicheName} que o Algoritmo Esconde de Você
+9. Como Dominei o Mercado de ${nicheName} Usando Apenas Inteligência Artificial
+10. O Que Acontece Se Você Ignorar Essa Nova Tendência de ${nicheName}`;
+}
+
 export const NicheIdentifierTab = ({ setActiveTab }) => {
   const { configs, showToast } = useSystemStatus();
   const { setWhiskTrigger } = usePersistence();
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState(LANGUAGES[0]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isRefiningNiche, setIsRefiningNiche] = useState(false);
   const [result, setResult] = useState(null);
   const [copiedSection, setCopiedSection] = useState(null);
   const [loadingStep, setLoadingStep] = useState('');
@@ -132,109 +233,116 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
       } catch (e) {}
     }
 
-    setIsSearching(true);
-    setResult(null);
+    // Set instant pre-fill results
+    const instantResult = getInstantNiche(topic, language);
+    setResult(instantResult);
     setStrategyResult(null);
     setTitlesResult(null);
 
-    try {
-      const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
-      const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
-      if (!geminiKey) throw new Error("Chave Gemini não configurada!");
+    setIsSearching(true);
+    setIsRefiningNiche(true);
+    setLoadingStep('Mergulhando na API do YouTube');
 
-      // 1. Live Data Ingestion (YouTube API)
-      setLoadingStep('Mergulhando na API do YouTube');
-      let youtubeContextData = "Buscador de Dados Real-time indisponível no momento. Use sua intuição máxima pre-treinada.";
+    (async () => {
       try {
-           if (cachedYTData) {
-               console.log("Using cached YouTube context data for niche identification");
-               youtubeContextData = cachedYTData;
-           } else {
-               let searchUrl = '';
-               if(topic) {
-                    searchUrl = resolveApiUrl(`/api/youtube/search?part=snippet&type=video&q=${encodeURIComponent(topic)}&relevanceLanguage=${language.code}&regionCode=${language.region}&maxResults=10&order=viewCount`);
-               } else {
-                    searchUrl = resolveApiUrl(`/api/youtube/videos?part=snippet,statistics&chart=mostPopular&regionCode=${language.region}&maxResults=15`);
-               }
-               const ytRes = await fetch(searchUrl);
-               const ytData = await ytRes.json();
-               
-               if(ytData.items && ytData.items.length > 0) {
-                   const videoTitles = ytData.items.map(item => item.snippet?.title || item.title).join(" || ");
-                   youtubeContextData = `TOP VÍDEOS MAIS VISTOS E EM ALTA NESTE EXATO MOMENTO NA REGIÃO [${language.region}]:\n${videoTitles}\n(Cruze isso para construir o modelo perfeito de concorrência).`;
-                   
-                   // Save to cache
-                   sessionStorage.setItem(cacheKey, JSON.stringify({
-                     timestamp: Date.now(),
-                     data: youtubeContextData
-                   }));
-               }
-           }
-      } catch(e) {
-          console.warn("YouTube live ingestion failed", e);
+        const geminiKey = localStorage.getItem('guru_gemini_key')?.trim();
+        const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
+        if (!geminiKey) throw new Error("Chave Gemini não configurada!");
+
+        // 1. Live Data Ingestion (YouTube API)
+        let youtubeContextData = "Buscador de Dados Real-time indisponível no momento. Use sua intuição máxima pre-treinada.";
+        try {
+             if (cachedYTData) {
+                 console.log("Using cached YouTube context data for niche identification");
+                 youtubeContextData = cachedYTData;
+             } else {
+                 let searchUrl = '';
+                 if(topic) {
+                      searchUrl = resolveApiUrl(`/api/youtube/search?part=snippet&type=video&q=${encodeURIComponent(topic)}&relevanceLanguage=${language.code}&regionCode=${language.region}&maxResults=10&order=viewCount`);
+                 } else {
+                      searchUrl = resolveApiUrl(`/api/youtube/videos?part=snippet,statistics&chart=mostPopular&regionCode=${language.region}&maxResults=15`);
+                 }
+                 const ytRes = await fetch(searchUrl);
+                 const ytData = await ytRes.json();
+                 
+                 if(ytData.items && ytData.items.length > 0) {
+                     const videoTitles = ytData.items.map(item => item.snippet?.title || item.title).join(" || ");
+                     youtubeContextData = `TOP VÍDEOS MAIS VISTOS E EM ALTA NESTE EXATO MOMENTO NA REGIÃO [${language.region}]:\n${videoTitles}\n(Cruze isso para construir o modelo perfeito de concorrência).`;
+                     
+                     // Save to cache
+                     sessionStorage.setItem(cacheKey, JSON.stringify({
+                       timestamp: Date.now(),
+                       data: youtubeContextData
+                     }));
+                 }
+             }
+        } catch(e) {
+            console.warn("YouTube live ingestion failed", e);
+        }
+
+        setLoadingStep('Decodificando Estratégia Apex');
+
+        // 2. Strategy AI Generation V4 ORACLE
+        const prompt = `Você é um Cientista de Dados Supremo do YouTube.
+        Sua missão é identificar BURACOS (Gaps) escondidos na concorrência e criar o "Plano Tático Validado" de Baixíssimo Custo de Produção (Faceless), focando sempre na maior rentabilidade possível em Oceanos Azuis (sempre procure falhas na massa atual).
+        
+        TÓPICO PAI: "${topic || 'OS 3 INFRA-NICHOS OCULTOS MAIS LUCRATIVOS E FÁCEIS DO MOMENTO (Ex: Fatos Macabros ou Cripto-Gamer)'}"
+        MERCADO ALVO: "${language.name}"
+        
+        CONTEXTO: DADOS AO VIVO DO YOUTUBE HOJE NO MERCADO SELECIONADO:
+        """${youtubeContextData}"""
+        
+        REGRAS CRÍTICAS DE ENGENHARIA (NÃO AS QUEBRE):
+        - "saturationScore": TEM QUE SER BAIXO (1 a 4). Foque na variação inexplorada do nicho, nunca no nicho genérico saturado.
+        - "productionDifficulty": O ESFORÇO DEVE SER ZERO PARA O HUMANO. Grave essa nota como 1 a 3 no máximo. Sugira APENAS canais que possam ser 100%feitos com IA (Voz + Imagens base) sem câmera ou filmagem real.
+        - "gapAnalysis": A Falha Inimiga. Explique em uma frase exata por que os youtubers locais não estão vendo isso e qual a falha exata da concorrência que deixará seu vídeo dominar em cliques (O Oceano Azul).
+        - "monetizationStrategy": Vá MUITO ALÉM DO ADSENSE. Indique exatamente o tipo de afiliado, curso, CPA ou venda direta (Info-produto de R$ 47 a R$ 197) que se faz rios de dinheiro injetando silenciosamente nestes vídeos.
+        - "channelArchetype": Formato validado. Ex: "Vídeo-Listas Rápidas de 3min", "Mini-Documentários de 9min Estilo Detetive", etc.
+        
+        Retorne a resposta EXATAMENTE no seguinte formato JSON puro (sem marcações e com chaves em pt-BR adaptadas pra o modelo):
+        {
+          "nicheName": "O Micro-Nicho Encontrado (PT-BR)",
+          "viralPotential": 9,
+          "saturationScore": 2,
+          "productionDifficulty": 2,
+          "categoryMultiplier": 1.5,
+          "trendMomentum": "Nascente (Oceano Azul)",
+          "strategyDescription": "Explicação pragmática da tática validada de criação e escala do canal.",
+          "gapAnalysis": "A fraqueza fatal da concorrência (O Gap).",
+          "channelArchetype": "Estrutura Base de Tempo e Estilo Narrativo",
+          "monetizationStrategy": "Por trás dos panos: O que vender além de Views (Clickbank, Eduzz, Parceiros, etc).",
+          "toolsRequired": ["ElevenLabs (Voz Mágica)", "Midjourney (Imagens)", "CapCut (Edição Seca)"],
+          "targetAudience": "Mapeamento Psicológico de quem não consegue parar de ver isso.",
+          "channelNames": ["Nome Criativo 1", "Nome 2", "Nome 3"],
+          "videoThemes": ["Tema Inédito 1", "Tema Polêmico 2", "Tema 3"],
+          "titleStructures": ["Fórmula Matadora 1", "Fórmula 2", "Fórmula 3"],
+          "thumbnailIdeas": ["Como montar a Capa 1 (Alta Retenção)", "Ideia da Capa 2"],
+          "thumbnailStyle": {
+             "primaryColor": "#ff0080",
+             "secondaryColor": "#00f3ff",
+             "mood": "Cinematográfico Oculto",
+             "keyElement": "Contraste Alto"
+          },
+          "competitors": [
+             { "name": "Canal Rival A", "strength": "Efeitos visuais", "weakness": "Textos engessados sem gancho emocional" }
+          ]
+        }`;
+
+        const response = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey });
+        const cleanJson = response.replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(cleanJson);
+        
+        setResult(parsed);
+        saveToHistory(parsed, language);
+        showToast("IA: Nicho refinado!", "success");
+      } catch (error) {
+        console.error(error);
+        showToast("Falha ao refinar nicho: " + error.message, "error");
+      } finally {
+        setIsSearching(false);
+        setIsRefiningNiche(false);
       }
-
-      setLoadingStep('Decodificando Estratégia Apex');
-
-      // 2. Strategy AI Generation V4 ORACLE
-      const prompt = `Você é um Cientista de Dados Supremo do YouTube.
-      Sua missão é identificar BURACOS (Gaps) escondidos na concorrência e criar o "Plano Tático Validado" de Baixíssimo Custo de Produção (Faceless), focando sempre na maior rentabilidade possível em Oceanos Azuis (sempre procure falhas na massa atual).
-      
-      TÓPICO PAI: "${topic || 'OS 3 INFRA-NICHOS OCULTOS MAIS LUCRATIVOS E FÁCEIS DO MOMENTO (Ex: Fatos Macabros ou Cripto-Gamer)'}"
-      MERCADO ALVO: "${language.name}"
-      
-      CONTEXTO: DADOS AO VIVO DO YOUTUBE HOJE NO MERCADO SELECIONADO:
-      """${youtubeContextData}"""
-      
-      REGRAS CRÍTICAS DE ENGENHARIA (NÃO AS QUEBRE):
-      - "saturationScore": TEM QUE SER BAIXO (1 a 4). Foque na variação inexplorada do nicho, nunca no nicho genérico saturado.
-      - "productionDifficulty": O ESFORÇO DEVE SER ZERO PARA O HUMANO. Grave essa nota como 1 a 3 no máximo. Sugira APENAS canais que possam ser 100%feitos com IA (Voz + Imagens base) sem câmera ou filmagem real.
-      - "gapAnalysis": A Falha Inimiga. Explique em uma frase exata por que os youtubers locais não estão vendo isso e qual a falha exata da concorrência que deixará seu vídeo dominar em cliques (O Oceano Azul).
-      - "monetizationStrategy": Vá MUITO ALÉM DO ADSENSE. Indique exatamente o tipo de afiliado, curso, CPA ou venda direta (Info-produto de R$ 47 a R$ 197) que se faz rios de dinheiro injetando silenciosamente nestes vídeos.
-      - "channelArchetype": Formato validado. Ex: "Vídeo-Listas Rápidas de 3min", "Mini-Documentários de 9min Estilo Detetive", etc.
-      
-      Retorne a resposta EXATAMENTE no seguinte formato JSON puro (sem marcações e com chaves em pt-BR adaptadas pra o modelo):
-      {
-        "nicheName": "O Micro-Nicho Encontrado (PT-BR)",
-        "viralPotential": 9,
-        "saturationScore": 2,
-        "productionDifficulty": 2,
-        "categoryMultiplier": 1.5,
-        "trendMomentum": "Nascente (Oceano Azul)",
-        "strategyDescription": "Explicação pragmática da tática validada de criação e escala do canal.",
-        "gapAnalysis": "A fraqueza fatal da concorrência (O Gap).",
-        "channelArchetype": "Estrutura Base de Tempo e Estilo Narrativo",
-        "monetizationStrategy": "Por trás dos panos: O que vender além de Views (Clickbank, Eduzz, Parceiros, etc).",
-        "toolsRequired": ["ElevenLabs (Voz Mágica)", "Midjourney (Imagens)", "CapCut (Edição Seca)"],
-        "targetAudience": "Mapeamento Psicológico de quem não consegue parar de ver isso.",
-        "channelNames": ["Nome Criativo 1", "Nome 2", "Nome 3"],
-        "videoThemes": ["Tema Inédito 1", "Tema Polêmico 2", "Tema 3"],
-        "titleStructures": ["Fórmula Matadora 1", "Fórmula 2", "Fórmula 3"],
-        "thumbnailIdeas": ["Como montar a Capa 1 (Alta Retenção)", "Ideia da Capa 2"],
-        "thumbnailStyle": {
-           "primaryColor": "#ff0080",
-           "secondaryColor": "#00f3ff",
-           "mood": "Cinematográfico Oculto",
-           "keyElement": "Contraste Alto"
-        },
-        "competitors": [
-           { "name": "Canal Rival A", "strength": "Efeitos visuais", "weakness": "Textos engessados sem gancho emocional" }
-        ]
-      }`;
-
-      const response = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey });
-      const cleanJson = response.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(cleanJson);
-      
-      setResult(parsed);
-      saveToHistory(parsed, language);
-    } catch (error) {
-      console.error(error);
-      showToast("Falha Sistêmica na Extração do Youtube/Gemini:\n" + error.message, "error");
-    } finally {
-      setIsSearching(false);
-      setLoadingStep('');
-    }
+    })();
   };
 
   const handleCopy = (text, section) => {
@@ -306,9 +414,13 @@ export const NicheIdentifierTab = ({ setActiveTab }) => {
   const runStrategyAnalysis = async () => {
     if (!result) return;
     setIsAnalyzingStrategy(true);
-    setStrategyResult(null);
+    
+    // Prefill Strategy Report
+    const prefillStrategy = getInstantStrategy(result.nicheName);
+    setStrategyResult(prefillStrategy);
 
-    const prompt = `Você é um MENTOR ESTRATÉGICO SÊNIOR de YouTube — especialista em análise de nichos, crescimento orgânico e replicação de estratégias virais em oceanos azuis.
+    (async () => {
+      const prompt = `Você é um MENTOR ESTRATÉGICO SÊNIOR de YouTube — especialista em análise de nichos, crescimento orgânico e replicação de estratégias virais em oceanos azuis.
 
 NICHO EM ANÁLISE: "${result.nicheName}"
 ESTRUTURA BASE: "${result.strategyDescription}"
@@ -332,25 +444,31 @@ O erro fatal que os iniciantes neste nicho sempre cometem e que você deve fugir
 
 REGRAS: Use **NEGRITO** para os títulos da seção.`;
 
-    try {
-      const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
-      const res = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey });
-      if (!res) throw new Error('Resposta vazia da IA.');
-      setStrategyResult(res);
-    } catch (err) {
-      console.error(err);
-      setStrategyResult(`Erro na análise estratégica: ${err.message}`);
-    } finally {
-      setIsAnalyzingStrategy(false);
-    }
+      try {
+        const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
+        const res = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey });
+        if (!res) throw new Error('Resposta vazia da IA.');
+        setStrategyResult(res);
+        showToast("IA: Estratégia refinada!", "success");
+      } catch (err) {
+        console.error(err);
+        showToast("Erro ao refinar estratégia: " + err.message, "error");
+      } finally {
+        setIsAnalyzingStrategy(false);
+      }
+    })();
   };
 
   const runTitlesAnalysis = async () => {
     if (!result) return;
     setIsAnalyzingTitles(true);
-    setTitlesResult(null);
+    
+    // Prefill Titles
+    const prefillTitles = getInstantNicheTitles(result.nicheName, selectedLanguageTitle);
+    setTitlesResult(prefillTitles);
 
-    const prompt = `Você é um ESPECIALISTA ELITE em CTR, Algoritmos do YouTube e Psicologia do Clique.
+    (async () => {
+      const prompt = `Você é um ESPECIALISTA ELITE em CTR, Algoritmos do YouTube e Psicologia do Clique.
 NICHO EM ANÁLISE: "${result.nicheName}"
 PÚBLICO ALVO: "${result.targetAudience}"
 GAP A EXPLORAR: "${result.gapAnalysis}"
@@ -368,17 +486,19 @@ REGRAS CRÍTICAS:
 
 Retorne APENAS a lista numerada.`;
 
-    try {
-      const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
-      const res = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey });
-      if (!res) throw new Error('Resposta vazia da IA.');
-      setTitlesResult(res);
-    } catch (err) {
-      console.error(err);
-      setTitlesResult(`Erro ao gerar títulos: ${err.message}`);
-    } finally {
-      setIsAnalyzingTitles(false);
-    }
+      try {
+        const gptKey = localStorage.getItem('guru_gpt_key')?.trim();
+        const res = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey });
+        if (!res) throw new Error('Resposta vazia da IA.');
+        setTitlesResult(res);
+        showToast("IA: Títulos refinados!", "success");
+      } catch (err) {
+        console.error(err);
+        showToast("Erro ao refinar títulos: " + err.message, "error");
+      } finally {
+        setIsAnalyzingTitles(false);
+      }
+    })();
   };
 
   return (
@@ -429,29 +549,29 @@ Retorne APENAS a lista numerada.`;
                    <option key={lang.code} value={lang.code}>{lang.name}</option>
                  ))}
                </select>
-            </div>
+             </div>
 
-            <button 
-              onClick={handleSearch}
-              disabled={isSearching}
-              className="w-full py-4 bg-gradient-to-r from-neon-purple to-neon-pink text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(255,44,182,0.4)] hover:shadow-[0_0_30px_rgba(0,243,255,0.6)] hover:from-neon-cyan hover:to-blue-600 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 h-[52px]"
-            >
-               {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <RadarScanIcon />}
-               {isSearching ? loadingStep : "Extrair Mercado"}
-            </button>
+             <button 
+               onClick={handleSearch}
+               disabled={isSearching}
+               className="w-full py-4 bg-gradient-to-r from-neon-purple to-neon-pink text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(255,44,182,0.4)] hover:shadow-[0_0_30px_rgba(0,243,255,0.6)] hover:from-neon-cyan hover:to-blue-600 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 h-[52px]"
+             >
+                {isSearching ? <Loader2 className="w-4 h-4 animate-spin" /> : <RadarScanIcon />}
+                {isSearching ? loadingStep : "Extrair Mercado"}
+             </button>
           </div>
         </div>
 
         {/* Results View */}
         <AnimatePresence mode="wait">
-           {isSearching ? (
+           {isSearching && !result ? (
               <motion.div 
                  key="loading"
                  initial={{ opacity: 0 }} 
                  animate={{ opacity: 1 }} 
                  exit={{ opacity: 0 }}
                  className="glass-card p-32 flex flex-col items-center justify-center border border-white/5 relative overflow-hidden"
-               >
+              >
                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none" />
                  <LoadingSpinner message="Realizando Varredura Continental..." size="xl" />
                  <p className="mt-8 text-[11px] font-black text-neon-purple uppercase tracking-[0.4em] animate-pulse glow-text">{loadingStep}</p>
@@ -466,7 +586,13 @@ Retorne APENAS a lista numerada.`;
                  animate={{ opacity: 1, y: 0 }}
                  className="flex flex-col gap-6"
               >
-                 <div className="flex justify-end mb-2 gap-2">
+                 <div className="flex justify-end mb-2 gap-2 items-center">
+                    {isRefiningNiche && (
+                       <div className="flex items-center gap-2 px-3 py-1.5 bg-neon-purple/20 border border-neon-purple/30 rounded-xl text-[10px] font-black text-neon-purple uppercase tracking-widest animate-pulse mr-auto">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Refinando Nicho...
+                       </div>
+                    )}
                     <button 
                       onClick={redoSearch}
                       className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl text-gray-400 hover:text-white transition-all font-black text-xs uppercase tracking-widest border border-white/5"
@@ -559,11 +685,18 @@ Retorne APENAS a lista numerada.`;
                     {/* SECTION 1: AUTO STRATEGY */}
                     <div className="bg-black/40 border-2 border-white/10 rounded-2xl p-6 relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-2 h-full bg-neon-purple" />
-                      <h3 className="text-xl font-black text-white flex items-center gap-3 mb-6">
-                        <Brain className="text-neon-purple w-6 h-6" /> Análise Estratégica Automática
+                      <h3 className="text-xl font-black text-white flex items-center justify-between gap-3 mb-6">
+                        <span className="flex items-center gap-3">
+                          <Brain className="text-neon-purple w-6 h-6" /> Análise Estratégica Automática
+                        </span>
+                        {isAnalyzingStrategy && (
+                          <span className="flex items-center gap-1.5 px-2 py-1 bg-neon-purple/20 border border-neon-purple/30 rounded-lg text-[9px] font-black text-neon-purple uppercase tracking-widest animate-pulse">
+                            <Loader2 className="w-3 h-3 animate-spin" /> Refinando...
+                          </span>
+                        )}
                       </h3>
                       
-                      {isAnalyzingStrategy ? (
+                      {isAnalyzingStrategy && !strategyResult ? (
                         <div className="flex flex-col items-center justify-center py-10 space-y-4">
                            <Loader2 className="w-8 h-8 text-neon-purple animate-spin" />
                            <p className="text-xs font-black text-neon-purple uppercase tracking-[0.2em] animate-pulse">
@@ -597,7 +730,14 @@ Retorne APENAS a lista numerada.`;
                     {/* SECTION 2: TITLE GENERATOR */}
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative">
                        <h4 className="text-sm font-black text-orange-400 uppercase tracking-[0.2em] flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 border-b border-white/5 pb-4">
-                          <span className="flex items-center gap-2"><Type className="w-4 h-4" /> Gerador de Títulos Virais</span>
+                          <span className="flex items-center gap-2">
+                            <Type className="w-4 h-4" /> Gerador de Títulos Virais
+                            {isAnalyzingTitles && (
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-neon-cyan/20 border border-neon-cyan/30 rounded text-[9px] font-black text-neon-cyan uppercase tracking-widest animate-pulse ml-2">
+                                <Loader2 className="w-2.5 h-2.5 animate-spin" /> Refinando...
+                              </span>
+                            )}
+                          </span>
                           <div className="flex items-center gap-2 w-full md:w-auto">
                             <select
                               value={selectedLanguageTitle}
@@ -619,7 +759,7 @@ Retorne APENAS a lista numerada.`;
                           </div>
                        </h4>
 
-                       {isAnalyzingTitles ? (
+                       {isAnalyzingTitles && !titlesResult ? (
                           <div className="flex flex-col items-center justify-center py-12 space-y-4 bg-black/20 rounded-xl border border-white/5">
                              <Loader2 className="w-8 h-8 text-neon-cyan animate-spin" />
                              <p className="text-xs font-black text-neon-cyan uppercase tracking-[0.2em] animate-pulse">

@@ -132,6 +132,71 @@ const visualStylesGroups = [
   }
 ];
 
+function getInstantImagePromptsArray(blocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, type) {
+  const isVideo = type === 'video';
+
+  const styleStr = genero && genero !== 'Automático' ? genero : (visualDNA.scenario || 'cinematográfico realista');
+  const lightingStr = visualDNA.lighting || 'iluminação natural suave cinematográfica';
+  const paletteStr = visualDNA.palette || 'cores realistas e contrastadas';
+  
+  const camStr = Array.isArray(cameraMovimento) && cameraMovimento.length > 0 && !cameraMovimento.includes('Automático')
+    ? cameraMovimento.join(', ')
+    : 'na altura dos olhos, travelling suave';
+
+  const compStr = Array.isArray(composicao) && composicao.length > 0 && !composicao.includes('Automático')
+    ? composicao.join(', ')
+    : 'plano médio';
+
+  const focusStr = Array.isArray(focoLente) && focoLente.length > 0 && !focoLente.includes('Automático')
+    ? focoLente.join(', ')
+    : 'foco nítido com leve desfoque de fundo';
+
+  const atmStr = Array.isArray(atmosferaLuz) && atmosferaLuz.length > 0 && !atmosferaLuz.includes('Automático')
+    ? atmosferaLuz.join(', ')
+    : 'atmosfera cinematográfica imersiva';
+
+  return blocks.map((block, idx) => {
+    const id = idx + 1;
+    const cleanBlock = block ? block.trim() : `Cena ${id}`;
+
+    if (isVideo) {
+      const promptText = `Um plano cinematográfico detalhado retratando: ${cleanBlock}. O estilo visual segue a estética de ${styleStr}, filmado com câmera em ${camStr}. A composição está em ${compStr}, com lentes configuradas em ${focusStr}. A iluminação é de ${lightingStr}, com uma paleta de cores baseada em ${paletteStr}, criando uma ${atmStr}.`;
+      const negativeText = `baixa qualidade, borrado, distorção, pixelado, artefatos de compressão, câmera tremida, anatomia incorreta, mãos distorcidas, rosto deformado, expressão facial artificial, movimentos robóticos, física irreal, texto na tela, marca d'água, legenda, CGI barato.`;
+      return `[PROMPT]: ${promptText}[NEGATIVO]: ${negativeText}`;
+    } else {
+      const promptText = `Ultra-Realista — Fotografia cinematográfica 8K, estilo ${styleStr}, câmera ${camStr}, composição ${compStr}, foco ${focusStr}. Iluminação ${lightingStr}, paleta de cores ${paletteStr}, com ${atmStr}.`;
+      const negativeText = `CGI, 3D render, cartoon, anime, watercolor, text, watermark, blurry, distorted, oversaturation.`;
+      return `[${id}]: ${promptText} NEGATIVE PROMPT: ${negativeText}`;
+    }
+  });
+}
+
+function getInstantImagePrompts(blocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, format, type) {
+  const isJson = format === 'json';
+  const isVideo = type === 'video';
+  const arr = getInstantImagePromptsArray(blocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, type);
+
+  if (isJson) {
+    const parsed = arr.map((item, idx) => {
+      const id = idx + 1;
+      if (isVideo) {
+        const pParts = item.split('[NEGATIVO]:');
+        const promptText = pParts[0].replace('[PROMPT]:', '').trim();
+        const negText = pParts[1] ? pParts[1].trim() : '';
+        return { id, prompt: promptText, negativo: negText };
+      } else {
+        const pParts = item.split('NEGATIVE PROMPT:');
+        const promptText = pParts[0].replace(new RegExp(`^\\[${id}\\]:\\s*`), '').trim();
+        const negText = pParts[1] ? pParts[1].trim() : '';
+        return { id, prompt: promptText, negative: negText };
+      }
+    });
+    return JSON.stringify(parsed, null, 2);
+  } else {
+    return arr.join('\n\n');
+  }
+}
+
 export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
   const { status, configs, showToast } = useSystemStatus();
   const [cloudScripts] = useCloudStorage('scripts', []);
@@ -736,7 +801,19 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
     }
 
     setIsGenerating(true);
-    setPrompts("");
+    const instantPrompts = getInstantImagePrompts(
+      subtitleBlocks,
+      visualDNA,
+      genero,
+      cameraMovimento,
+      composicao,
+      focoLente,
+      atmosferaLuz,
+      outputFormat,
+      promptType,
+      genMode
+    );
+    setPrompts(instantPrompts);
     cancelRef.current = false;
 
     // ── MODO IMAGEM (text): Geração em Lote ──
@@ -752,7 +829,17 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
         statuses: new Array(total).fill('pending') 
       });
 
-      const resultsArr = new Array(total).fill('');
+      const instantArr = getInstantImagePromptsArray(
+        subtitleBlocks,
+        visualDNA,
+        genero,
+        cameraMovimento,
+        composicao,
+        focoLente,
+        atmosferaLuz,
+        'image'
+      );
+      const resultsArr = [...instantArr];
       const statusArr  = new Array(total).fill('pending');
       
       const dnaPart = `Scenario: ${visualDNA.scenario || 'Real-world'} | Era: ${visualDNA.era || 'Contemporary'} | Mood: ${visualDNA.mood || 'Cinematic'} | Lighting: ${visualDNA.lighting || 'Natural light'} | Palette: ${visualDNA.palette || 'Realistic'} | Camera: ${visualDNA.camera || 'Cinematic angles'}${visualDNA.rendering ? ` | Rendering: ${visualDNA.rendering}` : ''}${visualDNA.texture ? ` | Texture: ${visualDNA.texture}` : ''}`;
@@ -881,7 +968,31 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
     const totalChunks = Math.ceil(subtitleBlocks.length / CHUNK_SIZE);
     setGenerationProgress({ step: 'Processando Legendas...', current: 0, total: totalChunks, statuses: new Array(totalChunks).fill("pending") });
  
+    const instantArr = getInstantImagePromptsArray(subtitleBlocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, promptType);
     const resultsStorage = new Array(totalChunks).fill("");
+    for (let i = 0; i < totalChunks; i++) {
+      const startIdx = i * CHUNK_SIZE;
+      const chunkPrompts = instantArr.slice(startIdx, startIdx + CHUNK_SIZE);
+      if (isJson) {
+        const chunkObjects = chunkPrompts.map((item, idx) => {
+          const id = startIdx + idx + 1;
+          if (promptType === 'video') {
+            const pParts = item.split('[NEGATIVO]:');
+            const promptText = pParts[0].replace('[PROMPT]:', '').trim();
+            const negText = pParts[1] ? pParts[1].trim() : '';
+            return { id, prompt: promptText, negativo: negText };
+          } else {
+            const pParts = item.split('NEGATIVE PROMPT:');
+            const promptText = pParts[0].replace(new RegExp(`^\\[${id}\\]:\\s*`), '').trim();
+            const negText = pParts[1] ? pParts[1].trim() : '';
+            return { id, prompt: promptText, negative: negText };
+          }
+        });
+        resultsStorage[i] = JSON.stringify(chunkObjects, null, 2);
+      } else {
+        resultsStorage[i] = chunkPrompts.join('\n\n');
+      }
+    }
     const chunkStatuses  = new Array(totalChunks).fill("pending");
 
     const isJson = outputFormat === 'json';
@@ -1056,13 +1167,26 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
 
     setIsGenerating(true);
     const styleInfo = getActiveStyle();
-    setGenerationProgress({ step: 'Analisando Roteiro...', current: 0, total: 0 });
-
+    
     try {
       const scriptSegments = script.content.match(/[^\.!\?]+[\.!\?]+/g) || [script.content];
       const batchSize = 15;
       const totalBlocks = Math.ceil(scriptSegments.length / batchSize);
-      
+
+      const instantPrompts = getInstantImagePrompts(
+        scriptSegments,
+        visualDNA,
+        genero,
+        cameraMovimento,
+        composicao,
+        focoLente,
+        atmosferaLuz,
+        outputFormat,
+        'image',
+        genMode
+      );
+      setPrompts(instantPrompts);
+
       setGenerationProgress({ 
         step: 'Iniciando Geração Paralela...', 
         current: 0, 
@@ -1070,7 +1194,24 @@ Generate EXACTLY ${batchSubtitles.length} prompts. Each [N] must match its subti
         statuses: new Array(totalBlocks).fill("pending")
       });
 
+      const instantArr = getInstantImagePromptsArray(
+        scriptSegments,
+        visualDNA,
+        genero,
+        cameraMovimento,
+        composicao,
+        focoLente,
+        atmosferaLuz,
+        'image'
+      );
+      
       const resultsArray = new Array(totalBlocks).fill("");
+      for (let i = 0; i < totalBlocks; i++) {
+        const startIdx = i * batchSize;
+        const chunkPrompts = instantArr.slice(startIdx, startIdx + batchSize);
+        resultsArray[i] = chunkPrompts.join('\n\n');
+      }
+
       const chunkStatuses = new Array(totalBlocks).fill("pending");
 
       const PARALLEL_SCRIPT = 6;

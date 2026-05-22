@@ -8,6 +8,103 @@ import { callAI } from '../utils/aiUtils';
 import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
 
+// Heuristic helpers for instant pre-fill
+const getInstantTitles = (channel, count = 10) => {
+  const channelName = channel?.title || 'Canal';
+  const viralTitles = (channel?.viralVideos || []).map(v => v.title).filter(Boolean);
+  
+  let mainWord = channelName;
+  if (viralTitles.length > 0) {
+    const words = viralTitles[0].split(/\s+/).filter(w => w.length > 4 && !['como', 'sobre', 'para', 'porque', 'sobre', 'sobre'].includes(w.toLowerCase()));
+    if (words.length > 0) {
+      mainWord = words[0].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+    }
+  }
+
+  let lang = 'pt';
+  if (viralTitles.length > 0) {
+    const cleanTitle = viralTitles[0].toLowerCase();
+    const enWords = ['the', 'how', 'to', 'why', 'in', 'on', 'with', 'and', 'for', 'of', 'you', 'is', 'secret', 'hidden'];
+    const esWords = ['el', 'la', 'los', 'las', 'del', 'con', 'por', 'para', 'como', 'secretos', 'oculto', 'verdade'];
+    let enCount = 0; let esCount = 0;
+    enWords.forEach(w => { if(cleanTitle.includes(' ' + w + ' ') || cleanTitle.startsWith(w + ' ')) enCount++; });
+    esWords.forEach(w => { if(cleanTitle.includes(' ' + w + ' ') || cleanTitle.startsWith(w + ' ')) esCount++; });
+    if (enCount > esCount) lang = 'en';
+    else if (esCount > enCount) lang = 'es';
+  }
+
+  const templates = {
+    pt: [
+      `Como [KEYWORD] Revelou o Maior Mistério de 2026`,
+      `O Lado Oculto de [KEYWORD] Que Ninguém Ousa Mostrar`,
+      `A Verdade Sobre [KEYWORD] Que Está Assustando Produtores`,
+      `5 Erros Fatais em [KEYWORD] Que Estão Destruindo Canais`,
+      `Por Que Eles Estão Escondendo Isso de Você em [KEYWORD]?`,
+      `Como Mudar Tudo Usando Apenas [KEYWORD] Esta Semana`,
+      `O Guia Secreto de [KEYWORD] Que Funciona em 3 Dias`,
+      `O Que Acontece se Você Ignorar [KEYWORD] Hoje?`,
+      `A Decisão de 1 Milhão com [KEYWORD] (Passo a Passo)`,
+      `Esta é a Única Forma Correta de Dominar [KEYWORD]`
+    ],
+    en: [
+      `How [KEYWORD] Revealed the Biggest Mystery of 2026`,
+      `The Hidden Side of [KEYWORD] They Don't Want You to See`,
+      `The Truth About [KEYWORD] That is Scaring Creators`,
+      `5 Fatal Mistakes in [KEYWORD] That Ruin Channels`,
+      `Why Are They Hiding This [KEYWORD] Strategy From You?`,
+      `How to Change Everything Using Only [KEYWORD] This Week`,
+      `The Secret [KEYWORD] Guide That Works in 3 Days`,
+      `What Happens If You Ignore [KEYWORD] Today?`,
+      `The $1 Million Decision with [KEYWORD] (Step-by-Step)`,
+      `This Is the Only Correct Way to Master [KEYWORD]`
+    ],
+    es: [
+      `Cómo [KEYWORD] Reveló el Mayor Misterio de 2026`,
+      `El Lado Oculto de [KEYWORD] Que Nadie Quiere Mostrar`,
+      `La Verdad Sobre [KEYWORD] Que Asusta a los Creadores`,
+      `5 Errores Fatales en [KEYWORD] Que Destruyen Canales`,
+      `¿Por Qué Te Ocultan Esta Estrategia de [KEYWORD]?`,
+      `Cómo Cambiar Todo Usando Solo [KEYWORD] Esta Semana`,
+      `La Guía Secreta de [KEYWORD] Que Funciona en 3 Días`,
+      `¿Qué Pasa Si Ignoras [KEYWORD] Hoy Mismo?`,
+      `La Decisión de 1 Millón con [KEYWORD] (Paso a Paso)`,
+      `Esta es la Única Forma Correta de Dominar [KEYWORD]`
+    ]
+  };
+
+  const selectedTemplates = templates[lang] || templates.pt;
+  return Array.from({ length: count }, (_, i) => {
+    const template = selectedTemplates[i % selectedTemplates.length];
+    const title = template.replace('[KEYWORD]', mainWord);
+    return `${i + 1}. ${title}`;
+  }).join('\n');
+};
+
+const getInstantNicheReport = (channel) => {
+  const channelName = channel?.title || 'Canal';
+  const viralTitle = (channel?.viralVideos || [])[0]?.title || 'Conteúdo Principal';
+  
+  return `**1. DIAGNÓSTICO DO NICHO**
+Posicionamento focado em atrair a audiência interessada em ${channelName}. O canal vende entretenimento focado na curiosidade e autoridade do tema.
+
+**2. FÓRMULA DE SUCESSO**
+- Padrão 1: Títulos dinâmicos com lacunas cognitivas baseados em tópicos como "${viralTitle}".
+- Padrão 2: Ritmo de edição acelerado com forte apelo visual nos primeiros 10 segundos.
+
+**3. VOZ DA AUDIÊNCIA (CRÍTICAS & DESEJOS)**
+- Pedidos recorrentes: Mais aprofundamento nos tópicos de maior sucesso.
+- Críticas observadas: O ritmo de postagens e a duração de alguns vídeos curtos.
+
+**4. LACUNA DE OPORTUNIDADE**
+Explorar subtemas menos saturados que a concorrência ignora, conectando com as tendências em alta mencionadas pelos inscritos.
+
+**5. DICA DE OURO REPLICÁVEL**
+Injetar perguntas abertas no início e criar ganchos cíclicos para segurar o espectador até a recomendação final de tela final.
+
+**6. ARMADILHA A EVITAR**
+Excesso de introdução corporativa ou enrolação inicial que derruba a retenção nas primeiras métricas do YouTube Studio.`;
+};
+
 export const ChannelMonitoringTab = ({ isActive, setActiveTab }) => {
   const { configs, showToast } = useSystemStatus();
   const [channels, setChannels] = useState(() => {
@@ -413,46 +510,55 @@ Rules:
       brainContext = brainData.experience;
     } catch (err) { console.error('Brain Fetch Error', err); }
     if (!selectedChannel) return;
-    setIsAnalyzing(true);
     
-    // Refresh data before analysis to ensure real-time accuracy
-    try {
-      const freshData = await fetchChannelData({ type: 'id', value: selectedChannel.id });
-      setChannels(prev => prev.map(c => c.id === freshData.id ? freshData : c));
-      setSelectedChannel(freshData);
-    } catch (err) {
-      console.warn('Silent refresh fail before analysis:', err);
-    }
-    
+    // Set type immediately and show instant heuristic results
     setAnalysisType(type);
-    setAnalysisResult(null);
+    const instantResult = type === 'titles' 
+      ? getInstantTitles(selectedChannel, count) 
+      : getInstantNicheReport(selectedChannel);
+    setAnalysisResult(instantResult);
+    setIsAnalyzing(true);
     setShowCountSelector(false);
+    showToast(type === 'titles' ? "Títulos preliminares aplicados instantaneamente!" : "Diagnóstico preliminar aplicado!", "success");
 
-    const activeAi = configs.active_ai;
-    const gptKeys = configs.gpt_key;
-    const geminiKeys = configs.gemini_key;
-    const grokKeys = configs.grok_key;
+    // Background Execution
+    (async () => {
+      let channelData = selectedChannel;
+      // Refresh data before analysis to ensure real-time accuracy
+      try {
+        const freshData = await fetchChannelData({ type: 'id', value: selectedChannel.id });
+        setChannels(prev => prev.map(c => c.id === freshData.id ? freshData : c));
+        setSelectedChannel(freshData);
+        channelData = freshData;
+      } catch (err) {
+        console.warn('Silent refresh fail before analysis:', err);
+      }
 
-    if (!gptKeys && !geminiKeys && !grokKeys) {
-      showToast(`Erro: Nenhuma chave de API configurada. Vá em Configurações.`, 'error');
-      setIsAnalyzing(false);
-      return;
-    }
+      const activeAi = configs.active_ai;
+      const gptKeys = configs.gpt_key;
+      const geminiKeys = configs.gemini_key;
+      const grokKeys = configs.grok_key;
 
-    const viralText = (selectedChannel.viralVideos || []).map(v => `- ${v.title}`).join('\n');
-    const latestText = (selectedChannel.latestVideos || []).map(v => `- ${v.title}`).join('\n');
-    const audienceText = (selectedChannel.audienceFeedback || [])
-      .sort((a, b) => b.likeCount - a.likeCount)
-      .slice(0, 30)
-      .map(c => `[${c.type.toUpperCase()}] (${c.likeCount} likes): ${c.text}`)
-      .join('\n');
-    
-    let prompt = '';
+      if (!gptKeys && !geminiKeys && !grokKeys) {
+        showToast(`⚠️ Nenhuma chave de API configurada. Exibindo apenas sugestões locais.`, 'warning');
+        setIsAnalyzing(false);
+        return;
+      }
 
-    if (type === 'titles') {
-      prompt = `Você é um ESPECIALISTA ELITE em CTR, Algoritmos do YouTube e Psicologia do Clique.
+      const viralText = (channelData.viralVideos || []).map(v => `- ${v.title}`).join('\n');
+      const latestText = (channelData.latestVideos || []).map(v => `- ${v.title}`).join('\n');
+      const audienceText = (channelData.audienceFeedback || [])
+        .sort((a, b) => b.likeCount - a.likeCount)
+        .slice(0, 30)
+        .map(c => `[${c.type.toUpperCase()}] (${c.likeCount} likes): ${c.text}`)
+        .join('\n');
+      
+      let prompt = '';
 
-CANAL EM ANÁLISE: "${selectedChannel.title}"
+      if (type === 'titles') {
+        prompt = `Você é um ESPECIALISTA ELITE em CTR, Algoritmos do YouTube e Psicologia do Clique.
+
+CANAL EM ANÁLISE: "${channelData.title}"
 
 VÍDEOS MAIS POPULARES (Já provaram funcionar):
 ${viralText || 'Dados não disponíveis'}
@@ -467,7 +573,7 @@ ${audienceText || 'Sem comentários recentes disponíveis.'}
 Identifique as CRÍTICAS nos comentários dos vídeos virais. Se o público reclamou de algo, ou pediu uma abordagem diferente, USE ISSO como gancho. 
 Exemplo: Se criticaram que o vídeo viral foi "curto demais", crie um título focado em profundidade ("A análise completa que eles omitiram").
 
-CANAL EM ANÁLISE: "${selectedChannel.title}"
+CANAL EM ANÁLISE: "${channelData.title}"
 
 VÍDEOS MAIS POPULARES DO CANAL (os que já provaram funcionar):
 ${viralText || 'Dados não disponíveis'}
@@ -521,10 +627,10 @@ Se pediram por um tema específico, crie 2 títulos focados APENAS nessa solicit
 RETORNO ESPERADO:
 Retorne APENAS a lista numerada. Sem introduções. Sem asteriscos. Texto 100% limpo e pronto para uso (ex: 1. Como a Rota Proibida Esconde 14 Mortes).`;
 
-    } else {
-      prompt = `Você é um MENTOR ESTRATÉGICO SÊNIOR de YouTube — especialista em análise de canais, crescimento orgânico e replicação de estratégias virais.
+      } else {
+        prompt = `Você é um MENTOR ESTRATÉGICO SÊNIOR de YouTube — especialista em análise de canais, crescimento orgânico e replicação de estratégias virais.
 
-CANAL EM ANÁLISE: "${selectedChannel.title}"
+CANAL EM ANÁLISE: "${channelData.title}"
 
 VÍDEOS MAIS POPULARES (o que já provou funcionar):
 ${viralText || 'Dados não disponíveis'}
@@ -564,32 +670,34 @@ REGRAS DE FORMATO:
 - Use **NEGRITO** para títulos de seção
 - Cada seção máximo 3-4 linhas`;
 
-    }
-
-    try {
-      const result = await callAI(prompt, { model: 'gemini-2.5-flash' });
-      
-      if (!result || result.trim().length === 0) {
-        throw new Error('A IA retornou uma resposta vazia. Tente novamente ou verifique sua chave API.');
       }
-      
-      // alert(`Análise recebida com sucesso! Tamanho: ${result.length} caracteres.`);
-      setAnalysisResult(result);
-      // Auto-Learn Pattern
-      fetch(resolveApiUrl('/api/brain/learn'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          niche: 'Geral',
-          report: result,
-          metadata: { channel_name: selectedChannel.title, type: analysisType }
-        })
-      }).catch(err => console.error('Learning Fail', err));
-    } catch (err) {
-      showToast('Erro na análise: ' + err.message, 'error');
-    } finally {
-      setIsAnalyzing(false);
-    }
+
+      try {
+        const result = await callAI(prompt, { model: 'gemini-2.5-flash' });
+        
+        if (!result || result.trim().length === 0) {
+          throw new Error('A IA retornou uma resposta vazia. Tente novamente ou verifique sua chave API.');
+        }
+        
+        setAnalysisResult(result);
+        showToast(type === 'titles' ? "IA: Títulos refinados!" : "IA: Análise refinada!", "success");
+        
+        // Auto-Learn Pattern
+        fetch(resolveApiUrl('/api/brain/learn'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            niche: 'Geral',
+            report: result,
+            metadata: { channel_name: channelData.title, type }
+          })
+        }).catch(err => console.error('Learning Fail', err));
+      } catch (err) {
+        showToast('Erro no refinamento da IA: ' + err.message, 'error');
+      } finally {
+        setIsAnalyzing(false);
+      }
+    })();
   };
 
 
@@ -917,6 +1025,11 @@ REGRAS DE FORMATO:
                             <h4 className="text-xl font-black text-white flex items-center gap-3">
                                <Sparkles className="w-5 h-5 text-neon-cyan" /> 
                                {analysisType === 'titles' ? 'Títulos Sugeridos' : 'Plano Estratégico'}
+                               {isAnalyzing && (
+                                 <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 animate-pulse ml-2">
+                                   <Loader2 className="w-2.5 h-2.5 animate-spin" /> Refinando com IA...
+                                 </span>
+                               )}
                             </h4>
                             <div className="flex items-center gap-2">
                               {analysisType === 'titles' && (

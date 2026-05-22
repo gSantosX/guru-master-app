@@ -46,6 +46,160 @@ const GLOBAL_LANGUAGES = [
   "Filipino (Tagalog)"
 ];
 
+// Heuristic helpers for instant pre-fill
+const getInstantStrategy = (channel) => {
+  const channelName = channel?.title || 'Canal';
+  const viralTitle = (channel?.viralVideos || [])[0]?.title || 'Conteúdo Principal';
+  return `**1. DIAGNÓSTICO DO NICHO**
+Posicionamento focado em atrair a audiência interessada no conteúdo de ${channelName}. O canal trabalha a retenção através da curiosidade intelectual e apelo visual direto.
+
+**2. FÓRMULA DE SUCESSO**
+- Padrão 1: Títulos dinâmicos com alta taxa de engajamento baseados em tópicos como "${viralTitle}".
+- Padrão 2: Narrativas imersivas e ganchos fortes nos primeiros 15 segundos para prender o clique.
+
+**3. VOZ DA AUDIÊNCIA (CRÍTICAS & DESEJOS)**
+- Pedidos: Maior frequência de postagens e aprofundamento das teses principais.
+- Dúvidas comuns: Como aplicar as técnicas citadas e onde encontrar mais referências.
+
+**4. LACUNA DE OPORTUNIDADE**
+Ângulos menos explorados sobre a área de atuação do canal que a concorrência direta ainda não saturou com vídeos informativos.
+
+**5. DICA DE OURO REPLICÁVEL**
+Modelar a estrutura de roteiro dos vídeos de maior visualização, inserindo um loop aberto logo no início.
+
+**6. ARMADILHA A EVITAR**
+Uso excessivo de clichês ou introduções longas que reduzem drasticamente a retenção inicial do algoritmo.
+
+**7. SUBNICHOS RECOMENDADOS**
+1. Canal de cortes focado nos melhores insights.
+2. Narrativas curtas adaptadas para o Reels e TikTok.
+3. Estudos de caso práticos detalhando o passo a passo.`;
+};
+
+const getInstantCountryAnalysis = (channel) => {
+  const channelName = channel?.title || 'Canal';
+  return `**🎯 MERCADO VENCEDOR: Estados Unidos**
+**🗣️ IDIOMA RECOMENDADO: Inglês (US)**
+O mercado americano possui o maior RPM global para este nicho e conta com uma audiência extremamente ativa que consome conteúdo educativo e de entretenimento com foco em desenvolvimento e curiosidades.
+
+**💡 COMO ADAPTAR PARA ESTE MERCADO:**
+- Traduzir a identidade visual utilizando paletas de cores minimalistas e de alta performance.
+- Adaptar as piadas locais e memes para o contexto da cultura pop norte-americana.
+
+**🌍 MENÇÕES HONROSAS:**
+- Espanha: Excelente oportunidade de escala devido à vasta audiência hispanohablante global.
+- Alemanha: Alta retenção de usuários e um dos maiores RPMs da Europa Ocidental.`;
+};
+
+const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)') => {
+  const channelName = channel?.title || 'Canal';
+  const viralTitles = (channel?.viralVideos || []).map(v => v.title).filter(Boolean);
+  
+  let mainWord = channelName;
+  if (viralTitles.length > 0) {
+    const words = viralTitles[0].split(/\s+/).filter(w => w.length > 4 && !['como', 'sobre', 'para', 'porque'].includes(w.toLowerCase()));
+    if (words.length > 0) {
+      mainWord = words[0].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+    }
+  }
+
+  let lang = 'pt';
+  const targetLower = targetLang.toLowerCase();
+  if (targetLower.includes('inglês') || targetLower.includes('english')) {
+    lang = 'en';
+  } else if (targetLower.includes('espanhol') || targetLower.includes('spanish') || targetLower.includes('espanha')) {
+    lang = 'es';
+  } else if (targetLower.includes('francês') || targetLower.includes('french')) {
+    lang = 'fr';
+  } else if (targetLower.includes('alemão') || targetLower.includes('german')) {
+    lang = 'de';
+  } else if (targetLower.includes('italiano') || targetLower.includes('italian')) {
+    lang = 'it';
+  }
+
+  const templates = {
+    pt: [
+      `Como [KEYWORD] Revelou o Maior Mistério de 2026`,
+      `O Lado Oculto de [KEYWORD] Que Ninguém Ousa Mostrar`,
+      `A Verdade Sobre [KEYWORD] Que Está Assustando Produtores`,
+      `5 Erros Fatais em [KEYWORD] Que Estão Destruindo Canais`,
+      `Por Que Eles Estão Escondendo Isso de Você em [KEYWORD]?`,
+      `Como Mudar Tudo Usando Apenas [KEYWORD] Esta Semana`,
+      `O Guia Secreto de [KEYWORD] Que Funciona em 3 Dias`,
+      `O Que Acontece se Você Ignorar [KEYWORD] Hoje?`,
+      `A Decisão de 1 Milhão com [KEYWORD] (Passo a Passo)`,
+      `Esta é a Única Forma Correta de Dominar [KEYWORD]`
+    ],
+    en: [
+      `How [KEYWORD] Revealed the Biggest Mystery of 2026`,
+      `The Hidden Side of [KEYWORD] They Don't Want You to See`,
+      `The Truth About [KEYWORD] That is Scaring Creators`,
+      `5 Fatal Mistakes in [KEYWORD] That Ruin Channels`,
+      `Why Are They Hiding This [KEYWORD] Strategy From You?`,
+      `How to Change Everything Using Only [KEYWORD] This Week`,
+      `The Secret [KEYWORD] Guide That Works in 3 Days`,
+      `What Happens If You Ignore [KEYWORD] Today?`,
+      `The $1 Million Decision with [KEYWORD] (Step-by-Step)`,
+      `This Is the Only Correct Way to Master [KEYWORD]`
+    ],
+    es: [
+      `Cómo [KEYWORD] Reveló el Mayor Misterio de 2026`,
+      `El Lado Oculto de [KEYWORD] Que Nadie Quiere Mostrar`,
+      `La Verdad Sobre [KEYWORD] Que Asusta a los Creadores`,
+      `5 Errores Fatales en [KEYWORD] Que Destruyen Canales`,
+      `¿Por Qué Te Ocultan Esta Estrategia de [KEYWORD]?`,
+      `Cómo Cambiar Todo Usando Solo [KEYWORD] Esta Semana`,
+      `La Guía Secreta de [KEYWORD] Que Funciona en 3 Días`,
+      `¿Qué Pasa Si Ignoras [KEYWORD] Hoy Mismo?`,
+      `La Decisión de 1 Milñón con [KEYWORD] (Paso a Paso)`,
+      `Esta es la Única Forma Correta de Dominar [KEYWORD]`
+    ],
+    fr: [
+      `Comment [KEYWORD] a révélé le plus grand mystère de 2026`,
+      `La face cachée de [KEYWORD] qu'ils ne veulent pas que vous voyiez`,
+      `La vérité sur [KEYWORD] qui effraie les créateurs`,
+      `5 erreurs fatales dans [KEYWORD] qui ruinent les chaînes`,
+      `Pourquoi vous cachent-ils cette stratégie de [KEYWORD] ?`,
+      `Comment tout changer en utilisant uniquement [KEYWORD] cette semaine`,
+      `Le guide secret de [KEYWORD] qui fonctionne en 3 jours`,
+      `Que se passe-t-il si vous ignorez [KEYWORD] aujourd'hui ?`,
+      `La décision à 1 million de dollars avec [KEYWORD] (étape par étape)`,
+      `C'est la seule façon correcte de maîtriser [KEYWORD]`
+    ],
+    de: [
+      `Wie [KEYWORD] das größte Geheimnis von 2026 enthüllte`,
+      `Die verborgene Seite von [KEYWORD], die Sie nicht sehen sollen`,
+      `Die Wahrheit über [KEYWORD], die Schöpfer erschreckt`,
+      `5 fatale Fehler in [KEYWORD], die Kanäle ruinieren`,
+      `Warum verschweigen sie Ihnen diese [KEYWORD]-Strategie?`,
+      `Wie Sie diese Woche alles ändern, indem Sie nur [KEYWORD] verwenden`,
+      `Der geheime [KEYWORD]-Leitfaden, der in 3 Tagen funktioniert`,
+      `Was passiert, wenn Sie [KEYWORD] heute ignorieren?`,
+      `Die 1-Million-Dollar-Entscheidung mit [KEYWORD] (Schritt für Schritt)`,
+      `Dies ist der einzig richtige Weg, um [KEYWORD] zu meistern`
+    ],
+    it: [
+      `Come [KEYWORD] ha rivelato il più grande mistero del 2026`,
+      `Il lato nascosto di [KEYWORD] che non vogliono farti vedere`,
+      `La verità su [KEYWORD] che sta spaventando i creatori`,
+      `5 errori fatali in [KEYWORD] che rovinano i canali`,
+      `Perché ti nascondono questa strategia su [KEYWORD]?`,
+      `Come cambiare tutto usando solo [KEYWORD] questa settimana`,
+      `La guida segreta di [KEYWORD] che funziona in 3 giorni`,
+      `Cosa succede se ignori [KEYWORD] oggi?`,
+      `La decisione da 1 milione con [KEYWORD] (passo dopo passo)`,
+      `Questo è l'unico modo corretto per dominare [KEYWORD]`
+    ]
+  };
+
+  const selectedTemplates = templates[lang] || templates.pt;
+  return Array.from({ length: count }, (_, i) => {
+    const template = selectedTemplates[i % selectedTemplates.length];
+    const title = template.replace('[KEYWORD]', mainWord);
+    return `${i + 1}. ${title}`;
+  }).join('\n');
+};
+
 export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
   const { configs, showToast } = useSystemStatus();
   const { user } = useAuth();
@@ -66,14 +220,17 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
   // Section 1: Strategy (Auto)
   const [isAnalyzingStrategy, setIsAnalyzingStrategy] = useState(false);
   const [strategyResult, setStrategyResult] = useState(null);
+  const [isRefiningStrategy, setIsRefiningStrategy] = useState(false);
 
   // Section 2: Country Analysis
   const [isAnalyzingCountry, setIsAnalyzingCountry] = useState(false);
   const [countryResult, setCountryResult] = useState(null);
+  const [isRefiningCountry, setIsRefiningCountry] = useState(false);
 
   // Section 3: Titles Generation
   const [isAnalyzingTitles, setIsAnalyzingTitles] = useState(false);
   const [titlesResult, setTitlesResult] = useState(null);
+  const [isRefiningTitles, setIsRefiningTitles] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('Português (Brasil)');
   
   // Utilities
@@ -358,8 +515,11 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
 
   const runStrategyAnalysis = async () => {
     if (!selectedChannel) return;
-    setIsAnalyzingStrategy(true);
-    setStrategyResult(null);
+    
+    // Set instant prefill result
+    const instant = getInstantStrategy(selectedChannel);
+    setStrategyResult(instant);
+    setIsRefiningStrategy(true);
 
     const { viralText, latestText, audienceText } = getAnalysisContext();
     const prompt = `Você é um MENTOR ESTRATÉGICO SÊNIOR de YouTube — especialista em análise de canais, crescimento orgânico e replicação de estratégias virais.
@@ -390,43 +550,56 @@ Apresente de forma BEM RESUMIDA E DIRETA 3 ideias práticas de como subnichar es
 
 REGRAS: Use **NEGRITO** para os títulos da seção.`;
 
-    try {
-      const result = await callAI(prompt, { model: 'gemini-2.5-flash' });
-      if (!result) throw new Error('Resposta vazia da IA.');
-      setStrategyResult(result);
-    } catch (err) {
-      console.error(err);
-      setStrategyResult(`Erro na análise estratégica: ${err.message}`);
-    } finally {
-      setIsAnalyzingStrategy(false);
-    }
+    (async () => {
+      try {
+        const result = await callAI(prompt, { model: 'gemini-2.5-flash' });
+        if (!result) throw new Error('Resposta vazia da IA.');
+        setStrategyResult(result);
+        showToast("IA: Análise estratégica refinada!", "success");
+      } catch (err) {
+        console.error(err);
+        showToast("Aviso: Falha ao refinar análise estratégica.", "warning");
+      } finally {
+        setIsRefiningStrategy(false);
+      }
+    })();
   };
 
   const runCountryAnalysis = async () => {
     if (!selectedChannel) return;
-    setIsAnalyzingCountry(true);
-    setCountryResult(null);
+    
+    // Set instant prefill result
+    const instant = getInstantCountryAnalysis(selectedChannel);
+    setCountryResult(instant);
+    setIsRefiningCountry(true);
+    
+    // Auto-select language based on the instant result
+    const langMatch = instant.match(/\*\*🗣️ IDIOMA RECOMENDADO:\s*(.*?)\*\*/i);
+    if (langMatch && langMatch[1]) {
+      setSelectedLanguage(langMatch[1].trim());
+    }
 
-    try {
-      const termPrompt = `Baseado no canal "${selectedChannel.title}" que fala sobre: ${selectedChannel.description}. Forneça APENAS 1 TERMO DE PESQUISA (uma palavra ou frase curta em INGLÊS) que seja o núcleo deste canal para fazer uma busca no YouTube e medir a concorrência global. RETORNE APENAS O TERMO.`;
-      const searchTerm = await callAI(termPrompt, { model: 'gemini-2.5-flash' });
-      const cleanTerm = searchTerm.replace(/["']/g, '').trim();
+    (async () => {
+      try {
+        const termPrompt = `Baseado no canal "${selectedChannel.title}" que fala sobre: ${selectedChannel.description}. Forneça APENAS 1 TERMO DE PESQUISA (uma palavra ou frase curta em INGLÊS) que seja o núcleo deste canal para fazer uma busca no YouTube e medir a concorrência global. RETORNE APENAS O TERMO.`;
+        const searchTerm = await callAI(termPrompt, { model: 'gemini-2.5-flash' });
+        const cleanTerm = searchTerm.replace(/["']/g, '').trim();
 
-      const countryData = {};
-      const searchPromises = COUNTRIES.map(async (country) => {
-        try {
-          const res = await fetch(buildYouTubeUrl('search', { q: cleanTerm, part: 'snippet', type: 'video', maxResults: 3, regionCode: country.code, relevanceLanguage: 'en' }));
-          const data = await res.json();
-          countryData[country.name] = (data.items || []).map(item => item.snippet.title);
-        } catch (e) {
-          console.error(`Error searching for ${country.name}`, e);
-          countryData[country.name] = ['Falha ao obter dados'];
-        }
-      });
+        const countryData = {};
+        const searchPromises = COUNTRIES.map(async (country) => {
+          try {
+            const res = await fetch(buildYouTubeUrl('search', { q: cleanTerm, part: 'snippet', type: 'video', maxResults: 3, regionCode: country.code, relevanceLanguage: 'en' }));
+            const data = await res.json();
+            countryData[country.name] = (data.items || []).map(item => item.snippet.title);
+          } catch (e) {
+            console.error(`Error searching for ${country.name}`, e);
+            countryData[country.name] = ['Falha ao obter dados'];
+          }
+        });
 
-      await Promise.all(searchPromises);
+        await Promise.all(searchPromises);
 
-      const analysisPrompt = `Você é um ESPECIALISTA EM MERCADOS INTERNACIONAIS do YouTube.
+        const analysisPrompt = `Você é um ESPECIALISTA EM MERCADOS INTERNACIONAIS do YouTube.
 Nicho/Conceito analisado: "${cleanTerm}" (Canal Base: ${selectedChannel.title})
 
 Fizemos uma busca por este conceito nos principais mercados do YouTube e encontramos os seguintes vídeos no topo (uma amostra do que está bombando ou faltando):
@@ -450,26 +623,32 @@ Formato OBRIGATÓRIO (PT-BR):
 - [País 2]: [Breve motivo]
 - [País 3]: [Breve motivo]`;
 
-      const analysis = await callAI(analysisPrompt, { model: 'gemini-2.5-flash' });
-      setCountryResult(analysis);
-      
-      // Auto-select language based on the result
-      const langMatch = analysis.match(/\*\*🗣️ IDIOMA RECOMENDADO:\s*(.*?)\*\*/i);
-      if (langMatch && langMatch[1]) {
-        setSelectedLanguage(langMatch[1].trim());
+        const analysis = await callAI(analysisPrompt, { model: 'gemini-2.5-flash' });
+        if (analysis) {
+          setCountryResult(analysis);
+          // Auto-select language based on the refined result
+          const langMatchRefined = analysis.match(/\*\*🗣️ IDIOMA RECOMENDADO:\s*(.*?)\*\*/i);
+          if (langMatchRefined && langMatchRefined[1]) {
+            setSelectedLanguage(langMatchRefined[1].trim());
+          }
+          showToast("IA: Análise internacional refinada!", "success");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Aviso: Falha ao refinar análise internacional.", "warning");
+      } finally {
+        setIsRefiningCountry(false);
       }
-    } catch (err) {
-      console.error(err);
-      setCountryResult(`Erro ao analisar países: ${err.message}`);
-    } finally {
-      setIsAnalyzingCountry(false);
-    }
+    })();
   };
 
   const runTitlesAnalysis = async () => {
     if (!selectedChannel) return;
-    setIsAnalyzingTitles(true);
-    setTitlesResult(null);
+    
+    // Set instant prefill result
+    const instant = getInstantTitles(selectedChannel, 10, selectedLanguage);
+    setTitlesResult(instant);
+    setIsRefiningTitles(true);
 
     const { viralText, latestText, audienceText } = getAnalysisContext();
     const prompt = `Você é um ESPECIALISTA ELITE em CTR, Algoritmos do YouTube e Psicologia do Clique.
@@ -492,15 +671,20 @@ REGRAS CRÍTICAS:
 
 Retorne APENAS a lista numerada.`;
 
-    try {
-      const result = await callAI(prompt, { model: 'gemini-2.5-flash' });
-      setTitlesResult(result);
-    } catch (err) {
-      console.error(err);
-      setTitlesResult(`Erro ao gerar títulos: ${err.message}`);
-    } finally {
-      setIsAnalyzingTitles(false);
-    }
+    (async () => {
+      try {
+        const result = await callAI(prompt, { model: 'gemini-2.5-flash' });
+        if (result) {
+          setTitlesResult(result);
+          showToast("IA: Títulos refinados!", "success");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Aviso: Falha ao refinar títulos.", "warning");
+      } finally {
+        setIsRefiningTitles(false);
+      }
+    })();
   };
 
   const formatNumber = (num) => {
@@ -735,10 +919,18 @@ Retorne APENAS a lista numerada.`;
               {/* SECTION 1: AUTO STRATEGY */}
               <div className="mb-10 bg-black/40 border-2 border-white/10 rounded-2xl p-6 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-2 h-full bg-neon-purple" />
-                <h3 className="text-xl font-black text-white flex items-center gap-3 mb-6">
-                  <Brain className="text-neon-purple w-6 h-6" /> Análise Estratégica
-                </h3>
-                {isAnalyzingStrategy ? (
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-black text-white flex items-center gap-3">
+                    <Brain className="text-neon-purple w-6 h-6" /> Análise Estratégica
+                  </h3>
+                  {isRefiningStrategy && (
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-neon-purple/20 text-neon-purple animate-pulse border border-neon-purple/30">
+                      <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                      Refinando...
+                    </span>
+                  )}
+                </div>
+                {isAnalyzingStrategy && !strategyResult ? (
                    <LoadingSpinner message="Mapeando padrão do canal..." size="lg" className="py-10" />
                 ) : strategyResult ? (
                    <div className="text-white font-sans text-lg leading-loose">
@@ -771,10 +963,18 @@ Retorne APENAS a lista numerada.`;
               {/* SECTION 2: COUNTRY ANALYSIS */}
               <div className="mb-10 bg-white/5 border-2 border-neon-cyan/20 rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-black text-white flex items-center gap-3">
-                    <Globe className="text-neon-cyan w-6 h-6" /> Análise Global (15 Países)
-                  </h3>
-                  {!countryResult && !isAnalyzingCountry && (
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-xl font-black text-white flex items-center gap-3">
+                      <Globe className="text-neon-cyan w-6 h-6" /> Análise Global (15 Países)
+                    </h3>
+                    {isRefiningCountry && (
+                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-neon-cyan/20 text-neon-cyan animate-pulse border border-neon-cyan/30">
+                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                        Refinando...
+                      </span>
+                    )}
+                  </div>
+                  {!countryResult && !isRefiningCountry && !isAnalyzingCountry && (
                     <button 
                       onClick={runCountryAnalysis}
                       className="px-6 py-2 bg-neon-cyan text-dark font-black rounded-xl hover:bg-white transition-all text-xs"
@@ -784,7 +984,7 @@ Retorne APENAS a lista numerada.`;
                   )}
                 </div>
                 
-                {isAnalyzingCountry ? (
+                {isAnalyzingCountry && !countryResult ? (
                    <LoadingSpinner message="Buscando concorrência em 15 países pelo YouTube..." size="lg" className="py-10" />
                 ) : countryResult ? (
                    <div className="bg-black/30 border border-white/5 p-6 rounded-xl">
@@ -812,9 +1012,17 @@ Retorne APENAS a lista numerada.`;
               {/* SECTION 3: TITLE GENERATOR */}
               <div className="mb-10 bg-white/5 border-2 border-white/10 rounded-2xl p-6">
                 <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4 border-b border-white/5 pb-6">
-                  <h3 className="text-xl font-black text-white flex items-center gap-3">
-                    <Sparkles className="text-white w-6 h-6" /> Gerador de Títulos Virais
-                  </h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-xl font-black text-white flex items-center gap-3">
+                      <Sparkles className="text-white w-6 h-6" /> Gerador de Títulos Virais
+                    </h3>
+                    {isRefiningTitles && (
+                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/10 text-white animate-pulse border border-white/20">
+                        <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                        Refinando...
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3 w-full md:w-auto">
                     <select 
                       value={selectedLanguage}
@@ -827,15 +1035,15 @@ Retorne APENAS a lista numerada.`;
                     </select>
                     <button 
                       onClick={runTitlesAnalysis}
-                      disabled={isAnalyzingTitles}
+                      disabled={isRefiningTitles || isAnalyzingTitles}
                       className="px-6 py-2 bg-white text-dark font-black rounded-xl hover:bg-gray-200 transition-all text-xs flex items-center gap-2"
                     >
-                      {isAnalyzingTitles ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Wand2 className="w-4 h-4" /> Gerar 10 Títulos</>}
+                      {isRefiningTitles || isAnalyzingTitles ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Wand2 className="w-4 h-4" /> Gerar 10 Títulos</>}
                     </button>
                   </div>
                 </div>
 
-                {isAnalyzingTitles ? (
+                {isAnalyzingTitles && !titlesResult ? (
                    <LoadingSpinner message="Escrevendo títulos de alto CTR..." size="lg" className="py-10" />
                 ) : titlesResult ? (
                    <div className="space-y-3">

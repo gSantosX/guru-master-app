@@ -101,6 +101,25 @@ const FORMAT_OPTIONS = [
   { label: "Vídeo Normal (16:9)", value: "normal" }
 ];
 
+const getInstantViralTitles = (channel) => {
+  const channelName = channel?.title || 'Canal';
+  return {
+    mainTheme: `Desvendar os segredos de alta performance e bastidores de crescimento acelerado do canal ${channelName}.`,
+    structures: [
+      "Provocação Baseada em Curiosidade Extrema",
+      "Lista de Erros Críticos Ocultados",
+      "Revelação de Bastidores / Segredo de Indústria"
+    ],
+    newTitles: [
+      `A Verdade Ocultada Sobre o Sucesso de ${channelName} no YouTube`,
+      `Como ${channelName} Cresceu do Zero Usando Esta Estratégia Secreta`,
+      `5 Erros Fatais Que Quase Destruíram o Canal ${channelName}`,
+      `O Segredo do Algoritmo Que Faz ${channelName} Viralizar Sempre`,
+      `Por Que a Maioria dos Canais Falha Onde ${channelName} Venceu`
+    ]
+  };
+};
+
 export const ChannelMiningTab = ({ setActiveTab }) => {
   const { configs, showToast } = useSystemStatus();
   const { miningState, setMiningState } = usePersistence();
@@ -120,6 +139,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
   const [showTitleGenerator, setShowTitleGenerator] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState(null);
   const [isGeneratingTitles, setIsGeneratingTitles] = useState(false);
+  const [isRefiningTitles, setIsRefiningTitles] = useState(false);
   const [generatedResults, setGeneratedResults] = useState(null);
   const [generationStep, setGenerationStep] = useState('');
   const [knowledge, setKnowledge] = useState(() => {
@@ -294,62 +314,66 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
   const handleGenerateViralTitles = async (channel) => {
     setSelectedChannel(channel);
     setShowTitleGenerator(true);
-    setIsGeneratingTitles(true);
-    setGeneratedResults(null);
-    setGenerationStep('Buscando vídeos de alta performance...');
+    
+    // Set instant prefill result
+    const instant = getInstantViralTitles(channel);
+    setGeneratedResults(instant);
+    setIsRefiningTitles(true);
+    setIsGeneratingTitles(false); // Do not block with full screen spinner
+    setGenerationStep('Refinando com IA...');
 
-    try {
-      // 1. Fetch Top 15 Videos for the channel
-      const vidsRes = await fetch(buildYouTubeUrl('search', { part: 'snippet', channelId: channel.id, order: 'viewCount', type: 'video', maxResults: '15' }));
-      const vidsData = await vidsRes.json();
+    (async () => {
+      try {
+        // 1. Fetch Top 15 Videos for the channel
+        const vidsRes = await fetch(buildYouTubeUrl('search', { part: 'snippet', channelId: channel.id, order: 'viewCount', type: 'video', maxResults: '15' }));
+        const vidsData = await vidsRes.json();
 
-      // Verifica erro da API antes de acessar .items
-      checkYouTubeError(vidsData, 'videos do canal');
-      
-      const titles = (vidsData.items || []).map(v => v.snippet.title);
-      if (titles.length === 0) throw new Error("Nenhum vídeo encontrado para analisar.");
+        // Verifica erro da API antes de acessar .items
+        checkYouTubeError(vidsData, 'videos do canal');
+        
+        const titles = (vidsData.items || []).map(v => v.snippet.title);
+        if (titles.length === 0) throw new Error("Nenhum vídeo encontrado para analisar.");
 
-      setGenerationStep('Analisando DNA do canal e padrões vencedores...');
+        // 2. Logic: Analyze Theme and Structure with Gemini
+        const analysisPrompt = `
+          Analise os seguintes títulos de vídeos de sucesso do canal "${channel.title}":
+          ${titles.map((t, i) => `${i+1}. ${t}`).join('\n')}
 
-      // 2. Logic: Analyze Theme and Structure with Gemini
-      const analysisPrompt = `
-        Analise os seguintes títulos de vídeos de sucesso do canal "${channel.title}":
-        ${titles.map((t, i) => `${i+1}. ${t}`).join('\n')}
+          Com base nesses títulos e no seu conhecimento prévio sobre o que torna um canal viral:
+          1. Identifique o TEMA PRINCIPAL que mais desenvolve o canal (o que o público realmente quer ver aqui).
+          2. Identifique 3 ESTRUTURAS VENCEDORAS de títulos (ex: "Pergunta Curiosa", "Desafio Impossível", "Lista de Segredos").
+          3. Com base nessas estruturas, mas VARIANDO para não repetir, crie 5 NOVOS TÍTULOS VIRAIS que esse canal poderia postar hoje.
 
-        Com base nesses títulos e no seu conhecimento prévio sobre o que torna um canal viral:
-        1. Identifique o TEMA PRINCIPAL que mais desenvolve o canal (o que o público realmente quer ver aqui).
-        2. Identifique 3 ESTRUTURAS VENCEDORAS de títulos (ex: "Pergunta Curiosa", "Desafio Impossível", "Lista de Segredos").
-        3. Com base nessas estruturas, mas VARIANDO para não repetir, crie 5 NOVOS TÍTULOS VIRAIS que esse canal poderia postar hoje.
+          Responda EXCLUSIVAMENTE em formato JSON puro, sem markdown, com a seguinte estrutura:
+          {
+            "mainTheme": "Descrição curta do tema",
+            "structures": ["Estrutura 1", "Estrutura 2", "Estrutura 3"],
+            "newTitles": ["Título 1", "Título 2", "Título 3", "Título 4", "Título 5"]
+          }
+          Previous Knowledge context: ${JSON.stringify(knowledge.structures.slice(-5))}
+        `;
 
-        Responda EXCLUSIVAMENTE em formato JSON puro, sem markdown, com a seguinte estrutura:
-        {
-          "mainTheme": "Descrição curta do tema",
-          "structures": ["Estrutura 1", "Estrutura 2", "Estrutura 3"],
-          "newTitles": ["Título 1", "Título 2", "Título 3", "Título 4", "Título 5"]
-        }
-        Previous Knowledge context: ${JSON.stringify(knowledge.structures.slice(-5))}
-      `;
+        const response = await callAI(analysisPrompt, { model: 'gemini-2.5-flash', gptKey: configs.gpt_key });
+        const cleanJson = response.replace(/```json|```/g, '').trim();
+        const results = JSON.parse(cleanJson);
 
-      const response = await callAI(analysisPrompt, { model: 'gemini-2.5-flash', gptKey: configs.gpt_key });
-      const cleanJson = response.replace(/```json|```/g, '').trim();
-      const results = JSON.parse(cleanJson);
+        // 3. Store Knowledge
+        const updatedKnowledge = {
+          themes: [...new Set([...(knowledge.themes || []), results.mainTheme])].slice(-20),
+          structures: [...new Set([...(knowledge.structures || []), ...(results.structures || [])])].slice(-30),
+          count: (knowledge.count || 0) + 1
+        };
+        saveKnowledge(updatedKnowledge);
 
-      // 3. Store Knowledge
-      const updatedKnowledge = {
-        themes: [...new Set([...(knowledge.themes || []), results.mainTheme])].slice(-20),
-        structures: [...new Set([...(knowledge.structures || []), ...(results.structures || [])])].slice(-30),
-        count: (knowledge.count || 0) + 1
-      };
-      saveKnowledge(updatedKnowledge);
-
-      setGeneratedResults(results);
-      setGenerationStep('Concluído!');
-    } catch (error) {
-      console.error("Title Generation Error:", error);
-      showToast("Falha na Geração de Títulos: " + error.message, "error");
-    } finally {
-      setIsGeneratingTitles(false);
-    }
+        setGeneratedResults(results);
+        showToast("IA: Títulos virais refinados!", "success");
+      } catch (error) {
+        console.error("Title Generation Error:", error);
+        showToast("Aviso: Falha ao refinar títulos: " + error.message, "warning");
+      } finally {
+        setIsRefiningTitles(false);
+      }
+    })();
   };
 
   const handleCopyUrl = (channel) => {
@@ -596,6 +620,12 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
                    <div>
                      <h3 className="text-2xl font-black text-white tracking-tight uppercase italic flex items-center gap-3">
                        Agente de Títulos Virais
+                       {isRefiningTitles && (
+                         <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-neon-cyan/20 text-neon-cyan animate-pulse border border-neon-cyan/30 normal-case tracking-normal">
+                           <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                           Refinando com IA...
+                         </span>
+                       )}
                      </h3>
                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-1">Analisando: {selectedChannel?.title}</p>
                    </div>
