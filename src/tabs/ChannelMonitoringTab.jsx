@@ -300,16 +300,17 @@ Return a JSON object with exactly this structure:
 {
   "detected_language": "[language name in Portuguese, e.g. Inglês, Espanhol, Português, etc.]",
   "is_portuguese": [true/false],
-  "translations": [
-    "translated title 1",
-    "translated title 2",
+  "translations": {
+    "1": "translated title 1",
+    "2": "translated title 2",
     ...
-  ]
+  }
 }
 
 Rules:
 - Keep the same meaning, emotional impact and CTR power
 - Adapt idioms naturally — do NOT translate literally if it sounds unnatural
+- The keys in "translations" must match the index number of the title as a string (e.g. "1", "2", "3", etc.)
 - Return ONLY the JSON object, no markdown, no explanations`;
 
         const result = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey: configs.gpt_key });
@@ -321,7 +322,16 @@ Rules:
           setTranslations({});
         } else {
           const map = {};
-          (parsed.translations || []).forEach((tr, i) => { map[i] = tr; });
+          if (parsed.translations && typeof parsed.translations === 'object' && !Array.isArray(parsed.translations)) {
+            Object.entries(parsed.translations).forEach(([key, val]) => {
+              const idx = parseInt(key, 10) - 1;
+              if (!isNaN(idx)) {
+                map[idx] = val;
+              }
+            });
+          } else if (Array.isArray(parsed.translations)) {
+            parsed.translations.forEach((tr, i) => { map[i] = tr; });
+          }
           setTranslations(map);
           setTranslationLang(`${parsed.detected_language || '?'} → Português`);
           showToast("IA: Tradução de títulos refinada!", "success");
@@ -1207,61 +1217,63 @@ REGRAS DE FORMATO:
                           
                           {analysisType === 'titles' ? (
                             <div className="space-y-4">
-                              {String(analysisResult || "").split('\n').map((title, idx) => {
-                                const titleText = title.replace(/^[\d\-\*\•\)\.\s]+/, '').replace(/^["']+|["']+$/g, '').trim();
-                                if (!titleText) return null;
-                                return (
-                                  <motion.div
-                                    key={idx}
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: idx * 0.04 }}
-                                    className="flex flex-col p-4 bg-white/5 border border-white/10 rounded-xl group hover:border-neon-cyan/40 transition-all"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-base font-bold text-gray-200 pr-4 leading-relaxed flex-1">
-                                        <span className="text-neon-cyan font-black mr-4 text-lg">{idx + 1}</span>
-                                        {titleText}
-                                      </p>
-                                      <div className="flex items-center gap-2 shrink-0">
-                                        <button 
-                                          onClick={() => handleGenerateFromSuggestedTitle(translations[idx] || titleText)}
-                                          title="Gerar Roteiro com este título"
-                                          className="h-10 px-4 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-neon-purple/10 text-neon-purple hover:bg-neon-purple hover:text-white border border-neon-purple/20 transform active:scale-95"
-                                        >
-                                          <Wand2 className="w-3.5 h-3.5" />
-                                          <span className="hidden sm:inline">Gerar Roteiro</span>
-                                        </button>
-                                        <button 
-                                          onClick={() => copyToClipboard(translations[idx] || titleText, idx)}
-                                          className={`h-10 px-4 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transform active:scale-95
-                                            ${copiedTitleIndex === idx 
-                                              ? 'bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
-                                              : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-transparent'
-                                            }
-                                          `}
-                                        >
-                                          {copiedTitleIndex === idx ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                                          {copiedTitleIndex === idx ? 'Copiado' : 'Copiar'}
-                                        </button>
+                              {String(analysisResult || "")
+                                .split('\n')
+                                .map(title => title.replace(/^[\d\-\*\•\)\.\s]+/, '').replace(/^["']+|["']+$/g, '').trim())
+                                .filter(titleText => titleText.length > 3)
+                                .map((titleText, idx) => {
+                                  return (
+                                    <motion.div
+                                      key={idx}
+                                      initial={{ opacity: 0, x: -10 }}
+                                      animate={{ opacity: 1, x: 0 }}
+                                      transition={{ delay: idx * 0.04 }}
+                                      className="flex flex-col p-4 bg-white/5 border border-white/10 rounded-xl group hover:border-neon-cyan/40 transition-all"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <p className="text-base font-bold text-gray-200 pr-4 leading-relaxed flex-1">
+                                          <span className="text-neon-cyan font-black mr-4 text-lg">{idx + 1}</span>
+                                          {titleText}
+                                        </p>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          <button 
+                                            onClick={() => handleGenerateFromSuggestedTitle(titleText)}
+                                            title="Gerar Roteiro com este título"
+                                            className="h-10 px-4 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-neon-purple/10 text-neon-purple hover:bg-neon-purple hover:text-white border border-neon-purple/20 transform active:scale-95"
+                                          >
+                                            <Wand2 className="w-3.5 h-3.5" />
+                                            <span className="hidden sm:inline">Gerar Roteiro</span>
+                                          </button>
+                                          <button 
+                                            onClick={() => copyToClipboard(titleText, idx)}
+                                            className={`h-10 px-4 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transform active:scale-95
+                                              ${copiedTitleIndex === idx 
+                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
+                                                : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-transparent'
+                                              }
+                                            `}
+                                          >
+                                            {copiedTitleIndex === idx ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                                            {copiedTitleIndex === idx ? 'Copiado' : 'Copiar'}
+                                          </button>
+                                        </div>
                                       </div>
-                                    </div>
-                                    <AnimatePresence>
-                                      {translations[idx] && (
-                                        <motion.div
-                                          initial={{ opacity: 0, height: 0 }}
-                                          animate={{ opacity: 1, height: 'auto' }}
-                                          exit={{ opacity: 0, height: 0 }}
-                                          className="mt-3 pt-3 border-t border-white/5 flex items-start gap-2 overflow-hidden"
-                                        >
-                                          <Globe className="w-3 h-3 text-neon-purple mt-0.5 shrink-0" />
-                                          <span className="text-sm text-neon-purple/80 font-medium italic leading-snug">{translations[idx]}</span>
-                                        </motion.div>
-                                      )}
-                                    </AnimatePresence>
-                                  </motion.div>
-                                );
-                              })}
+                                      <AnimatePresence>
+                                        {translations[idx] && (
+                                          <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="mt-3 pt-3 border-t border-white/5 flex items-start gap-2 overflow-hidden"
+                                          >
+                                            <Globe className="w-3 h-3 text-neon-purple mt-0.5 shrink-0" />
+                                            <span className="text-sm text-neon-purple/80 font-medium italic leading-snug">{translations[idx]}</span>
+                                          </motion.div>
+                                        )}
+                                      </AnimatePresence>
+                                    </motion.div>
+                                  );
+                                })}
                             </div>
                           ) : (
                             <div className="text-white font-sans text-lg leading-loose">
