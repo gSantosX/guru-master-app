@@ -132,6 +132,45 @@ const visualStylesGroups = [
   }
 ];
 
+const tagTranslations = {
+  // Camera
+  'Automático': 'Automatic',
+  'Vista aérea': 'Aerial view',
+  'Na altura dos olhos': 'Eye level',
+  'Vista de cima': 'Top-down view',
+  'Vista de baixo': 'Low angle view',
+  'Travelling': 'Tracking shot / travelling',
+  'Câmera lenta': 'Slow motion',
+  'Zoom in': 'Zoom in',
+  'Pan lateral': 'Panning shot',
+  // Composition
+  'Plano geral': 'Wide shot',
+  'Close-up': 'Close-up',
+  'Plano médio': 'Medium shot',
+  'Retrato': 'Portrait',
+  'Plano único': 'Single shot',
+  'Plano duplo': 'Two shot',
+  // Focus
+  'Foco raso': 'Shallow focus / bokeh',
+  'Foco profundo': 'Deep focus',
+  'Lente macro': 'Macro lens',
+  'Grande-angular': 'Wide-angle lens',
+  'Filtro difusor': 'Diffusion filter',
+  'Teleobjetiva': 'Telephoto lens',
+  // Atmosphere
+  'Tons azuis frios': 'Cool blue tones',
+  'Tons quentes dourados': 'Warm golden tones',
+  'Noite estrelada': 'Starry night',
+  'Luz neon': 'Neon lighting',
+  'Pôr do sol': 'Sunset lighting',
+  'Névoa': 'Foggy / misty atmosphere',
+  'Chuva': 'Rainy atmosphere',
+  'Alta exposição': 'High exposure'
+};
+
+const translateTag = (tag) => tagTranslations[tag] || tag;
+const translateTags = (tags) => Array.isArray(tags) ? tags.map(translateTag) : [];
+
 function getInstantImagePromptsArray(blocks, visualDNA, genero, cameraMovimento, composicao, focoLente, atmosferaLuz, type, withText = false) {
   const isVideo = type === 'video';
 
@@ -353,21 +392,27 @@ export const ImagePromptsTab = ({ setActiveTab, isActive = true }) => {
     setAnalyzeError("");
 
     try {
+      const allStyles = visualStylesGroups.flatMap(group => group.options).join(' | ');
       const analysisPrompt = `Você é um Diretor Cinematográfico e Analista Visual de Elite. Analise esta imagem com precisão cirúrgica e retorne UM JSON com o DNA visual completo. Responda SOMENTE com o JSON, sem markdown, sem texto adicional.
 
-Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
-- scenario: descrição detalhada dos locais, arquitetura, objetos e elementos visuais dominantes (mínimo 20 palavras)
-- era: período ou estética temporal precisa (ex: "Retrofuturismo anos 80", "Medieval europeu século XIV", "Contemporâneo urbano noturno")
-- mood: carga emocional exata com intensidade (ex: "Tensão claustrofobica com desconforto crescente", "Nostalgia melancólica e contemplativa")
-- lighting: descrição técnica precisa da iluminação (ex: "Rim light lateral âmbar com fill light azul frio, ratio 3:1, sombras definidas")
-- palette: 4-5 cores HEX dominantes com descrição (ex: "#1a1a2e escuro profundo, #00f3ff ciano neon, #ff6b35 laranja quente, #e0e0e0 cinza neutro")
-- camera: ângulo exato, distância focal estimada e estilo (ex: "Plano médio frontal, ~50mm, profundidade de campo rasa com bokeh suave")
-- rendering: técnica de renderização precisa (ex: "Cel shading com contornos grossos", "Fotorealismo digital hiper-detalhado", "Pintura digital com pinceladas visíveis", "Flat design vetorial com sombras planas")
-- texture: textura e acabamento da superfície (ex: "Suave e limpo, sem granução", "Granução de filme 35mm ISO 800", "Texturas ricas e táteis")
-- rec_genero: UM valor exato desta lista: Ficção científica | Film noir | Terror | Animação 3D | Documentário | Fantasia épica | Retrato cinematográfico | Anime
-- rec_camera: array com 1-3 valores de: Vista aérea | Na altura dos olhos | Vista de cima | Vista de baixo | Travelling | Câmera lenta | Zoom in | Pan lateral
-- rec_composicao: array com 1-2 valores de: Plano geral | Close-up | Plano médio | Retrato | Plano único | Plano duplo
-- rec_atmosfera: array com 1-2 valores de: Tons azuis frios | Tons quentes dourados | Noite estrelada | Luz neon | Pôr do sol | Névoa | Chuva | Alta exposição`;
+IMPORTANTE: Para total compatibilidade com motores de geração de imagens globais (como Midjourney/Flux), você DEVE preencher as descrições detalhadas (scenario, era, mood, lighting, palette, camera, rendering, texture) em INGLÊS. Os campos de recomendação/seleção (rec_*) devem vir em Português exatamente como listados abaixo.
+
+Campos obrigatórios em INGLÊS:
+- scenario: detailed description of locations, architecture, objects and dominant visual elements (minimum 20 words in English)
+- era: precise period or time aesthetic (e.g. "1980s retrofuturism", "14th century European medieval", "Contemporary urban night" in English)
+- mood: exact emotional mood with intensity (e.g. "claustrophobic tension", "melancholy and contemplative nostalgia" in English)
+- lighting: technical lighting description (e.g. "Amber rim light with cool blue fill, 3:1 ratio, hard shadows" in English)
+- palette: 4-5 dominant HEX colors with brief description (e.g. "#1a1a2e deep dark, #00f3ff neon cyan" in English)
+- camera: exact shot type, focal length, camera movement style (e.g. "Medium shot, ~50mm, shallow depth of field with soft bokeh" in English)
+- rendering: precise rendering style or format (e.g. "Hyper-realistic photography, high-fidelity digital rendering" in English)
+- texture: surface texture and finish (e.g. "35mm film grain, rich tactile textures" in English)
+
+Campos de recomendação/seleção em PORTUGUÊS (retorne exatamente um ou mais dos valores indicados):
+- rec_genero: UM valor exato e idêntico a um dos estilos desta lista: ${allStyles}
+- rec_camera: array com 1-3 valores exatos de: Vista aérea | Na altura dos olhos | Vista de cima | Vista de baixo | Travelling | Câmera lenta | Zoom in | Pan lateral
+- rec_composicao: array com 1-2 valores exatos de: Plano geral | Close-up | Plano médio | Retrato | Plano único | Plano duplo
+- rec_foco: array com 1-2 valores exatos de: Foco raso | Foco profundo | Lente macro | Grande-angular | Filtro difusor | Teleobjetiva
+- rec_atmosfera: array com 1-2 valores exatos de: Tons azuis frios | Tons quentes dourados | Noite estrelada | Luz neon | Pôr do sol | Névoa | Chuva | Alta exposição`;
 
       const mainKey = localStorage.getItem('guru_gemini_key') || 'GLOBAL';
       const imagePart = {
@@ -405,6 +450,7 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
       if (dna.rec_genero) setGenero(dna.rec_genero);
       if (dna.rec_camera && Array.isArray(dna.rec_camera)) setCameraMovimento(dna.rec_camera);
       if (dna.rec_composicao && Array.isArray(dna.rec_composicao)) setComposicao(dna.rec_composicao);
+      if (dna.rec_foco && Array.isArray(dna.rec_foco)) setFocoLente(dna.rec_foco);
       if (dna.rec_atmosfera && Array.isArray(dna.rec_atmosfera)) setAtmosferaLuz(dna.rec_atmosfera);
 
     } catch (error) {
@@ -704,13 +750,14 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
   const ATMOSFERA_TAGS = ['Automático', 'Tons azuis frios', 'Tons quentes dourados', 'Noite estrelada', 'Luz neon', 'Pôr do sol', 'Névoa', 'Chuva', 'Alta exposição'];
 
   const getSystemPrompt = (count = 0, inputType = 'subtitle') => {
+    const isEn = promptType !== 'video';
     // Build cinematographic brief from selected parameters
     const cineParams = [
-      genero ? `- Estilo/Gênero: ${genero === 'Automático' ? 'Adapte o gênero ao contexto do roteiro' : genero}` : '',
-      cameraMovimento?.length ? `- Câmera & Movimento: ${cameraMovimento.includes('Automático') ? 'Determine automaticamente os melhores ângulos e movimentos por cena' : cameraMovimento.join(', ')}` : '',
-      composicao?.length ? `- Composição: ${composicao.includes('Automático') ? 'Escolha a composição ideal baseada no peso dramático da cena' : composicao.join(', ')}` : '',
-      focoLente?.length ? `- Foco & Lente: ${focoLente.includes('Automático') ? 'Ajuste foco e lente de forma realista para maximizar o impacto visual' : focoLente.join(', ')}` : '',
-      atmosferaLuz?.length ? `- Atmosfera & Luz: ${atmosferaLuz.includes('Automático') ? 'Crie a melhor atmosfera visual baseada na emoção do roteiro' : atmosferaLuz.join(', ')}` : '',
+      genero ? `${isEn ? '- Style/Genre' : '- Estilo/Gênero'}: ${genero === 'Automático' ? (isEn ? 'Adapt style to script context' : 'Adapte o gênero ao contexto do roteiro') : genero}` : '',
+      cameraMovimento?.length ? `${isEn ? '- Camera & Movement' : '- Câmera & Movimento'}: ${cameraMovimento.includes('Automático') ? (isEn ? 'Determine best camera angles and movements automatically' : 'Determine automaticamente os melhores ângulos e movimentos por cena') : (isEn ? translateTags(cameraMovimento).join(', ') : cameraMovimento.join(', '))}` : '',
+      composicao?.length ? `${isEn ? '- Composition' : '- Composição'}: ${composicao.includes('Automático') ? (isEn ? 'Select ideal composition based on scene weight' : 'Escolha a composição ideal baseada no peso dramático da cena') : (isEn ? translateTags(composicao).join(', ') : composicao.join(', '))}` : '',
+      focoLente?.length ? `${isEn ? '- Focus & Lens' : '- Foco & Lente'}: ${focoLente.includes('Automático') ? (isEn ? 'Adjust focus and lens realistically' : 'Ajuste foco e lente de forma realista para maximizar o impacto visual') : (isEn ? translateTags(focoLente).join(', ') : focoLente.join(', '))}` : '',
+      atmosferaLuz?.length ? `${isEn ? '- Atmosphere & Lighting' : '- Atmosfera & Luz'}: ${atmosferaLuz.includes('Automático') ? (isEn ? 'Create best atmosphere based on script emotion' : 'Crie a melhor atmosfera visual baseada na emoção do roteiro') : (isEn ? translateTags(atmosferaLuz).join(', ') : atmosferaLuz.join(', '))}` : '',
     ].filter(Boolean).join('\n    ');
 
     const textRulePt = withText 
@@ -726,7 +773,21 @@ Campos obrigatórios (seja EXTREMAMENTE específico e detalhado):
 
     const resolved = resolveDNA(promptType === 'video' ? 'pt' : 'en');
 
-    const dnaContext = `
+    const dnaContext = isEn ? `
+    ## VISUAL DNA OF THE SCRIPT (INVIOLABLE RULES)
+    - Scenario & Architecture: ${resolved.scenario}
+    - Era/Environment: ${resolved.era}
+    - Emotional Mood: ${resolved.mood}
+    - Master Lighting: ${resolved.lighting}
+    - Color Palette: ${resolved.palette}
+    - Camera Language: ${resolved.camera}
+    ${resolved.rendering ? `- Rendering/Technical Style: ${resolved.rendering}` : ''}
+    ${resolved.texture ? `- Texture/Finish: ${resolved.texture}` : ''}
+    ${textRuleEn}
+
+    ## SELECTED CINEMATOGRAPHIC PARAMETERS (MAXIMUM PRIORITY)
+    ${cineParams || '- No specific parameters selected — use creativity based on the DNA above'}
+    ` : `
     ## DNA VISUAL DO ROTEIRO (REGRAS INVIOLÁVEIS)
     - Cenário e Arquitetura: ${resolved.scenario}
     - Época/Ambiente: ${resolved.era}
@@ -897,10 +958,10 @@ ${outputFormat === 'json' ? `OUTPUT: JSON array [ { "id": N, "prompt": "...", "n
       // Build cinematographic parameters string for batch mode
       const batchCineParams = [
         resolvedDNA.genero && resolvedDNA.genero !== 'Automático' ? `Style/Genre: ${resolvedDNA.genero}` : '',
-        cameraMovimento?.length && !cameraMovimento.includes('Automático') ? `Camera: ${cameraMovimento.join(', ')}` : '',
-        composicao?.length && !composicao.includes('Automático') ? `Composition: ${composicao.join(', ')}` : '',
-        focoLente?.length && !focoLente.includes('Automático') ? `Focus/Lens: ${focoLente.join(', ')}` : '',
-        atmosferaLuz?.length && !atmosferaLuz.includes('Automático') ? `Atmosphere: ${atmosferaLuz.join(', ')}` : '',
+        cameraMovimento?.length && !cameraMovimento.includes('Automático') ? `Camera: ${translateTags(cameraMovimento).join(', ')}` : '',
+        composicao?.length && !composicao.includes('Automático') ? `Composition: ${translateTags(composicao).join(', ')}` : '',
+        focoLente?.length && !focoLente.includes('Automático') ? `Focus/Lens: ${translateTags(focoLente).join(', ')}` : '',
+        atmosferaLuz?.length && !atmosferaLuz.includes('Automático') ? `Atmosphere: ${translateTags(atmosferaLuz).join(', ')}` : '',
       ].filter(Boolean).join(' | ');
       
       const genBatch = async (batchIdx) => {

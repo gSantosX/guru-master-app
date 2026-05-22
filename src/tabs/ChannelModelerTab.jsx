@@ -51,29 +51,35 @@ const getInstantStrategy = (channel) => {
   const channelName = channel?.title || 'Canal';
   const viralTitle = (channel?.viralVideos || [])[0]?.title || 'Conteúdo Principal';
   return `**1. DIAGNÓSTICO DO NICHO**
-Posicionamento focado em atrair a audiência interessada no conteúdo de ${channelName}. O canal trabalha a retenção através da curiosidade intelectual e apelo visual direto.
+Posicionamento focado em ${channelName}. Retenção via curiosidade intelectual e ganchos de alto impacto visual.
 
 **2. FÓRMULA DE SUCESSO**
-- Padrão 1: Títulos dinâmicos com alta taxa de engajamento baseados em tópicos como "${viralTitle}".
-- Padrão 2: Narrativas imersivas e ganchos fortes nos primeiros 15 segundos para prender o clique.
+- Padrão 1: Títulos dinâmicos focados em curiosidade ou polêmica (ex: "${viralTitle}").
+- Padrão 2: Narrativas rápidas com quebras de padrão a cada 3 segundos nos ganchos.
 
 **3. VOZ DA AUDIÊNCIA (CRÍTICAS & DESEJOS)**
-- Pedidos: Maior frequência de postagens e aprofundamento das teses principais.
-- Dúvidas comuns: Como aplicar as técnicas citadas e onde encontrar mais referências.
+- Crítica: Ritmo acelerado demais em partes complexas.
+- Desejo: Aprofundar as referências históricas/técnicas no roteiro.
 
-**4. LACUNA DE OPORTUNIDADE**
-Ângulos menos explorados sobre a área de atuação do canal que a concorrência direta ainda não saturou com vídeos informativos.
+**4. ESTRATÉGIA CORRIGIDA (CRITIQUE PATCHING)**
+Replicar a estrutura de mistério/revelação do concorrente, mas adicionando pausas explicativas curtas (10s) nos pontos de maior complexidade indicados pelos comentários, eliminando a frustração da audiência.
 
-**5. DICA DE OURO REPLICÁVEL**
-Modelar a estrutura de roteiro dos vídeos de maior visualização, inserindo um loop aberto logo no início.
+**5. LACUNA DE OPORTUNIDADE**
+Abordar o tema de forma mais didática e com storytelling linear, suprindo a falta de profundidade criticada no canal de origem.
 
-**6. ARMADILHA A EVITAR**
-Uso excessivo de clichês ou introduções longas que reduzem drasticamente a retenção inicial do algoritmo.
+**6. DICA DE OURO & ARMADILHA**
+- Ouro: Iniciar com loop aberto conectando a crítica principal ao clímax do vídeo.
+- Armadilha: Introduções genéricas ou enrolação nos primeiros 15 segundos.
 
 **7. SUBNICHOS RECOMENDADOS**
-1. Canal de cortes focado nos melhores insights.
-2. Narrativas curtas adaptadas para o Reels e TikTok.
-3. Estudos de caso práticos detalhando o passo a passo.`;
+1. Análises cirúrgicas focadas em segredos não revelados.
+2. Cortes rápidos otimizados para TikTok/Reels com legenda dinâmica.
+
+**8. ADAPTAÇÃO DE IDENTIDADE VISUAL & MASCOTES**
+- Estilo Atual: Dark/Misterioso com avatares minimalistas em tons de roxo e preto.
+- Sugestão 1 (Mascote Animal): Usar um Corvo ou Lobo estilizado em neon ciano.
+- Sugestão 2 (Mascote Humano): Personagem 3D ou ilustração em estilo Cyberpunk (ex: hacker misterioso).
+- Sugestão 3 (Tema Abstrato): Geometria sagrada ou símbolos antigos brilhantes sob fundo escuro.`;
 };
 
 const getInstantCountryAnalysis = (channel) => {
@@ -192,11 +198,88 @@ const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)
     ]
   };
 
+  const differentials = {
+    pt: [
+      "Inicie quebrando a expectativa nos primeiros 5 segundos.",
+      "Mostre um contraste visual 'Antes vs Depois' logo na thumbnail e nos primeiros segundos.",
+      "Crie um loop aberto revelando que um detalhe bobo mudou tudo.",
+      "Insira uma pergunta retórica provocativa antes de rodar a vinheta ou intro.",
+      "Use zoom dinâmico na palavra-chave no primeiro segundo do vídeo.",
+      "Aponte um erro comum que 90% das pessoas cometem e corrija de imediato.",
+      "Apresente uma estatística chocante ou prova visual inegável de início.",
+      "Faça um desafio rápido para prender a atenção até o final do vídeo.",
+      "Mostre o resultado final surpreendente e prometa revelar o método em breve.",
+      "Conecte a dor da audiência diretamente com a solução prática do vídeo."
+    ],
+    en: [
+      "Start by breaking expectations in the first 5 seconds.",
+      "Show a visual 'Before vs After' contrast in the thumbnail and initial seconds.",
+      "Create an open loop revealing that a tiny detail changed everything.",
+      "Insert a provocative rhetorical question before the intro.",
+      "Use dynamic zoom on the keyword in the first second of the video.",
+      "Point out a common mistake 90% of people make and fix it immediately.",
+      "Present a shocking statistic or undeniable visual proof at the start.",
+      "Pose a quick challenge to hold attention until the end of the video.",
+      "Show the surprising final result and promise to reveal the method shortly.",
+      "Connect the audience's pain point directly to the practical solution."
+    ],
+    es: [
+      "Comience rompiendo la expectativa en los primeiros 5 segundos.",
+      "Muestre un contraste visual 'Antes vs Después' en la miniatura y los primeiros segundos.",
+      "Cree un bucle aberto revelando que un detalle tonto cambió todo.",
+      "Inserte una pregunta retórica provocativa antes de la introducción.",
+      "Use zoom dinámico en la palabra clave en el primer segundo del video.",
+      "Señale un error común que el 90% de la gente comete y corríjalo de inmediato.",
+      "Presente una estadística impactante o prueba visual innegable al inicio.",
+      "Haga un desafío rápido para mantener la atención hasta el final del video.",
+      "Muestre el resultado final sorprendente y prometa revelar el método pronto.",
+      "Conecte el dolor de la audiencia directamente con la solución práctica."
+    ],
+    fr: [
+      "Commencez par briser les attentes dès les 5 premières secondes.",
+      "Montrez un contraste visuel 'Avant vs Après' dès le début.",
+      "Créez une boucle ouverte révélant qu'un infime détail a tout changé.",
+      "Insérez une question rhétorique provocante avant l'intro.",
+      "Utilisez un zoom dynamique sur le mot-clé dans la première seconde.",
+      "Signalez une erreur courante commise par 90% des gens et corrigez-la.",
+      "Présentez une statistique choquante ou une preuve visuelle incontestable.",
+      "Proposez un défi rapide pour maintenir l'attention jusqu'à la fin.",
+      "Montrez le résultat final surprenant et promettez de révéler la méthode.",
+      "Connectez directement la douleur du public à la solution pratique."
+    ],
+    de: [
+      "Brechen Sie in den ersten 5 Sekunden die Erwartungshaltung.",
+      "Zeigen Sie sofort einen visuellen 'Vorher-Nachher'-Kontrast.",
+      "Erstellen Sie einen offenen Loop: Ein kleines Detail hat alles verändert.",
+      "Stellen Sie eine provokante rhetorische Frage vor dem Intro.",
+      "Nutzen Sie einen dynamischen Zoom auf das Keyword in Sekunde eins.",
+      "Weisen Sie auf einen Fehler hin, den 90% machen, und lösen Sie ihn auf.",
+      "Präsentieren Sie einen schockierenden Fakt oder visuellen Beweis zu Beginn.",
+      "Stellen Sie eine schnelle Challenge, um die Aufmerksamkeit zu halten.",
+      "Zeigen Sie das überraschende Endergebnis und versprechen Sie die Methode.",
+      "Verbinden Sie den Schmerz der Zuschauer direkt mit der praktischen Lösung."
+    ],
+    it: [
+      "Inizia rompendo le aspettative nei primi 5 secondi.",
+      "Mostra un contrasto visivo 'Prima vs Dopo' nei primi secondi.",
+      "Crea un loop aperto rivelando che un piccolo dettaglio ha cambiato tutto.",
+      "Inserisci una domanda retorica provocatoria prima della sigla.",
+      "Usa lo zoom dinamico sulla parola chiave nel primo secondo.",
+      "Indica un errore comune commesso dal 90% delle persone e correggilo.",
+      "Presenta una statistica shock o una prova visiva innegabile all'inizio.",
+      "Fai una sfida veloce per mantenere l'attenzione fino alla fine.",
+      "Mostra il risultato finale sorprendente e prometti di svelare il metodo.",
+      "Collega il problema del pubblico direttamente alla soluzione pratica."
+    ]
+  };
+
   const selectedTemplates = templates[lang] || templates.pt;
+  const selectedDiffs = differentials[lang] || differentials.pt;
   return Array.from({ length: count }, (_, i) => {
     const template = selectedTemplates[i % selectedTemplates.length];
+    const diff = selectedDiffs[i % selectedDiffs.length];
     const title = template.replace('[KEYWORD]', mainWord);
-    return `${i + 1}. ${title}`;
+    return `${i + 1}. ${title} | Diferencial: ${diff}`;
   }).join('\n');
 };
 
@@ -532,23 +615,27 @@ ${latestText || 'Dados não disponíveis'}
 VOZ DA AUDIÊNCIA (Comentários):
 ${audienceText || 'Sem comentários.'}
 
-Sua resposta deve ter EXATAMENTE estas 7 partes EM PORTUGUÊS (PT-BR) — sem introdução, sem conclusão:
+Sua resposta deve ter EXATAMENTE estas 8 partes EM PORTUGUÊS (PT-BR) — sem introdução, sem conclusão. Toda a análise deve ser um resumo cirúrgico, direto ao ponto e extremamente resumido:
 **1. DIAGNÓSTICO DO NICHO**
-Em 1-2 frases: Qual é o posicionamento real deste canal? O que ele vende emocionalmente?
+Posicionamento real do canal em 1 frase curta.
 **2. FÓRMULA DE SUCESSO**
-Identifique 2-3 padrões específicos de título ou tema que os vídeos virais têm em comum.
+2-3 padrões específicos e diretos de título/tema comuns nos vídeos virais.
 **3. VOZ DA AUDIÊNCIA (CRÍTICAS & DESEJOS)**
-RESUMA em bullet points o que o público tanto comenta: O que pedem? Do que reclamam? Dúvidas?
-**4. LACUNA DE OPORTUNIDADE**
-Que ângulos este canal AINDA NÃO explorou, mas que a audiência está pedindo nos comentários?
-**5. DICA DE OURO REPLICÁVEL**
-Uma estratégia concreta baseada no feedback da audiência para o usuário aplicar.
-**6. ARMADILHA A EVITAR**
-O erro que a audiência mais critica neste tipo de canal.
+Resumo em tópicos curtíssimos das principais críticas e desejos da audiência nos comentários.
+**4. ESTRATÉGIA CORRIGIDA (CRITIQUE PATCHING)**
+Proposta de correção estratégica cirúrgica: como modelar o canal fazendo o mínimo de alterações possíveis, corrigindo apenas as dores e objeções apontadas pelos comentários.
+**5. LACUNA DE OPORTUNIDADE**
+O que o canal não explorou que a audiência quer ver.
+**6. DICA DE OURO & ARMADILHA**
+Uma dica replicável direta e um erro crítico a ser evitado.
 **7. SUBNICHOS RECOMENDADOS**
-Apresente de forma BEM RESUMIDA E DIRETA 3 ideias práticas de como subnichar este canal ou criar canais paralelos lucrativos derivados desta exata temática.
+2-3 ideias práticas e curtas de subnichos derivados desta temática.
+**8. ADAPTAÇÃO DE IDENTIDADE VISUAL & MASCOTES**
+Identifique resumidamente o estilo visual do canal analisado e dê 3 novas sugestões diretas de adaptação de estilo/mascote equivalente (ex: se usam um boneco/mascote fictício, sugira um animal estilizado, um avatar cyberpunk ou uma figura humana alternativa) que preserve a mesma essência de design.
 
-REGRAS: Use **NEGRITO** para os títulos da seção.`;
+REGRAS CRÍTICAS:
+- Seja extremamente cirúrgico, curto e objetivo.
+- Use **NEGRITO** apenas para os títulos de seção exatos listados acima.`;
 
     (async () => {
       try {
@@ -658,18 +745,16 @@ ${viralText || 'N/A'}
 VOZ DA AUDIÊNCIA:
 ${audienceText || 'N/A'}
 
-${strategyResult ? `INSIGHTS DA ESTRATÉGIA (Use esses dados para guiar a criação dos ganchos, corrigindo erros e atacando as oportunidades):\n${strategyResult}\n` : ''}
+${strategyResult ? `INSIGHTS DA ESTRATÉGIA:\n${strategyResult}\n` : ''}
 
-MISSÃO: Gerar 10 títulos NOVOS de altíssimo CTR inspirados no canal.
-IDIOMA OBRIGATÓRIO: Gere TODOS os títulos em ${selectedLanguage}. 
+MISSÃO: Gerar 10 títulos NOVOS de altíssimo CTR inspirados no canal em ${selectedLanguage}.
 
 REGRAS CRÍTICAS:
-- Analise críticas/pedidos do público e os insights estratégicos e use como gancho.
-- Os títulos devem ter entre 40 e 75 caracteres.
-- Não use formatação markdown, apenas números simples (1. Título).
-- SEM ADJETIVOS VAZIOS, muita especificidade.
-
-Retorne APENAS a lista numerada.`;
+- Formato OBRIGATÓRIO por linha: "Número. Título do Vídeo | Diferencial: Uma dica curtíssima de retenção/roteiro que resolve uma dor da audiência".
+- Exemplo: "1. Como Fazer Engenharia Reversa Sem Mistérios | Diferencial: Comece quebrando a expectativa nos primeiros 5s com uma imagem impactante."
+- Não use formatação markdown de negrito ou itálico no título. Apenas a lista numerada pura.
+- O título deve ser extremamente chamativo (CTR alto) e o diferencial deve ser cirúrgico e curto.
+- Retorne APENAS a lista numerada no formato solicitado.`;
 
     (async () => {
       try {
@@ -1068,21 +1153,32 @@ Retorne APENAS a lista numerada.`;
                      {titlesResult.split('\n').map((title, idx) => {
                         const titleText = title.replace(/^[\d\-\*\•\)\.\s]+/, '').replace(/^["']+|["']+$/g, '').trim();
                         if (!titleText) return null;
+                        const parts = titleText.split('|');
+                        const mainTitle = parts[0].trim();
+                        const differential = parts[1] ? parts[1].replace(/^\s*Diferencial:\s*/i, '').trim() : '';
                         return (
-                          <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-black/40 border border-white/5 rounded-xl hover:border-white/20 transition-all gap-4">
-                            <p className="text-base font-bold text-gray-200 leading-relaxed">
-                              <span className="text-white/50 mr-3">{idx + 1}.</span>
-                              {titleText}
-                            </p>
-                            <div className="flex items-center gap-2 shrink-0">
+                          <div key={idx} className="flex flex-col sm:flex-row sm:items-start md:items-center justify-between p-4 bg-black/40 border border-white/5 rounded-xl hover:border-white/20 transition-all gap-4">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-base font-bold text-gray-200 leading-relaxed">
+                                <span className="text-white/50 mr-3">{idx + 1}.</span>
+                                {mainTitle}
+                              </p>
+                              {differential && (
+                                <p className="text-xs text-neon-cyan mt-1.5 flex items-start gap-1.5 italic font-medium">
+                                  <span className="text-neon-cyan shrink-0 mt-0.5">💡</span>
+                                  <span>Diferencial: {differential}</span>
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                               <button 
-                                onClick={() => handleGenerateFromSuggestedTitle(titleText)}
+                                onClick={() => handleGenerateFromSuggestedTitle(mainTitle)}
                                 className="px-3 py-1.5 rounded-lg bg-neon-purple/10 text-neon-purple border border-neon-purple/20 text-[10px] font-black uppercase tracking-widest hover:bg-neon-purple hover:text-white transition-all"
                               >
                                 Usar
                               </button>
                               <button 
-                                onClick={() => copyToClipboard(titleText, idx)}
+                                onClick={() => copyToClipboard(mainTitle, idx)}
                                 className="px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 hover:text-white border border-transparent text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
                               >
                                 {copiedTitleIndex === idx ? 'Copiado!' : 'Copiar'}
