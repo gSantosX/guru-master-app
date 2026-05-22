@@ -9,6 +9,126 @@ import { t } from '../utils/i18n';
 import { usePersistence } from '../contexts/PersistenceContext';
 
 // Heuristic helpers for instant pre-fill
+const getInstantTranslations = (titlesRaw) => {
+  const titleLines = titlesRaw
+    .split('\n')
+    .map(l => l.replace(/^[\d\-\*\•\)\.\s]+/, '').replace(/^["']+|["']+$/g, '').trim())
+    .filter(l => l.length > 3);
+
+  const replacements = [
+    // English templates generated in getInstantTitles
+    [/How (.*?) Revealed the Biggest Mystery of 2026/gi, "Como $1 Revelou o Maior Mistério de 2026"],
+    [/The Hidden Side of (.*?) They Don't Want You to See/gi, "O Lado Oculto de $1 Que Eles Não Querem Que Você Veja"],
+    [/The Truth About (.*?) That is Scaring Creators/gi, "A Verdade Sobre $1 Que Está Assustando Criadores"],
+    [/5 Fatal Mistakes in (.*?) That Ruin Channels/gi, "5 Erros Fatais em $1 Que Destruirão Canais"],
+    [/Why Are They Hiding This (.*?) Strategy From You\?/gi, "Por Que Eles Estão Escondendo Esta Estratégia de $1 de Você?"],
+    [/How to Change Everything Using Only (.*?) This Week/gi, "Como Mudar Tudo Usando Apenas $1 Esta Semana"],
+    [/The Secret (.*?) Guide That Works in 3 Days/gi, "O Guia Secreto de $1 Que Funciona em 3 Dias"],
+    [/What Happens If You Ignore (.*?) Today\?/gi, "O Que Acontece se Você Ignorar $1 Hoje?"],
+    [/The \$1 Million Decision with (.*?) \(Step-by-Step\)/gi, "A Decisão de 1 Milhão com $1 (Passo a Passo)"],
+    [/This Is the Only Correct Way to Master (.*?)/gi, "Esta é a Única Forma Correta de Dominar $1"],
+
+    // Spanish templates generated in getInstantTitles
+    [/Cómo (.*?) Reveló el Mayor Misterio de 2026/gi, "Como $1 Revelou o Maior Mistério de 2026"],
+    [/El Lado Oculto de (.*?) Que Nadie Quiere Mostrar/gi, "O Lado Oculto de $1 Que Ninguém Ousa Mostrar"],
+    [/La Verdad Sobre (.*?) Que Asusta a los Creadores/gi, "A Verdade Sobre $1 Que Está Assustando Criadores"],
+    [/5 Errores Fatales en (.*?) Que Destruyen Canales/gi, "5 Erros Fatais em $1 Que Destruem Canais"],
+    [/¿Por Qué Te Ocultan Esta Estrategia de (.*?)\?/gi, "Por Que Eles Estão Escondendo Esta Estratégia de $1 de Você?"],
+    [/Cómo Cambiar Todo Usando Solo (.*?) Esta Semana/gi, "Como Mudar Tudo Usando Apenas $1 Esta Semana"],
+    [/La Guía Secreta de (.*?) Que Funciona en 3 Días/gi, "O Guia Secreto de $1 Que Funciona em 3 Dias"],
+    [/¿Qué Pasa Si Ignoras (.*?) Hoy Mismo\?/gi, "O Que Acontece se Você Ignorar $1 Hoje?"],
+    [/La Decisión de 1 Millón con (.*?) \(Paso a Paso\)/gi, "La Decisión de 1 Millón con $1 (Passo a Passo)"],
+    [/Esta es la Única Forma Correta de Dominar (.*?)/gi, "Esta é a Única Forma Correta de Dominar $1"],
+
+    // General phrase/word patterns (English to PT)
+    [/\bhow to\b/gi, "como"],
+    [/\bthe secret of\b/gi, "o segredo de"],
+    [/\bthe truth about\b/gi, "a verdade sobre"],
+    [/\bhidden\b/gi, "oculto"],
+    [/\bsecrets\b/gi, "segredos"],
+    [/\bsecret\b/gi, "segredo"],
+    [/\bwhy\b/gi, "por que"],
+    [/\bwhat is\b/gi, "o que é"],
+    [/\bwhat happens\b/gi, "o que acontece"],
+    [/\bif you ignore\b/gi, "se você ignorar"],
+    [/\bto master\b/gi, "para dominar"],
+    [/\bmastering\b/gi, "dominando"],
+    [/\bmillion\b/gi, "milhão"],
+    [/\bstep-by-step\b/gi, "passo a passo"],
+    [/\bmistakes\b/gi, "erros"],
+    [/\bmistake\b/gi, "erro"],
+    [/\bchannels\b/gi, "canais"],
+    [/\bchannel\b/gi, "canal"],
+    [/\bthis is\b/gi, "isto é"],
+    [/\bthe only\b/gi, "a única"],
+    [/\bway to\b/gi, "forma de"],
+    [/\bwant to\b/gi, "quer"],
+    [/\bthey don't\b/gi, "eles não"],
+    [/\bsee\b/gi, "ver"],
+    [/\byou\b/gi, "você"],
+    [/\byour\b/gi, "seu"],
+    [/\bcreators\b/gi, "criadores"],
+    [/\bcreator\b/gi, "criador"],
+    [/\bstrategy\b/gi, "estratégia"],
+    [/\bchange everything\b/gi, "mudar tudo"],
+    [/\bthis week\b/gi, "esta semana"],
+    [/\bguide\b/gi, "guia"],
+    [/\bthat works\b/gi, "que funciona"],
+    [/\bin (\d+) days\b/gi, "em $1 dias"],
+    [/\btoday\b/gi, "hoje"],
+    [/\bdecision\b/gi, "decisão"],
+
+    // General phrase/word patterns (Spanish to PT)
+    [/\bcómo\b/gi, "como"],
+    [/\bel secreto de\b/gi, "o segredo de"],
+    [/\bla verdad sobre\b/gi, "a verdade sobre"],
+    [/\boculto\b/gi, "oculto"],
+    [/\bsecretos\b/gi, "segredos"],
+    [/\bsecreto\b/gi, "segredo"],
+    [/\bpor qué\b/gi, "por que"],
+    [/\bqué es\b/gi, "o que é"],
+    [/\bqué pasa\b/gi, "o que acontece"],
+    [/\bsi ignoras\b/gi, "se você ignorar"],
+    [/\bpara dominar\b/gi, "para dominar"],
+    [/\bdominando\b/gi, "dominando"],
+    [/\bmillón\b/gi, "milhão"],
+    [/\bpaso a passo\b/gi, "passo a passo"],
+    [/\berrores\b/gi, "erros"],
+    [/\berror\b/gi, "erro"],
+    [/\bcanales\b/gi, "canais"],
+    [/\bcanal\b/gi, "canal"],
+    [/\besta es\b/gi, "esta é"],
+    [/\búnica\b/gi, "única"],
+    [/\bforma de\b/gi, "forma de"],
+    [/\bquiere\b/gi, "quer"],
+    [/\bellos no\b/gi, "eles não"],
+    [/\bver\b/gi, "ver"],
+    [/\btú\b/gi, "você"],
+    [/\btu\b/gi, "seu"],
+    [/\bcreadores\b/gi, "criadores"],
+    [/\bestrategia\b/gi, "estratégia"],
+    [/\bcambiar todo\b/gi, "mudar tudo"],
+    [/\besta semana\b/gi, "esta semana"],
+    [/\bguía\b/gi, "guia"],
+    [/\bque funciona\b/gi, "que funciona"],
+    [/\ben (\d+) días\b/gi, "em $1 dias"],
+    [/\bhoy\b/gi, "hoje"],
+    [/\bdecisión\b/gi, "decisão"]
+  ];
+
+  const map = {};
+  titleLines.forEach((t, i) => {
+    let translated = t;
+    replacements.forEach(([regex, repl]) => {
+      translated = translated.replace(regex, repl);
+    });
+    translated = translated.charAt(0).toUpperCase() + translated.slice(1);
+    map[i] = translated;
+  });
+
+  return map;
+};
+
 const getInstantTitles = (channel, count = 10) => {
   const channelName = channel?.title || 'Canal';
   const viralTitles = (channel?.viralVideos || []).map(v => v.title).filter(Boolean);
@@ -139,22 +259,34 @@ export const ChannelMonitoringTab = ({ isActive, setActiveTab }) => {
 
   const translateTitles = async (titlesRaw) => {
     if (isTranslating) return;
+    
+    // 1. Instantly apply local heuristic translation
+    const localMap = getInstantTranslations(titlesRaw);
+    setTranslations(localMap);
+    setTranslationLang('Traduzindo...');
     setIsTranslating(true);
-    setTranslations({});
-    setTranslationLang('');
-    try {
-      const gptKeys = configs.gpt_key;
-      const geminiKeys = configs.gemini_key;
-      const grokKeys = configs.grok_key || localStorage.getItem('guru_grok_key');
+    showToast("Títulos traduzidos instantaneamente!", "success");
 
-      if (!gptKeys && !geminiKeys && !grokKeys) throw new Error('API key not configured');
+    // 2. Run background AI translation for refinement
+    (async () => {
+      try {
+        const gptKeys = configs.gpt_key;
+        const geminiKeys = configs.gemini_key;
+        const grokKeys = configs.grok_key || localStorage.getItem('guru_grok_key');
 
-      const titleLines = titlesRaw
-        .split('\n')
-        .map(l => l.replace(/^[\d\-\*\•\)\.\s]+/, '').replace(/^["']+|["']+$/g, '').trim())
-        .filter(l => l.length > 3);
+        if (!gptKeys && !geminiKeys && !grokKeys) {
+          // No API keys, keep local translation
+          setTranslationLang('Traduzido (Local)');
+          setIsTranslating(false);
+          return;
+        }
 
-      const prompt = `You are an expert multilingual translator.
+        const titleLines = titlesRaw
+          .split('\n')
+          .map(l => l.replace(/^[\d\-\*\•\)\.\s]+/, '').replace(/^["']+|["']+$/g, '').trim())
+          .filter(l => l.length > 3);
+
+        const prompt = `You are an expert multilingual translator.
 
 Task: Detect the language of the following titles.
 Rule: 
@@ -180,25 +312,28 @@ Rules:
 - Adapt idioms naturally — do NOT translate literally if it sounds unnatural
 - Return ONLY the JSON object, no markdown, no explanations`;
 
-      const result = await callAI(prompt, { model: 'gemini-2.5-flash' });
-      const clean = result.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(clean);
+        const result = await callAI(prompt, { model: 'gemini-2.5-flash', gptKey: configs.gpt_key });
+        const clean = result.replace(/```json/g, '').replace(/```/g, '').trim();
+        const parsed = JSON.parse(clean);
 
-      if (parsed.is_portuguese) {
-        setTranslationLang('Títulos já estão em Português.');
-        setTranslations({});
-      } else {
-        const map = {};
-        (parsed.translations || []).forEach((tr, i) => { map[i] = tr; });
-        setTranslations(map);
-        setTranslationLang(`${parsed.detected_language || '?'} → Português`);
+        if (parsed.is_portuguese) {
+          setTranslationLang('Títulos já estão em Português.');
+          setTranslations({});
+        } else {
+          const map = {};
+          (parsed.translations || []).forEach((tr, i) => { map[i] = tr; });
+          setTranslations(map);
+          setTranslationLang(`${parsed.detected_language || '?'} → Português`);
+          showToast("IA: Tradução de títulos refinada!", "success");
+        }
+      } catch (err) {
+        console.error('Translation error:', err);
+        setTranslationLang('Traduzido (Local)');
+        showToast('Aviso: Mantendo tradução local automática.', 'warning');
+      } finally {
+        setIsTranslating(false);
       }
-    } catch (err) {
-      console.error('Translation error:', err);
-      setTranslationLang('Erro ao traduzir. Tente novamente.');
-    } finally {
-      setIsTranslating(false);
-    }
+    })();
   };
 
   const handleGenerateFromSuggestedTitle = (title) => {
@@ -1090,7 +1225,7 @@ REGRAS DE FORMATO:
                                       </p>
                                       <div className="flex items-center gap-2 shrink-0">
                                         <button 
-                                          onClick={() => handleGenerateFromSuggestedTitle(titleText)}
+                                          onClick={() => handleGenerateFromSuggestedTitle(translations[idx] || titleText)}
                                           title="Gerar Roteiro com este título"
                                           className="h-10 px-4 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-neon-purple/10 text-neon-purple hover:bg-neon-purple hover:text-white border border-neon-purple/20 transform active:scale-95"
                                         >
@@ -1098,7 +1233,7 @@ REGRAS DE FORMATO:
                                           <span className="hidden sm:inline">Gerar Roteiro</span>
                                         </button>
                                         <button 
-                                          onClick={() => copyToClipboard(titleText, idx)}
+                                          onClick={() => copyToClipboard(translations[idx] || titleText, idx)}
                                           className={`h-10 px-4 rounded-xl transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transform active:scale-95
                                             ${copiedTitleIndex === idx 
                                               ? 'bg-green-500/20 text-green-400 border border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]' 
