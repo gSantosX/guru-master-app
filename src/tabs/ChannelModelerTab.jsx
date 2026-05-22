@@ -46,6 +46,30 @@ const GLOBAL_LANGUAGES = [
   "Filipino (Tagalog)"
 ];
 
+const FINANCE_SUBJECTS = [
+  "Renda Passiva & Dividendos",
+  "Criptomoedas & Bitcoin",
+  "Investimentos para Iniciantes",
+  "Ações & Bolsa de Valores",
+  "Economia Doméstica & Poupança",
+  "Cartões de Crédito & Milhas",
+  "Mentalidade Financeira & Riqueza",
+  "Planejamento de Aposentadoria",
+  "Tesouro Direto & Renda Fixa",
+  "Outro Assunto (Personalizado)"
+];
+
+const VISUAL_STYLES = [
+  "Padrão do Canal",
+  "Dark & Misterioso",
+  "Clean & Corporativo",
+  "Minimalista & Elegante",
+  "Vibrante & Neon",
+  "Futurista & Tech",
+  "Ilustrado / 3D Pop",
+  "Outro Estilo (Personalizado)"
+];
+
 // Heuristic helpers for instant pre-fill
 const getInstantStrategy = (channel) => {
   const channelName = channel?.title || 'Canal';
@@ -96,7 +120,7 @@ Alta audiência ativa e maior RPM global.
 - Alemanha: Retenção e RPM elevados.`;
 };
 
-const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)') => {
+const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)', topic = 'Renda Passiva & Dividendos', visualStyle = 'Padrão do Canal') => {
   const channelName = channel?.title || 'Canal';
   const viralTitles = (channel?.viralVideos || []).map(v => v.title).filter(Boolean);
   
@@ -107,6 +131,13 @@ const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)
       mainWord = words[0].replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
     }
   }
+
+  let keyword = topic;
+  if (!keyword || keyword === 'Outro Assunto (Personalizado)') {
+    keyword = mainWord;
+  }
+
+  const styleText = visualStyle === 'Padrão do Canal' ? 'original' : visualStyle;
 
   let lang = 'pt';
   const targetLower = targetLang.toLowerCase();
@@ -186,14 +217,14 @@ const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)
     it: [
       `Come [KEYWORD] ha rivelato il più grande mistero del 2026`,
       `Il lato nascosto di [KEYWORD] che non vogliono farti vedere`,
-      `La verità su [KEYWORD] che sta spaventando i creatori`,
+      `La verità su [KEYWORD] que sta spaventando i creatori`,
       `5 errori fatali in [KEYWORD] che rovinano i canali`,
-      `Perché ti nascondono questa strategia su [KEYWORD]?`,
-      `Come cambiare tutto usando solo [KEYWORD] questa settimana`,
-      `La guida segreta di [KEYWORD] che funziona in 3 giorni`,
+      `Perché ti nascondono questa estratégia su [KEYWORD]?`,
+      `Come cambiare tudo usando solo [KEYWORD] questa settimana`,
+      `La guida segreta di [KEYWORD] que funciona em 3 dias`,
       `Cosa succede se ignori [KEYWORD] oggi?`,
-      `La decisione da 1 milione con [KEYWORD] (passo dopo passo)`,
-      `Questo è l'unico modo corretto per dominare [KEYWORD]`
+      `La decisione da 1 milione con [KEYWORD] (passo depois de passo)`,
+      `Questo é l'unico modo corretto per dominare [KEYWORD]`
     ]
   };
 
@@ -229,16 +260,16 @@ const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)
       "Inserte una pregunta retórica provocativa antes de la introducción.",
       "Use zoom dinámico en la palabra clave en el primer segundo del video.",
       "Señale un error común que el 90% de la gente comete y corríjalo de inmediato.",
-      "Presente una estadística impactante o prueba visual innegable al inicio.",
+      "Presente una estadística impactante o prova visual inegável al início.",
       "Haga un desafío rápido para mantener la atención hasta el final del video.",
       "Muestre el resultado final sorprendente y prometa revelar el método pronto.",
-      "Conecte el dolor de la audiencia directamente con la solución práctica."
+      "Conecte el dolor de la audiencia directamente con la solución prática."
     ],
     fr: [
       "Commencez par briser les attentes dès les 5 premières secondes.",
       "Montrez un contraste visuel 'Avant vs Après' dès le début.",
       "Créez une boucle ouverte révélant qu'un infime détail a tout changé.",
-      "Insérez une question rhétorique provocante avant l'intro.",
+      "Insira uma question rhétorique provocante avant l'intro.",
       "Utilisez un zoom dynamique sur le mot-clé dans la première seconde.",
       "Signalez une erreur courante commise par 90% des gens et corrigez-la.",
       "Présentez une statistique choquante ou une preuve visuelle incontestable.",
@@ -261,14 +292,14 @@ const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)
     it: [
       "Inizia rompendo le aspettative nei primi 5 secondi.",
       "Mostra un contrasto visivo 'Prima vs Dopo' nei primi secondi.",
-      "Crea un loop aperto rivelando che un piccolo dettaglio ha cambiato tutto.",
+      "Crea un loop aberto revelando que un piccolo detalhe mudou tudo.",
       "Inserisci una domanda retorica provocatoria prima della sigla.",
-      "Usa lo zoom dinamico sulla parola chiave nel primo secondo.",
+      "Usa lo zoom dinamico sulla palavra chiave nel primo secondo.",
       "Indica un errore comune commesso dal 90% delle persone e correggilo.",
       "Presenta una statistica shock o una prova visiva innegabile all'inizio.",
-      "Fai una sfida veloce per mantenere l'attenzione fino alla fine.",
-      "Mostra il risultato finale sorprendente e prometti di svelare il metodo.",
-      "Collega il problema del pubblico direttamente alla soluzione pratica."
+      "Fai una sfida veloce per manterre l'attenzione fino alla fine.",
+      "Mostra il resultado final sorprendente e prometti di svelare o método.",
+      "Collega o problema do público diretamente à solução prática."
     ]
   };
 
@@ -277,7 +308,8 @@ const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)
   return Array.from({ length: count }, (_, i) => {
     const template = selectedTemplates[i % selectedTemplates.length];
     const diff = selectedDiffs[i % selectedDiffs.length];
-    const title = template.replace('[KEYWORD]', mainWord);
+    const title = template.replace('[KEYWORD]', keyword);
+    return `${i + 1}. ${title} | Diferencial: ${diff} (Estética: ${styleText})`;
   }).join('\n');
 };
 
@@ -364,6 +396,10 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
   const [titlesResult, setTitlesResult] = useState(null);
   const [isRefiningTitles, setIsRefiningTitles] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('Português (Brasil)');
+  const [selectedTopic, setSelectedTopic] = useState('Renda Passiva & Dividendos');
+  const [customTopic, setCustomTopic] = useState('');
+  const [selectedVisualStyle, setSelectedVisualStyle] = useState('Padrão do Canal');
+  const [customVisualStyle, setCustomVisualStyle] = useState('');
   
   // Utilities
   const [isCopied, setIsCopied] = useState(false);
@@ -783,8 +819,11 @@ REGRAS CRÍTICAS:
   const runTitlesAnalysis = async () => {
     if (!selectedChannel) return;
     
+    const topicToUse = selectedTopic === 'Outro Assunto (Personalizado)' ? customTopic : selectedTopic;
+    const styleToUse = selectedVisualStyle === 'Outro Estilo (Personalizado)' ? customVisualStyle : selectedVisualStyle;
+    
     // Set instant prefill result
-    const instant = getInstantTitles(selectedChannel, 10, selectedLanguage);
+    const instant = getInstantTitles(selectedChannel, 10, selectedLanguage, topicToUse, styleToUse);
     setTitlesResult(instant);
     setIsRefiningTitles(true);
 
@@ -798,13 +837,16 @@ ${audienceText || 'N/A'}
 
 ${strategyResult ? `INSIGHTS DA ESTRATÉGIA:\n${strategyResult}\n` : ''}
 
-MISSÃO: Gerar 10 títulos NOVOS de altíssimo CTR inspirados no canal em ${selectedLanguage}.
+MISSÃO: Gerar 10 títulos NOVOS de altíssimo CTR em ${selectedLanguage}.
+Você deve se inspirar na fórmula psicológica de sucesso e no estilo de títulos do canal analisado, mas adaptando e direcionando a geração para:
+- ASSUNTO PRINCIPAL DO VÍDEO: "${topicToUse || 'Finanças'}"
+- ESTILO VISUAL / ESTÉTICA DA THUMBNAIL E VÍDEO: "${styleToUse || 'Padrão do Canal'}"
 
 REGRAS CRÍTICAS:
-- Formato OBRIGATÓRIO por linha: "Número. Título do Vídeo | Diferencial: Uma dica curtíssima de retenção/roteiro que resolve uma dor da audiência".
-- Exemplo: "1. Como Fazer Engenharia Reversa Sem Mistérios | Diferencial: Comece quebrando a expectativa nos primeiros 5s com uma imagem impactante."
+- Formato OBRIGATÓRIO por linha: "Número. Título do Vídeo | Diferencial: Uma dica curtíssima de retenção/roteiro + sugestão visual coerente com estética ${styleToUse || 'do canal'}".
+- Exemplo: "1. Título Impactante Focado em ${topicToUse || 'Assunto'} | Diferencial: Comece abrindo um loop visual nos primeiros 5s usando estética no estilo ${styleToUse || 'do canal'}."
 - Não use formatação markdown de negrito ou itálico no título. Apenas a lista numerada pura.
-- O título deve ser extremamente chamativo (CTR alto) e o diferencial deve ser cirúrgico e curto.
+- O título deve ser extremamente chamativo (CTR alto), focado no assunto fornecido, e o diferencial deve ser cirúrgico e curto.
 - Retorne APENAS a lista numerada no formato solicitado.`;
 
     (async () => {
@@ -1177,11 +1219,13 @@ REGRAS CRÍTICAS:
 
               {/* SECTION 3: TITLE GENERATOR */}
               <div className="mb-10 bg-white/5 border-2 border-white/10 rounded-2xl p-6">
-                <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4 border-b border-white/5 pb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4 border-b border-white/5 pb-6">
                   <div className="flex items-center gap-3">
-                    <h3 className="text-xl font-black text-white flex items-center gap-3">
-                      <Sparkles className="text-white w-6 h-6" /> Gerador de Títulos Virais
-                    </h3>
+                    <Sparkles className="text-white w-6 h-6" />
+                    <div>
+                      <h3 className="text-xl font-black text-white">Gerador de Títulos Virais</h3>
+                      <p className="text-[10px] text-gray-400 font-mono mt-0.5">Adaptado com tema e estilo personalizados</p>
+                    </div>
                     {isRefiningTitles && (
                       <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/10 text-white animate-pulse border border-white/20">
                         <LoadingSpinner size="xs" message="" />
@@ -1189,23 +1233,74 @@ REGRAS CRÍTICAS:
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 w-full md:w-auto">
+                  <button 
+                    onClick={runTitlesAnalysis}
+                    disabled={isRefiningTitles || isAnalyzingTitles}
+                    className="px-6 py-2.5 bg-white text-dark font-black rounded-xl hover:bg-gray-200 transition-all text-xs flex items-center gap-2 self-end sm:self-center"
+                  >
+                    {isRefiningTitles || isAnalyzingTitles ? <LoadingSpinner size="xs" message="" /> : <><Wand2 className="w-4 h-4" /> Gerar 10 Títulos</>}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                  {/* Campo de Assunto */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Assunto (Nicho de Finanças)</label>
+                    <select
+                      value={selectedTopic}
+                      onChange={(e) => setSelectedTopic(e.target.value)}
+                      className="w-full bg-dark border border-white/10 text-gray-300 text-sm rounded-xl px-4 py-2.5 focus:border-neon-cyan focus:outline-none"
+                    >
+                      {FINANCE_SUBJECTS.map(topic => (
+                        <option key={topic} value={topic}>{topic}</option>
+                      ))}
+                    </select>
+                    {selectedTopic === 'Outro Assunto (Personalizado)' && (
+                      <input
+                        type="text"
+                        placeholder="Digite o assunto personalizado..."
+                        value={customTopic}
+                        onChange={(e) => setCustomTopic(e.target.value)}
+                        className="mt-2 w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm focus:border-neon-cyan focus:outline-none text-white font-bold"
+                      />
+                    )}
+                  </div>
+
+                  {/* Campo de Estilo Visual */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Estilo Visual da Thumb/Vídeo</label>
+                    <select
+                      value={selectedVisualStyle}
+                      onChange={(e) => setSelectedVisualStyle(e.target.value)}
+                      className="w-full bg-dark border border-white/10 text-gray-300 text-sm rounded-xl px-4 py-2.5 focus:border-neon-cyan focus:outline-none"
+                    >
+                      {VISUAL_STYLES.map(style => (
+                        <option key={style} value={style}>{style}</option>
+                      ))}
+                    </select>
+                    {selectedVisualStyle === 'Outro Estilo (Personalizado)' && (
+                      <input
+                        type="text"
+                        placeholder="Digite o estilo visual personalizado..."
+                        value={customVisualStyle}
+                        onChange={(e) => setCustomVisualStyle(e.target.value)}
+                        className="mt-2 w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm focus:border-neon-cyan focus:outline-none text-white font-bold"
+                      />
+                    )}
+                  </div>
+
+                  {/* Idioma da Geração */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Idioma de Destino</label>
                     <select 
                       value={selectedLanguage}
                       onChange={(e) => setSelectedLanguage(e.target.value)}
-                      className="bg-dark border border-white/10 text-gray-300 text-sm rounded-xl px-4 py-2 focus:border-neon-cyan flex-1 md:w-48"
+                      className="w-full bg-dark border border-white/10 text-gray-300 text-sm rounded-xl px-4 py-2.5 focus:border-neon-cyan focus:outline-none"
                     >
                       {GLOBAL_LANGUAGES.map(lang => (
                          <option key={lang} value={lang}>{lang}</option>
                       ))}
                     </select>
-                    <button 
-                      onClick={runTitlesAnalysis}
-                      disabled={isRefiningTitles || isAnalyzingTitles}
-                      className="px-6 py-2 bg-white text-dark font-black rounded-xl hover:bg-gray-200 transition-all text-xs flex items-center gap-2"
-                    >
-                      {isRefiningTitles || isAnalyzingTitles ? <LoadingSpinner size="xs" message="" /> : <><Wand2 className="w-4 h-4" /> Gerar 10 Títulos</>}
-                    </button>
                   </div>
                 </div>
 
