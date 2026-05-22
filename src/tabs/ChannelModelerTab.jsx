@@ -446,11 +446,20 @@ const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)
 
   const selectedTemplates = templates[lang] || templates.pt;
   const selectedDiffs = differentials.pt; // O diferencial em azul deve estar sempre em pt-br
+  const isPortuguese = lang === 'pt';
+
   return Array.from({ length: count }, (_, i) => {
     const template = selectedTemplates[i % selectedTemplates.length];
     const diff = selectedDiffs[i % selectedDiffs.length];
     const title = template.replace('[KEYWORD]', keyword);
-    return `${i + 1}. ${title} | Diferencial: ${diff} (Estética: ${styleText})`;
+    
+    if (isPortuguese) {
+      return `${i + 1}. ${title} | Diferencial: ${diff} (Estética: ${styleText})`;
+    } else {
+      const translationTemplate = templates.pt[i % templates.pt.length];
+      const translation = translationTemplate.replace('[KEYWORD]', keyword);
+      return `${i + 1}. ${title} | Tradução: ${translation} | Diferencial: ${diff} (Estética: ${styleText})`;
+    }
   }).join('\n');
 };
 
@@ -1053,6 +1062,8 @@ REGRAS CRÍTICAS:
     setIsRefiningTitles(true);
 
     const { viralText, latestText, audienceText } = getAnalysisContext();
+    const isPt = selectedLanguage.toLowerCase().startsWith('português') || selectedLanguage.toLowerCase().startsWith('portugues');
+
     const prompt = `Você é um ESPECIALISTA ELITE em CTR, Algoritmos do YouTube e Psicologia do Clique.
 CANAL EM ANÁLISE: "${selectedChannel.title}"
 VÍDEOS MAIS POPULARES:
@@ -1063,16 +1074,19 @@ ${audienceText || 'N/A'}
 ${strategyResult ? `INSIGHTS DA ESTRATÉGIA:\n${strategyResult}\n` : ''}
 
 MISSÃO: Gerar 10 títulos NOVOS de altíssimo CTR.
-- O Título do Vídeo (antes da barra "|") deve estar no idioma selecionado: ${selectedLanguage}.
-- O texto do Diferencial (após a barra "|") deve estar OBRIGATORIAMENTE em Português do Brasil (PT-BR), mesmo que o idioma selecionado para o título seja diferente.
+- O Título do Vídeo (antes da primeira barra "|") deve estar no idioma selecionado: ${selectedLanguage}.
+${isPt ? '' : `- Entre o Título e o Diferencial, deve conter obrigatoriamente a Tradução do título em Português do Brasil (PT-BR), precedida por "Tradução: ".
+`}- O texto do Diferencial deve estar OBRIGATORIAMENTE em Português do Brasil (PT-BR), mesmo que o idioma selecionado para o título seja diferente.
 
 Você deve se inspirar na fórmula psicológica de sucesso e no estilo de títulos do canal analisado, mas adaptando e direcionando a geração para:
 - ASSUNTO PRINCIPAL DO VÍDEO: "${topicToUse || 'Finanças'}"
 - ESTILO VISUAL / ESTÉTICA DA THUMBNAIL E VÍDEO: "${styleToUse || 'Padrão do Canal'}"
 
 REGRAS CRÍTICAS:
-- Formato OBRIGATÓRIO por linha: "Número. Título do Vídeo no idioma ${selectedLanguage} | Diferencial: Uma dica curtíssima de retenção/roteiro em Português (Brasil) + sugestão visual coerente com estética ${styleToUse || 'do canal'} em Português (Brasil)".
-- Exemplo: "1. [Título em ${selectedLanguage}] | Diferencial: Comece abrindo um loop visual nos primeiros 5s usando estética no estilo ${styleToUse || 'do canal'}."
+- Formato OBRIGATÓRIO por linha:
+  ${isPt ? `"Número. Título do Vídeo em Português | Diferencial: Uma dica curtíssima de retenção/roteiro em Português (Brasil) + sugestão visual coerente com estética ${styleToUse || 'do canal'} em Português (Brasil)"` : `"Número. Título do Vídeo no idioma ${selectedLanguage} | Tradução: Tradução do título em Português (Brasil) | Diferencial: Uma dica curtíssima de retenção/roteiro em Português (Brasil) + sugestão visual coerente com estética ${styleToUse || 'do canal'} em Português (Brasil)"`}
+- Exemplo:
+  ${isPt ? `"1. [Título em Português] | Diferencial: Comece abrindo um loop visual nos primeiros 5s usando estética no estilo ${styleToUse || 'do canal'}."` : `"1. [Título em ${selectedLanguage}] | Tradução: [Tradução em Português] | Diferencial: Comece abrindo um loop visual nos primeiros 5s usando estética no estilo ${styleToUse || 'do canal'}."`}
 - Não use formatação markdown de negrito ou itálico no título. Apenas a lista numerada pura.
 - O título deve ser extremamente chamativo (CTR alto), focado no assunto fornecido, e o diferencial deve ser cirúrgico, curto e em PT-BR.
 - Retorne APENAS a lista numerada no formato solicitado.`;
@@ -1528,22 +1542,54 @@ REGRAS CRÍTICAS:
                      {titlesResult.split('\n').map((title, idx) => {
                         const titleText = title.replace(/^[\d\-\*\•\)\.\s]+/, '').replace(/^["']+|["']+$/g, '').trim();
                         if (!titleText) return null;
-                        const parts = titleText.split('|');
-                        const mainTitle = parts[0].trim();
-                        const differential = parts[1] ? parts[1].replace(/^\s*Diferencial:\s*/i, '').trim() : '';
+                        const parts = titleText.split('|').map(p => p.trim());
+                        const mainTitle = parts[0];
+                        
+                        let translation = '';
+                        let differential = '';
+                        const isPt = selectedLanguage.toLowerCase().startsWith('português') || selectedLanguage.toLowerCase().startsWith('portugues');
+
+                        parts.slice(1).forEach(part => {
+                          if (part.toLowerCase().startsWith('tradução:')) {
+                            if (!isPt) {
+                              translation = part.replace(/^tradução:\s*/i, '').trim();
+                            }
+                          } else if (part.toLowerCase().startsWith('diferencial:')) {
+                            differential = part.replace(/^diferencial:\s*/i, '').trim();
+                          } else {
+                            if (!isPt && !translation) {
+                              translation = part;
+                            } else {
+                              differential = part;
+                            }
+                          }
+                        });
+
+                        // Clean up any training aesthetic suffix from instant template
+                        const cleanDifferential = differential.replace(/\s*\(Estética:[^)]*\)\s*$/i, '').trim();
+
                         return (
                           <div key={idx} className="flex flex-col sm:flex-row sm:items-start md:items-center justify-between p-4 bg-black/40 border border-white/5 rounded-xl hover:border-white/20 transition-all gap-4">
                             <div className="flex-1 min-w-0">
-                              <p className="text-base font-bold text-gray-200 leading-relaxed">
-                                <span className="text-white/50 mr-3">{idx + 1}.</span>
-                                {mainTitle}
-                              </p>
-                              {differential && (
-                                <p className="text-xs text-neon-cyan mt-1.5 flex items-start gap-1.5 italic font-medium">
-                                  <span className="text-neon-cyan shrink-0 mt-0.5">💡</span>
-                                  <span>Diferencial: {differential}</span>
-                                </p>
-                              )}
+                              <div className="flex items-start gap-3">
+                                <span className="text-white/50 text-base font-bold shrink-0">{idx + 1}.</span>
+                                <div className="flex-1">
+                                  <p className="text-base font-bold text-gray-200 leading-relaxed">
+                                    {mainTitle}
+                                  </p>
+                                  {translation && (
+                                    <p className="text-xs text-gray-400 mt-1 italic font-medium">
+                                      Tradução: {translation}
+                                    </p>
+                                  )}
+                                  {cleanDifferential && (
+                                    <p className="text-xs text-neon-cyan mt-1.5 flex items-start gap-1.5 italic font-medium">
+                                      <span className="text-neon-cyan shrink-0 mt-0.5">💡</span>
+                                      <span>Diferencial: {cleanDifferential}</span>
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                               <button 
