@@ -7,6 +7,165 @@ import { useCloudStorage } from '../hooks/useCloudStorage';
 import { useSystemStatus } from '../contexts/SystemStatusContext';
 import { usePersistence } from '../contexts/PersistenceContext';
 
+const detectLanguage = (title) => {
+  const text = (title || '').toLowerCase();
+  const ptWords = ['como', 'o', 'a', 'e', 'do', 'da', 'em', 'um', 'uma', 'para', 'com', 'não', 'mais', 'é', 'você', 'seu', 'sua'];
+  const esWords = ['como', 'el', 'la', 'y', 'del', 'de', 'en', 'un', 'una', 'para', 'con', 'no', 'más', 'es', 'usted', 'su', 'sus'];
+  const enWords = ['how', 'the', 'a', 'and', 'of', 'in', 'to', 'with', 'not', 'more', 'is', 'you', 'your', 'for', 'on', 'at', 'this'];
+  
+  let ptCount = 0;
+  let esCount = 0;
+  let enCount = 0;
+  
+  const words = text.split(/\s+/);
+  for (const w of words) {
+    if (ptWords.includes(w)) ptCount++;
+    if (esWords.includes(w)) esCount++;
+    if (enWords.includes(w)) enCount++;
+  }
+  
+  if (enCount > ptCount && enCount > esCount) return 'en';
+  if (esCount > ptCount && esCount > enCount) return 'es';
+  return 'pt';
+};
+
+const getInstantSeo = (title, isFiction) => {
+  const lang = detectLanguage(title);
+  const cleanTitle = title.replace(/[^\w\s\u00C0-\u00FF]/gi, '');
+  const words = cleanTitle.split(/\s+/).filter(w => w.length > 3);
+  const tags = Array.from(new Set([
+    title,
+    ...words,
+    ...words.map(w => `${w} youtube`),
+    lang === 'en' ? 'how to' : lang === 'es' ? 'como hacer' : 'como fazer',
+    lang === 'en' ? 'tutorial' : lang === 'es' ? 'tutorial' : 'tutorial',
+    lang === 'en' ? 'tips' : lang === 'es' ? 'consejos' : 'dicas'
+  ])).slice(0, 15).join(', ');
+  
+  const hashtags = words.slice(0, 3).map(w => `#${w.toLowerCase()}`).join(' ');
+
+  let description = '';
+  let comment = '';
+  let titles = [];
+
+  if (lang === 'en') {
+    description = `In this video, we're exploring "${title}". If you've ever wondered how to get the best results, this is for you!\n\nWe cover key insights, tips, and step-by-step guidance. Make sure to watch until the end for a special bonus tip.\n\nSubscribe for more content like this!`;
+    if (isFiction) {
+      description += `\n\n[DISCLAIMER] The events and entities depicted in this video are entirely fictional. Any resemblance to real events or persons is purely coincidental.`;
+    }
+    comment = `What did you think of "${title}"? Let me know in the comments below! 👇`;
+    titles = [
+      `How I Discovered The Truth About ${title}`,
+      `Why Everyone Is Wrong About ${title}`
+    ];
+  } else if (lang === 'es') {
+    description = `En este video, exploramos "${title}". Si alguna vez te has preguntado cómo obtener los mejores resultados, ¡este video es para ti!\n\nCubrimos información clave, consejos y orientación paso a paso. Asegúrate de ver hasta el final para un consejo adicional especial.\n\n¡Suscríbete para más contenido como este!`;
+    if (isFiction) {
+      description += `\n\n[AVISO LEGAL] Los eventos y entidades representados en este video son completamente ficticios. Cualquier parecido con eventos o personas reales es pura coincidencia.`;
+    }
+    comment = `¿Qué te pareció "${title}"? ¡Déjamelo saber en los comentarios! 👇`;
+    titles = [
+      `Cómo descubrí la verdad sobre ${title}`,
+      `Por qué todos se equivocan sobre ${title}`
+    ];
+  } else {
+    // Default: pt
+    description = `Neste vídeo, vamos explorar tudo sobre "${title}". Se você já se perguntou como obter os melhores resultados ou entender mais sobre esse assunto, este guia completo é para você!\n\nAbordamos os principais pontos de forma simples e direta. Assista até o final para não perder nenhuma dica valiosa!\n\nInscreva-se no canal e ative as notificações para mais conteúdos de alto valor!`;
+    if (isFiction) {
+      description += `\n\n[AVISO DE FICÇÃO] Os fatos, entidades e situações relatados neste vídeo são de caráter fictício e artístico. Qualquer semelhança com a realidade é mera coincidência.`;
+    }
+    comment = `O que você achou de "${title}"? Comente aqui embaixo a sua opinião! 👇`;
+    titles = [
+      `Como Eu Descobri A Verdade Sobre ${title}`,
+      `Por Que Todo Mundo Está Errado Sobre ${title}`
+    ];
+  }
+
+  return {
+    description,
+    hashtags,
+    tags,
+    comment,
+    titles
+  };
+};
+
+const getInstantEndScreen = (title, count, lang) => {
+  let result = '';
+  let ctas, typesList, posList, durationStr, descStr;
+  if (lang === 'en') {
+    ctas = ['Watch Next!', 'Best for Viewer', 'Subscribe Now', 'Learn More'];
+    typesList = ['Suggested Video', 'Playlist', 'Subscribe', 'External Link'];
+    posList = ['Left', 'Right', 'Center', 'Bottom Left', 'Bottom Right'];
+    durationStr = 'Last 15 seconds';
+    descStr = 'Highly relevant recommendation to keep the viewer watching.';
+  } else if (lang === 'es') {
+    ctas = ['¡Ver siguiente!', 'Mejor para el espectador', 'Suscríbete ahora', 'Saber más'];
+    typesList = ['Vídeo Sugerido', 'Lista de reproducción', 'Suscripción', 'Enlace externo'];
+    posList = ['Izquierda', 'Derecha', 'Centro', 'Canto inferior izquierdo', 'Canto inferior derecho'];
+    durationStr = 'Últimos 15 segundos';
+    descStr = 'Recomendación muy relevante para mantener la retención del espectador.';
+  } else {
+    ctas = ['Assista a Seguir!', 'Melhor para o Espectador', 'Inscreva-se Já', 'Saiba Mais'];
+    typesList = ['Vídeo Sugerido', 'Playlist', 'Inscrição', 'Link Externo'];
+    posList = ['Esquerda', 'Direita', 'Centro', 'Canto inferior esquerdo', 'Canto inferior direito'];
+    durationStr = 'Últimos 15 segundos';
+    descStr = 'Recomendação estratégica para prender a atenção do espectador e aumentar o tempo de exibição.';
+  }
+
+  for (let i = 1; i <= count; i++) {
+    const type = typesList[(i - 1) % typesList.length];
+    const cta = ctas[(i - 1) % ctas.length];
+    const pos = posList[(i - 1) % posList.length];
+    
+    result += `**ELEMENTO ${i}**\n`;
+    result += `- Tipo: ${type}\n`;
+    result += `- Texto CTA: ${cta}\n`;
+    result += `- Posição: ${pos}\n`;
+    result += `- Duração: ${durationStr}\n`;
+    result += `- Descrição: ${descStr}\n\n`;
+  }
+  return result.trim();
+};
+
+const getInstantCards = (title, count, lang) => {
+  let result = '';
+  let typesList, durationStr, ctas, msgTeasers, reasons;
+  if (lang === 'en') {
+    typesList = ['Video', 'Playlist', 'Poll', 'Channel', 'Link'];
+    ctas = ['Suggested Video', 'Check this playlist', 'What is your opinion?', 'Our partner channel', 'Visit our site'];
+    msgTeasers = ['Recommended video for you', 'Best videos on the channel', 'Tell us what you think!', 'Check out our other channel', 'Special offer for you'];
+    reasons = ['Strategic moment to hook the user into another video.', 'High engagement point, perfect for a poll.', 'Good opportunity to direct traffic outside YouTube.'];
+  } else if (lang === 'es') {
+    typesList = ['Vídeo', 'Lista de reproducción', 'Encuesta', 'Canal', 'Enlace'];
+    ctas = ['Vídeo sugerido', 'Ver esta playlist', '¿Cuál es tu opinión?', 'Canal recomendado', 'Visita nuestra web'];
+    msgTeasers = ['Recomendado para ti', 'Lo mejor del canal', '¡Danos tu opinión!', 'Visita nuestro otro canal', 'Oferta especial para ti'];
+    reasons = ['Momento estratégico para captar la atención del usuario hacia otro vídeo.', 'Punto de alta interacción, perfecto para una encuesta.', 'Buena oportunidad para dirigir tráfico fuera de YouTube.'];
+  } else {
+    typesList = ['Vídeo', 'Playlist', 'Enquete', 'Canal', 'Link'];
+    ctas = ['Vídeo Sugerido', 'Veja esta playlist', 'Qual a sua opinião?', 'Canal Recomendado', 'Visite nosso site'];
+    msgTeasers = ['Recomendado para você', 'O melhor do canal', 'Responda a nossa enquete!', 'Conheça nosso outro canal', 'Oferta especial para você'];
+    reasons = ['Momento de transição no vídeo, ideal para sugerir conteúdo correlato.', 'Ponto de alto engajamento, perfeito para uma enquete de opinião.', 'Oportunidade para direcionar o tráfego do espectador.'];
+  }
+
+  for (let i = 1; i <= count; i++) {
+    const minutes = i * 2;
+    const type = typesList[(i - 1) % typesList.length];
+    const timestamp = `${minutes}:00`;
+    const cardTitle = ctas[(i - 1) % ctas.length];
+    const teaser = msgTeasers[(i - 1) % msgTeasers.length];
+    const reason = reasons[(i - 1) % reasons.length];
+
+    result += `**CARD ${i}**\n`;
+    result += `- Tipo: ${type}\n`;
+    result += `- Timestamp: ${timestamp}\n`;
+    result += `- Título do Card: ${cardTitle}\n`;
+    result += `- Mensagem Teaser: ${teaser}\n`;
+    result += `- Motivo: ${reason}\n\n`;
+  }
+  return result.trim();
+};
+
 export const SeoTab = ({ isActive, setActiveTab }) => {
   const { showToast } = useSystemStatus();
   const { seoTrigger, setSeoTrigger, setCoverTrigger } = usePersistence();
@@ -101,7 +260,10 @@ export const SeoTab = ({ isActive, setActiveTab }) => {
     }
 
     setIsGenerating(true);
-    setSeoResult(null);
+    // Apply local pre-fills instantly
+    const instantSeoResult = getInstantSeo(videoTitle, isFiction);
+    setSeoResult(instantSeoResult);
+    showToast("SEO preliminar aplicado instantaneamente!", "info");
 
     const prompt = `Você é um ESPECIALISTA EM SEO PARA YOUTUBE, especializado em otimização de metadados para maximizar o alcance (CTR e Retenção) no algoritmo.
 Eu vou te passar o Título e o Resumo/Roteiro de um vídeo.
@@ -127,7 +289,7 @@ Forneça uma lista de 15 a 20 tags de alta busca (incluindo cauda longa e cauda 
 Crie um comentário curto e extremamente engajador para ser fixado no topo do vídeo. Ele deve fazer uma pergunta instigante ao público para forçar comentários e aumentar o engajamento geral.
 
 **5. TÍTULOS PARA TESTE A/B**
-Gere 2 títulos virais alternativos baseados no tema. Eles devem ser muito fortes em CTR (Click-Through Rate) e utilizar diferentes emoções (curiosidade, medo, choque, urgência). NÃO use números (1, 2, 3), marcadores ou aspas. Apenas escreva 1 título por linha.`;
+Gere 2 títulos virais alternativos baseados no tema. Eles devem ser muito fortes in CTR (Click-Through Rate) e utilizar diferentes emoções (curiosidade, medo, choque, urgência). NÃO use números (1, 2, 3), marcadores ou aspas. Apenas escreva 1 título por linha.`;
 
     try {
       const response = await callAI(prompt, { model: 'gemini-2.5-flash' });
@@ -157,7 +319,15 @@ Gere 2 títulos virais alternativos baseados no tema. Eles devem ser muito forte
           .slice(0, 2);
       }
 
+      // Fallbacks in case matching failed or AI response was empty
+      if (!sections.description) sections.description = instantSeoResult.description;
+      if (!sections.hashtags) sections.hashtags = instantSeoResult.hashtags;
+      if (!sections.tags) sections.tags = instantSeoResult.tags;
+      if (!sections.comment) sections.comment = instantSeoResult.comment;
+      if (!sections.titles || sections.titles.length === 0) sections.titles = instantSeoResult.titles;
+
       setSeoResult(sections);
+      showToast("IA: SEO refinado com sucesso!", "success");
 
       // Salva no Pool de Publicações (Limite 6)
       const newPool = {
@@ -173,7 +343,7 @@ Gere 2 títulos virais alternativos baseados no tema. Eles devem ser muito forte
       });
     } catch (err) {
       console.error(err);
-      showToast("Erro ao gerar SEO: " + err.message, "error");
+      showToast("Erro ao refinar SEO com IA: " + err.message, "error");
     } finally {
       setIsGenerating(false);
     }
@@ -182,7 +352,11 @@ Gere 2 títulos virais alternativos baseados no tema. Eles devem ser muito forte
   const handleGenerateEndScreen = async () => {
     if (!videoTitle.trim()) { showToast('Insira o título do vídeo primeiro.', 'warning'); return; }
     setIsGeneratingEndScreen(true);
-    setEndScreenResult(null);
+    const lang = detectLanguage(videoTitle);
+    const instantEnd = getInstantEndScreen(videoTitle, endScreenCount, lang);
+    setEndScreenResult(instantEnd);
+    showToast("Estrutura da Tela Final aplicada instantaneamente!", "info");
+
     try {
       const descContext = seoResult?.description ? `\nDESCRIÇÃO SEO: "${seoResult.description.substring(0, 500)}"` : '';
       const prompt = `Você é um especialista em YouTube End Screens (Telas Finais).
@@ -205,9 +379,10 @@ Dicas: Priorize "Vídeo Sugerido" e "Inscrição" pois são os que mais aumentam
 
       const response = await callAI(prompt, { model: 'gemini-2.5-flash' });
       setEndScreenResult(response.trim());
+      showToast("IA: Tela Final refinada com sucesso!", "success");
     } catch (err) {
       console.error(err);
-      showToast('Erro ao gerar Tela Final: ' + err.message, 'error');
+      showToast('Erro ao refinar Tela Final com IA: ' + err.message, 'error');
     } finally {
       setIsGeneratingEndScreen(false);
     }
@@ -216,7 +391,11 @@ Dicas: Priorize "Vídeo Sugerido" e "Inscrição" pois são os que mais aumentam
   const handleGenerateCards = async () => {
     if (!videoTitle.trim()) { showToast('Insira o título do vídeo primeiro.', 'warning'); return; }
     setIsGeneratingCards(true);
-    setCardsResult(null);
+    const lang = detectLanguage(videoTitle);
+    const instantCardsResult = getInstantCards(videoTitle, cardsCount, lang);
+    setCardsResult(instantCardsResult);
+    showToast("Estrutura de Cards aplicada instantaneamente!", "info");
+
     try {
       const descContext = seoResult?.description ? `\nDESCRIÇÃO SEO: "${seoResult.description.substring(0, 500)}"` : '';
       const scriptContext = videoScript ? `\nROTEIRO: "${videoScript.substring(0, 1000)}"` : '';
@@ -240,9 +419,10 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
 
       const response = await callAI(prompt, { model: 'gemini-2.5-flash' });
       setCardsResult(response.trim());
+      showToast("IA: Cards refinados com sucesso!", "success");
     } catch (err) {
       console.error(err);
-      showToast('Erro ao gerar Cards: ' + err.message, 'error');
+      showToast('Erro ao refinar Cards com IA: ' + err.message, 'error');
     } finally {
       setIsGeneratingCards(false);
     }
@@ -346,7 +526,7 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
         <div className="flex-1 bg-white/5 border border-white/10 rounded-3xl p-6 relative overflow-hidden flex flex-col min-h-[500px]">
           <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 blur-[100px] rounded-full pointer-events-none" />
           
-          {isGenerating ? (
+          {isGenerating && !seoResult ? (
             <div className="flex-1 flex flex-col items-center justify-center h-full">
               <LoadingSpinner message="Otimizando palavras-chave e analisando algoritmo..." color="text-green-500" />
             </div>
@@ -358,6 +538,12 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
             </div>
           ) : (
             <div className="flex-1 pr-4 space-y-8">
+               {isGenerating && (
+                 <div className="flex items-center gap-2 text-xs font-bold text-green-400 bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-xl animate-pulse mb-6 w-fit">
+                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                   <span>IA: Refinando conteúdo em background...</span>
+                 </div>
+               )}
                
                {/* Descrição */}
                <div className="relative group">
@@ -524,19 +710,25 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
                        className="ml-auto px-4 py-2 bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-green-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
                      >
                        {isGeneratingEndScreen ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
-                       {isGeneratingEndScreen ? 'Gerando...' : 'Gerar'}
+                       {isGeneratingEndScreen ? 'Refinando...' : 'Gerar'}
                      </button>
                    </div>
-                   {isGeneratingEndScreen && (
+                   {isGeneratingEndScreen && !endScreenResult && (
                      <div className="flex items-center justify-center py-6"><Loader2 className="w-6 h-6 text-green-500 animate-spin" /></div>
                    )}
                    {endScreenResult && (
                      <div className="relative">
+                       {isGeneratingEndScreen && (
+                         <div className="absolute top-2 left-2 text-[10px] font-bold text-green-400 bg-green-500/10 px-2.5 py-1 rounded-lg border border-green-500/20 animate-pulse flex items-center gap-1.5 z-10">
+                           <Loader2 className="w-3 h-3 animate-spin" />
+                           <span>Refinando...</span>
+                         </div>
+                       )}
                        <button
                          onClick={() => handleCopy(endScreenResult, 'endscreen')}
                          className="absolute top-2 right-2 text-xs font-bold text-gray-500 hover:text-white transition-colors flex items-center gap-1 bg-black/50 px-2 py-1 rounded-lg z-10"
                        >
-                         {copiedField === 'endscreen' ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+                         {copiedField === 'endscreen' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3 h-3" />}
                          {copiedField === 'endscreen' ? 'Copiado!' : 'Copiar'}
                        </button>
                        <div className="bg-dark/50 border border-white/5 rounded-xl p-4 text-gray-300 font-medium text-sm leading-relaxed whitespace-pre-wrap">
@@ -571,11 +763,17 @@ Dicas: Os cards devem aparecer em momentos de alta atenção (após um gancho, r
                        {isGeneratingCards ? 'Gerando...' : 'Gerar'}
                      </button>
                    </div>
-                   {isGeneratingCards && (
+                   {isGeneratingCards && !cardsResult && (
                      <div className="flex items-center justify-center py-6"><Loader2 className="w-6 h-6 text-green-500 animate-spin" /></div>
                    )}
                    {cardsResult && (
                      <div className="relative">
+                        {isGeneratingCards && (
+                          <div className="absolute top-2 left-2 text-[10px] font-bold text-green-400 bg-green-500/10 px-2.5 py-1 rounded-lg border border-green-500/20 animate-pulse flex items-center gap-1.5 z-10">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span>Refinando...</span>
+                          </div>
+                        )}
                        <button
                          onClick={() => handleCopy(cardsResult, 'cards')}
                          className="absolute top-2 right-2 text-xs font-bold text-gray-500 hover:text-white transition-colors flex items-center gap-1 bg-black/50 px-2 py-1 rounded-lg z-10"

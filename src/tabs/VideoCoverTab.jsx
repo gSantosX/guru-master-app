@@ -7,6 +7,71 @@ import { usePersistence } from '../contexts/PersistenceContext';
 import { resolveApiUrl } from '../utils/apiUtils';
 import { callAI, generateGeminiImage } from '../utils/aiUtils';
 import { useCloudStorage } from '../hooks/useCloudStorage';
+const detectLanguage = (title) => {
+  const text = (title || '').toLowerCase();
+  const ptWords = ['como', 'o', 'a', 'e', 'do', 'da', 'em', 'um', 'uma', 'para', 'com', 'não', 'mais', 'é', 'você', 'seu', 'sua'];
+  const esWords = ['como', 'el', 'la', 'y', 'del', 'de', 'en', 'un', 'una', 'para', 'con', 'no', 'más', 'es', 'usted', 'su', 'sus'];
+  const enWords = ['how', 'the', 'a', 'and', 'of', 'in', 'to', 'with', 'not', 'more', 'is', 'you', 'your', 'for', 'on', 'at', 'this'];
+  
+  let ptCount = 0;
+  let esCount = 0;
+  let enCount = 0;
+  
+  const words = text.split(/\s+/);
+  for (const w of words) {
+    if (ptWords.includes(w)) ptCount++;
+    if (esWords.includes(w)) esCount++;
+    if (enWords.includes(w)) enCount++;
+  }
+  
+  if (enCount > ptCount && enCount > esCount) return 'en';
+  if (esCount > ptCount && esCount > enCount) return 'es';
+  return 'pt';
+};
+
+const getInstantVariations = (title) => {
+  const lang = detectLanguage(title);
+  const cleanTitle = title.replace(/[^\w\s\u00C0-\u00FF]/gi, '').trim();
+  
+  if (lang === 'en') {
+    return {
+      variations: [
+        { text: `The Shocking Truth About: ${cleanTitle}`, label: 'Curiosity Loop', is_best: false },
+        { text: `How I Mastered ${cleanTitle} Fast`, label: 'Viral Hook ⭐', is_best: true }
+      ],
+      shockWords: {
+        one: 'REVEALED',
+        two: 'DONT MISS',
+        three: 'WATCH THIS NOW'
+      }
+    };
+  } else if (lang === 'es') {
+    return {
+      variations: [
+        { text: `Lo Que Nadie Dice Sobre: ${cleanTitle}`, label: 'Bucle de Curiosidad', is_best: false },
+        { text: `Cómo Dominar ${cleanTitle} Rápido`, label: 'Gancho Viral ⭐', is_best: true }
+      ],
+      shockWords: {
+        one: 'REVELADO',
+        two: 'GRAN ERROR',
+        three: 'NO HAGAS ESTO'
+      }
+    };
+  } else {
+    // Default: pt
+    return {
+      variations: [
+        { text: `O Que Ninguém Te Conta Sobre: ${cleanTitle}`, label: 'Loop de Curiosidade', is_best: false },
+        { text: `Como Dominar ${cleanTitle} Rápido`, label: 'Gatilho Viral ⭐', is_best: true }
+      ],
+      shockWords: {
+        one: 'REVELADO',
+        two: 'ERRO GRAVE',
+        three: 'NÃO FAÇA ISSO'
+      }
+    };
+  }
+};
 
 const THUMBNAIL_STYLES = [
     { id: 'cinematic', label: 'Cinematográfico', icon: Sparkles, prompt: 'Cinematic lighting, high contrast, shallow depth of field, blockbuster movie poster aesthetic, extremely detailed textures.' },
@@ -218,6 +283,19 @@ export const VideoCoverTab = ({ isActive }) => {
     const generateTitleVariations = async (originalTitle) => {
         if (!originalTitle) return;
         setIsGeneratingTitles(true);
+
+        const instantResult = getInstantVariations(originalTitle);
+        updateCoverState({
+            titles: [
+                { text: originalTitle.substring(0, 100), label: 'Título Original', isOriginal: true },
+                { text: instantResult.variations[0].text.substring(0, 100), label: 'Teste A/B 1', is_best: false },
+                { text: instantResult.variations[1].text.substring(0, 100), label: 'Teste A/B 2', is_best: true }
+            ],
+            shockWords: instantResult.shockWords,
+            coverPrefs: Object.keys(coverPrefs).length === 0 ? { global: { includeText: false, colorStyle: 'standard', distance: 'close', styleId: 'cinematic' } } : coverPrefs
+        });
+        showToast("Variações de título preliminares aplicadas instantaneamente!", "info");
+
         try {
             const apiKey = configs?.gemini_key || localStorage.getItem('guru_gemini_key');
             if (!apiKey) throw new Error('Chave Gemini não configurada.');
@@ -305,26 +383,20 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
             updateCoverState({
                 titles: [
                     { text: originalTitle.substring(0, 100), label: 'Título Original', isOriginal: true },
-                    { text: (parsed.variations?.[0]?.text || 'Erro ao gerar').substring(0, 100), label: 'Teste A/B 1', is_best: Boolean(parsed.variations?.[0]?.is_best) },
-                    { text: (parsed.variations?.[1]?.text || 'Erro ao gerar').substring(0, 100), label: 'Teste A/B 2', is_best: Boolean(parsed.variations?.[1]?.is_best) }
+                    { text: (parsed.variations?.[0]?.text || instantResult.variations[0].text).substring(0, 100), label: 'Teste A/B 1', is_best: Boolean(parsed.variations?.[0]?.is_best) },
+                    { text: (parsed.variations?.[1]?.text || instantResult.variations[1].text).substring(0, 100), label: 'Teste A/B 2', is_best: Boolean(parsed.variations?.[1]?.is_best || true) }
                 ],
                 shockWords: {
-                    one: sw.one || sw.palavra1 || sw.first || '-',
-                    two: sw.two || sw.palavra2 || sw.second || '-',
-                    three: sw.three || sw.palavra3 || sw.third || '-'
+                    one: sw.one || sw.palavra1 || sw.first || instantResult.shockWords.one,
+                    two: sw.two || sw.palavra2 || sw.second || instantResult.shockWords.two,
+                    three: sw.three || sw.palavra3 || sw.third || instantResult.shockWords.three
                 },
-                // Inicializa preferências globais se estiverem vazias
                 coverPrefs: Object.keys(coverPrefs).length === 0 ? { global: { includeText: false, colorStyle: 'standard', distance: 'close', styleId: 'cinematic' } } : coverPrefs
             });
+            showToast("IA: Variações e Palavras Choque refinadas com sucesso!", "success");
         } catch (error) {
             console.error('Erro ao gerar variações:', error);
-            updateCoverState({
-                titles: [
-                    { text: originalTitle, label: 'Título Original', isOriginal: true },
-                    { text: 'Falha ao conectar.', label: 'Teste A/B 1', is_best: false },
-                    { text: 'Tente novamente.', label: 'Teste A/B 2', is_best: true }
-                ]
-            });
+            showToast('Erro ao refinar variações com IA: ' + error.message, 'error');
         } finally {
             setIsGeneratingTitles(false);
         }
@@ -752,7 +824,12 @@ Retorne ESTRITAMENTE um objeto JSON exatamente como este (sem markdown, sem expl
                                         <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${badgeColor}`}>
                                             {labelText}
                                         </span>
-                                        {isGeneratingTitles && !isOriginal && <LoadingSpinner size="xs" message="" />}
+                                        {isGeneratingTitles && !isOriginal && (
+                                            <span className="flex items-center gap-1.5 text-[8px] font-bold text-neon-cyan bg-neon-cyan/10 border border-neon-cyan/20 px-2 py-0.5 rounded animate-pulse">
+                                                <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                                                Refinando com IA...
+                                            </span>
+                                        )}
                                     </div>
                                     
                                     <h3 
