@@ -255,15 +255,143 @@ export const ScriptTab = ({ setActiveTab }) => {
 
   const handleAnalyzeTitle = async () => {
     if (!titulo) return;
+    
+    // ── PASSO 1: ANÁLISE INSTANTÂNEA LOCAL (HEURÍSTICA) ──
+    const t = titulo.toLowerCase();
+
+    // 1. Detectar Idioma
+    let detectedIdioma = "Português (BR)";
+    const enWords = ["the", "of", "and", "to", "in", "is", "you", "that", "it", "he", "was", "for", "on", "are", "as", "with", "his", "they", "i", "at", "be", "this", "have", "from", "or", "one", "had", "by", "but", "not", "what", "all", "were", "we", "when", "your", "can", "said", "there", "use", "never", "tell", "employees", "financial", "traps", "elites", "secret", "why", "how", "dangerous", "history", "war", "truth"];
+    const esWords = ["el", "la", "los", "las", "un", "una", "y", "en", "para", "por", "con", "del", "al", "como", "verdad", "secreto", "historia", "guerra"];
+    const ptWords = ["o", "a", "os", "as", "um", "uma", "e", "em", "para", "por", "com", "do", "da", "no", "na", "como", "porque", "que", "de", "se"];
+
+    const enCount = enWords.filter(w => new RegExp(`\\b${w}\\b`).test(t)).length;
+    const esCount = esWords.filter(w => new RegExp(`\\b${w}\\b`).test(t)).length;
+    const ptCount = ptWords.filter(w => new RegExp(`\\b${w}\\b`).test(t)).length;
+
+    if (enCount > 0 && enCount >= esCount && enCount >= ptCount) {
+      detectedIdioma = "Inglês";
+    } else if (esCount > 0 && esCount > enCount && esCount >= ptCount) {
+      detectedIdioma = "Espanhol";
+    }
+    setIdioma(detectedIdioma);
+
+    // 2. Detectar Nicho
+    let detectedNicho = "Outro";
+    if (/\b(investir|dinheiro|rico|pobre|finanças|economia|banco|investimento|dívida|ações|bolsa|cripto|milionário|bilionário|money|rich|invest|finance|financial|employees|employer|wage|salary|bank|traps|boss|work|negócios|business)\b/.test(t)) {
+      detectedNicho = "Finanças";
+    } else if (/\b(crime|assassin|roubo|polícia|morte|prisão|cadeia|misterioso sumiço|corpo|psicopata|serial killer|fuga|sequestro|assalto|murder|theft|police|killer|prison|jail|kidnap|robbery)\b/.test(t)) {
+      detectedNicho = "Crimes reais";
+    } else if (/\b(deus|jesus|bíblia|fé|igreja|espírito|pastor|evangelho|culto|oração|crente|milagre|god|bible|faith|church|christ|jesus|holy|spirit|spiritual|lord)\b/.test(t)) {
+      detectedNicho = "Espiritualidade";
+    } else if (/\b(história|império|guerra|século|rei|rainha|passado|civilização|roma|grego|egito|arqueologia|antigo|history|empire|war|century|king|queen|past|civilization|rome|greek|egypt|ancient)\b/.test(t)) {
+      detectedNicho = "História";
+    } else if (/\b(tecnologia|computador|celular|smartphone|software|programar|internet|robô|ia|inteligência artificial|futuro|technology|computer|phone|robot|ai|artificial intelligence|tech)\b/.test(t)) {
+      detectedNicho = "Tecnologia";
+    } else if (/\b(saúde|dieta|treino|musculação|corpo|doença|remédio|médico|vida|sono|health|diet|workout|body|disease|medicine|doctor|sleep|fit)\b/.test(t)) {
+      detectedNicho = "Saúde";
+    } else if (/\b(motivação|sucesso|foco|produtividade|disciplina|estudo|hábitos|mentalidade|mindset|motivation|success|focus|productivity|discipline|habits)\b/.test(t)) {
+      detectedNicho = "Motivação";
+    } else if (/\b(curiosidade|curiosidades|fatos|incrível|sabia|mistério|segredo|oculto|enigma|curiosity|facts|secret|hidden|mystery|enigma|conspiracy|conspiração)\b/.test(t)) {
+      detectedNicho = "Mistérios";
+    } else if (/\b(fazenda|agricultura|plantar|colheita|terra|animais|boi|cavalo|gado|trator|farm|agriculture|harvest|soil|animals|cattle|tractor)\b/.test(t)) {
+      detectedNicho = "Agricultura";
+    } else if (/\b(documentário|documentary|histórias|story|narrativa)\b/.test(t)) {
+      detectedNicho = "Documentário";
+    }
+    setNicho(detectedNicho);
+
+    // 3. Detectar DNA
+    let detectedDna = "Storytelling Narrativo";
+    if (/\b(dossiê|investigação|verdade|revelado|segredos|escondido|fatos|dossier|investigation|truth|revealed|secrets|hidden|facts|what they never|nunca te contaram|por trás|behind|traps|armadilhas)\b/.test(t)) {
+      detectedDna = "Dossiê Investigativo";
+    } else if (/\b(como|how|destruiu|destroyed|faliu|bankrupt|ruined|acabou)\b/.test(t)) {
+      detectedDna = "Como X destruiu Y";
+    } else if (/\b(segredo|segredos|oculto|revelado|secret|secrets|hidden|revealed|oculto|misterioso|misteriosa)\b/.test(t)) {
+      detectedDna = "Segredo Oculto Revelado";
+    } else if (/\b(lista|fatos|curiosidades|coisas|motivos|list|facts|things|reasons|top|os \d+|as \d+|10 |5 |7 )\b/.test(t)) {
+      detectedDna = "Lista Magnética (Curiosidades)";
+    } else if (/\b(jornada|herói|superou|venceu|desafio|journey|hero|overcame|won|challenge)\b/.test(t)) {
+      detectedDna = "Jornada do Herói";
+    }
+    setDna(detectedDna);
+
+    // 4. Detectar Alma (Entonação)
+    let detectedAlma = "Amigável e Casual";
+    if (detectedDna === "Dossiê Investigativo") {
+      detectedAlma = "Investigativa e Implacável";
+    } else if (detectedNicho === "Finanças") {
+      detectedAlma = "Pragmática e Analítica";
+    } else if (detectedNicho === "Espiritualidade") {
+      detectedAlma = "Reflexão Bíblica Profunda";
+    } else if (detectedNicho === "Mistérios" || detectedNicho === "Crimes reais") {
+      detectedAlma = "Misteriosa e Sombria";
+    } else if (detectedNicho === "Motivação") {
+      detectedAlma = "Inspiradora e Motivacional";
+    } else if (detectedNicho === "História") {
+      detectedAlma = "Voz de Documentário BBC";
+    } else if (detectedNicho === "Tecnologia") {
+      detectedAlma = "Especialista Tech";
+    }
+    setAlma(detectedAlma);
+
+    // 5. Detectar Intelecto e Formalidade
+    let detectedIntellect = "Médio Intelectual";
+    let detectedFormality = "Médio";
+    if (detectedNicho === "Finanças" || detectedNicho === "Tecnologia" || detectedNicho === "História") {
+      detectedIntellect = "Intelectual Alto";
+      detectedFormality = "Alto";
+    }
+    setIntellect(detectedIntellect);
+    setFormality(detectedFormality);
+
+    // 6. Detectar Natureza do Conteúdo
+    let detectedNatureza = "Ficção (criatividade pura)";
+    if (["Finanças", "Crimes reais", "História", "Tecnologia", "Agricultura", "Saúde"].includes(detectedNicho)) {
+      detectedNatureza = "Dados Reais (usar pesquisa web)";
+    }
+    setNatureza(detectedNatureza);
+
+    // 7. Detectar Protocolo de Segurança
+    let detectedSafety = "Formato Meio Seguro (Médio Risco)";
+    if (detectedNicho === "Crimes reais") {
+      detectedSafety = "Formato Seguro (Safety)";
+    } else if (detectedNicho === "Espiritualidade") {
+      detectedSafety = "Formato Livre (Sem Filtro)";
+    }
+    setSafety(detectedSafety);
+
+    // 8. Detectar Formato
+    let detectedFormato = "Texto Corrido";
+    if (detectedDna === "Lista Magnética (Curiosidades)") {
+      detectedFormato = "Lista";
+    } else if (["Dossiê Investigativo", "Jornada do Herói"].includes(detectedDna)) {
+      detectedFormato = "Por Partes";
+    }
+    setFormato(detectedFormato);
+
+    // Notificação imediata para o usuário sentir a instantaneidade
+    showToast("Análise preliminar aplicada instantaneamente!", "success");
+
+    // ── PASSO 2: REFINAMENTO POR INTELIGÊNCIA ARTIFICIAL (SEGUNDO PLANO) ──
     setIsAnalyzingTitle(true);
     try {
-      const prompt = `Analise: "${titulo}". Responda APENAS um JSON: {"dna":"OPCAO","alma":"OPCAO","nicho":"OPCAO","idioma":"OPCAO"}. 
-      DNA: ${DNA_OPTIONS.join('|')}
-      Alma: ${ALMA_OPTIONS.join('|')}
-      Nicho: ${NICHO_OPTIONS.join('|')}
-      Idioma: ${IDIOMA_OPTIONS.join('|')}`;
+      // Prompt super otimizado para retorno mais rápido e preciso
+      const prompt = `Analise o título de vídeo para canal Dark: "${titulo}".
+      Selecione a melhor opção de cada categoria abaixo. Retorne estritamente um objeto JSON com o formato:
+      {"dna":"OPCAO","alma":"OPCAO","nicho":"OPCAO","idioma":"OPCAO","intellect":"OPCAO","formality":"OPCAO","natureza":"OPCAO","safety":"OPCAO","formato":"OPCAO"}
 
-      // Usa o sistema universal inteligente sem forçar modelo depreciado
+      Opções válidas (escolha exatamente uma destas strings literais):
+      - DNA: ${DNA_OPTIONS.join(', ')}
+      - Alma: ${ALMA_OPTIONS.join(', ')}
+      - Nicho: ${NICHO_OPTIONS.join(', ')}
+      - Idioma: ${IDIOMA_OPTIONS.join(', ')}
+      - Intellect (Nível Intelectual): ${INTELLECT_OPTIONS.join(', ')}
+      - Formality (Formalidade): ${FORMALITY_OPTIONS.join(', ')}
+      - Natureza: ${NATUREZA_OPTIONS.join(', ')}
+      - Safety: ${SAFETY_OPTIONS.join(', ')}
+      - Formato: ${FORMATO_OPTIONS.join(', ')}`;
+
       const response = await callScriptAI(prompt, { 
         temperature: 0.1,
         isPromptTask: true
@@ -276,11 +404,16 @@ export const ScriptTab = ({ setActiveTab }) => {
          if (result.alma && ALMA_OPTIONS.includes(result.alma)) setAlma(result.alma);
          if (result.nicho && NICHO_OPTIONS.includes(result.nicho)) setNicho(result.nicho);
          if (result.idioma && IDIOMA_OPTIONS.includes(result.idioma)) setIdioma(result.idioma);
-         showToast("IA: Configurações otimizadas com sucesso!", "success");
+         if (result.intellect && INTELLECT_OPTIONS.includes(result.intellect)) setIntellect(result.intellect);
+         if (result.formality && FORMALITY_OPTIONS.includes(result.formality)) setFormality(result.formality);
+         if (result.natureza && NATUREZA_OPTIONS.includes(result.natureza)) setNatureza(result.natureza);
+         if (result.safety && SAFETY_OPTIONS.includes(result.safety)) setSafety(result.safety);
+         if (result.formato && FORMATO_OPTIONS.includes(result.formato)) setFormato(result.formato);
+         showToast("IA: Configurações refinadas com sucesso!", "success");
       }
     } catch (e) {
-      console.error('Erro na análise profunda:', e);
-      showToast(e?.message || "Erro ao analisar título. Verifique a chave API.", "error");
+      console.error('Erro no refinamento da análise:', e);
+      // Não exibe erro em toast para não assustar o usuário se a heurística local já resolveu
     } finally {
       setIsAnalyzingTitle(false);
     }
