@@ -83,18 +83,17 @@ Abordar o tema de forma mais didática e com storytelling linear, suprindo a fal
 };
 
 const getInstantCountryAnalysis = (channel) => {
-  const channelName = channel?.title || 'Canal';
   return `**🎯 MERCADO VENCEDOR: Estados Unidos**
 **🗣️ IDIOMA RECOMENDADO: Inglês (US)**
-O mercado americano possui o maior RPM global para este nicho e conta com uma audiência extremamente ativa que consome conteúdo educativo e de entretenimento com foco em desenvolvimento e curiosidades.
+Alta audiência ativa e maior RPM global.
 
 **💡 COMO ADAPTAR PARA ESTE MERCADO:**
-- Traduzir a identidade visual utilizando paletas de cores minimalistas e de alta performance.
-- Adaptar as piadas locais e memes para o contexto da cultura pop norte-americana.
+- Traduzir identidade e usar paleta de cores minimalista de alta performance.
+- Adaptar piadas locais e referências da cultura norte-americana.
 
 **🌍 MENÇÕES HONROSAS:**
-- Espanha: Excelente oportunidade de escala devido à vasta audiência hispanohablante global.
-- Alemanha: Alta retenção de usuários e um dos maiores RPMs da Europa Ocidental.`;
+- Espanha: Grande escala hispana.
+- Alemanha: Retenção e RPM elevados.`;
 };
 
 const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)') => {
@@ -279,8 +278,58 @@ const getInstantTitles = (channel, count = 10, targetLang = 'Português (Brasil)
     const template = selectedTemplates[i % selectedTemplates.length];
     const diff = selectedDiffs[i % selectedDiffs.length];
     const title = template.replace('[KEYWORD]', mainWord);
-    return `${i + 1}. ${title} | Diferencial: ${diff}`;
   }).join('\n');
+};
+
+const SECTION_METADATA = {
+  1: { icon: Brain, color: 'text-neon-purple' },
+  2: { icon: TrendingUp, color: 'text-neon-cyan' },
+  3: { icon: Activity, color: 'text-neon-pink' },
+  4: { icon: Sparkles, color: 'text-yellow-400' },
+  5: { icon: BarChart2, color: 'text-green-400' },
+  6: { icon: Clock, color: 'text-orange-400' },
+  7: { icon: Youtube, color: 'text-red-500' },
+  8: { icon: Wand2, color: 'text-indigo-400' },
+};
+
+const parseStrategySections = (text) => {
+  if (!text) return [];
+  const sections = [];
+  const regex = /\*\*(\d)\.\s*(.*?)\*\*/g;
+  let match;
+  const matches = [];
+  
+  while ((match = regex.exec(text)) !== null) {
+    matches.push({
+      num: parseInt(match[1]),
+      title: match[2].trim(),
+      index: match.index,
+      length: match[0].length
+    });
+  }
+
+  if (matches.length === 0) {
+    return [{
+      num: 1,
+      title: "ANÁLISE COMPLETA",
+      content: text
+    }];
+  }
+
+  for (let i = 0; i < matches.length; i++) {
+    const current = matches[i];
+    const next = matches[i + 1];
+    const start = current.index + current.length;
+    const end = next ? next.index : text.length;
+    const content = text.slice(start, end).trim();
+    sections.push({
+      num: current.num,
+      title: current.title,
+      content: content
+    });
+  }
+
+  return sections;
 };
 
 export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
@@ -596,9 +645,88 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
     return { viralText, latestText, audienceText };
   };
 
+  const runCountryAnalysis = async () => {
+    if (!selectedChannel) return;
+    
+    // Set instant prefill result
+    const instant = getInstantCountryAnalysis(selectedChannel);
+    setCountryResult(instant);
+    setIsRefiningCountry(true);
+    
+    // Auto-select language based on the instant result
+    const langMatch = instant.match(/\*\*🗣️ IDIOMA RECOMENDADO:\s*(.*?)\*\*/i);
+    if (langMatch && langMatch[1]) {
+      setSelectedLanguage(langMatch[1].trim());
+    }
+
+    (async () => {
+      try {
+        const termPrompt = `Baseado no canal "${selectedChannel.title}" que fala sobre: ${selectedChannel.description}. Forneça APENAS 1 TERMO DE PESQUISA (uma palavra ou frase curta em INGLÊS) que seja o núcleo deste canal para fazer uma busca no YouTube e medir a concorrência global. RETORNE APENAS O TERMO.`;
+        const searchTerm = await callAI(termPrompt, { model: 'gemini-2.5-flash' });
+        const cleanTerm = searchTerm.replace(/["']/g, '').trim();
+
+        const countryData = {};
+        const searchPromises = COUNTRIES.map(async (country) => {
+          try {
+            const res = await fetch(buildYouTubeUrl('search', { q: cleanTerm, part: 'snippet', type: 'video', maxResults: 3, regionCode: country.code, relevanceLanguage: 'en' }));
+            const data = await res.json();
+            countryData[country.name] = (data.items || []).map(item => item.snippet.title);
+          } catch (e) {
+            console.error(`Error searching for ${country.name}`, e);
+            countryData[country.name] = ['Falha ao obter dados'];
+          }
+        });
+
+        await Promise.all(searchPromises);
+
+        const analysisPrompt = `Você é um ESPECIALISTA EM MERCADOS INTERNACIONAIS do YouTube.
+Nicho/Conceito analisado: "${cleanTerm}" (Canal Base: ${selectedChannel.title})
+
+Fizemos uma busca por este conceito nos principais mercados do YouTube e encontramos os seguintes vídeos no topo (uma amostra do que está bombando ou faltando):
+${Object.entries(countryData).map(([country, titles]) => `[${country}]:\n${titles.join('\n')}`).join('\n\n')}
+
+MISSÃO:
+1. Identifique qual país (dentre os listados) apresenta a MAIOR OPORTUNIDADE para replicar o conteúdo do canal.
+2. Entregue um relatório extremamente direto e resumido contendo o país vencedor, idioma recomendado, 2 dicas rápidas de adaptação e 2 menções honrosas com justificativas curtíssimas.
+
+Formato OBRIGATÓRIO (PT-BR) - SEJA EXTREMAMENTE DIRETO E RESUMIDO (máximo 1 frase por item):
+**🎯 MERCADO VENCEDOR: [Nome do País]**
+**🗣️ IDIOMA RECOMENDADO: [Idioma falado, ex: Inglês (US), Espanhol, etc]**
+[Uma única frase curta explicando o porquê]
+
+**💡 COMO ADAPTAR PARA ESTE MERCADO:**
+- [Dica 1 em 1 frase curta]
+- [Dica 2 em 1 frase curta]
+
+**🌍 MENÇÕES HONROSAS:**
+- [País 2]: [Frase curtíssima]
+- [País 3]: [Frase curtíssima]`;
+
+        const analysis = await callAI(analysisPrompt, { model: 'gemini-2.5-flash' });
+        if (analysis) {
+          setCountryResult(analysis);
+          // Auto-select language based on the refined result
+          const langMatchRefined = analysis.match(/\*\*🗣️ IDIOMA RECOMENDADO:\s*(.*?)\*\*/i);
+          if (langMatchRefined && langMatchRefined[1]) {
+            setSelectedLanguage(langMatchRefined[1].trim());
+          }
+          showToast("IA: Análise internacional refinada!", "success");
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Aviso: Falha ao refinar análise internacional.", "warning");
+      } finally {
+        setIsRefiningCountry(false);
+      }
+    })();
+  };
+
   const runStrategyAnalysis = async () => {
     if (!selectedChannel) return;
     
+    // Auto-trigger country analysis in parallel
+    runCountryAnalysis();
+
     // Set instant prefill result
     const instant = getInstantStrategy(selectedChannel);
     setStrategyResult(instant);
@@ -648,83 +776,6 @@ REGRAS CRÍTICAS:
         showToast("Aviso: Falha ao refinar análise estratégica.", "warning");
       } finally {
         setIsRefiningStrategy(false);
-      }
-    })();
-  };
-
-  const runCountryAnalysis = async () => {
-    if (!selectedChannel) return;
-    
-    // Set instant prefill result
-    const instant = getInstantCountryAnalysis(selectedChannel);
-    setCountryResult(instant);
-    setIsRefiningCountry(true);
-    
-    // Auto-select language based on the instant result
-    const langMatch = instant.match(/\*\*🗣️ IDIOMA RECOMENDADO:\s*(.*?)\*\*/i);
-    if (langMatch && langMatch[1]) {
-      setSelectedLanguage(langMatch[1].trim());
-    }
-
-    (async () => {
-      try {
-        const termPrompt = `Baseado no canal "${selectedChannel.title}" que fala sobre: ${selectedChannel.description}. Forneça APENAS 1 TERMO DE PESQUISA (uma palavra ou frase curta em INGLÊS) que seja o núcleo deste canal para fazer uma busca no YouTube e medir a concorrência global. RETORNE APENAS O TERMO.`;
-        const searchTerm = await callAI(termPrompt, { model: 'gemini-2.5-flash' });
-        const cleanTerm = searchTerm.replace(/["']/g, '').trim();
-
-        const countryData = {};
-        const searchPromises = COUNTRIES.map(async (country) => {
-          try {
-            const res = await fetch(buildYouTubeUrl('search', { q: cleanTerm, part: 'snippet', type: 'video', maxResults: 3, regionCode: country.code, relevanceLanguage: 'en' }));
-            const data = await res.json();
-            countryData[country.name] = (data.items || []).map(item => item.snippet.title);
-          } catch (e) {
-            console.error(`Error searching for ${country.name}`, e);
-            countryData[country.name] = ['Falha ao obter dados'];
-          }
-        });
-
-        await Promise.all(searchPromises);
-
-        const analysisPrompt = `Você é um ESPECIALISTA EM MERCADOS INTERNACIONAIS do YouTube.
-Nicho/Conceito analisado: "${cleanTerm}" (Canal Base: ${selectedChannel.title})
-
-Fizemos uma busca por este conceito nos principais mercados do YouTube e encontramos os seguintes vídeos no topo (uma amostra do que está bombando ou faltando):
-${Object.entries(countryData).map(([country, titles]) => `[${country}]:\n${titles.join('\n')}`).join('\n\n')}
-
-MISSÃO:
-1. Analise as tendências dos títulos retornados por país.
-2. Identifique qual país (dentre os listados) apresenta a MAIOR OPORTUNIDADE para replicar o conteúdo do canal "${selectedChannel.title}". (Dê preferência a mercados onde os títulos parecem mais fracos/genéricos ou onde a ideia ainda não foi saturada).
-3. Entregue um relatório apontando o país vencedor e sugestões de adaptação cultural para ele. Deixe "menções honrosas" para 2 outros países.
-
-Formato OBRIGATÓRIO (PT-BR):
-**🎯 MERCADO VENCEDOR: [Nome do País]**
-**🗣️ IDIOMA RECOMENDADO: [Idioma falado, ex: Inglês (US), Espanhol, Francês, Alemão, Japonês, Coreano, Russo]**
-[Explicação de por que este país é a melhor oportunidade baseada nos dados e demanda local]
-
-**💡 COMO ADAPTAR PARA ESTE MERCADO:**
-- [Estratégia 1]
-- [Estratégia 2]
-
-**🌍 MENÇÕES HONROSAS:**
-- [País 2]: [Breve motivo]
-- [País 3]: [Breve motivo]`;
-
-        const analysis = await callAI(analysisPrompt, { model: 'gemini-2.5-flash' });
-        if (analysis) {
-          setCountryResult(analysis);
-          // Auto-select language based on the refined result
-          const langMatchRefined = analysis.match(/\*\*🗣️ IDIOMA RECOMENDADO:\s*(.*?)\*\*/i);
-          if (langMatchRefined && langMatchRefined[1]) {
-            setSelectedLanguage(langMatchRefined[1].trim());
-          }
-          showToast("IA: Análise internacional refinada!", "success");
-        }
-      } catch (err) {
-        console.error(err);
-        showToast("Aviso: Falha ao refinar análise internacional.", "warning");
-      } finally {
-        setIsRefiningCountry(false);
       }
     })();
   };
@@ -1001,20 +1052,23 @@ REGRAS CRÍTICAS:
                 </section>
               </div>
 
-              {/* SECTION 1: AUTO STRATEGY */}
-              <div className="mb-10 bg-black/40 border-2 border-white/10 rounded-2xl p-6 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-2 h-full bg-neon-purple" />
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-black text-white flex items-center gap-3">
-                    <Brain className="text-neon-purple w-6 h-6" /> Análise Estratégica
-                  </h3>
-                  {isRefiningStrategy && (
-                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-neon-purple/20 text-neon-purple animate-pulse border border-neon-purple/30">
+              {/* SECTION 1: MODELING ANALYSIS (STRATEGY & GLOBAL) */}
+              <div className="mb-10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+                  <div>
+                    <h3 className="text-2xl font-black text-white flex items-center gap-3 tracking-tight uppercase italic">
+                      <Brain className="text-neon-purple w-7 h-7" /> Análise de Modelagem
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest font-mono">Engenharia Reversa e Posicionamento de Canal</p>
+                  </div>
+                  {(isRefiningStrategy || isRefiningCountry) && (
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-neon-purple/20 text-neon-purple border border-neon-purple/30 animate-pulse self-start sm:self-center">
                       <LoadingSpinner size="xs" message="" />
-                      Refinando...
+                      Sincronizando IA...
                     </span>
                   )}
                 </div>
+
                 {isAnalyzingStrategy && !strategyResult ? (
                    <LoadingSpinner 
                      title="Modelador de Canais"
@@ -1023,86 +1077,101 @@ REGRAS CRÍTICAS:
                      icon={Youtube}
                      className="py-10" 
                    />
-                ) : strategyResult ? (
-                   <div className="text-white font-sans text-lg leading-loose">
-                     <div className="whitespace-pre-wrap">
-                       {strategyResult.split('\n').map((line, i) => {
-                         const parts = line.split(/(\*\*.*?\*\*)/g);
-                         return (
-                           <div key={i} className="mb-4">
-                             {parts.map((part, j) => {
-                               if (part.startsWith('**') && part.endsWith('**')) {
-                                 const label = part.slice(2, -2);
-                                 return (
-                                   <strong key={j} className="font-black uppercase tracking-widest text-[11px] text-neon-purple block mb-1">
-                                     {label}
-                                   </strong>
-                                 );
-                               }
-                               return <span key={j} className="text-gray-300">{part}</span>;
-                             })}
-                           </div>
-                         );
-                       })}
-                     </div>
-                   </div>
                 ) : (
-                   <p className="text-gray-500">Falha ao carregar estratégia.</p>
-                )}
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Strategy blocks 1-8 */}
+                    {parseStrategySections(strategyResult).map((sec) => {
+                      const meta = SECTION_METADATA[sec.num] || { icon: Sparkles, color: 'text-white' };
+                      const IconComponent = meta.icon;
+                      const glowColor = meta.color === 'text-yellow-400' ? 'from-yellow-400 to-amber-600' : 
+                                        meta.color === 'text-neon-purple' ? 'from-neon-purple to-purple-800' : 
+                                        meta.color === 'text-neon-cyan' ? 'from-neon-cyan to-cyan-800' : 
+                                        meta.color === 'text-neon-pink' ? 'from-neon-pink to-pink-800' : 
+                                        meta.color === 'text-green-400' ? 'from-green-400 to-emerald-800' : 
+                                        meta.color === 'text-orange-400' ? 'from-orange-400 to-orange-800' : 
+                                        meta.color === 'text-red-500' ? 'from-red-500 to-red-800' : 
+                                        'from-indigo-400 to-indigo-800';
+                      return (
+                        <div 
+                          key={sec.num}
+                          className="bg-white/5 border border-white/5 hover:border-white/10 rounded-2xl p-6 relative overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:bg-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.4)] flex flex-col justify-between"
+                        >
+                          <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${glowColor}`} />
+                          <div>
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className={`p-2 rounded-xl bg-white/5 ${meta.color} group-hover:scale-110 transition-transform duration-300`}>
+                                <IconComponent className="w-5 h-5" />
+                              </div>
+                              <h4 className="text-[11px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">
+                                {sec.title}
+                              </h4>
+                            </div>
+                            <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap font-medium">
+                              {sec.content.split('\n').map((line, lIdx) => {
+                                if (line.startsWith('- ') || line.startsWith('* ')) {
+                                  return (
+                                    <div key={lIdx} className="pl-3 relative before:content-['•'] before:absolute before:left-0 before:text-neon-purple mt-1.5">
+                                      {line.substring(2)}
+                                    </div>
+                                  );
+                                }
+                                return <p key={lIdx} className={lIdx > 0 ? "mt-2" : ""}>{line}</p>;
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
 
-              {/* SECTION 2: COUNTRY ANALYSIS */}
-              <div className="mb-10 bg-white/5 border-2 border-neon-cyan/20 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-xl font-black text-white flex items-center gap-3">
-                      <Globe className="text-neon-cyan w-6 h-6" /> Análise Global (15 Países)
-                    </h3>
-                    {isRefiningCountry && (
-                      <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-neon-cyan/20 text-neon-cyan animate-pulse border border-neon-cyan/30">
-                        <LoadingSpinner size="xs" message="" />
-                        Refinando...
-                      </span>
-                    )}
-                  </div>
-                  {!countryResult && !isRefiningCountry && !isAnalyzingCountry && (
-                    <button 
-                      onClick={runCountryAnalysis}
-                      className="px-6 py-2 bg-neon-cyan text-dark font-black rounded-xl hover:bg-white transition-all text-xs"
+                    {/* Section 9: Integrated Global/Country Analysis */}
+                    <div 
+                      className="bg-white/5 border border-white/5 hover:border-white/10 rounded-2xl p-6 relative overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:bg-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.4)] flex flex-col justify-between"
                     >
-                      Verificar Oportunidades
-                    </button>
-                  )}
-                </div>
-                
-                {isAnalyzingCountry && !countryResult ? (
-                   <LoadingSpinner 
-                     title="Análise Internacional"
-                     message="Buscando concorrência em 15 países pelo YouTube..." 
-                     size="lg" 
-                     icon={Globe}
-                     className="py-10" 
-                   />
-                ) : countryResult ? (
-                   <div className="bg-black/30 border border-white/5 p-6 rounded-xl">
-                     <div className="text-white font-sans text-base leading-relaxed whitespace-pre-wrap">
-                       {countryResult.split('\n').map((line, i) => {
-                         const parts = line.split(/(\*\*.*?\*\*)/g);
-                         return (
-                           <div key={i} className="mb-2">
-                             {parts.map((part, j) => {
-                               if (part.startsWith('**') && part.endsWith('**')) {
-                                 return <strong key={j} className="text-neon-cyan">{part.slice(2, -2)}</strong>;
-                               }
-                               return <span key={j} className="text-gray-300">{part}</span>;
-                             })}
-                           </div>
-                         );
-                       })}
-                     </div>
-                   </div>
-                ) : (
-                   <p className="text-gray-400 text-sm">Identifique em qual país existe baixa concorrência e alta demanda para este modelo de canal.</p>
+                      <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-neon-cyan to-blue-800" />
+                      <div>
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="p-2 rounded-xl bg-white/5 text-neon-cyan group-hover:scale-110 transition-transform duration-300">
+                            <Globe className="w-5 h-5" />
+                          </div>
+                          <h4 className="text-[11px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">
+                            9. ANÁLISE GLOBAL
+                          </h4>
+                        </div>
+
+                        {isAnalyzingCountry && !countryResult ? (
+                          <div className="py-6 flex flex-col items-center justify-center text-center">
+                            <LoadingSpinner size="sm" message="Medindo demanda..." />
+                          </div>
+                        ) : countryResult ? (
+                          <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap font-medium">
+                            {countryResult.split('\n').map((line, i) => {
+                              const parts = line.split(/(\*\*.*?\*\*)/g);
+                              return (
+                                <div key={i} className="mb-2">
+                                  {parts.map((part, j) => {
+                                    if (part.startsWith('**') && part.endsWith('**')) {
+                                      return <strong key={j} className="text-neon-cyan font-black">{part.slice(2, -2)}</strong>;
+                                    }
+                                    return <span key={j}>{part}</span>;
+                                  })}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-6 text-center">
+                            <p className="text-gray-500 text-xs mb-3">Identifique em qual país existe baixa concorrência e alta demanda.</p>
+                            <button 
+                              onClick={runCountryAnalysis}
+                              className="px-4 py-1.5 bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 rounded-xl hover:bg-neon-cyan hover:text-dark transition-all text-[10px] font-black uppercase tracking-wider"
+                            >
+                              Verificar Oportunidades
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
