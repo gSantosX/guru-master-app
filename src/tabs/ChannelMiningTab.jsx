@@ -34,7 +34,11 @@ const NICHES = [
   "Filosofia", "Ciência", "Astronomia", "Fofoca e Famosos", "Resumo de Filmes",
   "Animes e Mangás", "Esportes", "Carros e Motos", "Política e Notícias",
   "Engenharia e Construção", "Artesanato e DIY", "ASMR", "Música e Covers",
-  "Fotografia", "Programação"
+  "Fotografia", "Programação", "Criptomoedas", "Sobrevivencialismo", "Jardinagem", 
+  "Minimalismo", "Histórias de Terror", "Mitologia", "Casas Luxuosas", "Cultura Pop e Geek", 
+  "Maternidade e Família", "Treino e Calistenia", "Histórias Bíblicas", "Assuntos Militares", 
+  "Vida em Motorhome", "Aviação e Aeroespacial", "Audiobooks e Resumos", "Beleza e Maquiagem", 
+  "Hardware e Setup", "Jogos Mobile", "Desenho e Arte", "Aprender Idiomas"
 ];
 
 const NICHE_TRANSLATIONS = {
@@ -72,7 +76,580 @@ const NICHE_TRANSLATIONS = {
   "ASMR": { pt: "ASMR", en: "ASMR", es: "ASMR", fr: "ASMR", de: "ASMR", it: "ASMR", hi: "ASMR", ja: "ASMR" },
   "Música e Covers": { pt: "Música e Covers", en: "Music and Covers", es: "Música y Covers", fr: "Musique et Reprises", de: "Musik und Cover", it: "Musica e Cover", hi: "संगीत और कवर", ja: "音楽とカバー" },
   "Fotografia": { pt: "Fotografia", en: "Photography", es: "Fotografía", fr: "Photographie", de: "Fotografie", it: "Fotografia", hi: "फोटोग्राफी", ja: "写真" },
-  "Programação": { pt: "Programação", en: "Programming", es: "Programación", fr: "Programmation", de: "Programmierung", it: "Programmazione", hi: "प्रोग्रामिंग", ja: "プログラミング" }
+  "Programação": { pt: "Programação", en: "Programming", es: "Programación", fr: "Programmation", de: "Programmierung", it: "Programmazione", hi: "प्रोग्रामिंग", ja: "プログラミング" },
+  "Criptomoedas": { pt: "Criptomoedas", en: "Cryptocurrency", es: "Criptomonedas", fr: "Cryptomonnaie", de: "Kryptowährung", it: "Criptovaluta", hi: "क्रिप्टोकरंसी", ja: "暗号通貨" },
+  "Sobrevivencialismo": { pt: "Sobrevivencialismo", en: "Survivalism", es: "Supervivencia", fr: "Survivalisme", de: "Survivalismus", it: "Sopravvivenza", hi: "जीवन रक्षा", ja: "サバイバル" },
+  "Jardinagem": { pt: "Jardinagem", en: "Gardening", es: "Jardinería", fr: "Jardinage", de: "Gartenarbeit", it: "Giardinaggio", hi: "बागवानी", ja: "ガーデニング" },
+  "Minimalismo": { pt: "Minimalismo", en: "Minimalism", es: "Minimalismo", fr: "Minimalisme", de: "Minimalismus", it: "Minimalismo", hi: "अतिवाद", ja: "ミニマリズム" },
+  "Histórias de Terror": { pt: "Histórias de Terror", en: "Horror Stories", es: "Historias de Terror", fr: "Histoires d'horreur", de: "Horror Geschichten", it: "Storie dell'Orrore", hi: "डरावनी कहानियाँ", ja: "ホラー話" },
+  "Mitologia": { pt: "Mitologia", en: "Mythology", es: "Mitología", fr: "Mythologie", de: "Mythologie", it: "Mitologia", hi: "पौराणिक कथाएं", ja: "神話" },
+  "Casas Luxuosas": { pt: "Casas Luxuosas", en: "Luxury Homes", es: "Casas de Lujo", fr: "Maisons de luxe", de: "Luxushäuser", it: "Case di Lusso", hi: "लक्जरी घर", ja: "高級住宅" },
+  "Cultura Pop e Geek": { pt: "Cultura Pop e Geek", en: "Pop Culture and Geek", es: "Cultura Pop y Geek", fr: "Culture Pop et Geek", de: "Popkultur und Geek", it: "Cultura Pop e Geek", hi: "पॉप संस्कृति और गीक", ja: "ポップカルチャーとギーク" },
+  "Maternidade e Família": { pt: "Maternidade e Família", en: "Parenting and Family", es: "Maternidad y Familia", fr: "Parentalité et Famille", de: "Elternschaft und Familie", it: "Genitorialità e Famiglia", hi: "पालन-पोषण और परिवार", ja: "子育てと家族" },
+  "Treino e Calistenia": { pt: "Treino e Calistenia", en: "Fitness and Calisthenics", es: "Fitness y Calistenia", fr: "Fitness et Callisthénie", de: "Fitness und Calisthenics", it: "Fitness e Calistenia", hi: "फिटनेस और कैलिस्थेनिक्स", ja: "フィットネスとカリステニクス" },
+  "Histórias Bíblicas": { pt: "Histórias Bíblicas", en: "Bible Stories", es: "Historias Bíblicas", fr: "Histoires bibliques", de: "Bibelgeschichten", it: "Storie della Bibbia", hi: "बाइबिल की कहानियाँ", ja: "聖書の話" },
+  "Assuntos Militares": { pt: "Assuntos Militares", en: "Military and Defense", es: "Asuntos Militares", fr: "Affaires militaires", de: "Militär und Verteidigung", it: "Affari Militari", hi: "सैन्य और रक्षा", ja: "軍事と防衛" },
+  "Vida em Motorhome": { pt: "Vida em Motorhome", en: "RV Life", es: "Vida em Motorhome", fr: "Vie en camping-car", de: "Wohnmobil Leben", it: "Vita in Camper", hi: "आरवी लाइफ", ja: "キャンピングカーライフ" },
+  "Aviação e Aeroespacial": { pt: "Aviação e Aeroespacial", en: "Aviation and Aerospace", es: "Aviación y Aeroespacial", fr: "Aviation et Aérospatiale", de: "Luftfahrt und Raumfahrt", it: "Aviazione e Aerospazio", hi: "विमानन और एयरोस्पेस", ja: "航空宇宙" },
+  "Audiobooks e Resumos": { pt: "Audiobooks e Resumos", en: "Audiobooks and Book Summaries", es: "Audiolibros y Resúmenes", fr: "Livres audio et Résumés", de: "Hörbücher und Zusammenfassungen", it: "Audiolibri e Riassunti", hi: "ऑडियोबुक और सारांश", ja: "オーディオブックと要約" },
+  "Beleza e Maquiagem": { pt: "Beleza e Maquiagem", en: "Beauty and Makeup", es: "Belleza y Maquillaje", fr: "Beauté et Maquillage", de: "Schönheit und Make-up", it: "Bellezza e Trucco", hi: "सौندर्य और मेकअप", ja: "美容とメイク" },
+  "Hardware e Setup": { pt: "Hardware e Setup", en: "PC Hardware and Setups", es: "Hardware y Setups de PC", fr: "Matériel PC et configurations", de: "PC-Hardware und Setups", it: "Hardware e Setup PC", hi: "पीसी हार्डवेयर और सेटअप", ja: "PCハードウェアとセットアップ" },
+  "Jogos Mobile": { pt: "Jogos Mobile", en: "Mobile Gaming", es: "Juegos Móviles", fr: "Jeux Mobiles", de: "Mobile Gaming", it: "Giochi per Cellulare", hi: "मोबाइल गेमिंग", ja: "モバイルゲーム" },
+  "Desenho e Arte": { pt: "Desenho e Arte", en: "Drawing and Art", es: "Dibujo y Arte", fr: "Dessin et Art", de: "Zeichnen und Kunst", it: "Disegno e Arte", hi: "ड्राइング और आर्ट", ja: "お絵かきとアート" },
+  "Aprender Idiomas": { pt: "Aprender Idiomas", en: "Language Learning", es: "Aprender Idiomas", fr: "Apprentissage des langues", de: "Sprachen lernen", it: "Imparare le Lingue", hi: "भाषा सीखना", ja: "語学学習" }
+};
+
+const NICHE_QUERIES = {
+  "Finanças": {
+    pt: '"educação financeira" OR "como investir" OR "finanças pessoais" OR "bolsa de valores"',
+    en: '"personal finance" OR "how to invest" OR "investing for beginners" OR "financial independence"',
+    es: '"educación financiera" OR "cómo invertir" OR "finanzas personales" OR "bolsa de valores"',
+    fr: '"finances personnelles" OR "comment investir" OR "éducation financière"',
+    de: '"finanzielle bildung" OR "wie investieren" OR "persönliche finanzen"',
+    it: '"finanza personale" OR "come investire" OR "educazione finanziaria"',
+    hi: '"निवेश कैसे करें" OR "व्यक्तिगत वित्त" OR "पैसे कैसे बचाएं"',
+    ja: '"個人財務" OR "投資方法" OR "資産運用" OR "マネーリテラシー"'
+  },
+  "História": {
+    pt: '"história antiga" OR "curiosidades históricas" OR "história do mundo" OR "grandes impérios"',
+    en: '"ancient history" OR "historical facts" OR "world history" OR "documentary history"',
+    es: '"historia antigua" OR "curiosidades históricas" OR "historia del mundo" OR "grandes imperios"',
+    fr: '"histoire ancienne" OR "faits historiques" OR "histoire du monde"',
+    de: '"antike geschichte" OR "historische fakten" OR "weltgeschichte"',
+    it: '"storia antica" OR "curiosità storiche" OR "storia del mondo"',
+    hi: '"प्राचीन इतिहास" OR "ऐतिहासिक तथ्य" OR "विश्व इतिहास"',
+    ja: '"古代史" OR "歴史的雑学" OR "世界史" OR "歴史ドキュメンタリー"'
+  },
+  "Mistérios": {
+    pt: '"mistérios não resolvidos" OR "casos misteriosos" OR "enigmas da humanidade" OR "fenômenos inexplicáveis"',
+    en: '"unsolved mysteries" OR "mysterious cases" OR "unexplained phenomena" OR "dark mysteries"',
+    es: '"misterios sin resolver" OR "casos misteriosos" OR "fenómenos inexplicables"',
+    fr: '"mystères non résolus" OR "cas mystérieux" OR "phénomènes inexpliqués"',
+    de: '"ungelöste rätsel" OR "mysteriöse fälle" OR "unerklärliche phänomene"',
+    it: '"misteri irrisolti" OR "casi misteriosi" OR "fenomeni inspiegabili"',
+    hi: '"अनसुने रहस्य" OR "रहस्यमयी घटनाएँ" OR "अद्भुत रहस्य"',
+    ja: '"未解決事件" OR "世界のミステリー" OR "不思議な現象"'
+  },
+  "Crimes Reais": {
+    pt: '"crimes reais" OR "casos criminais" OR "documentário de crime" OR "true crime brasil"',
+    en: '"true crime" OR "criminal cases" OR "crime documentary" OR "serial killer story"',
+    es: '"crímenes reales" OR "casos criminales" OR "documental de crimen"',
+    fr: '"crime réel" OR "affaires criminelles" OR "documentaire criminel"',
+    de: '"wahre verbrechen" OR "kriminalfälle" OR "true crime deutsch"',
+    it: '"veri crimini" OR "casi criminali" OR "documentario criminale"',
+    hi: '"वास्तविक अपराध" OR "आपराधिक मामले" OR "क्राइम स्टोरी"',
+    ja: '"実録犯罪" OR "実際の事件" OR "犯罪ドキュメンタリー"'
+  },
+  "Espiritualidade": {
+    pt: '"despertar espiritual" OR "leis do universo" OR "espiritualidade explicada" OR "lei da atração"',
+    en: '"spiritual awakening" OR "laws of the universe" OR "spirituality explained" OR "law of attraction"',
+    es: '"despertar espiritual" OR "leyes del universo" OR "ley de atracción"',
+    fr: '"éveil spirituel" OR "loi de l\'attraction" OR "spiritualité"',
+    de: '"spirituelles erwachen" OR "gesetz der anziehung" OR "spiritualität"',
+    it: '"risveglio spirituale" OR "legge dell\'attrazione" OR "spiritualità"',
+    hi: '"आध्यात्मिक जागृति" OR "आकर्षण का नियम" OR "आध्यात्मिकता"',
+    ja: '"スピリチュアルな目覚め" OR "引き寄せの法則" OR "宇宙の法則"'
+  },
+  "Motivação": {
+    pt: '"vídeo motivacional" OR "discurso motivacional" OR "motivação para vencer" OR "mentalidade de sucesso"',
+    en: '"motivational video" OR "motivational speech" OR "success mindset" OR "discipline video"',
+    es: '"video motivacional" OR "discurso motivacional" OR "mentalidad de éxito"',
+    fr: '"vidéo de motivation" OR "discours de motivation" OR "mentalité de succès"',
+    de: '"motivationsvideo" OR "motivationsrede" OR "erfolgsmindset"',
+    it: '"video motivazionale" OR "discorso motivazionale" OR "mentalità di successo"',
+    hi: '"प्रेरणादायक वीडियो" OR "सफलता की मानसिकता" OR "अनुशासन"',
+    ja: '"モチベーション動画" OR "成功のマインドセット" OR "自己啓発スピーチ"'
+  },
+  "Saúde": {
+    pt: '"hábitos saudáveis" OR "longevidade" OR "dicas de saúde" OR "alimentação saudável"',
+    en: '"healthy habits" OR "longevity tips" OR "health tips" OR "clean eating"',
+    es: '"hábitos saludables" OR "consejos de salud" OR "alimentación sana"',
+    fr: '"habitudes saines" OR "conseils de santé" OR "alimentation équilibrée"',
+    de: '"gesunde gewohnheiten" OR "gesundheitstipps" OR "gesunde ernährung"',
+    it: '"abitudini sane" OR "consigli di salute" OR "alimentazione sana"',
+    hi: '"स्वस्थ आदतें" OR "स्वास्थ्य युक्तियाँ" OR "पौष्टिक आहार"',
+    ja: '"健康的な習慣" OR "健康のヒント" OR "食生活の改善"'
+  },
+  "Tecnologia": {
+    pt: '"novas tecnologias" OR "futuro da tecnologia" OR "gadgets inovadores" OR "revolução tech"',
+    en: '"future technology" OR "tech news" OR "cool gadgets" OR "tech revolution"',
+    es: '"nuevas tecnologías" OR "noticias de tecnología" OR "gadgets tecnológicos"',
+    fr: '"nouvelles technologies" OR "actualité tech" OR "gadgets innovants"',
+    de: '"zukunftstechnologie" OR "tech news deutsch" OR "innovative gadgets"',
+    it: '"nuove tecnologie" OR "novità tecnologiche" OR "gadget tecnologici"',
+    hi: '"नई तकनीक" OR "तकनीक समाचार" OR "भविष्य की तकनीक"',
+    ja: '"最新テクノロジー" OR "未来の技術" OR "便利なガジェット"'
+  },
+  "Curiosidades": {
+    pt: '"curiosidades do mundo" OR "fatos interessantes" OR "coisas que você não sabia" OR "fatos curiosos"',
+    en: '"interesting facts" OR "curious facts" OR "things you didn\'t know" OR "amazing trivia"',
+    es: '"datos curiosos" OR "curiosidades del mundo" OR "cosas que no sabías"',
+    fr: '"faits intéressants" OR "curiosités du monde" OR "choses que vous ne saviez pas"',
+    de: '"interessante fakten" OR "kuriositäten" OR "dinge die du nicht wusstest"',
+    it: '"curiosità dal mondo" OR "fatti interessanti" OR "cose che non sapevi"',
+    hi: '"दिलचस्प तथ्य" OR "रोचक तथ्य" OR "अद्भुत बातें"',
+    ja: '"面白い雑学" OR "世界の不思議" OR "知られていない事実"'
+  },
+  "Documentários": {
+    pt: '"documentário completo" OR "mini documentário" OR "documentário dublado" OR "história real documentário"',
+    en: '"mini documentary" OR "short documentary" OR "full documentary" OR "investigative documentary"',
+    es: '"documental completo" OR "mini documental" OR "documental en español"',
+    fr: '"mini documentaire" OR "documentaire complet" OR "reportage complet"',
+    de: '"mini dokumentation" OR "kurzdoku" OR "dokumentation deutsch"',
+    it: '"mini documentario" OR "documentario completo" OR "reportage"',
+    hi: '"लघु वृत्तचित्र" OR "पूरा वृत्तचित्र" OR "खोजपरक वृत्तचित्र"',
+    ja: '"ミニドキュメンタリー" OR "短編ドキュメンタリー" OR "ドキュメンタリー映画"'
+  },
+  "Gameplay": {
+    pt: '"gameplay sem comentário" OR "detonado completo" OR "gameplay pt br" OR "passo a passo jogo"',
+    en: '"no commentary gameplay" OR "full walkthrough" OR "let\'s play" OR "game walkthrough"',
+    es: '"gameplay sin comentarios" OR "walkthrough completo" OR "let\'s play español"',
+    fr: '"gameplay sans commentaire" OR "walkthrough complet" OR "let\'s play français"',
+    de: '"gameplay ohne kommentar" OR "walkthrough deutsch" OR "let\'s play deutsch"',
+    it: '"gameplay senza commento" OR "walkthrough completo" OR "let\'s play italiano"',
+    hi: '"बिना कमेंट्री गेमप्ले" OR "गेम वॉकथ्रू" OR "लेट्स प्ले"',
+    ja: '"実況なしプレイ" OR "ゲーム攻略" OR "フルウォークスルー"'
+  },
+  "Culinária": {
+    pt: '"receitas fáceis" OR "como cozinhar" OR "segredos da culinária" OR "culinária rápida"',
+    en: '"easy recipes" OR "cooking guide" OR "how to cook" OR "tasty recipes"',
+    es: '"recetas fáciles" OR "cómo cocinar" OR "cocina rápida y fácil"',
+    fr: '"recettes faciles" OR "comment cuisiner" OR "cuisine rapide"',
+    de: '"einfache rezepte" OR "kochen für anfänger" OR "schnelle küche"',
+    it: '"ricette facili" OR "come cucinare" OR "cucina veloce"',
+    hi: '"आसान रेसिपी" OR "खाना कैसे बनाएं" OR "स्वादिष्ट व्यंजन"',
+    ja: '"簡単なレシピ" OR "料理の基本" OR "時短料理"'
+  },
+  "Viagens": {
+    pt: '"guia de viagem" OR "melhores destinos" OR "diário de viagem" OR "viajar barato"',
+    en: '"travel guide" OR "best destinations" OR "travel vlog" OR "budget travel"',
+    es: '"guía de viaje" OR "mejores destinos" OR "viajar barato"',
+    fr: '"guide de voyage" OR "meilleures destinations" OR "voyage pas cher"',
+    de: '"reiseführer" OR "beste reiseziele" OR "günstig reisen"',
+    it: '"guida di viaggio" OR "migliori destinazioni" OR "viaggiare low cost"',
+    hi: '"यात्रा guia" OR "सर्वोत्तम स्थान" OR "सस्ती यात्रा"',
+    ja: '"旅行ガイド" OR "おすすめの観光地" OR "格安旅行"'
+  },
+  "Pets": {
+    pt: '"comportamento de cães" OR "cuidados com gatos" OR "dicas de pets" OR "treinar cachorro"',
+    en: '"dog training" OR "cat care" OR "pet tips" OR "dog behavior"',
+    es: '"entrenamiento de perros" OR "cuidado de gatos" OR "consejos para mascotas"',
+    fr: '"éducation canine" OR "soins pour chats" OR "conseils animaux"',
+    de: '"hundetraining" OR "katzenpflege" OR "haustiertipps"',
+    it: '"addestramento cani" OR "cura dei gatti" OR "consigli animali"',
+    hi: '"कुत्ते का प्रशिक्षण" OR "बिल्ली की देखभाल" OR "पालतू जानवरों की देखभाल"',
+    ja: '"犬のしつけ" OR "猫の飼い方" OR "ペットの豆知識"'
+  },
+  "Moda": {
+    pt: '"tendências de moda" OR "ideias de looks" OR "estilo masculino" OR "estilo feminino"',
+    en: '"fashion trends" OR "outfit ideas" OR "style guide" OR "how to dress"',
+    es: '"tendencias de moda" OR "ideas de outfits" OR "guía de estilo"',
+    fr: '"tendances mode" OR "idées de tenues" OR "conseils style"',
+    de: '"modetrends" OR "outfit ideen" OR "stilratgeber"',
+    it: '"tendenze moda" OR "idee outfit" OR "guida di stile"',
+    hi: '"फैशन ट्रेंड" OR "आउटफिट विचार" OR "स्टाइल गाइड"',
+    ja: '"ファッションのトレンド" OR "コーディネート" OR "着こなし方"'
+  },
+  "Educação": {
+    pt: '"resumo escolar" OR "matéria explicada" OR "métodos de estudo" OR "aula de história"',
+    en: '"educational video" OR "study tips" OR "explained science" OR "crash course"',
+    es: '"explicación educativa" OR "métodos de estudo" OR "clase interactiva"',
+    fr: '"vidéo éducative" OR "méthodes d\'apprentissage" OR "cours complet"',
+    de: '"lernmethoden" OR "erklärvideo" OR "nachhilfe deutsch"',
+    it: '"video educativo" OR "metodo di studio" OR "lezione spiegata"',
+    hi: '"शैक्षणिक वीडियो" OR "पढ़ाई के तरीके" OR "सरल व्याख्या"',
+    ja: '"勉強のやり方" OR "教育用動画" OR "分かりやすい解説"'
+  },
+  "Empreendedorismo": {
+    pt: '"ideias de negócios" OR "como abrir empresa" OR "dicas de empreendedorismo" OR "modelo de negócios"',
+    en: '"business ideas" OR "how to start a business" OR "entrepreneur tips" OR "startup growth"',
+    es: '"ideas de negocios" OR "cómo emprender" OR "consejos de negocios"',
+    fr: '"idées de business" OR "créer son entreprise" OR "conseils entrepreneuriat"',
+    de: '"geschäftsideen" OR "unternehmen gründen" OR "unternehmer tipps"',
+    it: '"idee di business" OR "come avviare un\'impresa" OR "consigli imprenditori"',
+    hi: '"बिजनेस आइडिया" OR "नया व्यापार कैसे शुरू करें" OR "उद्यमिता"',
+    ja: '"起業のアイデア" OR "会社の作り方" OR "スタートアップ"'
+  },
+  "Marketing Digital": {
+    pt: '"marketing de afiliados" OR "tráfego pago" OR "como vender na internet" OR "marketing digital do zero"',
+    en: '"digital marketing for beginners" OR "affiliate marketing" OR "paid traffic" OR "seo strategies"',
+    es: '"marketing de afiliados" OR "tráfico pago" OR "marketing digital desde cero"',
+    fr: '"marketing d\'affiliation" OR "trafic payant" OR "marketing digital débutant"',
+    de: '"affiliate marketing deutsch" OR "bezahlter traffic" OR "digitales marketing"',
+    it: '"marketing di affiliazione" OR "traffico a pagamento" OR "marketing digitale"',
+    hi: '"डिजिटल मार्केटिंग" OR "एफिलिएट मार्केटिंग" OR "online पैसे कमाएं"',
+    ja: '"デジタルマーケティング" OR "アフィリエイト" OR "ネットビジネス"'
+  },
+  "Desenvolvimento Pessoal": {
+    pt: '"hábitos atômicos" OR "rotina matinal" OR "desenvolvimento pessoal" OR "produtividade extrema"',
+    en: '"atomic habits" OR "morning routine" OR "personal development" OR "extreme productivity"',
+    es: '"hábitos atómicos" OR "rutina de mañana" OR "desarrollo personal"',
+    fr: '"habitudes atomiques" OR "routine matinale" OR "développement personnel"',
+    de: '"atomare gewohnheiten" OR "morgenroutine" OR "persönliche weiterentwicklung"',
+    it: '"abitudini atomiche" OR "routine mattutina" OR "crescita personale"',
+    hi: '"व्यक्तिगत विकास" OR "सुबह की दिनचर्या" OR "सकारात्मक आदतें"',
+    ja: '"自己啓発" OR "朝のルーティン" OR "生産性の向上"'
+  },
+  "Relacionamentos": {
+    pt: '"psicologia do amor" OR "linguagem corporal" OR "conselhos de relacionamento" OR "atração humana"',
+    en: '"relationship advice" OR "body language signs" OR "love psychology" OR "relationship guide"',
+    es: '"consejos de pareja" OR "lenguaje corporal" OR "psicología del amor"',
+    fr: '"conseils de couple" OR "langage corporel" OR "psychologie amoureuse"',
+    de: '"beziehungsratgeber" OR "körpersprache deuten" OR "liebespsychologie"',
+    it: '"consigli di coppia" OR "linguaggio del corpo" OR "psicologia dell\'amore"',
+    hi: '"रिश्तों की सलाह" OR "शारीरिक हाव-भाव" OR "प्यार का मनोविज्ञान"',
+    ja: '"恋愛心理学" OR "人間関係の悩み" OR "ボディランゲージ"'
+  },
+  "Filosofia": {
+    pt: '"estoicismo prático" OR "filosofia de vida" OR "grandes filósofos" OR "nietzsche explicado"',
+    en: '"practical stoicism" OR "philosophy of life" OR "great philosophers" OR "stoic mindset"',
+    es: '"estoicismo práctico" OR "filosofía de vida" OR "grandes filósofos"',
+    fr: '"stoïcisme pratique" OR "philosophie de vie" OR "grands philosophes"',
+    de: '"praktischer stoizismus" OR "philosophie des lebens" OR "große philosophen"',
+    it: '"stoicismo pratico" OR "filosofia di vita" OR "grandi filosofi"',
+    hi: '"व्यावहारिक स्टोइसिज्म" OR "जीवन दर्शन" OR "महान दार्शनिक"',
+    ja: '"実用的ストア哲学" OR "人生の哲学" OR "ニーチェの教え"'
+  },
+  "Ciência": {
+    pt: '"ciência explicada" OR "experimentos científicos" OR "segredos do cérebro" OR "curiosidades científicas"',
+    en: '"science explained" OR "cool science experiments" OR "mysteries of the brain" OR "scientific facts"',
+    es: '"ciencia explicada" OR "experimentos científicos" OR "datos científicos"',
+    fr: '"science expliquée" OR "expériences scientifiques" OR "mystères du cerveau"',
+    de: '"wissenschaft erklärt" OR "wissenschaftliche experimente" OR "geheimnisse des gehirns"',
+    it: '"scienza spiegata" OR "esperimenti scientifici" OR "misteri del cervello"',
+    hi: '"विज्ञान की बातें" OR "वैज्ञानिक प्रयोग" OR "वैज्ञानिक तथ्य"',
+    ja: '"科学の不思議" OR "科学実験" OR "脳の仕組み"'
+  },
+  "Astronomia": {
+    pt: '"buraco negro" OR "segredos do universo" OR "viagem espacial" OR "planetas misteriosos"',
+    en: '"black holes" OR "mysteries of the universe" OR "space travel" OR "astrophysics documentary"',
+    es: '"agujeros negros" OR "misterios del universo" OR "viaje espacial"',
+    fr: '"trous noirs" OR "mystères de l\'univers" OR "voyage spatial"',
+    de: '"schwarze löcher" OR "geheimnisse des universums" OR "weltraumreise"',
+    it: '"buchi neri" OR "misteri dell\'universo" OR "viaggi spaziali"',
+    hi: '"ब्लैक होल" OR "ब्रह्मांड के रहस्य" OR "अंतरिक्ष यात्रा"',
+    ja: '"ブラックホール" OR "宇宙の謎" OR "天体観測"'
+  },
+  "Fofoca e Famosos": {
+    pt: '"fofocas de famosos" OR "bastidores das celebridades" OR "polêmicas dos famosos" OR "vida das estrelas"',
+    en: '"celebrity gossip" OR "celebrity secrets" OR "celeb drama" OR "behind the scenes Hollywood"',
+    es: '"chismes de famosos" OR "secretos de celebridades" OR "polémicas de famosos"',
+    fr: '"potins de célébrités" OR "secrets de stars" OR "drama célébrités"',
+    de: '"promi tratsch" OR "promi geheimnisse" OR "stars und sternchen"',
+    it: '"gossip celebrità" OR "dietro le quinte vip" OR "pettegolezzi famosi"',
+    hi: '"सेलिब्रिटी गपशप" OR "सेलिब्रिटी के रहस्य" OR "बॉलीवुड न्यूज"',
+    ja: '"芸能人のゴシップ" OR "海外セレブの噂" OR "エンタメニュース"'
+  },
+  "Resumo de Filmes": {
+    pt: '"recapitulando filmes" OR "resumo de filme completo" OR "filme explicado" OR "resumos rápidos"',
+    en: '"movie recap" OR "movie plot summary" OR "movie explained" OR "film recap"',
+    es: '"resumen de películas" OR "película explicada" OR "recapitulando película"',
+    fr: '"résumé de film" OR "film expliqué" OR "récapitulatif de film"',
+    de: '"filmzusammenfassung" OR "film erklärt" OR "kino recap"',
+    it: '"riassunto film completo" OR "film spiegato" OR "recap film"',
+    hi: '"मूवी रिकैप" OR "film का सारांश" OR "मूवी एक्सप्लेन"',
+    ja: '"映画の要約" OR "映画の解説" OR "ファスト映画"'
+  },
+  "Animes e Mangás": {
+    pt: '"história de anime" OR "resumo de anime" OR "animes da temporada" OR "teorias de anime"',
+    en: '"anime recap" OR "anime summary" OR "seasonal anime" OR "anime theories"',
+    es: '"resumen de anime" OR "anime explicado" OR "teorías de anime"',
+    fr: '"résumé d\'anime" OR "anime expliqué" OR "théories anime"',
+    de: '"anime zusammenfassung" OR "anime erklärt" OR "anime theorien"',
+    it: '"riassunto anime" OR "anime spiegato" OR "teorie anime"',
+    hi: '"एनीमे रिकैप" OR "एनीमे का सारांश" OR "एनीमे न्यूज"',
+    ja: '"アニメの要約" OR "アニメ解説" OR "アニメ考察"'
+  },
+  "Esportes": {
+    pt: '"momentos históricos esporte" OR "análise tática" OR "documentário esportivo" OR "curiosidades esportivas"',
+    en: '"historic sport moments" OR "tactical analysis sport" OR "sports documentary" OR "sports trivia"',
+    es: '"momentos históricos deportes" OR "análisis táctico deportivo" OR "documental deportivo"',
+    fr: '"moments historiques sport" OR "analyse tactique sport" OR "documentaire sportif"',
+    de: '"historische sportmomente" OR "taktische analyse sport" OR "sport dokumentation"',
+    it: '"momenti storici sport" OR "analisi tattica sport" OR "documentario sportivo"',
+    hi: '"खेल के ऐतिहासिक पल" OR "खेल विश्लेषण" OR "खेल वृत्तचित्र"',
+    ja: '"慢性的スポーツの瞬間" OR "スポーツ戦術解説" OR "アスリートの歴史"'
+  },
+  "Carros e Motos": {
+    pt: '"avaliação de carros" OR "superesportivos" OR "restauração de carros" OR "curiosidades automotivas"',
+    en: '"car review" OR "supercars documentary" OR "car restoration" OR "automotive trivia"',
+    es: '"reseña de autos" OR "superdeportivos" OR "restauración de coches"',
+    fr: '"essai auto" OR "supercars" OR "restauration de voiture"',
+    de: '"autotest" OR "supercars doku" OR "auto restaurierung"',
+    it: '"recensione auto" OR "supercar" OR "restauro auto"',
+    hi: '"कार समीक्षा" OR "सुपरकारส์" OR "कार बहाली"',
+    ja: '"愛車紹介" OR "スーパーカーの魅力" OR "車のレストア"'
+  },
+  "Política e Notícias": {
+    pt: '"geopolítica explicada" OR "análise geopolítica" OR "bastidores da política" OR "notícias internacionais"',
+    en: '"geopolitics explained" OR "political analysis" OR "behind the news" OR "world politics"',
+    es: '"geopolítica explicada" OR "análisis político" OR "noticias mundiales"',
+    fr: '"géopolitique expliquée" OR "analyse politique" OR "actualité internationale"',
+    de: '"geopolitik erklärt" OR "politische analyse" OR "weltpolitik"',
+    it: '"geopolitica spiegata" OR "analisi politica" OR "notizie dal mondo"',
+    hi: '"भू-राजनीति की बातें" OR "राजनीतिक विश्लेषण" OR "विश्व समाचार"',
+    ja: '"地政学解説" OR "政治分析" OR "国際ニュース"'
+  },
+  "Engenharia e Construção": {
+    pt: '"mega construções" OR "como funciona engenharia" OR "tecnologia de construção" OR "grandes obras"',
+    en: '"megaprojects" OR "how engineering works" OR "construction technology" OR "civil engineering documentary"',
+    es: '"mega construcciones" OR "cómo funciona la ingeniería" OR "tecnología de construcción"',
+    fr: '"mégastructures" OR "comment fonctionne l\'ingénierie" OR "technologie de construction"',
+    de: '"megaprojekte" OR "wie funktioniert ingenieurwesen" OR "bautechnologie"',
+    it: '"megacostruzioni" OR "come funciona l\'ingegneria" OR "tecnologia edilizia"',
+    hi: '"मेगा प्रोजेक्ट्स" OR "इंजीनियरिंग कैसे काम करती है" OR "निर्माण तकनीक"',
+    ja: '"メガプロジェクト" OR "ものづくりの裏側" OR "建設テクノロジー"'
+  },
+  "Artesanato e DIY": {
+    pt: '"ideias de faça você mesmo" OR "artesanato criativo" OR "ideias diy" OR "projetos manuais"',
+    en: '"do it yourself ideas" OR "creative crafts" OR "diy projects" OR "life hacks craft"',
+    es: '"ideas de hazlo tú mismo" OR "artesanías creativas" OR "proyectos diy"',
+    fr: '"idées bricolage" OR "artisanat créatif" OR "projets diy"',
+    de: '"do it yourself ideen" OR "kreatives basteln" OR "diy projekte"',
+    it: '"idee fai da te" OR "artigianato creativo" OR "progetti diy"',
+    hi: '"डीआईवाई विचार" OR "रचनात्मक शिल्प" OR "घर पर बनाएं"',
+    ja: '"DIYのアイデア" OR "手作りクラフト" OR "ライフハック作品"'
+  },
+  "ASMR": {
+    pt: '"asmr sussurrado" OR "asmr gatilhos" OR "asmr para dormir" OR "som de chuva asmr"',
+    en: '"asmr whispering" OR "asmr triggers" OR "asmr for sleep" OR "asmr relaxation"',
+    es: '"asmr susurros" OR "asmr desencadenantes" OR "asmr para dormir"',
+    fr: '"asmr chuchotement" OR "asmr déclencheurs" OR "asmr pour dormir"',
+    de: '"asmr flüstern" OR "asmr trigger" OR "asmr zum einschlafen"',
+    it: '"asmr sussurrato" OR "asmr trigger" OR "asmr per dormire"',
+    hi: '"एएसएमआर फुसफुसाहट" OR "सोने के लिए एएसएमआर" OR "आरामदायक एएसएमआर"',
+    ja: '"ASMR囁き声" OR "睡眠用ASMR" OR "音フェチ動画"'
+  },
+  "Música e Covers": {
+    pt: '"cover acústico" OR "versão acústica" OR "cover de música" OR "músicas famosas cover"',
+    en: '"acoustic cover" OR "song cover" OR "famous song cover" OR "musical performance"',
+    es: '"cover acústico" OR "cover de canción" OR "versión acústica"',
+    fr: '"reprise acoustique" OR "cover chanson" OR "version acoustique"',
+    de: '"akustik cover" OR "song cover deutsch" OR "musik cover"',
+    it: '"cover acustica" OR "cover canzone" OR "versione acustica"',
+    hi: '"ध्वनिक कवर" OR "गाना cover" OR "संगीतमय प्रस्तुति"',
+    ja: '"アコースティックカバー" OR "歌ってみた" OR "名曲カバー"'
+  },
+  "Fotografia": {
+    pt: '"dicas de fotografia" OR "como tirar fotos" OR "composição fotográfica" OR "edição de fotos"',
+    en: '"photography tips" OR "how to take photos" OR "photography composition" OR "photo editing tips"',
+    es: '"consejos de fotografía" OR "cómo tomar fotos" OR "composición fotográfica"',
+    fr: '"conseils photographie" OR "comment prendre des photos" OR "composition photo"',
+    de: '"fototipps" OR "wie man fotografiert" OR "fotografie komposition"',
+    it: '"consigli fotografia" OR "come fare foto" OR "composizione fotografica"',
+    hi: '"فोटोग्राफी युक्तियाँ" OR "फ़ोटो कैसे लें" OR "फ़ोटो संपादन"',
+    ja: '"写真撮影のコツ" OR "カメラの使い方" OR "写真の構図"'
+  },
+  "Programação": {
+    pt: '"aprenda programação" OR "curso de python" OR "como criar site" OR "programação iniciante"',
+    en: '"learn coding" OR "python tutorial" OR "how to code" OR "programming for beginners"',
+    es: '"aprender programación" OR "curso de python" OR "desarrollo web"',
+    fr: '"apprendre la programmation" OR "tutoriel python" OR "développement web"',
+    de: '"programmieren lernen" OR "python tutorial deutsch" OR "webentwicklung"',
+    it: '"imparare a programmare" OR "corso di python" OR "sviluppo web"',
+    hi: '"कोडिंग सीखें" OR "पायथन ट्यूटोरियल" OR "प्रोग्रामिंग सीखें"',
+    ja: '"プログラミング学習" OR "Python入門" OR "Webアプリ開発"'
+  },
+  "Criptomoedas": {
+    pt: '"mercado de cripto" OR "análise de bitcoin" OR "como comprar cripto" OR "notícias criptomoedas"',
+    en: '"crypto market" OR "bitcoin analysis" OR "how to buy crypto" OR "cryptocurrency news"',
+    es: '"mercado cripto" OR "análisis de bitcoin" OR "noticias criptomonedas"',
+    fr: '"marché crypto" OR "analyse bitcoin" OR "actualités cryptomonnaies"',
+    de: '"kryptomarkt" OR "bitcoin analyse" OR "kryptowährung news"',
+    it: '"mercato cripto" OR "analisi bitcoin" OR "notizie criptovalute"',
+    hi: '"क्रिप्टो मार्केट" OR "बिटकॉइन विश्लेषण" OR "क्रिप्टो समाचार"',
+    ja: '"仮想通貨分析" OR "ビットコイン投資" OR "暗号資産ニュース"'
+  },
+  "Sobrevivencialismo": {
+    pt: '"técnicas de sobrevivência" OR "bushcraft brasil" OR "preparacionismo" OR "acampamento selvagem"',
+    en: '"survival tips" OR "bushcraft techniques" OR "survival gear review" OR "wilderness camping"',
+    es: '"técnicas de supervivencia" OR "bushcraft español" OR "preparacionismo"',
+    fr: '"techniques de survie" OR "bushcraft camping" OR "survivalisme"',
+    de: '"überlebensstrategien" OR "bushcraft deutschland" OR "survival ausrüstung"',
+    it: '"tecniche di sopravvivenza" OR "bushcraft italiano" OR "survivalismo"',
+    hi: '"जीवित रहने के तरीके" OR "जंगल में कैंपिंग" OR "अस्तित्व कौशल"',
+    ja: '"サバイバル技術" OR "ブッシュクラフト" OR "野外キャンプ"'
+  },
+  "Jardinagem": {
+    pt: '"como plantar" OR "jardinagem para iniciantes" OR "cuidar de plantas" OR "horta em casa"',
+    en: '"how to grow plants" OR "gardening for beginners" OR "plant care tips" OR "backyard garden"',
+    es: '"cómo plantar" OR "jardinería para principiantes" OR "cuidado de plantas"',
+    fr: '"comment planter" OR "jardinage débutant" OR "soins des plantes"',
+    de: '"pflanzen anbauen" OR "gartenarbeit für anfänger" OR "zimmerpflanzen pflege"',
+    it: '"come coltivare piante" OR "giardinaggio per principianti" OR "cura delle piante"',
+    hi: '"पौधे कैसे उगाएं" OR "घर पर बागवानी" OR "पौधों की देखभाल"',
+    ja: '"家庭菜園の作り方" OR "初心者のガーデニング" OR "観葉植物の育て方"'
+  },
+  "Minimalismo": {
+    pt: '"estilo de vida minimalista" OR "destralhar casa" OR "minimalismo prático" OR "vida simples"',
+    en: '"minimalist lifestyle" OR "decluttering tips" OR "practical minimalism" OR "simple living"',
+    es: '"estilo de vida minimalista" OR "desapego y minimalismo" OR "vida simple"',
+    fr: '"style de vie minimaliste" OR "désencombrer sa maison" OR "vie simple"',
+    de: '"minimalistischer lebensstil" OR "ausmisten tipps" OR "einfaches leben"',
+    it: '"stile di vita minimalista" OR "decluttering casa" OR "vita semplice"',
+    hi: '"अतिवादी जीवन शैली" OR "कम सामान में जीना" OR "सरल जीवन"',
+    ja: '"ミニマリストの生活" OR "片付け of コツ" OR "シンプルな暮らし"'
+  },
+  "Histórias de Terror": {
+    pt: '"lendas urbanas" OR "contos de terror" OR "relatos sobrenaturais" OR "creepypasta brasil"',
+    en: '"urban legends" OR "horror story compilation" OR "paranormal encounters" OR "creepypasta narration"',
+    es: '"leyendas urbanas" OR "historias de terror reales" OR "relatos paranormales"',
+    fr: '"légendes urbaines" OR "histoires de fantômes" OR "récits d\'horreur"',
+    de: '"gruselgeschichten" OR "unheimliche begegnungen" OR "horrorstory deutsch"',
+    it: '"leggende metropolitane" OR "storie dell\'orrore vere" OR "racconti paranormali"',
+    hi: '"डरावनी कहानियाँ" OR "भूतिया किस्से" OR "रहस्यमयी घटनाएँ"',
+    ja: '"怪談朗読" OR "都市伝説" OR "本当にあった怖い話"'
+  },
+  "Mitologia": {
+    pt: '"mitologia grega" OR "mitologia nórdica" OR "deuses antigos" OR "mitos e lendas"',
+    en: '"greek mythology" OR "norse mythology" OR "ancient gods" OR "myths and legends"',
+    es: '"mitología griega" OR "mitología nórdica" OR "dioses antiguos"',
+    fr: '"mythologie grecque" OR "mythologie nordique" OR "dieux anciens"',
+    de: '"griechische mythologie" OR "nordische mythologie" OR "antike götter"',
+    it: '"mitologia greca" OR "mitologia vichinga" OR "divinità antiche"',
+    hi: '"ग्रीक पौराणिक कथाएं" OR "प्राचीन देवी-देवता" OR "पौराणिक इतिहास"',
+    ja: '"ギリシャ神話" OR "北欧神話" OR "古代の神々"'
+  },
+  "Casas Luxuosas": {
+    pt: '"mansões luxuosas" OR "tour em mansão" OR "casas mais caras" OR "arquitetura de luxo"',
+    en: '"luxury home tour" OR "mega mansions" OR "most expensive houses" OR "modern luxury architecture"',
+    es: '"tour de mansión" OR "casas de lujo caras" OR "arquitectura moderna de lujo"',
+    fr: '"visite de maison de luxe" OR "plus belles villas" OR "architecture de luxe"',
+    de: '"luxusvilla tour" OR "teuerste häuser" OR "luxus immobilien"',
+    it: '"tour casa di lusso" OR "ville più costose" OR "architettura di lusso"',
+    hi: '"आलीशान कोठी" OR "दुनिया के सबसे महंगे घर" OR "लक्जरी विला"',
+    ja: '"豪華な豪邸ツアー" OR "超高級住宅" OR "豪華な別荘"'
+  },
+  "Cultura Pop e Geek": {
+    pt: '"cultura geek" OR "teorias de marvel" OR "novidades cultura pop" OR "curiosidades nerd"',
+    en: '"geek culture" OR "marvel theories" OR "pop culture analysis" OR "nerd universe"',
+    es: '"cultura geek" OR "teorías de cómics" OR "noticias geek"',
+    fr: '"culture geek" OR "théories de films geek" OR "analyse pop culture"',
+    de: '"geek kultur" OR "marvel theorien deutsch" OR "nerd news"',
+    it: '"cultura geek" OR "teorie marvel" OR "curiosità nerd"',
+    hi: '"गीक संस्कृति" OR "मार्वल थ्योरीज" OR "पॉप संस्कृति"',
+    ja: '"アメコミ考察" OR "ポップカルチャー解説" OR "ギークカルチャー"'
+  },
+  "Maternidade e Família": {
+    pt: '"dicas de maternidade" OR "rotina de mãe" OR "educação de filhos" OR "maternidade real"',
+    en: '"parenting advice" OR "mom life routine" OR "raising children" OR "family vlog clean"',
+    es: '"consejos de maternidad" OR "rutina de madre" OR "crianza de hijos"',
+    fr: '"conseils parentalité" OR "routine de maman" OR "éducation bienveillante"',
+    de: '"erziehungstipps" OR "mama alltag" OR "kindererziehung"',
+    it: '"consigli genitorialità" OR "routine di mamma" OR "crescere figli"',
+    hi: '"पालन-पोषण की सलाह" OR "मां की दिनचर्या" OR "बच्चों की परवरिश"',
+    ja: '"育児のコツ" OR "子育ての悩み" OR "家族ルーティン"'
+  },
+  "Treino e Calistenia": {
+    pt: '"treino de calistenia" OR "exercícios em casa" OR "ganhar massa muscular" OR "calistenia iniciante"',
+    en: '"calisthenics workout" OR "home workout routine" OR "build muscle no weights" OR "bodyweight fitness"',
+    es: '"entrenamiento de calistenia" OR "rutina en casa" OR "ganar músculo sin pesas"',
+    fr: '"entraînement callisthénie" OR "musculation maison" OR "poids du corps"',
+    de: '"calisthenics training" OR "training zu hause" OR "muskelaufbau eigengewicht"',
+    it: '"allenamento calistenico" OR "esercizi a casa" OR "muscoli a corpo libero"',
+    hi: '"कैलिस्थेनिक्स कसरत" OR "घर पर व्यायाम" OR "मांसपेशियों का विकास"',
+    ja: '"自重トレーニング" OR "カリステニクス初心者" OR "自宅ワークアウト"'
+  },
+  "Histórias Bíblicas": {
+    pt: '"histórias da bíblia" OR "estudo bíblico animado" OR "personagens bíblicos" OR "curiosidades da bíblia"',
+    en: '"bible stories animation" OR "bible study explained" OR "characters of the bible" OR "biblical history"',
+    es: '"historias de la biblia" OR "estudio bíblico animado" OR "personajes bíblicos"',
+    fr: '"histoires de la bible" OR "récits bibliques" OR "étude de la bible"',
+    de: '"bibelgeschichten animation" OR "bibelstudium erklärt" OR "biblische geschichte"',
+    it: '"storie della bibbia" OR "studi biblici" OR "personaggi biblici"',
+    hi: '"बाइबिल की कहानियाँ" OR "बाइबिल का अध्ययन" OR "बाइबल इतिहास"',
+    ja: '"聖書のアニメーション" OR "聖書の登場人物" OR "聖書歴史解説"'
+  },
+  "Assuntos Militares": {
+    pt: '"tecnologia militar" OR "armas de guerra" OR "história militar" OR "exércitos do mundo"',
+    en: '"military technology" OR "weapons of war" OR "military history" OR "world armies documentary"',
+    es: '"tecnología militar" OR "armas de guerra" OR "historia militar"',
+    fr: '"technologie militaire" OR "armes de guerre" OR "histoire militaire"',
+    de: '"militärtechnik" OR "kriegswaffen" OR "militärgeschichte"',
+    it: '"tecnologia militare" OR "armi da guerra" OR "storia militare"',
+    hi: '"सैन्य तकनीक" OR "युद्ध के हथियार" OR "सैन्य इतिहास"',
+    ja: '"最新軍事兵器" OR "戦争の歴史" OR "世界の軍事力"'
+  },
+  "Vida em Motorhome": {
+    pt: '"vida em motorhome" OR "morar na estrada" OR "construindo motorhome" OR "viagem de van"',
+    en: '"van life documentary" OR "living in a van" OR "diy van conversion" OR "rv travel vlog"',
+    es: '"vida en motorhome" OR "vivir viajando" OR "camperización diy"',
+    fr: '"vie en van" OR "vivre sur la route" OR "aménagement fourgon"',
+    de: '"leben im wohnmobil" OR "vanlife deutschland" OR "kastenwagen ausbau"',
+    it: '"vita in camper" OR "vivere in van" OR "camperizzazione fai da te"',
+    hi: '"आरवी लाइफ" OR "सड़क पर जीवन" OR "वैन लाइफ"',
+    ja: '"キャンピングカー生活" OR "車中泊で日本一周" OR "バンライフの日常"'
+  },
+  "Aviação e Aeroespacial": {
+    pt: '"tecnologia aeroespacial" OR "como aviões voam" OR "documentário aviação" OR "missões espaciais"',
+    en: '"aerospace technology" OR "how planes fly" OR "aviation documentary" OR "space missions"',
+    es: '"tecnología aeroespacial" OR "cómo vuelan los aviones" OR "documental aviación"',
+    fr: '"technologie aérospatiale" OR "comment volent les avions" OR "documentaire aviation"',
+    de: '"luft- und raumfahrt" OR "wie flugzeuge fliegen" OR "luftfahrt doku"',
+    it: '"tecnologia aerospaziale" OR "come volano gli aerei" OR "documentario aviazione"',
+    hi: '"एयरोस्पेस तकनीक" OR "हवाई जहाज कैसे उड़ते हैं" OR "अंतरिक्ष मिशन"',
+    ja: '"航空宇宙工学" OR "飛行機が飛ぶ仕組み" OR "宇宙開発の歴史"'
+  },
+  "Audiobooks e Resumos": {
+    pt: '"resumo de livro" OR "audiolivro completo" OR "desenvolvimento pessoal livro" OR "principais insights"',
+    en: '"book summary" OR "full audiobook" OR "personal development book key points" OR "book review animation"',
+    es: '"resumen de libro" OR "audiolibro completo" OR "reseña de libro"',
+    fr: '"résumé de livre" OR "livre audio complet" OR "fiche de lecture"',
+    de: '"buchzusammenfassung" OR "hörbuch komplett" OR "wichtigste buchideen"',
+    it: '"riassunto libro" OR "audiolibro completo" OR "recensione libro"',
+    hi: '"किताब का सारांश" OR "पूरी ऑडियोबुक" OR "मुख्य विचार"',
+    ja: '"本の実用要約" OR "オーディオブック" OR "読書レビュー"'
+  },
+  "Beleza e Maquiagem": {
+    pt: '"dicas de maquiagem" OR "maquiagem para iniciantes" OR "rotina de skincare" OR "cuidados com a pele"',
+    en: '"makeup tutorial" OR "skincare routine" OR "makeup for beginners" OR "beauty hacks"',
+    es: '"tutorial de maquillaje" OR "rutina de skincare" OR "belleza y cuidado"',
+    fr: '"tuto maquillage" OR "routine soins de la peau" OR "astuces beauté"',
+    de: '"schminktipps" OR "skincare routine deutsch" OR "make-up für anfänger"',
+    it: '"tutorial trucco" OR "routine cura della pelle" OR "segreti di bellezza"',
+    hi: '"मेकअप ट्यूटोरियल" OR "त्वचा की देखभाल" OR "सौंदर्य युक्तियाँ"',
+    ja: '"初心者メイク" OR "スキンケアルーティン" OR "美肌の秘訣"'
+  },
+  "Hardware e Setup": {
+    pt: '"montagem de pc" OR "setup gamer" OR "review de hardware" OR "placa de vídeo análise"',
+    en: '"pc building guide" OR "gaming setup tour" OR "hardware review" OR "gpu performance analysis"',
+    es: '"montaje de pc" OR "setup gamer" OR "reseña de hardware"',
+    fr: '"monter son pc" OR "setup gamer tour" OR "test matériel informatique"',
+    de: '"pc zusammenbauen" OR "gaming setup deutsch" OR "hardware test"',
+    it: '"assemblare pc" OR "setup gamer" OR "recensione hardware"',
+    hi: '"पीसी बिल्डिंग" OR "गेमिंग  सेटअप" OR "हार्डवेयर समीक्षा"',
+    ja: '"自作PCビルド" OR "デスク環境紹介" OR "最新グラフィックボード解説"'
+  },
+  "Jogos Mobile": {
+    pt: '"jogos mobile grátis" OR "gameplay android" OR "jogos para celular" OR "jogos ios"',
+    en: '"free mobile games" OR "android gameplay" OR "best mobile games" OR "ios gameplay"',
+    es: '"juegos móviles gratis" OR "gameplay de android" OR "juegos para celular"',
+    fr: '"jeux mobiles gratuits" OR "gameplay android" OR "meilleurs jeux mobiles"',
+    de: '"kostenlose handy spiele" OR "android gameplay deutsch" OR "beste mobile spiele"',
+    it: '"giochi cellulare gratis" OR "gameplay android" OR "migliori giochi mobile"',
+    hi: '"मुफ़्त mobile गेम" OR "एंड्रॉइड गेमप्ले" OR "सर्वश्रेष्ठ mobile गेम"',
+    ja: '"おすすめスマホゲーム" OR "スマホゲーム実況" OR "新作アプリ紹介"'
+  },
+  "Desenho e Arte": {
+    pt: '"como desenhar" OR "tutorial de desenho" OR "desenho passo a passo" OR "dicas de arte"',
+    en: '"how to draw" OR "drawing tutorial" OR "sketch step by step" OR "art tips"',
+    es: '"cómo dibujar" OR "tutorial de dibujo" OR "dibujo paso a passo"',
+    fr: '"comment dessiner" OR "tuto dessin" OR "techniques artistiques"',
+    de: '"zeichnen lernen" OR "zeichen tutorial deutsch" OR "kunst tipps"',
+    it: '"come disegnare" OR "tutorial disegno" OR "disegnare passo dopo passo"',
+    hi: '"ड्राइंग कैसे करें" OR "चित्रकला सीखें" OR "कला युक्तियाँ"',
+    ja: '"簡単な描き方" OR "イラストメイキング" OR "絵の描き方コツ"'
+  },
+  "Aprender Idiomas": {
+    pt: '"aprender inglês rápido" OR "dicas de idiomas" OR "inglês para iniciantes" OR "falar espanhol"',
+    en: '"learn spanish fast" OR "language learning tips" OR "english for beginners" OR "polyglot method"',
+    es: '"aprender inglês rápido" OR "consejos para idiomas" OR "método políglota"',
+    fr: '"apprendre l\'anglais" OR "conseils langues" OR "devenir polyglotte"',
+    de: '"englisch lernen schnell" OR "sprachtipps" OR "polyglott methode"',
+    it: '"imparare l\'inglese" OR "consigli lingue" OR "diventare poliglotta"',
+    hi: '"अंग्रेजी कैसे सीखें" OR "भाषा सीखने की युक्तियाँ" OR "बहुभाषी तरीका"',
+    ja: '"英会話スピード学習" OR "語学学習のコツ" OR "多言語習得法"'
+  }
 };
 
 const LANGUAGES = [
@@ -122,7 +699,7 @@ const getInstantViralTitles = (channel) => {
 export const ChannelMiningTab = ({ setActiveTab }) => {
   const { configs, showToast } = useSystemStatus();
   const { miningState, setMiningState } = usePersistence();
-  const { channels, niche: selectedNiche, isSearching, maxAgeMonths = 0, videoFormat = 'normal', langCode = 'pt' } = miningState;
+  const { channels, niche: selectedNiche, isSearching, maxAgeMonths = 0, videoFormat = 'normal', langCode = 'pt', ultraPrecise = true } = miningState;
 
   const setSelectedNiche = (val) => setMiningState(prev => ({ ...prev, niche: val }));
   const setChannels = (val) => setMiningState(prev => ({ ...prev, channels: val }));
@@ -130,6 +707,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
   const setMaxAgeMonths = (val) => setMiningState(prev => ({ ...prev, maxAgeMonths: val }));
   const setVideoFormat = (val) => setMiningState(prev => ({ ...prev, videoFormat: val }));
   const setSelectedLangCode = (val) => setMiningState(prev => ({ ...prev, langCode: val }));
+  const setUltraPrecise = (val) => setMiningState(prev => ({ ...prev, ultraPrecise: val }));
 
   const selectedLang = LANGUAGES.find(l => l.code === langCode) || LANGUAGES[0];
   const [copiedId, setCopiedId] = useState(null);
@@ -209,7 +787,10 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
       date.setDate(date.getDate() - 30);
       const publishedAfter = date.toISOString();
 
-      let query = nicheTerm; // Clean query without forced English words
+      // Utilize extremely precise query structure with operators when available, fallback to Translated Term
+      let query = (NICHE_QUERIES[selectedNiche] && NICHE_QUERIES[selectedNiche][langCode])
+                        ? NICHE_QUERIES[selectedNiche][langCode]
+                        : nicheTerm;
       
       const searchParams = {
         part: 'snippet',
@@ -250,7 +831,7 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
       checkYouTubeError(channelsData, 'channels');
 
       // 5. Transform and filter for SMALL CHANNELS with HIGH PERFORMANCE
-      const minedChannels = (channelsData.items || [])
+      let minedChannels = (channelsData.items || [])
         .map(item => {
           const videoCount = parseInt(item.statistics.videoCount || 0);
           const viewCount = parseInt(item.statistics.viewCount || 0);
@@ -279,7 +860,40 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
           if (channel.viewCount < 5000 || channel.subscriberCount >= 150000 || channel.subscriberCount <= 0) return false;
           if (maxAgeMonths > 0 && channel.ageInMonths > maxAgeMonths) return false;
           return true;
-        })
+        });
+
+      // 5.5 AI-based filter for extreme precision (if enabled)
+      if (ultraPrecise && minedChannels.length > 0) {
+        try {
+          const aiChannelsList = minedChannels.map((c, i) => `${i + 1}. ID: ${c.id} | Título: ${c.title} | Descrição: ${c.description || 'Sem descrição'}`).join('\n');
+          
+          const aiPrompt = `Você é um Analista de Nichos do YouTube. Analise a lista de canais abaixo e filtre APENAS os canais que pertencem ou produzem conteúdo de fato focado no nicho "${selectedNiche}".
+Regras de classificação:
+1. O canal deve ter foco claro ou publicar majoritariamente vídeos sobre o nicho ou sub-nichos de "${selectedNiche}".
+2. Canais de notícias generalistas, canais de celebridades e entretenimento genérico sem relação clara com o nicho devem ser excluídos.
+3. Se você tiver dúvidas mas a descrição/título apontar fortemente para o nicho, inclua-o.
+
+Canais:
+${aiChannelsList}
+
+Responda APENAS com um array JSON contendo as IDs dos canais válidos (e.g., ["id1", "id2"]). Não envie introdução, explicações ou blocos markdown.`;
+
+          const aiResponse = await callAI(aiPrompt, { model: 'gemini-2.5-flash', gptKey: configs.gpt_key });
+          const cleanJson = aiResponse.replace(/```json|```/g, '').trim();
+          const validIds = JSON.parse(cleanJson);
+          
+          if (Array.isArray(validIds)) {
+            const filteredList = minedChannels.filter(c => validIds.includes(c.id));
+            if (filteredList.length > 0) {
+              minedChannels = filteredList;
+            }
+          }
+        } catch (aiErr) {
+          console.warn("Filtro por IA falhou:", aiErr);
+        }
+      }
+
+      minedChannels = minedChannels
         .sort((a, b) => b.efficiency - a.efficiency)
         .slice(0, 6); // Exactly 6 cards
 
@@ -476,6 +1090,27 @@ export const ChannelMiningTab = ({ setActiveTab }) => {
             >
               {isSearching ? <LoadingSpinner size="xs" message="" /> : <><Search className="w-5 h-5" /> {t('mining.btn_search')}</>}
             </button>
+          </div>
+
+          {/* Toggles Row */}
+          <div className="mt-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between border-t border-white/5 pt-5 relative z-10">
+            <div className="flex items-center gap-3">
+              <label className="relative flex items-center cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  checked={ultraPrecise} 
+                  onChange={(e) => setUltraPrecise(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-dark/80 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-gray-400 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-neon-purple peer-checked:to-neon-cyan peer-checked:after:bg-white peer-checked:after:border-transparent"></div>
+                <span className="ms-3 text-xs font-black text-gray-400 uppercase tracking-wider flex items-center gap-1.5 peer-checked:text-neon-cyan transition-colors">
+                  <Sparkles className="w-3.5 h-3.5 animate-pulse text-neon-cyan" /> Busca Ultra-Precisa (IA)
+                </span>
+              </label>
+            </div>
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider italic">
+              {ultraPrecise ? 'Ativado: Filtra canais falsos-positivos usando inteligência artificial' : 'Desativado: Filtro padrão por palavra-chave'}
+            </p>
           </div>
         </div>
 

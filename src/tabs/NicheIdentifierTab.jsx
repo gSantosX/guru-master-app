@@ -153,6 +153,55 @@ function getInstantNicheTitles(nicheName, lang) {
 10. O Que Acontece Se Você Ignorar Essa Nova Tendência de ${nicheName}`;
 }
 
+const SECTION_METADATA = {
+  1: { icon: Brain, color: 'text-neon-purple' },
+  2: { icon: TrendingUp, color: 'text-neon-cyan' },
+  3: { icon: Users, color: 'text-neon-pink' },
+  4: { icon: Sparkles, color: 'text-yellow-400' },
+  5: { icon: BarChart2, color: 'text-green-400' },
+  6: { icon: AlertTriangle, color: 'text-orange-400' },
+};
+
+const parseStrategySections = (text) => {
+  if (!text) return [];
+  const sections = [];
+  const regex = /\*\*(\d)\.\s*(.*?)\*\*/g;
+  let match;
+  const matches = [];
+  
+  while ((match = regex.exec(text)) !== null) {
+    matches.push({
+      num: parseInt(match[1]),
+      title: match[2].trim(),
+      index: match.index,
+      length: match[0].length
+    });
+  }
+
+  if (matches.length === 0) {
+    return [{
+      num: 1,
+      title: "ANÁLISE COMPLETA",
+      content: text
+    }];
+  }
+
+  for (let i = 0; i < matches.length; i++) {
+    const current = matches[i];
+    const next = matches[i + 1];
+    const start = current.index + current.length;
+    const end = next ? next.index : text.length;
+    const content = text.slice(start, end).trim();
+    sections.push({
+      num: current.num,
+      title: current.title,
+      content: content
+    });
+  }
+
+  return sections;
+};
+
 export const NicheIdentifierTab = ({ setActiveTab }) => {
   const { configs, showToast } = useSystemStatus();
   const { setWhiskTrigger } = usePersistence();
@@ -690,9 +739,49 @@ Retorne APENAS a lista numerada.`;
                            className="py-10" 
                          />
                       ) : strategyResult ? (
-                        <div className="space-y-6 prose prose-invert prose-sm max-w-none prose-p:text-gray-300 prose-headings:text-white prose-strong:text-neon-cyan">
-                           <div className="whitespace-pre-wrap leading-relaxed text-[13px] sm:text-sm font-medium">
-                              {strategyResult}
+                        <div className="space-y-6">
+                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                             {parseStrategySections(strategyResult).map((sec) => {
+                               const meta = SECTION_METADATA[sec.num] || { icon: Sparkles, color: 'text-white' };
+                               const IconComponent = meta.icon;
+                               const glowColor = meta.color === 'text-yellow-400' ? 'from-yellow-400 to-amber-600' : 
+                                                 meta.color === 'text-neon-purple' ? 'from-neon-purple to-purple-800' : 
+                                                 meta.color === 'text-neon-cyan' ? 'from-neon-cyan to-cyan-800' : 
+                                                 meta.color === 'text-neon-pink' ? 'from-neon-pink to-pink-800' : 
+                                                 meta.color === 'text-green-400' ? 'from-green-400 to-emerald-800' : 
+                                                 meta.color === 'text-orange-400' ? 'from-orange-400 to-orange-800' : 
+                                                 'from-indigo-400 to-indigo-800';
+                               return (
+                                 <div 
+                                   key={sec.num}
+                                   className="bg-white/5 border border-white/5 hover:border-white/10 rounded-2xl p-6 relative overflow-hidden group transition-all duration-300 hover:-translate-y-1 hover:bg-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.4)] flex flex-col justify-between"
+                                 >
+                                   <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${glowColor}`} />
+                                   <div>
+                                     <div className="flex items-center gap-3 mb-4">
+                                       <div className={`p-2 rounded-xl bg-white/5 ${meta.color} group-hover:scale-110 transition-transform duration-300`}>
+                                         <IconComponent className="w-5 h-5" />
+                                       </div>
+                                       <h4 className="text-[11px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white transition-colors">
+                                         {sec.title}
+                                       </h4>
+                                     </div>
+                                     <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap font-medium">
+                                       {sec.content.split('\n').map((line, lIdx) => {
+                                         if (line.startsWith('- ') || line.startsWith('* ')) {
+                                           return (
+                                             <div key={lIdx} className={`pl-3 relative before:content-['•'] before:absolute before:left-0 ${meta.color} mt-1.5`}>
+                                               {line.substring(2)}
+                                             </div>
+                                           );
+                                         }
+                                         return <p key={lIdx} className={lIdx > 0 ? "mt-2" : ""}>{line}</p>;
+                                       })}
+                                     </div>
+                                   </div>
+                                 </div>
+                               );
+                             })}
                            </div>
                            <div className="pt-4 border-t border-white/10 flex justify-end">
                               <button 
