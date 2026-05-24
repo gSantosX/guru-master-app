@@ -46,18 +46,66 @@ const GLOBAL_LANGUAGES = [
   "Filipino (Tagalog)"
 ];
 
-const FINANCE_SUBJECTS = [
-  "Renda Passiva & Dividendos",
-  "Criptomoedas & Bitcoin",
-  "Investimentos para Iniciantes",
-  "Ações & Bolsa de Valores",
-  "Economia Doméstica & Poupança",
-  "Cartões de Crédito & Milhas",
-  "Mentalidade Financeira & Riqueza",
-  "Planejamento de Aposentadoria",
-  "Tesouro Direto & Renda Fixa",
-  "Outro Assunto (Personalizado)"
-];
+const getNicheDefaultSubjects = (niche) => {
+  const mapping = {
+    "Finanças": ["Renda Passiva & Dividendos", "Criptomoedas & Bitcoin", "Investimentos para Iniciantes", "Ações & Bolsa de Valores", "Economia Doméstica & Poupança", "Cartões de Crédito & Milhas", "Mentalidade Financeira & Riqueza", "Planejamento de Aposentadoria", "Tesouro Direto & Renda Fixa"],
+    "História": ["Grandes Guerras & Batalhas", "Impérios Antigos", "Mistérios da Antiguidade", "Biografias de Personagens Históricos", "História Medieval", "História da Colonização", "Arqueologia & Descobertas"],
+    "Mistérios": ["Ufologia & OVNIs", "Casos não Resolvidos", "Fenômenos Sobrenaturais", "Cidades Perdidas", "Teorias da Conspiração", "Lugares Assombrados"],
+    "Crimes Reais": ["Casos de Serial Killers", "Desaparecimentos Misteriosos", "Crimes Famosos", "Investigações Criminais", "Psicologia Criminal"],
+    "Espiritualidade": ["Lei da Atração & Manifestação", "Meditação & Mindfulness", "Despertar Espiritual", "Física Quântica & Consciência", "Astrologia & Signos"],
+    "Motivação": ["Mentalidade Vencedora", "Superação de Limites", "Vídeos Motivacionais Curtos", "Discursos de Sucesso", "Disciplina & Hábitos"],
+    "Saúde": ["Alimentação Saudável & Dietas", "Longevidade & Antienvelhecimento", "Prevenção de Doenças", "Saúde Mental & Ansiedade", "Higiene do Sono"],
+    "Tecnologia": ["Inteligência Artificial & Robótica", "Futuro Tech & Inovações", "Gadgets & Dispositivos Curiosos", "Análise de Smartphones", "Segurança Digital"],
+    "Curiosidades": ["Fatos Curiosos & Bizarros", "Como Coisas são Feitas", "Mistérios da Ciência", "Top 10 Fatos Impressionantes", "Descobertas Recentes"],
+    "Documentários": ["Documentários Sociais", "Grandes Investigações", "Histórias Reais e Impactantes", "Biografias Documentadas", "Conflitos Históricos"],
+    "Gameplay": ["Detonados Completos", "Jogos de Terror", "Easter Eggs & Segredos", "Desafios em Jogos (Challenges)", "Speedruns"],
+    "Culinária": ["Receitas Rápidas & Fáceis", "Culinária Internacional", "Doces & Confeitaria", "Dicas de Chef", "Gastronomia Saudável"],
+    "Viagens": ["Destinos Baratos & Mochilão", "Hotéis Exóticos", "Vlog de Viagem Completo", "Dicas de Bagagem & Visto", "Comidas de Rua pelo Mundo"],
+    "Pets": ["Comportamento e Treino de Cães", "Dicas de Saúde para Gatos", "Curiosidades sobre Animais", "Pets Exóticos", "Alimentação Natural para Pets"],
+    "Moda": ["Tendências de Moda Masculina", "Estilo e Lookbook Feminino", "Moda Consciente & Brechós", "Como Combinar Cores", "História das Marcas de Luxo"],
+    "Educação": ["Resumos de Matérias para Vestibular", "Técnicas de Estudo e Produtividade", "Física e Química Prática", "História Geral Explicada"],
+    "Empreendedorismo": ["Ideias de Negócios Lucrativos", "Como Criar uma Startup", "Gestão e Liderança", "Vendas e Negociação", "Franquias de Sucesso"],
+    "Marketing Digital": ["Tráfego Pago (Ads)", "Marketing de Afiliados", "SEO & Ranqueamento de Sites", "Copywriting & Escrita Persuasiva", "Criação de Conteúdo"],
+    "Desenvolvimento Pessoal": ["Construção de Hábitos Saudáveis", "Gerenciamento de Time", "Foco & Concentração", "Inteligência Emocional", "Autoconfiança & Autoestima"],
+    "Relacionamentos": ["Psicologia da Atração", "Como Lidar com Crises", "Comunicação no Casal", "Linguagem Corporal", "Amizades e Socialização"],
+    "Filosofia": ["Estoicismo na Prática", "Existencialismo & Sentido da Vida", "Filósofos da Antiguidade", "Dilemas Éticos", "Filosofia para o Dia a Dia"],
+    "Ciência": ["Física Quântica Explicada", "Experimentos Científicos Incríveis", "Evolução e Biologia", "Mistérios do Corpo Humano"],
+    "Astronomia": ["Exploração de Marte", "Buracos Negros & Buracos de Minhoca", "Estrelas e Galáxias Distantes", "Telescópios e Observação"],
+    "Fofoca e Famosos": ["Polêmicas do Momento", "Bastidores de Famosos", "Casamentos e Separações Vip", "Segredos de Bastidores"],
+    "Resumo de Filmes": ["Resumo de Filmes de Terror", "Filmes Explicados com Detalhes", "Finais Explicados", "Resumos de Séries Completas"],
+    "Animes e Mangás": ["Teorias e Mistérios de Animes", "Análise de Novos Episódios", "Histórias Ocultas de Personagens", "Mangás Recomendados"],
+    "Esportes": ["Análises Táticas de Futebol", "Histórias de Grandes Atletas", "Momentos Históricos das Olimpíadas", "Curiosidades sobre Esportes Radicais"],
+    "Carros e Motos": ["Avaliação de Superesportivos", "Restauração de Carros Antigos", "Dicas de Manutenção Caseira", "História de Modelos Icônicos"],
+    "Política e Notícias": ["Geopolítica Mundial", "Análise de Conflitos Globais", "Entendendo o Cenário Político", "Notícias Explicadas"],
+    "Engenharia e Construção": ["Mega Projetos & Estruturas", "Tecnologia de Construção Civil", "Como Funcionam as Máquinas Pesadas", "Arquitetura de Prédios Famosos"],
+    "Artesanato e DIY": ["Faça Você Mesmo (DIY)", "Artesanato Reciclado", "Pintura & Customização", "Decoração Criativa"],
+    "ASMR": ["Sons de Sussurro & Relaxamento", "Sons de Natureza & Chuva", "ASMR Visual & Gatilhos", "ASMR para Ansiedade"],
+    "Música e Covers": ["Covers Acústicos", "Tutoriais de Canto e Violão", "Análise de Letras", "Produção Musical"],
+    "Fotografia": ["Técnicas de Iluminação", "Fotografia de Celular", "Edição de Imagem", "Composição Visual"],
+    "Programação": ["Aprender Python / JS", "Desenvolvimento de Jogos", "Como Criar um Site", "Dicas de Carreira de Dev"],
+    "Criptomoedas": ["Análise do Bitcoin", "Novas Altcoins Promissoras", "Segurança em Carteiras", "NFTs & Metaverso"],
+    "Sobrevivencialismo": ["Técnicas de Bushcraft", "Mochila de Emergência", "Sobrevivência na Selva", "Primeiros Socorros"],
+    "Jardinagem": ["Como Cuidar de Suculentas", "Horta Orgânica em Casa", "Combate Natural a Pragas", "Paisagismo"],
+    "Minimalismo": ["Como Praticar o Destralhe", "Estilo de Vida Simples", "Guarda-Roupa Cápsula", "Finanças Minimalistas"],
+    "Histórias de Terror": ["Creepypastas e Lendas", "Relatos Reais de Fantasmas", "Contos de Terror", "Casos Sobrenaturais"],
+    "Mitologia": ["Mitologia Nórdica", "Mitologia Grega", "Mitologia Egípcia", "Lendas do Folclore"],
+    "Casas Luxuosas": ["Mansões de Bilionários", "Arquitetura Moderna", "As Coberturas Mais Caras", "Casas Inteligentes"],
+    "Cultura Pop e Geek": ["Easter Eggs da Marvel", "Teorias de Star Wars", "História dos Videogames", "Análise de HQs"],
+    "Maternidade e Família": ["Cuidado com Recém-Nascidos", "Educação Infantil", "Atividades em Família", "Maternidade Real"],
+    "Treino e Calistenia": ["Calistenia para Iniciantes", "Exercícios sem Equipamentos", "Ganho de Força", "Desafios Físicos"],
+    "Histórias Bíblicas": ["A Verdadeira História de Moisés", "Mistérios Bíblicos", "Parábolas", "Arqueologia Bíblica"],
+    "Assuntos Militares": ["Tecnologia de Caças", "História de Forças Especiais", "Tanques de Guerra", "Estratégia e Tática"],
+    "Vida em Motorhome": ["Como Adaptar Camper", "Vida na Estrada", "Quanto Custa Vida Nômade", "Viagens de Van"],
+    "Aviação e Aeroespacial": ["Acidentes Aéreos", "Como Funcionam as Turbinas", "Viagens Espaciais", "Curiosidades sobre Pilotos"],
+    "Audiobooks e Resumos": ["Resumo Visual de Livros", "Livros de Negócios", "Audiolivros", "Resumo de Livros de Autoajuda"],
+    "Beleza e Maquiagem": ["Maquiagem para o Dia a Dia", "Técnicas de Delineado", "Skincare Coreana", "Cabelos Saudáveis"],
+    "Hardware e Setup": ["PC Gamer Custo-Benefício", "Análise de Placas de Vídeo", "Tour pelo Setup", "Organização de Cabos"],
+    "Jogos Mobile": ["Melhores Jogos Mobile", "Dicas para Subir de Nível", "Jogos para Android/iOS", "Gameplay de Jogos Leves"],
+    "Desenho e Arte": ["Desenhar Anatomia", "Pintura em Aquarela", "Desenho Digital", "Exercícios de Traço"],
+    "Aprender Idiomas": ["Como Ficar Fluente Rápido", "Pronúncia de Espanhol", "Gramática Prática", "Memorização de Vocabulário"]
+  };
+  return mapping[niche] || ["Geral", "Novidades & Tendências", "Dicas Práticas", "Erros Comuns", "Análise Estratégica"];
+};
 
 const VISUAL_STYLES = [
   "Padrão do Canal",
@@ -70,14 +118,10 @@ const VISUAL_STYLES = [
   "Outro Estilo (Personalizado)"
 ];
 
-const getInstantRecommendations = (channel) => {
+const getInstantRecommendations = (channel, niche = 'Finanças') => {
+  const defaultSubs = getNicheDefaultSubjects(niche);
   return {
-    subjects: [
-      { name: "Renda Passiva & Dividendos", chance: "alta" },
-      { name: "Investimentos para Iniciantes", chance: "alta" },
-      { name: "Criptomoedas & Bitcoin", chance: "media" },
-      { name: "Economia Doméstica & Poupança", chance: "media" }
-    ],
+    subjects: defaultSubs.slice(0, 4).map((s, idx) => ({ name: s, chance: idx < 2 ? 'alta' : 'media' })),
     visualStyles: [
       { name: "Dark & Misterioso", chance: "alta" },
       { name: "Vibrante & Neon", chance: "alta" },
@@ -542,24 +586,40 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
   const [isRefiningCountry, setIsRefiningCountry] = useState(false);
 
   // Section 3: Titles Generation
+  const { setScriptState, miningState } = usePersistence();
+  const selectedNiche = miningState?.niche || 'Finanças';
+  const defaultNicheSubjects = getNicheDefaultSubjects(selectedNiche);
+
   const [isAnalyzingTitles, setIsAnalyzingTitles] = useState(false);
   const [titlesResult, setTitlesResult] = useState(null);
   const [isRefiningTitles, setIsRefiningTitles] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('Português (Brasil)');
-  const [selectedTopic, setSelectedTopic] = useState('Renda Passiva & Dividendos');
+  const [selectedTopic, setSelectedTopic] = useState(() => defaultNicheSubjects[0] || 'Renda Passiva & Dividendos');
   const [customTopic, setCustomTopic] = useState('');
   const [selectedVisualStyle, setSelectedVisualStyle] = useState('Padrão do Canal');
   const [customVisualStyle, setCustomVisualStyle] = useState('');
 
   // Custom success-chance recommendations
-  const [recommendations, setRecommendations] = useState(() => getInstantRecommendations(null));
+  const [recommendations, setRecommendations] = useState(() => getInstantRecommendations(null, selectedNiche));
   const [isAnalyzingRecommendations, setIsAnalyzingRecommendations] = useState(false);
   
   // Utilities
   const [isCopied, setIsCopied] = useState(false);
   const [copiedTitleIndex, setCopiedTitleIndex] = useState(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const { setScriptState } = usePersistence();
+
+  useEffect(() => {
+    const defaultSubs = getNicheDefaultSubjects(selectedNiche);
+    const instantRecs = getInstantRecommendations(selectedChannel, selectedNiche);
+    setRecommendations(instantRecs);
+    
+    // Reset selectedTopic if it does not belong to the new niche
+    const isTopicFromNiche = defaultSubs.includes(selectedTopic);
+    if (!isTopicFromNiche && selectedTopic !== 'Outro Assunto (Personalizado)') {
+      const firstHighChanceSubject = instantRecs.subjects.find(s => s.chance === 'alta') || instantRecs.subjects[0];
+      if (firstHighChanceSubject) setSelectedTopic(firstHighChanceSubject.name);
+    }
+  }, [selectedNiche, selectedChannel]);
 
   const containerRef = useRef(null);
 
@@ -819,7 +879,7 @@ export const ChannelModelerTab = ({ isActive, setActiveTab }) => {
     setTitlesResult(null);
     const targetChannel = channel || selectedChannel;
     if (targetChannel) {
-      const instantRecs = getInstantRecommendations(targetChannel);
+      const instantRecs = getInstantRecommendations(targetChannel, selectedNiche);
       setRecommendations(instantRecs);
       
       const firstHighChanceSubject = instantRecs.subjects.find(s => s.chance === 'alta') || instantRecs.subjects[0];
@@ -930,11 +990,11 @@ Formato OBRIGATÓRIO (PT-BR) - SEJA EXTREMAMENTE DIRETO E RESUMIDO (máximo 1 fr
     
     setIsAnalyzingRecommendations(true);
     
-    const prompt = `Você é um analista estratégico especializado em canais de finanças do YouTube e otimização de CTR.
+    const prompt = `Você é um analista estratégico especializado em canais de ${selectedNiche} do YouTube e otimização de CTR.
 Analise o canal "${selectedChannel.title}" e sua descrição: "${selectedChannel.description}".
 
 Com base nos dados fornecidos do canal, faça uma análise estratégica detalhada para propor o seguinte:
-1. De 3 a 5 assuntos de finanças (específicos do nicho financeiro) que teriam maior chance de sucesso para vídeos deste canal.
+1. De 3 a 5 assuntos de ${selectedNiche} (específicos do nicho de ${selectedNiche}) que teriam maior chance de sucesso para vídeos deste canal.
 2. De 3 a 5 estilos visuais adaptados para thumbnails/vídeos deste canal que sejam alinhados à identidade dele.
 3. De 1 a 3 idiomas de destino para os quais o canal poderia expandir.
 
@@ -944,7 +1004,7 @@ A maior chance de sucesso (ou recomendação número 1 de cada categoria) DEVE r
 Retorne a resposta estritamente no formato JSON abaixo, sem blocos de código markdown ou texto extra:
 {
   "subjects": [
-    { "name": "Nome do Assunto de Finanças", "chance": "alta" },
+    { "name": "Nome do Assunto de ${selectedNiche}", "chance": "alta" },
     ...
   ],
   "visualStyles": [
@@ -1079,7 +1139,7 @@ ${isPt ? '' : `- Entre o Título e o Diferencial, deve conter obrigatoriamente a
 `}- O texto do Diferencial deve estar OBRIGATORIAMENTE em Português do Brasil (PT-BR), mesmo que o idioma selecionado para o título seja diferente.
 
 Você deve se inspirar na fórmula psicológica de sucesso e no estilo de títulos do canal analisado, mas adaptando e direcionando a geração para:
-- ASSUNTO PRINCIPAL DO VÍDEO: "${topicToUse || 'Finanças'}"
+- ASSUNTO PRINCIPAL DO VÍDEO: "${topicToUse || selectedNiche}"
 - ESTILO VISUAL / ESTÉTICA DA THUMBNAIL E VÍDEO: "${styleToUse || 'Padrão do Canal'}"
 
 REGRAS CRÍTICAS:
@@ -1487,12 +1547,12 @@ REGRAS CRÍTICAS:
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                   {/* Campo de Assunto */}
                   <CustomSelect
-                    label="Assunto (Nicho de Finanças)"
+                    label={`Assunto (Nicho de ${selectedNiche})`}
                     value={selectedTopic}
                     onChange={setSelectedTopic}
                     options={[
                       ...(recommendations.subjects || []),
-                      ...FINANCE_SUBJECTS.filter(topic => !(recommendations.subjects || []).some(s => s.name === topic) && topic !== 'Outro Assunto (Personalizado)').map(topic => ({ name: topic, chance: null })),
+                      ...getNicheDefaultSubjects(selectedNiche).filter(topic => !(recommendations.subjects || []).some(s => s.name === topic) && topic !== 'Outro Assunto (Personalizado)').map(topic => ({ name: topic, chance: null })),
                       { name: 'Outro Assunto (Personalizado)', chance: null }
                     ]}
                     customValue={customTopic}
